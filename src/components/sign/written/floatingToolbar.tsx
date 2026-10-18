@@ -44,6 +44,8 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { IconTip } from '@/components/ui/tooltip'
 import { leave } from './slashMenu'
+import { $newCallout } from './callout'
+import { $isCalloutNode } from './nodes'
 
 /**
  * Gio Docs' floating selection toolbar in the offer editor (2026-10-18),
@@ -55,7 +57,7 @@ import { leave } from './slashMenu'
  * Undo and redo stay on ⌘Z / ⌘⇧Z.
  */
 
-type Style = 'paragraph' | 'h1' | 'h2' | 'h3' | 'quote'
+type Style = 'paragraph' | 'h1' | 'h2' | 'h3' | 'quote' | 'callout'
 type Block = Style | 'bullet' | 'number'
 
 const STYLES: { value: Style; label: string; className: string }[] = [
@@ -64,6 +66,7 @@ const STYLES: { value: Style; label: string; className: string }[] = [
   { value: 'h2', label: 'Heading 2', className: 'font-poppins text-[14px] font-semibold' },
   { value: 'h3', label: 'Heading 3', className: 'font-inter text-[13px] font-semibold' },
   { value: 'quote', label: 'Quote', className: 'font-inter text-[13px] italic text-text-secondary' },
+  { value: 'callout', label: 'Callout', className: 'font-inter text-[13px]' },
 ]
 const ALIGNS: { value: ElementFormatType; label: string; icon: LucideIcon }[] = [
   { value: 'left', label: 'Align left', icon: AlignLeft },
@@ -88,6 +91,7 @@ function $readState(): State | null {
     if ($isListNode(n)) block = n.getListType() === 'number' ? 'number' : 'bullet'
     else if ($isHeadingNode(n) && block === 'paragraph') block = n.getTag() as Block
     else if ($isQuoteNode(n) && block === 'paragraph') block = 'quote'
+    else if ($isCalloutNode(n) && block === 'paragraph') block = 'callout'
     if ($isElementNode(n) && !$isRootNode(n) && !align && n.getFormatType()) align = n.getFormatType()
   }
   const formats = new Set<TextFormatType>((['bold', 'italic', 'underline'] as TextFormatType[]).filter((f) => sel.hasFormat(f)))
@@ -193,7 +197,7 @@ export function FloatingToolbar({ onSection }: { onSection: () => void }) {
       if (state.block === 'bullet' || state.block === 'number') editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined)
       editor.update(() => {
         const sel = $getSelection()
-        if ($isRangeSelection(sel)) $setBlocksType(sel, () => (b === 'paragraph' ? $createParagraphNode() : b === 'quote' ? $createQuoteNode() : $createHeadingNode(b)))
+        if ($isRangeSelection(sel)) $setBlocksType(sel, () => (b === 'paragraph' ? $createParagraphNode() : b === 'quote' ? $createQuoteNode() : b === 'callout' ? $newCallout() : $createHeadingNode(b)))
       })
     })
   const list = (t: 'bullet' | 'number') =>

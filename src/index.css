@@ -1909,6 +1909,37 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 .gio-w-h2 { font: 600 15.5px/1.35 Poppins, sans-serif; margin: 10px 0 6px; }
 .gio-w-h3 { font: 600 13.5px/1.4 Inter, sans-serif; margin: 8px 0 4px; }
 .gio-w-quote { margin: 0 0 8px; padding-left: 24px; border-left: 2px solid #CCCCC7; color: #6B7080; font-style: italic; }
+/* Callout, Gio Docs' callout in the ATS's colours (2026-10-18): a tint with a
+   1px edge, 4px corners, the icon beside the first line. The text colour
+   never changes. The same tones print in the PDF (CALLOUT_TONES). */
+.gio-written-callout {
+  display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 10px; padding: 12px 14px; border-radius: 4px;
+  background: var(--callout-bg); box-shadow: inset 0 0 0 1px var(--callout-ring);
+  --callout-bg: #F4F3EF; --callout-ring: #E3E1DA; --callout-ink: #5A6072;
+}
+.gio-written-callout[data-tone="yellow"] { --callout-bg: #FDF6DD; --callout-ring: #EFDFA2; --callout-ink: #A16207; }
+.gio-written-callout[data-tone="green"] { --callout-bg: #E8F6EF; --callout-ring: #BFE3D0; --callout-ink: #0B7A52; }
+.gio-written-callout[data-tone="blue"] { --callout-bg: #EAF2FD; --callout-ring: #C8DBF5; --callout-ink: #2563EB; }
+.gio-written-callout[data-tone="red"] { --callout-bg: #FCEDEB; --callout-ring: #F1CBC6; --callout-ink: #C2372B; }
+.gio-callout-icon {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin: -1px -3px 0 -3px;
+  border-radius: 5px; color: var(--callout-ink); cursor: pointer; user-select: none;
+  transition: background-color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+}
+.gio-callout-icon:active { transform: scale(.94); }
+@media (hover: hover) and (pointer: fine) { .gio-callout-icon:hover { background: rgba(13, 13, 9, .06); } }
+.gio-written-callout[data-icon="none"] .gio-callout-icon { display: none; }
+.gio-callout-text { flex: 1; min-width: 0; }
+/* Picker options: 30px, the picked one ringed. */
+.gio-callout-opt {
+  display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 7px; color: #5A6072;
+  transition: background-color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+}
+.gio-callout-opt:active { transform: scale(.94); }
+.gio-callout-opt[aria-pressed="true"] { background: #F1F0EC; box-shadow: inset 0 0 0 1.5px #0d0d09; }
+@media (hover: hover) and (pointer: fine) { .gio-callout-opt:hover:not([aria-pressed="true"]) { background: #F4F3EF; } }
+.gio-callout-swatch { display: block; width: 18px; height: 18px; border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) { .gio-callout-icon:active, .gio-callout-opt:active { transform: none; } }
 .gio-w-ul, .gio-w-ol { margin: 0 0 8px; padding-left: 29px; }
 .gio-w-ul { list-style: disc; }
 .gio-w-ol { list-style: decimal; }

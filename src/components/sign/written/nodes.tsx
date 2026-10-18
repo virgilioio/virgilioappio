@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import {
   $applyNodeReplacement,
+  $createParagraphNode,
   $getNodeByKey,
   $getSelection,
   $isNodeSelection,
@@ -14,6 +15,7 @@ import {
   type LexicalEditor,
   type LexicalNode,
   type NodeKey,
+  type RangeSelection,
   type SerializedElementNode,
   type SerializedLexicalNode,
   type Spread,
@@ -25,13 +27,21 @@ import { X } from 'lucide-react'
 import { tint, edge } from '@/components/sign/PdfPage'
 import { BLOCK_LABEL, type IfOp, type SignBlockKind } from '@/lib/sign/written'
 import type { ValueFormat } from '@/lib/sign/formats'
+import {
+  CALLOUT_ICONS,
+  calloutIcon,
+  calloutTone,
+  type CalloutIcon,
+  type CalloutTone,
+} from '../../../../supabase/functions/_shared/sign/writtenLayout.ts'
 
 /**
  * The written-document editor's own pieces (2026-10-17). Their JSON is what
  * the server lays out (_shared/sign/writtenLayout.ts), so the types and keys
  * here are a contract: "placeholder" { placeholderKey, format? }, "gio-if"
  * { key, op, value } around blocks, "gio-sign" { roleId, kind }, "gio-field"
- * { roleId, fieldType, required, label } inside the text, "gio-page-break".
+ * { roleId, fieldType, required, label } inside the text, "gio-page-break",
+ * "gio-callout" { icon, tone } around text.
  * Chips, fields and blocks are selected with a click (a 2px noir ring);
  * Delete or Backspace removes the selection.
  */
@@ -217,6 +227,111 @@ export class GioIfNode extends ElementNode {
 
 export const $createGioIfNode = (key: string, op: IfOp, value = '') => $applyNodeReplacement(new GioIfNode(key, op, value))
 export const $isGioIfNode = (n: LexicalNode | null | undefined): n is GioIfNode => n instanceof GioIfNode
+
+/* ---- Callout -------------------------------------------------------------- */
+
+export type SerializedCalloutNode = Spread<{ icon: CalloutIcon; tone: CalloutTone }, SerializedElementNode>
+
+/** The icon's strokes as SVG markup (the same Lucide paths the PDF draws). */
+export function calloutIconSvg(icon: CalloutIcon) {
+  if (icon === 'none') return ''
+  const paths = CALLOUT_ICONS[icon].paths.map((d) => `<path d="${d}"/>`).join('')
+  return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`
+}
+
+/**
+ * Gio Docs' callout (2026-10-18): text in a tinted box with an icon. The
+ * icon is a button (callout.tsx opens the icon and colour picker from it);
+ * the text goes in the inner slot. Enter leaves the callout for a new line
+ * below; Backspace at its start turns it back into text.
+ */
+export class CalloutNode extends ElementNode {
+  __icon: CalloutIcon
+  __tone: CalloutTone
+
+  static getType() {
+    return 'gio-callout'
+  }
+  static clone(node: CalloutNode) {
+    return new CalloutNode(node.__icon, node.__tone, node.__key)
+  }
+  constructor(icon: CalloutIcon = 'idea', tone: CalloutTone = 'yellow', key?: NodeKey) {
+    super(key)
+    this.__icon = icon
+    this.__tone = tone
+  }
+  static importJSON(json: SerializedCalloutNode) {
+    const node = $createCalloutNode(calloutIcon(json.icon), calloutTone(json.tone))
+    node.setFormat(json.format)
+    node.setIndent(json.indent)
+    node.setDirection(json.direction)
+    return node
+  }
+  exportJSON(): SerializedCalloutNode {
+    return { ...super.exportJSON(), type: 'gio-callout', version: 1, icon: this.__icon, tone: this.__tone }
+  }
+  createDOM() {
+    const div = document.createElement('div')
+    div.className = 'gio-written-callout'
+    div.dataset.tone = this.__tone
+    div.dataset.icon = this.__icon
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'gio-callout-icon'
+    btn.contentEditable = 'false'
+    btn.tabIndex = -1
+    btn.setAttribute('aria-label', 'Callout icon and colour')
+    btn.innerHTML = calloutIconSvg(this.__icon)
+    const text = document.createElement('div')
+    text.className = 'gio-callout-text'
+    text.dataset.hintSlot = ''
+    div.append(btn, text)
+    return div
+  }
+  getDOMSlot(element: HTMLElement) {
+    return super.getDOMSlot(element).withElement(element.querySelector<HTMLElement>('.gio-callout-text')!)
+  }
+  updateDOM(prev: CalloutNode, dom: HTMLElement) {
+    if (prev.__tone !== this.__tone) dom.dataset.tone = this.__tone
+    if (prev.__icon !== this.__icon) {
+      dom.dataset.icon = this.__icon
+      const btn = dom.querySelector('.gio-callout-icon')
+      if (btn) btn.innerHTML = calloutIconSvg(this.__icon)
+    }
+    return false
+  }
+  isInline() {
+    return false
+  }
+  canBeEmpty() {
+    return true
+  }
+  insertNewAfter(_: RangeSelection, restoreSelection = true) {
+    const p = $createParagraphNode()
+    p.setDirection(this.getDirection())
+    this.insertAfter(p, restoreSelection)
+    return p
+  }
+  collapseAtStart() {
+    const p = $createParagraphNode()
+    this.getChildren().forEach((child) => p.append(child))
+    this.replace(p)
+    return true
+  }
+  getLook() {
+    const self = this.getLatest()
+    return { icon: self.__icon, tone: self.__tone }
+  }
+  setLook(s: { icon?: CalloutIcon; tone?: CalloutTone }) {
+    const w = this.getWritable()
+    if (s.icon) w.__icon = s.icon
+    if (s.tone) w.__tone = s.tone
+    return w
+  }
+}
+
+export const $createCalloutNode = (icon: CalloutIcon = 'idea', tone: CalloutTone = 'yellow') => $applyNodeReplacement(new CalloutNode(icon, tone))
+export const $isCalloutNode = (n: LexicalNode | null | undefined): n is CalloutNode => n instanceof CalloutNode
 
 /* ---- Signing block ------------------------------------------------------ */
 

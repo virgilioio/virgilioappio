@@ -1,6 +1,7 @@
 // Gio Sign: lays out a document written in Gio (2026-10-17). The input is the
 // editor's own JSON (Lexical): paragraphs, headings, lists, quotes, page
-// breaks, data tags ("placeholder", with an optional print "format"),
+// breaks, callouts ("gio-callout": icon, tone; added 2026-10-18), data tags
+// ("placeholder", with an optional print "format"),
 // conditional sections ("gio-if"), signing blocks ("gio-sign") and signer
 // fields inside the text ("gio-field": roleId, fieldType, required, label). The output is a list of pages of simple drawing
 // operations plus where each signing block landed, so the server can draw the
@@ -32,7 +33,53 @@ export interface LineOp {
   width: number;
   color: Ink;
 }
-export type Op = TextOp | LineOp;
+/** A callout's tinted box (fill plus a 0.75pt edge, 4pt corners), drawn under its text. */
+export interface BoxOp {
+  kind: "box";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  tone: CalloutTone;
+}
+/** A callout's icon: Lucide strokes on a 24-unit grid, scaled to `size` points. */
+export interface IconOp {
+  kind: "icon";
+  x: number;
+  y: number;
+  size: number;
+  icon: Exclude<CalloutIcon, "none">;
+  tone: CalloutTone;
+}
+export type Op = TextOp | LineOp | BoxOp | IconOp;
+
+// ---- Callouts (Gio Docs' callout, in the ATS's own colours) -----------------
+export type CalloutTone = "neutral" | "yellow" | "green" | "blue" | "red";
+export type CalloutIcon = "idea" | "info" | "warning" | "check" | "none";
+export const CALLOUT_TONES: Record<CalloutTone, { label: string; bg: string; ring: string; ink: string }> = {
+  neutral: { label: "Neutral", bg: "#F4F3EF", ring: "#E3E1DA", ink: "#5A6072" },
+  yellow: { label: "Yellow", bg: "#FDF6DD", ring: "#EFDFA2", ink: "#A16207" },
+  green: { label: "Green", bg: "#E8F6EF", ring: "#BFE3D0", ink: "#0B7A52" },
+  blue: { label: "Blue", bg: "#EAF2FD", ring: "#C8DBF5", ink: "#2563EB" },
+  red: { label: "Red", bg: "#FCEDEB", ring: "#F1CBC6", ink: "#C2372B" },
+};
+const CIRCLE = "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0";
+/** Lucide's Lightbulb, Info, TriangleAlert and CircleCheck (circles written as arcs). */
+export const CALLOUT_ICONS: Record<Exclude<CalloutIcon, "none">, { label: string; paths: string[] }> = {
+  idea: { label: "Idea", paths: ["M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5", "M9 18h6", "M10 22h4"] },
+  info: { label: "Info", paths: [CIRCLE, "M12 16v-4", "M12 8h.01"] },
+  warning: { label: "Warning", paths: ["m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3", "M12 9v4", "M12 17h.01"] },
+  check: { label: "Check", paths: [CIRCLE, "m9 12 2 2 4-4"] },
+};
+export function calloutTone(v: unknown): CalloutTone {
+  return typeof v === "string" && v in CALLOUT_TONES ? (v as CalloutTone) : "neutral";
+}
+export function calloutIcon(v: unknown): CalloutIcon {
+  return v === "none" || (typeof v === "string" && v in CALLOUT_ICONS) ? (v as CalloutIcon) : "idea";
+}
+const CALLOUT_PAD = 10;
+const CALLOUT_ICON = 12;
+const CALLOUT_GAP = 8;
 
 export interface WrittenPage {
   ops: Op[];
@@ -552,6 +599,39 @@ function signRow(c: Ctx, row: Node[]) {
   c.flow.y = top + total;
 }
 
+/**
+ * A callout: its text inside a tinted box with the icon beside the first
+ * line. A callout that runs over a page break continues on the next page in
+ * a box of its own. The box goes under the text, so it's added last at the
+ * place in each page's list where the callout began.
+ */
+function callout(c: Ctx, n: Node) {
+  const flow = c.flow;
+  const icon = calloutIcon(n.icon);
+  const tone = calloutTone(n.tone);
+  const lead = BODY * LEAD;
+  flow.space(4);
+  flow.ensure(CALLOUT_PAD * 2 + lead);
+  const first = flow.pages.length - 1;
+  const at = flow.page.ops.length;
+  const top = flow.y;
+  const shift = icon === "none" ? 0 : CALLOUT_ICON + CALLOUT_GAP;
+  const inner: Ctx = { ...c, left: c.left + CALLOUT_PAD + shift, width: c.width - CALLOUT_PAD * 2 - shift };
+  flow.y += CALLOUT_PAD;
+  if (icon !== "none") {
+    flow.page.ops.push({ kind: "icon", x: c.left + CALLOUT_PAD, y: flow.y + (lead - CALLOUT_ICON) / 2, size: CALLOUT_ICON, icon, tone });
+  }
+  paragraph(inner, n, BODY, "regular");
+  flow.y += CALLOUT_PAD;
+  const last = flow.pages.length - 1;
+  for (let i = first; i <= last; i++) {
+    const y1 = i === first ? top : MARGIN_TOP - CALLOUT_PAD;
+    const y2 = i === last ? flow.y : PAGE_H - MARGIN_BOTTOM + CALLOUT_PAD;
+    flow.pages[i].ops.splice(i === first ? at : 0, 0, { kind: "box", x: c.left, y: y1, w: c.width, h: y2 - y1, tone });
+  }
+  flow.y += PARA_AFTER + 2;
+}
+
 function round3(n: number) {
   return Math.round(n * 1000) / 1000;
 }
@@ -575,6 +655,9 @@ function blocksOf(c: Ctx, nodes: Node[] | undefined) {
         c.flow.y += PARA_AFTER;
         break;
       }
+      case "gio-callout":
+        callout(c, n);
+        break;
       case "list":
         listItems(c, n, 0);
         c.flow.y += PARA_AFTER - 2;

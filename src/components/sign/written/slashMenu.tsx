@@ -59,7 +59,7 @@ export interface Preview {
   what: string
 }
 
-export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'numbered' | 'quote' | 'divider' | 'section' | 'pageBreak', Preview> = {
+export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'numbered' | 'quote' | 'callout' | 'divider' | 'section' | 'pageBreak', Preview> = {
   text: { what: 'Just start writing with plain text.', draw: () => <P>We’re delighted to offer you the role. This letter sets out the <b>main terms</b> of your employment.</P> },
   h1: { what: 'Big section heading.', draw: () => <P size={19} weight={600} color={INK}>Offer of employment</P> },
   h2: {
@@ -104,6 +104,17 @@ export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'nu
     what: 'Set a passage apart.',
     draw: () => (
       <span style={{ display: 'block', borderLeft: `3px solid ${INK}`, paddingLeft: 8 }}>
+        <P>This offer is valid for seven days.</P>
+      </span>
+    ),
+  },
+  callout: {
+    what: 'Make writing stand out.',
+    draw: () => (
+      <span style={{ display: 'flex', gap: 6, padding: 7, borderRadius: 4, background: '#FDF6DD', boxShadow: 'inset 0 0 0 1px #EFDFA2' }}>
+        <svg viewBox="0 0 24 24" width={11} height={11} style={{ flex: 'none', marginTop: 1, color: '#A16207' }} aria-hidden>
+          <path d={SLASH_IC.callout} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
         <P>This offer is valid for seven days.</P>
       </span>
     ),

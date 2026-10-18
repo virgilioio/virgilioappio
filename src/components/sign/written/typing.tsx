@@ -22,22 +22,29 @@ import {
   type ElementNode,
   type LexicalNode,
 } from 'lexical'
+import { $newCallout } from './callout'
+import { $isCalloutNode } from './nodes'
 
 /**
  * Gio Docs typing in the offer editor (2026-10-18, Allan: "the same DNA").
  * Markdown at the start of a line turns it into a block, Backspace at the
- * start of a heading or quote turns it back into text, and the empty line
+ * start of a heading, quote or callout turns it back into text, and the empty line
  * you're on says what you can do. Nothing here animates (typing never does).
  */
 
-/** "#", "##", "###", "-", "*", "1.", "1)" or ">" and a space, at the start of a line. */
-const SHORTCUT = /^(#{1,3}|[-*]|1[.)]|>) $/
+/** "#", "##", "###", "-", "*", "1.", "1)", ">" or "!>" (callout) and a space, at the start of a line. */
+const SHORTCUT = /^(#{1,3}|[-*]|1[.)]|!?>) $/
 
 function $convert(p: ElementNode, mark: string) {
   if (mark.startsWith('#')) {
     const h = $createHeadingNode(`h${mark.length}` as HeadingTagType)
     p.replace(h, true)
     return h
+  }
+  if (mark === '!>') {
+    const c = $newCallout()
+    p.replace(c, true)
+    return c
   }
   if (mark === '>') {
     const q = $createQuoteNode()
@@ -85,7 +92,7 @@ export function TypingShortcuts() {
             block.select(0, 0)
           }
         }),
-        // Backspace at the very start of a heading or quote makes it plain text again.
+        // Backspace at the very start of a heading, quote or callout makes it plain text again.
         editor.registerCommand(
           KEY_BACKSPACE_COMMAND,
           (e) => {
@@ -93,7 +100,7 @@ export function TypingShortcuts() {
             if (!$isRangeSelection(sel) || !sel.isCollapsed() || sel.anchor.offset !== 0) return false
             const at = sel.anchor.getNode()
             const block = $isElementNode(at) && !at.isInline() ? at : at.getParent()
-            if (!block || !($isHeadingNode(block) || $isQuoteNode(block))) return false
+            if (!block || !($isHeadingNode(block) || $isQuoteNode(block) || $isCalloutNode(block))) return false
             if (block !== at && block.getFirstChild() !== at) return false
             e?.preventDefault()
             $setBlocksType(sel, () => $createParagraphNode())
@@ -132,12 +139,17 @@ export function EmptyLineHints() {
         const root = editor.getRootElement()
         if (!root) return
         root.querySelectorAll('[data-hint]').forEach((el) => el.removeAttribute('data-hint'))
-        const mark = (n: LexicalNode, hint: string) => editor.getElementByKey(n.getKey())?.setAttribute('data-hint', hint)
+        // A callout's hint goes on its text, not beside its icon.
+        const mark = (n: LexicalNode, hint: string) => {
+          const el = editor.getElementByKey(n.getKey())
+          ;(el?.querySelector(':scope > [data-hint-slot]') ?? el)?.setAttribute('data-hint', hint)
+        }
         const walk = (n: LexicalNode) => {
           if ($isElementNode(n) && n.getTextContentSize() === 0 && n.getChildrenSize() === 0) {
             if ($isHeadingNode(n)) mark(n, `Heading ${n.getTag().slice(1)}`)
             else if ($isListItemNode(n)) mark(n, 'List')
             else if ($isQuoteNode(n)) mark(n, 'Quote')
+            else if ($isCalloutNode(n)) mark(n, 'Callout')
           }
           if ($isElementNode(n)) n.getChildren().forEach(walk)
         }

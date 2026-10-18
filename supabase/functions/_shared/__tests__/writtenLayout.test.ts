@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { conditionHolds, layoutWritten, PAGE_H, writtenKeys, type TextOp } from '../sign/writtenLayout';
+import { conditionHolds, layoutWritten, PAGE_H, writtenKeys, type BoxOp, type IconOp, type TextOp } from '../sign/writtenLayout';
 
 // Every character is half the font size wide.
 const measure = (text: string, _style: string, size: number) => text.length * size * 0.5;
@@ -186,5 +186,58 @@ describe('writtenKeys', () => {
     const content = doc(para({ type: 'placeholder', placeholderKey: 'bonus' }));
     const l = layoutWritten(content, { values: {}, highlight: { bonus: 'Bonus' }, emptyInk: 'danger', measure });
     expect(texts(l)[0]).toMatchObject({ text: '[Bonus]', color: 'danger' });
+  });
+
+  describe('callouts', () => {
+    const callout = (extra: object, ...children: object[]) => ({ type: 'gio-callout', icon: 'info', tone: 'yellow', children, ...extra });
+    const boxes = (l: ReturnType<typeof layoutWritten>, page = 0) => l.pages[page].ops.filter((o): o is BoxOp => o.kind === 'box');
+
+    it('draws the box under its text, with the icon beside the first line', () => {
+      const l = layoutWritten(doc(para(text('Before')), callout({}, text('Notice period is 30 days'))), { values: {}, measure });
+      const ops = l.pages[0].ops;
+      const box = boxes(l)[0];
+      const icon = ops.find((o): o is IconOp => o.kind === 'icon')!;
+      const words = texts(l).filter((o) => o.text !== 'Before');
+      expect(box).toMatchObject({ x: 72, w: 468, tone: 'yellow' });
+      expect(icon).toMatchObject({ icon: 'info', tone: 'yellow', size: 12, x: 82 });
+      // Under the text: the box comes before the callout's words, after the line above it.
+      expect(ops.indexOf(box)).toBeLessThan(ops.indexOf(words[0]));
+      expect(ops.indexOf(box)).toBeGreaterThan(ops.indexOf(texts(l)[0]));
+      // Text sits after the icon and its gap, inside the padding.
+      expect(words[0].x).toBe(72 + 10 + 12 + 8);
+      expect(box.y).toBeLessThan(words[0].y - 11);
+      expect(box.y + box.h).toBeGreaterThan(words[0].y);
+    });
+
+    it('drops the icon space with no icon, and falls back to neutral and the idea icon', () => {
+      const none = layoutWritten(doc(callout({ icon: 'none' }, text('Plain'))), { values: {}, measure });
+      expect(none.pages[0].ops.some((o) => o.kind === 'icon')).toBe(false);
+      expect(texts(none)[0].x).toBe(82);
+      const odd = layoutWritten(doc(callout({ icon: 'rocket', tone: 'teal' }, text('Odd'))), { values: {}, measure });
+      expect(boxes(odd)[0].tone).toBe('neutral');
+      expect(odd.pages[0].ops.find((o): o is IconOp => o.kind === 'icon')!.icon).toBe('idea');
+    });
+
+    it('fills tags inside a callout and keeps going in a box of its own on the next page', () => {
+      const long = Array.from({ length: 400 }, (_, i) => 'word' + i).join(' ');
+      const l = layoutWritten(doc(callout({}, text('Hi '), { type: 'placeholder', placeholderKey: 'name' }, text(' ' + long))), {
+        values: { name: 'Priya' },
+        measure,
+      });
+      expect(l.pages.length).toBeGreaterThan(1);
+      expect(texts(l).some((o) => o.text === 'Priya')).toBe(true);
+      const second = boxes(l, 1)[0];
+      expect(l.pages[1].ops[0]).toBe(second);
+      expect(second.y).toBe(72 - 10);
+      expect(boxes(l, 0)[0].y + boxes(l, 0)[0].h).toBe(PAGE_H - 72 + 10);
+      expect(writtenKeys(doc(callout({}, { type: 'placeholder', placeholderKey: 'name' }))).tags).toEqual(['name']);
+    });
+
+    it('prints inside a section only when the section does', () => {
+      const sec = (v: string) =>
+        layoutWritten(doc({ type: 'gio-if', key: 'remote', op: 'yes', children: [callout({}, text('Remote rules'))] }), { values: { remote: v }, measure });
+      expect(boxes(sec('yes')).length).toBe(1);
+      expect(boxes(sec('no')).length).toBe(0);
+    });
   });
 });

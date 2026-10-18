@@ -62,6 +62,7 @@ import {
   $isGioIfNode,
   $isGioSignNode,
   $isSignTagNode,
+  CalloutNode,
   GioFieldNode,
   GioIfNode,
   GioPageBreakNode,
@@ -76,6 +77,7 @@ import {
 import { DocTitle, EmptyLineHints, TypingShortcuts } from '@/components/sign/written/typing'
 import { BlockHandles, DuplicateShortcut } from '@/components/sign/written/blockHandles'
 import { FloatingToolbar } from '@/components/sign/written/floatingToolbar'
+import { $newCallout, CalloutPicker } from '@/components/sign/written/callout'
 import { FieldList } from './FieldList'
 import { BLOCK_PREVIEWS, SlashItem, SlashPanel, fieldPreview, rememberPick, signPreview, signerFieldPreview, slashRows, type Preview, type SlashIcon } from '@/components/sign/written/slashMenu'
 import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
@@ -101,7 +103,7 @@ const THEME = {
   text: { bold: 'gio-w-b', italic: 'gio-w-i', underline: 'gio-w-u', strikethrough: 'gio-w-s', underlineStrikethrough: 'gio-w-us' },
   hr: 'gio-w-hr',
 }
-const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, HorizontalRuleNode, SignTagNode, GioIfNode, GioSignNode, GioFieldNode, GioPageBreakNode]
+const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, HorizontalRuleNode, SignTagNode, GioIfNode, GioSignNode, GioFieldNode, GioPageBreakNode, CalloutNode]
 const WRITTEN_SIGNER_TYPES = ['signature', 'initials', 'date', 'name', 'text', 'checkbox'] as const
 
 /* ---- Inserting ----------------------------------------------------------- */
@@ -617,6 +619,7 @@ export function WrittenPane({
     out.push(new SlashItem('bullet', 'Bulleted list', 'Basic blocks', 'bullet', () => run((e) => (e.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined), e.focus())), { md: '-', kw: 'bullet list ul', preview: BLOCK_PREVIEWS.bullet }))
     out.push(new SlashItem('numbered', 'Numbered list', 'Basic blocks', 'numbered', () => run((e) => (e.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined), e.focus())), { md: '1.', kw: 'number list ol', preview: BLOCK_PREVIEWS.numbered }))
     block('quote', 'Quote', 'quote', () => $createQuoteNode(), '>', BLOCK_PREVIEWS.quote, 'quote blockquote')
+    block('callout', 'Callout', 'callout', () => $newCallout(), '!>', BLOCK_PREVIEWS.callout, 'callout note tip info warning box highlight')
     out.push(new SlashItem('divider', 'Divider', 'Basic blocks', 'divider', () => run((e) => (e.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined), e.focus())), { md: '---', kw: 'divider line rule hr', preview: BLOCK_PREVIEWS.divider }))
 
     for (const r of people) {
@@ -746,6 +749,7 @@ export function WrittenPane({
         <SlashMenu items={items} />
         <TypingShortcuts />
         {!preview && <FloatingToolbar onSection={addSection} />}
+        {!preview && <CalloutPicker />}
         {paper && !preview && <BlockHandles anchor={paper} />}
         <DuplicateShortcut />
         <EmptyLineHints />

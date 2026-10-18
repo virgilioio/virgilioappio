@@ -25,6 +25,8 @@ import {
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { IconTip } from '@/components/ui/tooltip'
 import { BLOCK_PREVIEWS, SLASH_IC, type Preview, type SlashIcon } from './slashMenu'
+import { $newCallout, OPEN_CALLOUT_PICKER } from './callout'
+import { $isCalloutNode } from './nodes'
 
 /**
  * Gio Docs' block handles in the offer editor (2026-10-18): hovering a block
@@ -35,7 +37,7 @@ import { BLOCK_PREVIEWS, SLASH_IC, type Preview, type SlashIcon } from './slashM
  * one, with its text. The saved format doesn't change.
  */
 
-type Kind = 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'quote' | 'divider' | 'sign' | 'section' | 'break' | 'other'
+type Kind = 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'quote' | 'callout' | 'divider' | 'sign' | 'section' | 'break' | 'other'
 const NAME: Record<Kind, string> = {
   text: 'Text',
   h1: 'Heading 1',
@@ -44,6 +46,7 @@ const NAME: Record<Kind, string> = {
   bullet: 'Bulleted list',
   number: 'Numbered list',
   quote: 'Quote',
+  callout: 'Callout',
   divider: 'Divider',
   sign: 'Signature block',
   section: 'Conditional section',
@@ -58,6 +61,7 @@ const ICON: Record<Kind, SlashIcon> = {
   bullet: 'bullet',
   number: 'numbered',
   quote: 'quote',
+  callout: 'callout',
   divider: 'divider',
   sign: 'sign',
   section: 'section',
@@ -73,6 +77,7 @@ const TURN: { kind: Kind; preview: Preview }[] = [
   { kind: 'bullet', preview: BLOCK_PREVIEWS.bullet },
   { kind: 'number', preview: BLOCK_PREVIEWS.numbered },
   { kind: 'quote', preview: BLOCK_PREVIEWS.quote },
+  { kind: 'callout', preview: BLOCK_PREVIEWS.callout },
 ]
 const TURNABLE = new Set<Kind>(TURN.map((t) => t.kind))
 
@@ -82,6 +87,7 @@ function $kindOf(n: LexicalNode | null): Kind {
   if ($isHeadingNode(n)) return (['h1', 'h2', 'h3'].includes(n.getTag()) ? n.getTag() : 'h3') as Kind
   if ($isListNode(n)) return n.getListType() === 'number' ? 'number' : 'bullet'
   if ($isQuoteNode(n)) return 'quote'
+  if ($isCalloutNode(n)) return 'callout'
   if ($isHorizontalRuleNode(n)) return 'divider'
   const t = n.getType()
   return t === 'gio-sign' ? 'sign' : t === 'gio-if' ? 'section' : t === 'gio-page-break' ? 'break' : 'other'
@@ -97,6 +103,7 @@ function $topOf(n: LexicalNode | null): LexicalNode | null {
 function $make(kind: Kind): ElementNode {
   if (kind === 'h1' || kind === 'h2' || kind === 'h3') return $createHeadingNode(kind as HeadingTagType)
   if (kind === 'quote') return $createQuoteNode()
+  if (kind === 'callout') return $newCallout()
   return $createParagraphNode()
 }
 
@@ -220,6 +227,9 @@ export function BlockHandles({ anchor }: { anchor: HTMLElement }) {
       : block
         ? [
             ...(TURNABLE.has(block.kind) ? [{ label: 'Turn into', icon: ICON[block.kind], hint: '›', run: () => (setView('turn'), setHover(0)) }] : []),
+            ...(block.kind === 'callout'
+              ? [{ label: 'Icon and colour', icon: 'callout' as SlashIcon, run: () => (close(), setTimeout(() => editor.dispatchCommand(OPEN_CALLOUT_PICKER, block.key), 0)) }]
+              : []),
             { label: 'Duplicate', icon: 'duplicate', hint: isMac ? '⌘D' : 'Ctrl+D', run: () => (withBlock($duplicate), close()) },
             { label: 'Move up', icon: 'up', hint: block.first ? 'at top' : undefined, run: () => (withBlock((n) => n.getPreviousSibling()?.insertBefore(n)), close()) },
             { label: 'Move down', icon: 'down', hint: block.last ? 'at end' : undefined, run: () => (withBlock((n) => n.getNextSibling()?.insertAfter(n)), close()) },

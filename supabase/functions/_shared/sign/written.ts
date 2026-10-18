@@ -2,8 +2,8 @@
 // writtenLayout.ts (shared with the app); this file only measures text with
 // the PDF's own fonts and draws the result. Text stays real text. ASCII only.
 
-import { PDFDocument, PDFFont, rgb, StandardFonts } from "npm:pdf-lib@1.17.1";
-import { layoutWritten, type Style, type WrittenBlock } from "./writtenLayout.ts";
+import { LineCapStyle, PDFDocument, PDFFont, rgb, StandardFonts } from "npm:pdf-lib@1.17.1";
+import { CALLOUT_ICONS, CALLOUT_TONES, layoutWritten, type Style, type WrittenBlock } from "./writtenLayout.ts";
 
 export interface WrittenPdf {
   bytes: Uint8Array;
@@ -33,6 +33,18 @@ const COLORS = {
   lilac: rgb(0.843, 0.773, 0.984),
   danger: rgb(0.761, 0.216, 0.169),
 };
+
+function hex(h: string) {
+  const n = parseInt(h.slice(1), 16);
+  return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+}
+
+/** A rectangle with 4pt corners as an SVG path, in page coordinates from the top-left. */
+function roundRect(x: number, y: number, w: number, h: number, r = 4) {
+  return "M" + (x + r) + " " + y + "h" + (w - 2 * r) + "a" + r + " " + r + " 0 0 1 " + r + " " + r + "v" + (h - 2 * r) +
+    "a" + r + " " + r + " 0 0 1 -" + r + " " + r + "h-" + (w - 2 * r) + "a" + r + " " + r + " 0 0 1 -" + r + " -" + r +
+    "v-" + (h - 2 * r) + "a" + r + " " + r + " 0 0 1 " + r + " -" + r + "z";
+}
 
 // Characters the standard fonts can't print, mapped to ones they can.
 const FALLBACK: Record<string, string> = {
@@ -107,6 +119,15 @@ export async function renderWritten(input: WrittenInput): Promise<WrittenPdf> {
       if (op.kind === "text") {
         if (!op.text) continue;
         page.drawText(op.text, { x: op.x, y: layout.height - op.y, size: op.size, font: fonts[op.style], color: COLORS[op.color] });
+      } else if (op.kind === "box") {
+        const t = CALLOUT_TONES[op.tone];
+        page.drawSvgPath(roundRect(op.x, op.y, op.w, op.h), { x: 0, y: layout.height, color: hex(t.bg), borderColor: hex(t.ring), borderWidth: 0.75 });
+      } else if (op.kind === "icon") {
+        const ink = hex(CALLOUT_TONES[op.tone].ink);
+        const scale = op.size / 24;
+        for (const d of CALLOUT_ICONS[op.icon].paths) {
+          page.drawSvgPath(d, { x: op.x, y: layout.height - op.y, scale, borderColor: ink, borderWidth: 2, borderLineCap: LineCapStyle.Round });
+        }
       } else {
         page.drawLine({
           start: { x: op.x1, y: layout.height - op.y1 },
