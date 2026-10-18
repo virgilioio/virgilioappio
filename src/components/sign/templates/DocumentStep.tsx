@@ -4,10 +4,14 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { uid, useSampleValues, type TplDraft } from '@/lib/sign/templates'
-import { emptyContent, nextPosition } from '@/lib/sign/written'
+import { emptyContent, nextPosition, useWrittenPreview } from '@/lib/sign/written'
 import { FieldsEditor } from './FieldsEditor'
 import { WrittenPane } from './WrittenPane'
-import { formatUses } from './writtenTags'
+import { formatUses, useWrittenTags, writtenPreviewInput } from './writtenTags'
+import type { WrittenRail } from './PagesRail'
+
+/** A page to bring into view: in the written Preview, or on the uploaded pages (n makes a repeat click count). */
+export type PageFocus = { kind: 'written' | 'upload'; page: number; n: number }
 
 /**
  * The Document step (§3, 2026-10-17), full width. Written in Gio and the
@@ -45,6 +49,27 @@ export function DocumentStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
   const sampleQ = useSampleValues(formId, formatUses(doc?.content))
   const sample = sampleQ.data ? { firstName: sampleQ.data.firstName, values: sampleQ.data.values } : null
   const previewLabel = sample ? `Preview with ${sample.firstName ? `${sample.firstName}’s` : 'the latest'} offer` : 'Preview'
+
+  // The page rail's written pages: the preview of what's written, a second after typing stops.
+  const tags = useWrittenTags(d)
+  const [settled, setSettled] = useState(doc ? { name: doc.name, content: doc.content } : null)
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(doc ? { name: doc.name, content: doc.content } : null), 1000)
+    return () => clearTimeout(t)
+  }, [doc?.name, doc?.content]) // eslint-disable-line react-hooks/exhaustive-deps
+  const railPdf = useWrittenPreview(settled && hasWritten ? writtenPreviewInput(settled, d.roles, tags, sample) : null, { keep: true })
+  const written: WrittenRail | null = hasWritten && doc ? { name: doc.name, pdf: railPdf } : null
+  const [focus, setFocus] = useState<PageFocus | null>(null)
+  const [writtenPage, setWrittenPage] = useState<number | null>(null)
+  const openWritten = (page: number) => {
+    setTab('written')
+    setView('preview')
+    setFocus((f) => ({ kind: 'written', page, n: (f?.n ?? 0) + 1 }))
+  }
+  const openUpload = (page: number) => {
+    setTab('uploads')
+    setFocus((f) => ({ kind: 'upload', page, n: (f?.n ?? 0) + 1 }))
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -104,9 +129,18 @@ export function DocumentStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
       </div>
       <div className="min-h-0 flex-1">
         {tab === 'written' && doc ? (
-          <WrittenPane d={d} set={set} doc={doc} preview={view === 'preview'} sample={sample} />
+          <WrittenPane
+            d={d}
+            set={set}
+            doc={doc}
+            preview={view === 'preview'}
+            sample={sample}
+            rail={{ written, active: view === 'preview' && writtenPage != null ? { kind: 'written', page: writtenPage } : null, onWritten: openWritten, onUpload: openUpload }}
+            focus={focus?.kind === 'written' ? focus : null}
+            onPage={setWrittenPage}
+          />
         ) : hasUploads ? (
-          <FieldsEditor d={d} set={set} />
+          <FieldsEditor d={d} set={set} written={written} onWritten={openWritten} focus={focus?.kind === 'upload' ? focus : null} />
         ) : null}
       </div>
     </div>

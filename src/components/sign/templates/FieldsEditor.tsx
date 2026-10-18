@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
-import { ChevronDown, Copy, Database, Info, Lock, Minus, Plus, Trash2, TriangleAlert } from 'lucide-react'
+import { Copy, Database, Info, Lock, Minus, Plus, Trash2, TriangleAlert } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { IconTip } from '@/components/ui/tooltip'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { loadTemplatePdf, pageTextSize } from '@/lib/sign/pdf'
+import { pageTextSize } from '@/lib/sign/pdf'
 import { PdfPage, edge, tint } from '@/components/sign/PdfPage'
 import { FieldList } from './FieldList'
 import { FIELD_ICON } from './fieldIcons'
 import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
+import { PagesRail, type WrittenRail } from './PagesRail'
+import type { PageFocus } from './DocumentStep'
 import { formatKind, offerCategory } from '@/lib/sign/formats'
 import {
   FIELD_LABEL,
@@ -41,110 +42,30 @@ const SIGNER_NOTE: Record<SignerFieldType, string> = {
   text: 'They type a short answer here.',
   checkbox: 'They tick it if it applies.',
 }
-const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const SIZES = [8, 9, 10, 10.5, 11, 12, 14, 16, 18] as const
 const clampSize = (n: number | null | undefined) => (n == null ? null : clamp(Math.round(n * 2) / 2, 6, 24))
 const pt = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(1)} pt`
 /** A role colour, see-through, so the document shows under the field. */
 
-/** One PDF page drawn to a canvas once it scrolls near view, at the screen's pixel density.
- *  It's drawn again when zooming makes it noticeably bigger, so text stays sharp. */
-/** A small page in the Documents panel, with a mark for every field in its role's colour. */
-function PageThumb({
-  doc,
-  index,
-  fields,
-  colorOf,
-  active,
-  label,
-  onOpen,
-}: {
-  doc: TplDoc
-  index: number
-  fields: TplField[]
-  colorOf: (f: TplField) => string
-  active: boolean
-  label: string
-  onOpen: () => void
-}) {
-  const box = useRef<HTMLButtonElement>(null)
-  const canvas = useRef<HTMLCanvasElement>(null)
-  const [ready, setReady] = useState(false)
-  const size = doc.page_sizes[index] ?? { w: 612, h: 792 }
-
-  useEffect(() => {
-    const el = box.current
-    if (!el) return
-    let task: { cancel: () => void; promise: Promise<unknown> } | null = null
-    let done = false
-    const io = new IntersectionObserver(
-      async ([entry]) => {
-        if (!entry.isIntersecting || done) return
-        done = true
-        io.disconnect()
-        try {
-          const pdf = await loadTemplatePdf(doc)
-          const page = await pdf.getPage(index + 1)
-          const c = canvas.current
-          if (!c) return
-          const base = page.getViewport({ scale: 1 })
-          const vp = page.getViewport({ scale: (el.clientWidth / base.width) * Math.min(2, window.devicePixelRatio || 1) })
-          c.width = Math.floor(vp.width)
-          c.height = Math.floor(vp.height)
-          task = page.render({ canvasContext: c.getContext('2d')!, viewport: vp }) as unknown as typeof task
-          await task!.promise
-          setReady(true)
-        } catch {
-          /* the big page shows the error */
-        }
-      },
-      { rootMargin: '300px 0px' },
-    )
-    io.observe(el)
-    return () => {
-      io.disconnect()
-      task?.cancel()
-    }
-  }, [doc, index])
-
-  return (
-    <button
-      ref={box}
-      type="button"
-      onClick={onOpen}
-      aria-label={label}
-      aria-current={active || undefined}
-      className={cn(
-        'gio-pressable gio-sign-thumb relative mx-auto block w-[164px] overflow-hidden rounded-[4px] bg-white ring-offset-2',
-        active ? 'ring-2 ring-virgilio-purple' : 'ring-1 ring-[#E7E8EE] hover:ring-[#C9C8C1]',
-      )}
-      style={{ aspectRatio: `${size.w} / ${size.h}` }}
-    >
-      <canvas ref={canvas} data-ready={ready || undefined} aria-hidden className="absolute inset-0 h-full w-full" />
-      {fields.map((f) => (
-        <span
-          key={f.id}
-          aria-hidden
-          className="absolute rounded-[2px]"
-          style={{
-            left: `${f.x}%`,
-            top: `${f.y}%`,
-            width: `${f.w}%`,
-            height: `${Math.max(f.h, 2.2)}%`,
-            background: colorOf(f),
-            border: f.type === 'data' ? '1px dashed #8456F6' : '1px solid rgba(13,13,9,.25)',
-          }}
-        />
-      ))}
-    </button>
-  )
-}
-
 const ZOOMS = [75, 100, 125, 150, 200] as const
 type Zoom = 'fit' | (typeof ZOOMS)[number]
 
-export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) => TplDraft) => void }) {
+export function FieldsEditor({
+  d,
+  set,
+  written,
+  onWritten,
+  focus,
+}: {
+  d: TplDraft
+  set: (fn: (d: TplDraft) => TplDraft) => void
+  /** The written document's pages for the rail (with both sources). */
+  written: WrittenRail | null
+  onWritten: (page: number) => void
+  /** A page picked in the written pane's rail. */
+  focus: PageFocus | null
+}) {
   const people = d.roles.filter((r) => r.role !== 'cc')
   const [who, setWho] = useState(people[0]?.id ?? null)
   const [sel, setSel] = useState<string | null>(null)
@@ -170,7 +91,6 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
   const [zoom, setZoom] = useState<Zoom>('fit')
   const [avail, setAvail] = useState(800)
   const [active, setActive] = useState(0)
-  const [closedDocs, setClosedDocs] = useState<Set<string>>(new Set())
   // The document's own text size on each page, so text fields print like it.
   const [docSizes, setDocSizes] = useState<Record<number, number | null>>({})
   const clip = useRef<TplField | null>(null)
@@ -220,6 +140,15 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
     if (!el || !scroller.current) return
     scroller.current.scrollTo({ top: el.offsetTop - 16, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
   }
+  // A page picked in the written pane's rail: there at once (the tab just switched).
+  useEffect(() => {
+    if (!focus) return
+    const id = requestAnimationFrame(() => {
+      const el = scroller.current?.querySelector<HTMLElement>(`[data-gi="${focus.page}"]`)
+      if (el && scroller.current) scroller.current.scrollTo({ top: el.offsetTop - 16, behavior: 'auto' })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [focus])
   const pageSize = (gi: number) => {
     const p = pages.find((x) => x.gi === gi)
     return p?.doc.page_sizes[p.i] ?? { w: 612, h: 792 }
@@ -746,49 +675,15 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
         <div key={sf?.id ?? 'summary'} className="gio-swap-in flex flex-col gap-3.5 border-b border-virgilio-border p-4">
           {sf ? settings(sf) : <FieldSummary d={d} />}
         </div>
-        {d.docs.map((doc) => {
-          const open = !closedDocs.has(doc.id)
-          const docPages = pages.filter((p) => p.doc.id === doc.id)
-          return (
-            <Collapsible
-              key={doc.id}
-              open={open}
-              onOpenChange={(o) =>
-                setClosedDocs((s) => {
-                  const n = new Set(s)
-                  if (o) n.delete(doc.id)
-                  else n.add(doc.id)
-                  return n
-                })
-              }
-              className="border-b border-virgilio-border last:border-b-0"
-            >
-              <CollapsibleTrigger className="flex w-full items-start gap-2 px-4 py-3 text-left hover:bg-[#FAFAF7] [&[data-state=open]>svg]:rotate-180">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-inter text-[12px] font-semibold uppercase tracking-[0.03em] text-text-primary">{doc.name}</span>
-                  <span className="font-inter text-[11.5px] tabular-nums text-text-tertiary">{plural(doc.page_count, 'page')}</span>
-                </span>
-                <ChevronDown className="gio-disclosure-chevron mt-0.5 h-4 w-4 shrink-0 text-text-secondary" strokeWidth={2} aria-hidden />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="flex flex-col gap-3 px-4 pb-4">
-                {docPages.map((p) => (
-                  <div key={p.gi} className="flex flex-col gap-1">
-                    <PageThumb
-                      doc={doc}
-                      index={p.i}
-                      fields={d.fields.filter((f) => f.page === p.gi)}
-                      colorOf={colorOf}
-                      active={active === p.gi}
-                      label={`Go to page ${p.i + 1} of ${doc.name}`}
-                      onOpen={() => goTo(p.gi)}
-                    />
-                    <span className={cn('text-center font-inter text-[11px] tabular-nums', active === p.gi ? 'font-semibold text-text-primary' : 'text-text-tertiary')}>{p.i + 1}</span>
-                  </div>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-          )
-        })}
+        <PagesRail
+          written={written}
+          docs={d.docs}
+          fields={d.fields}
+          colorOf={colorOf}
+          active={{ kind: 'upload', page: active }}
+          onWritten={onWritten}
+          onUpload={goTo}
+        />
       </aside>
 
       {ghost && (

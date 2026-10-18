@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { supabase, supabaseAnonKey, supabaseUrl } from '@/lib/supabaseClient'
 import { loadTemplatePdf } from './pdf'
 import { layoutWritten, writtenKeys } from '../../../supabase/functions/_shared/sign/writtenLayout.ts'
@@ -220,11 +220,13 @@ export async function renderPreview(input: {
 /** The preview as a query: refreshed when the text, values or labels change. */
 export function useWrittenPreview(
   input: Parameters<typeof renderPreview>[0] | null,
-  opts: { enabled?: boolean } = {},
+  /** keep: the last pages stay up while the next render comes (the page rail). */
+  opts: { enabled?: boolean; keep?: boolean } = {},
 ) {
   return useQuery({
     queryKey: ['sign', 'written-preview', input ? JSON.stringify(input) : null],
     enabled: !!input && opts.enabled !== false,
+    placeholderData: opts.keep ? keepPreviousData : undefined,
     queryFn: () => renderPreview(input!),
     staleTime: 5 * 60_000,
     retry: 1,

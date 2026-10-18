@@ -51,8 +51,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PdfPage } from '@/components/sign/PdfPage'
 import { cn } from '@/lib/utils'
 import { OFFER_CATEGORIES, formatKind, formatSample, offerCategory, type ValueFormat } from '@/lib/sign/formats'
-import { tagLabel, type FieldType, type TplDraft } from '@/lib/sign/templates'
-import { useWrittenTags, type Tag } from './writtenTags'
+import { tagLabel, type FieldType, type TplDraft, type TplField } from '@/lib/sign/templates'
+import { useWrittenTags, writtenPreviewInput, type Tag } from './writtenTags'
+import { PagesRail, type WrittenRail } from './PagesRail'
+import type { PageFocus } from './DocumentStep'
 import { BLOCK_LABEL, IF_LABEL, useWrittenPreview, type IfOp, type LexicalJson, type TplWritten } from '@/lib/sign/written'
 import { conditionHolds } from '../../../../supabase/functions/_shared/sign/writtenLayout.ts'
 import {
@@ -559,6 +561,9 @@ export function WrittenPane({
   doc,
   preview,
   sample,
+  rail,
+  focus,
+  onPage,
 }: {
   /** The template as it will be saved (effectiveDraft). */
   d: TplDraft
@@ -566,6 +571,12 @@ export function WrittenPane({
   doc: TplWritten
   preview: boolean
   sample: Sample | null
+  /** The page rail under the Summary (PagesRail): this document's pages, then the uploads. */
+  rail: { written: WrittenRail | null; active: { kind: 'written'; page: number } | null; onWritten: (page: number) => void; onUpload: (gi: number) => void }
+  /** A page to show in the Preview (from the rail). */
+  focus: PageFocus | null
+  /** The Preview page in view, for the rail. */
+  onPage: (page: number | null) => void
 }) {
   const editorRef = useRef<LexicalEditor | null>(null)
   // The page, where the block handles sit (Gio Docs' gutter, in its left margin).
@@ -686,17 +697,30 @@ export function WrittenPane({
   )
 
   // Preview: the sample offer's values (formatted ones too), or [Labels] when there's no offer to use.
-  const previewInput = useMemo(() => {
-    if (!preview) return null
-    const byKey = Object.fromEntries(tags.map((t) => [t.key, t.label]))
-    return {
-      name: doc.name.trim() || 'Untitled document',
-      content: doc.content,
-      roles: Object.fromEntries(d.roles.map((r) => [r.id, r.label || 'Signer'])),
-      ...(sample ? { values: sample.values, highlight: byKey, empty: 'red' as const } : { tags: byKey }),
-    }
-  }, [preview, doc.name, doc.content, d.roles, tags, sample])
+  const previewInput = useMemo(() => (preview ? writtenPreviewInput(doc, d.roles, tags, sample) : null), [preview, doc, d.roles, tags, sample])
   const pdf = useWrittenPreview(previewInput)
+  const railColor = (f: TplField) => (f.type === 'data' ? '#F3EDFE' : d.roles.find((r) => r.id === f.rid)?.color ?? '#E7E8EE')
+
+  // The Preview reports the page in view to the rail, and scrolls to a page picked there.
+  const previewBox = useRef<HTMLDivElement>(null)
+  const pageInView = () => {
+    const box = previewBox.current
+    if (!box) return
+    const pages = [...box.querySelectorAll<HTMLElement>('[data-page]')]
+    const mid = box.scrollTop + box.clientHeight / 3
+    const hit = pages.filter((p) => p.offsetTop <= mid).at(-1) ?? pages[0]
+    onPage(hit ? Number(hit.dataset.page) : null)
+  }
+  useEffect(() => {
+    if (!preview) onPage(null)
+    else if (pdf.data) pageInView()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, pdf.data])
+  useEffect(() => {
+    if (!focus || !preview || !pdf.data) return
+    const el = previewBox.current?.querySelector<HTMLElement>(`[data-page="${focus.page}"]`)
+    if (el && previewBox.current) previewBox.current.scrollTo({ top: el.offsetTop - 16, behavior: 'auto' })
+  }, [focus, preview, pdf.data])
 
   return (
     <WrittenLabelsContext.Provider value={labels}>
@@ -730,7 +754,7 @@ export function WrittenPane({
               </p>
             </div>
             {preview && (
-              <div className="min-h-0 flex-1 overflow-y-auto bg-[#ECEAE2] px-6 py-8" data-no-swipe aria-label="Preview of the document">
+              <div ref={previewBox} onScroll={pageInView} className="relative min-h-0 flex-1 overflow-y-auto bg-[#ECEAE2] px-6 py-8" data-no-swipe aria-label="Preview of the document">
                 {pdf.isError ? (
                   <div className="mx-auto max-w-md rounded-xl border border-[#E7E8EE] bg-white p-5 text-center">
                     <p className="font-inter text-[13px] text-text-primary">{(pdf.error as Error)?.message || 'The preview couldn’t be made.'}</p>
@@ -741,7 +765,7 @@ export function WrittenPane({
                 ) : pdf.data ? (
                   <div className="mx-auto flex w-[720px] max-w-full flex-col gap-4">
                     {Array.from({ length: pdf.data.page_count }, (_, i) => (
-                      <div key={i}>
+                      <div key={i} data-page={i}>
                         <PdfPage doc={pdf.data!} index={i} width={720} />
                         <p className="mt-1.5 text-right font-inter text-[11px] tabular-nums text-text-tertiary">
                           {i + 1} / {pdf.data!.page_count}
@@ -758,7 +782,9 @@ export function WrittenPane({
             )}
           </div>
 
-          <RightPanel d={d} tags={tags} sample={sample} />
+          <RightPanel d={d} tags={tags} sample={sample}>
+            <PagesRail written={rail.written} docs={d.docs} fields={d.fields} colorOf={railColor} active={rail.active} onWritten={rail.onWritten} onUpload={rail.onUpload} />
+          </RightPanel>
         </div>
         <HistoryPlugin />
         <ListPlugin />
@@ -787,7 +813,7 @@ export function WrittenPane({
   )
 }
 
-function RightPanel({ d, tags, sample }: { d: TplDraft; tags: Tag[]; sample: Sample | null }) {
+function RightPanel({ d, tags, sample, children }: { d: TplDraft; tags: Tag[]; sample: Sample | null; children: ReactNode }) {
   const [editor] = useLexicalComposerContext()
   const sel = useWrittenSelection(editor)
   // A closed section panel stays closed until the caret moves to another one.
@@ -798,10 +824,11 @@ function RightPanel({ d, tags, sample }: { d: TplDraft; tags: Tag[]; sample: Sam
     else editor.update(() => $setSelection(null))
   }
   return (
-    <aside aria-label="Field settings" className="flex min-h-0 flex-col overflow-y-auto border-l border-virgilio-border bg-white">
-      <div key={shown ? `${shown.type}-${shown.nodeKey}` : 'summary'} className="gio-swap-in flex flex-col gap-3.5 p-4">
+    <aside aria-label="Field settings and pages" className="flex min-h-0 flex-col overflow-y-auto border-l border-virgilio-border bg-white">
+      <div key={shown ? `${shown.type}-${shown.nodeKey}` : 'summary'} className="gio-swap-in flex flex-col gap-3.5 border-b border-virgilio-border p-4">
         {shown ? <SelectionPanel sel={shown} d={d} tags={tags} sample={sample} onClose={close} /> : <FieldSummary d={d} />}
       </div>
+      {children}
     </aside>
   )
 }
