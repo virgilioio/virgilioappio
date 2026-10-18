@@ -1,5 +1,5 @@
 -- Inside a transaction that is rolled back: run the first line, then the migration
--- 20261018240000_notification_sound_default_on, then the rest.
+-- 20261018232158_notification_sound_default_on, then the rest.
 create temp table t_quiet_before as select user_id, quiet_hours_enabled from public.notification_preferences;
 -- (migration here)
 create temp table t_results (check_name text, ok boolean);
