@@ -179,8 +179,7 @@ export function CandidateOfferApprovals({
   const remind = async (name: string) => {
     if (!approvalRequest?.id || reminding) return
     setReminding(true)
-    // TODO(after Apply): drop the casts once types.ts has offer_approval_remind.
-    const { data, error } = await supabase.rpc('offer_approval_remind' as never, { _request_id: approvalRequest.id } as never)
+    const { data, error } = await supabase.rpc('offer_approval_remind', { _request_id: approvalRequest.id })
     setReminding(false)
     if (error) {
       toast.error(error.code === 'GOA02' ? error.message : 'Couldn’t send the reminder. Try again.')

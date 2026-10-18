@@ -5576,6 +5576,7 @@ export type Database = {
           error: string | null
           id: string
           kind: string
+          nudged_by: string | null
           request_id: string
           sent_at: string | null
           step_id: string
@@ -5590,6 +5591,7 @@ export type Database = {
           error?: string | null
           id?: string
           kind: string
+          nudged_by?: string | null
           request_id: string
           sent_at?: string | null
           step_id: string
@@ -5604,6 +5606,7 @@ export type Database = {
           error?: string | null
           id?: string
           kind?: string
+          nudged_by?: string | null
           request_id?: string
           sent_at?: string | null
           step_id?: string
@@ -11443,11 +11446,29 @@ export type Database = {
           wants_email: boolean
         }[]
       }
+      offer_approval_claim_notices_v2: {
+        Args: { _limit?: number }
+        Returns: {
+          approver_email: string
+          approver_name: string
+          candidate_id: string
+          candidate_name: string
+          company: string
+          job_id: string
+          job_title: string
+          kind: string
+          notice_id: string
+          nudged_by_name: string
+          requested_by_name: string
+          wants_email: boolean
+        }[]
+      }
       offer_approval_finish_notice: {
         Args: { _error?: string; _id: string; _ok: boolean }
         Returns: undefined
       }
       offer_approval_queue_reminders: { Args: never; Returns: number }
+      offer_approval_remind: { Args: { _request_id: string }; Returns: Json }
       offer_approval_sync: { Args: { _request_id: string }; Returns: undefined }
       offer_base_salary: { Args: { _fv: Json }; Returns: Json }
       offer_can_send: { Args: { _offer_id: string }; Returns: Json }
