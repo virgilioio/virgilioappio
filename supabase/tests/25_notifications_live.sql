@@ -1,4 +1,4 @@
--- Run after 20261018230000_notifications_live inside a transaction that is rolled back.
+-- Run after 20261018231352_notifications_live inside a transaction that is rolled back.
 create temp table t_results (check_name text, ok boolean);
 insert into t_results select 'realtime: notifications are published',
   exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications');
