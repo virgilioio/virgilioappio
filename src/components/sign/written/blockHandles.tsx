@@ -5,6 +5,7 @@ import { $isHorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode'
 import { $createHeadingNode, $createQuoteNode, $isHeadingNode, $isQuoteNode, type HeadingTagType } from '@lexical/rich-text'
 import { $createListItemNode, $createListNode, $isListItemNode, $isListNode } from '@lexical/list'
 import { $generateNodesFromSerializedNodes } from '@lexical/clipboard'
+import { $isTableNode } from '@lexical/table'
 import {
   $createParagraphNode,
   $getNearestNodeFromDOMNode,
@@ -37,7 +38,7 @@ import { $isCalloutNode } from './nodes'
  * one, with its text. The saved format doesn't change.
  */
 
-type Kind = 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'quote' | 'callout' | 'divider' | 'sign' | 'section' | 'break' | 'other'
+type Kind = 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'quote' | 'callout' | 'table' | 'divider' | 'sign' | 'section' | 'break' | 'other'
 const NAME: Record<Kind, string> = {
   text: 'Text',
   h1: 'Heading 1',
@@ -47,6 +48,7 @@ const NAME: Record<Kind, string> = {
   number: 'Numbered list',
   quote: 'Quote',
   callout: 'Callout',
+  table: 'Table',
   divider: 'Divider',
   sign: 'Signature block',
   section: 'Conditional section',
@@ -62,6 +64,7 @@ const ICON: Record<Kind, SlashIcon> = {
   number: 'numbered',
   quote: 'quote',
   callout: 'callout',
+  table: 'table',
   divider: 'divider',
   sign: 'sign',
   section: 'section',
@@ -88,6 +91,7 @@ function $kindOf(n: LexicalNode | null): Kind {
   if ($isListNode(n)) return n.getListType() === 'number' ? 'number' : 'bullet'
   if ($isQuoteNode(n)) return 'quote'
   if ($isCalloutNode(n)) return 'callout'
+  if ($isTableNode(n)) return 'table'
   if ($isHorizontalRuleNode(n)) return 'divider'
   const t = n.getType()
   return t === 'gio-sign' ? 'sign' : t === 'gio-if' ? 'section' : t === 'gio-page-break' ? 'break' : 'other'
@@ -280,7 +284,7 @@ export function BlockHandles({ anchor }: { anchor: HTMLElement }) {
       onElementChanged={onElementChanged}
       targetLineComponent={<div ref={lineRef} className="gio-drop-line" aria-hidden />}
       menuComponent={
-        <div ref={menuRef} className="gio-block-gutter" data-open={open || undefined}>
+        <div ref={menuRef} className="gio-block-gutter" data-open={open || undefined} data-table={el?.tagName === 'TABLE' || undefined}>
           <IconTip label="Add a block below">
             <button type="button" draggable={false} className="gio-gutter-btn h-6 w-6" aria-label="Add a block below" onClick={addBelow}>
               <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden>

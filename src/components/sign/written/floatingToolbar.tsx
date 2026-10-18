@@ -46,6 +46,7 @@ import { IconTip } from '@/components/ui/tooltip'
 import { leave } from './slashMenu'
 import { $newCallout } from './callout'
 import { $isCalloutNode } from './nodes'
+import { $inTableCell } from './table'
 
 /**
  * Gio Docs' floating selection toolbar in the offer editor (2026-10-18),
@@ -78,6 +79,8 @@ const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator
 
 interface State {
   block: Block
+  /** In a table cell: text formatting and alignment only (cells stay plain text). */
+  inCell: boolean
   formats: Set<TextFormatType>
   align: ElementFormatType
 }
@@ -95,7 +98,7 @@ function $readState(): State | null {
     if ($isElementNode(n) && !$isRootNode(n) && !align && n.getFormatType()) align = n.getFormatType()
   }
   const formats = new Set<TextFormatType>((['bold', 'italic', 'underline'] as TextFormatType[]).filter((f) => sel.hasFormat(f)))
-  return { block, formats, align: align || 'left' }
+  return { block, formats, align: align || 'left', inCell: $inTableCell(sel.anchor.getNode()) }
 }
 
 function Btn({ label, icon: Icon, active, onClick }: { label: string; icon: LucideIcon; active?: boolean; onClick: () => void }) {
@@ -240,26 +243,34 @@ export function FloatingToolbar({ onSection }: { onSection: () => void }) {
       style={{ top: top - shift.top, left: left - shift.left }}
       onMouseDown={(e) => e.preventDefault()}
     >
-      {dropdown(
-        <button type="button" className="gio-fbar-btn w-auto gap-1 px-2 font-inter text-[12.5px] font-medium" aria-label={`Text style: ${inList ? 'List' : style.label}`}>
-          {inList ? (state.block === 'bullet' ? 'Bulleted list' : 'Numbered list') : style.label}
-          <ChevronDown className="h-3 w-3 opacity-70" strokeWidth={2.2} aria-hidden />
-        </button>,
-        'Turn into',
-        STYLES.map((s) => (
-          <DropdownMenuItem key={s.value} onSelect={() => setStyle(s.value)}>
-            <span className={s.className}>{s.label}</span>
-            {!inList && s.value === state.block && <Check className="ml-auto h-3.5 w-3.5 text-virgilio-purple" strokeWidth={2.2} aria-label="Current" />}
-          </DropdownMenuItem>
-        )),
+      {!state.inCell && (
+        <>
+          {dropdown(
+            <button type="button" className="gio-fbar-btn w-auto gap-1 px-2 font-inter text-[12.5px] font-medium" aria-label={`Text style: ${inList ? 'List' : style.label}`}>
+              {inList ? (state.block === 'bullet' ? 'Bulleted list' : 'Numbered list') : style.label}
+              <ChevronDown className="h-3 w-3 opacity-70" strokeWidth={2.2} aria-hidden />
+            </button>,
+            'Turn into',
+            STYLES.map((s) => (
+              <DropdownMenuItem key={s.value} onSelect={() => setStyle(s.value)}>
+                <span className={s.className}>{s.label}</span>
+                {!inList && s.value === state.block && <Check className="ml-auto h-3.5 w-3.5 text-virgilio-purple" strokeWidth={2.2} aria-label="Current" />}
+              </DropdownMenuItem>
+            )),
+          )}
+          {divider}
+        </>
       )}
-      {divider}
       <Btn label={`Bold · ${mod}B`} icon={Bold} active={state.formats.has('bold')} onClick={() => format('bold')} />
       <Btn label={`Italic · ${mod}I`} icon={Italic} active={state.formats.has('italic')} onClick={() => format('italic')} />
       <Btn label={`Underline · ${mod}U`} icon={Underline} active={state.formats.has('underline')} onClick={() => format('underline')} />
       {divider}
-      <Btn label="Bulleted list" icon={List} active={state.block === 'bullet'} onClick={() => list('bullet')} />
-      <Btn label="Numbered list" icon={ListOrdered} active={state.block === 'number'} onClick={() => list('number')} />
+      {!state.inCell && (
+        <>
+          <Btn label="Bulleted list" icon={List} active={state.block === 'bullet'} onClick={() => list('bullet')} />
+          <Btn label="Numbered list" icon={ListOrdered} active={state.block === 'number'} onClick={() => list('number')} />
+        </>
+      )}
       {inList && (
         <>
           <Btn label="Indent" icon={IndentIncrease} onClick={() => run(() => editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined))} />
@@ -280,8 +291,12 @@ export function FloatingToolbar({ onSection }: { onSection: () => void }) {
           </DropdownMenuItem>
         )),
       )}
-      {divider}
-      <Btn label="Show only if… · makes these lines a conditional section" icon={Brackets} onClick={() => run(onSection)} />
+      {!state.inCell && (
+        <>
+          {divider}
+          <Btn label="Show only if… · makes these lines a conditional section" icon={Brackets} onClick={() => run(onSection)} />
+        </>
+      )}
     </div>,
     host,
   )

@@ -6,6 +6,8 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { HorizontalRulePlugin } from '@lexical/react/LexicalHorizontalRulePlugin'
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin'
+import { TableCellNode, TableNode, TableRowNode } from '@lexical/table'
 import { HorizontalRuleNode, INSERT_HORIZONTAL_RULE_COMMAND } from '@lexical/react/LexicalHorizontalRuleNode'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -13,6 +15,7 @@ import { LexicalTypeaheadMenuPlugin, useBasicTypeaheadTriggerMatch } from '@lexi
 import { HeadingNode, QuoteNode, $createHeadingNode, $createQuoteNode } from '@lexical/rich-text'
 import { ListItemNode, ListNode, INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list'
 import { $setBlocksType } from '@lexical/selection'
+import { mergeRegister } from '@lexical/utils'
 import {
   $createParagraphNode,
   $getNodeByKey,
@@ -78,6 +81,7 @@ import { DocTitle, EmptyLineHints, TypingShortcuts } from '@/components/sign/wri
 import { BlockHandles, DuplicateShortcut } from '@/components/sign/written/blockHandles'
 import { FloatingToolbar } from '@/components/sign/written/floatingToolbar'
 import { $newCallout, CalloutPicker } from '@/components/sign/written/callout'
+import { $inTableCell, TableTools, insertTable, registerTableRules } from '@/components/sign/written/table'
 import { FieldList } from './FieldList'
 import { BLOCK_PREVIEWS, SlashItem, SlashPanel, fieldPreview, rememberPick, signPreview, signerFieldPreview, slashRows, type Preview, type SlashIcon } from '@/components/sign/written/slashMenu'
 import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
@@ -102,8 +106,14 @@ const THEME = {
   list: { ul: 'gio-w-ul', ol: 'gio-w-ol', listitem: 'gio-w-li', nested: { listitem: 'gio-w-li-nested' } },
   text: { bold: 'gio-w-b', italic: 'gio-w-i', underline: 'gio-w-u', strikethrough: 'gio-w-s', underlineStrikethrough: 'gio-w-us' },
   hr: 'gio-w-hr',
+  table: 'gio-w-table',
+  tableRow: 'gio-w-tr',
+  tableCell: 'gio-w-td',
+  tableCellHeader: 'gio-w-th',
+  tableSelection: 'gio-w-table-selecting',
+  tableCellSelected: 'gio-w-td-selected',
 }
-const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, HorizontalRuleNode, SignTagNode, GioIfNode, GioSignNode, GioFieldNode, GioPageBreakNode, CalloutNode]
+const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, HorizontalRuleNode, SignTagNode, GioIfNode, GioSignNode, GioFieldNode, GioPageBreakNode, CalloutNode, TableNode, TableRowNode, TableCellNode]
 const WRITTEN_SIGNER_TYPES = ['signature', 'initials', 'date', 'name', 'text', 'checkbox'] as const
 
 /* ---- Inserting ----------------------------------------------------------- */
@@ -212,7 +222,9 @@ function SlashMenu({ items }: { items: SlashItem[] }) {
   const [editor] = useLexicalComposerContext()
   const [query, setQuery] = useState<string | null>(null)
   const trigger = useBasicTypeaheadTriggerMatch('/', { minLength: 0, maxLength: 40 })
-  const rows = useMemo(() => slashRows(items, query ?? ''), [items, query])
+  // In a table cell the menu offers what fits in a line: data tags and signer fields.
+  const [inCell, setInCell] = useState(false)
+  const rows = useMemo(() => slashRows(inCell ? items.filter((i) => i.opts.inline) : items, query ?? ''), [items, query, inCell])
   const close = () => editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown', { key: 'Escape' }))
 
   return (
@@ -221,7 +233,13 @@ function SlashMenu({ items }: { items: SlashItem[] }) {
       triggerFn={trigger}
       onQueryChange={setQuery}
       // While the menu is open, Esc closes the menu, not the sheet (wizard-sheet honours data-escape-local).
-      onOpen={() => editor.getRootElement()?.setAttribute('data-escape-local', '')}
+      onOpen={() => {
+        editor.getRootElement()?.setAttribute('data-escape-local', '')
+        setInCell(editor.getEditorState().read(() => {
+          const sel = $getSelection()
+          return $isRangeSelection(sel) && $inTableCell(sel.anchor.getNode())
+        }))
+      }}
       onClose={() => editor.getRootElement()?.removeAttribute('data-escape-local')}
       onSelectOption={(option, textNode: TextNode | null, closeMenu) => {
         editor.update(() => {
@@ -506,7 +524,7 @@ function EditorRef({ to }: { to: React.MutableRefObject<LexicalEditor | null> })
   const [editor] = useLexicalComposerContext()
   useEffect(() => {
     to.current = editor
-    return registerWrittenRules(editor)
+    return mergeRegister(registerWrittenRules(editor), registerTableRules(editor))
   }, [editor, to])
   return null
 }
@@ -620,6 +638,7 @@ export function WrittenPane({
     out.push(new SlashItem('numbered', 'Numbered list', 'Basic blocks', 'numbered', () => run((e) => (e.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined), e.focus())), { md: '1.', kw: 'number list ol', preview: BLOCK_PREVIEWS.numbered }))
     block('quote', 'Quote', 'quote', () => $createQuoteNode(), '>', BLOCK_PREVIEWS.quote, 'quote blockquote')
     block('callout', 'Callout', 'callout', () => $newCallout(), '!>', BLOCK_PREVIEWS.callout, 'callout note tip info warning box highlight')
+    out.push(new SlashItem('table', 'Table', 'Basic blocks', 'table', () => run((e) => insertTable(e)), { kw: 'table grid rows columns', preview: BLOCK_PREVIEWS.table }))
     out.push(new SlashItem('divider', 'Divider', 'Basic blocks', 'divider', () => run((e) => (e.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined), e.focus())), { md: '---', kw: 'divider line rule hr', preview: BLOCK_PREVIEWS.divider }))
 
     for (const r of people) {
@@ -629,7 +648,7 @@ export function WrittenPane({
     if (whoR) {
       const fields: [InlineFieldType, SlashIcon][] = [['initials', 'initials'], ['date', 'date'], ['name', 'name'], ['text', 'input'], ['checkbox', 'checkbox']]
       for (const [t, ic] of fields) {
-        out.push(new SlashItem(`field-${t}`, `${INLINE_FIELD_LABEL[t]} · ${whoR.label || 'Signer'}`, 'Signing', ic, () => run((e) => insertSigner(e, whoR.id, t)), { kw: 'signer field', preview: signerFieldPreview(whoR.label, whoR.color, INLINE_FIELD_LABEL[t], FIELD_NOTE[t]) }))
+        out.push(new SlashItem(`field-${t}`, `${INLINE_FIELD_LABEL[t]} · ${whoR.label || 'Signer'}`, 'Signing', ic, () => run((e) => insertSigner(e, whoR.id, t)), { kw: 'signer field', preview: signerFieldPreview(whoR.label, whoR.color, INLINE_FIELD_LABEL[t], FIELD_NOTE[t]), inline: true }))
       }
     }
 
@@ -640,11 +659,11 @@ export function WrittenPane({
     const form = tags.filter((t) => t.tag)
     for (const c of OFFER_CATEGORIES) {
       for (const t of form.filter((x) => offerCategory(x.tag!) === c)) {
-        out.push(new SlashItem(`tag-${t.key}`, t.label, c, 'field', () => insertTag(t.key), { kw: 'offer field', preview: fieldPreview(t.label, sample(t), 'Filled in from the offer when it’s sent.') }))
+        out.push(new SlashItem(`tag-${t.key}`, t.label, c, 'field', () => insertTag(t.key), { kw: 'offer field', preview: fieldPreview(t.label, sample(t), 'Filled in from the offer when it’s sent.'), inline: true }))
       }
     }
     for (const t of tags.filter((x) => !x.tag)) {
-      out.push(new SlashItem(`tag-${t.key}`, t.label, 'Always available', 'field', () => insertTag(t.key), { kw: 'field', preview: fieldPreview(t.label, sample(t), 'Filled in by Gio when the agreement is sent.') }))
+      out.push(new SlashItem(`tag-${t.key}`, t.label, 'Always available', 'field', () => insertTag(t.key), { kw: 'field', preview: fieldPreview(t.label, sample(t), 'Filled in by Gio when the agreement is sent.'), inline: true }))
     }
 
     out.push(new SlashItem('section', 'Conditional section', 'Advanced', 'section', addSection, { kw: 'condition if only', preview: BLOCK_PREVIEWS.section }))
@@ -744,12 +763,14 @@ export function WrittenPane({
         <HistoryPlugin />
         <ListPlugin />
         <HorizontalRulePlugin />
+        <TablePlugin hasCellMerge={false} hasCellBackgroundColor={false} />
         <EditorRef to={editorRef} />
         <SectionLabels label={sectionLabel} />
         <SlashMenu items={items} />
         <TypingShortcuts />
         {!preview && <FloatingToolbar onSection={addSection} />}
         {!preview && <CalloutPicker />}
+        {paper && !preview && <TableTools anchor={paper} />}
         {paper && !preview && <BlockHandles anchor={paper} />}
         <DuplicateShortcut />
         <EmptyLineHints />

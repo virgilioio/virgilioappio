@@ -59,7 +59,7 @@ export interface Preview {
   what: string
 }
 
-export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'numbered' | 'quote' | 'callout' | 'divider' | 'section' | 'pageBreak', Preview> = {
+export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'numbered' | 'quote' | 'callout' | 'table' | 'divider' | 'section' | 'pageBreak', Preview> = {
   text: { what: 'Just start writing with plain text.', draw: () => <P>We’re delighted to offer you the role. This letter sets out the <b>main terms</b> of your employment.</P> },
   h1: { what: 'Big section heading.', draw: () => <P size={19} weight={600} color={INK}>Offer of employment</P> },
   h2: {
@@ -116,6 +116,16 @@ export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'nu
           <path d={SLASH_IC.callout} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <P>This offer is valid for seven days.</P>
+      </span>
+    ),
+  },
+  table: {
+    what: 'Simple rows and columns.',
+    draw: () => (
+      <span style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', border: '1px solid #D9D8D2', borderRadius: 2 }}>
+        {Array.from({ length: 9 }, (_, i) => (
+          <span key={i} style={{ height: 13, background: i < 3 ? '#F1F0EC' : undefined, borderRight: i % 3 < 2 ? '1px solid #D9D8D2' : undefined, borderBottom: i < 6 ? '1px solid #D9D8D2' : undefined }} />
+        ))}
       </span>
     ),
   },
@@ -204,7 +214,8 @@ export class SlashItem extends MenuOption {
     public section: string,
     public icon: SlashIcon,
     public run: () => void,
-    public opts: { md?: string; kw?: string; color?: string; preview?: Preview } = {},
+    /** inline: fits in a line of text, so it's offered inside a table cell too. */
+    public opts: { md?: string; kw?: string; color?: string; preview?: Preview; inline?: boolean } = {},
   ) {
     super(key)
   }

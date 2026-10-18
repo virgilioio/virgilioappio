@@ -23,6 +23,7 @@ import {
   type LexicalNode,
 } from 'lexical'
 import { $newCallout } from './callout'
+import { $inTableCell } from './table'
 import { $isCalloutNode } from './nodes'
 
 /**
@@ -66,7 +67,8 @@ export function TypingShortcuts() {
       mergeRegister(
         editor.registerNodeTransform(TextNode, (node) => {
           const p = node.getParent()
-          if (!$isParagraphNode(p) || p.getFirstChild() !== node) return
+          // Table cells stay plain text (table.tsx).
+          if (!$isParagraphNode(p) || p.getFirstChild() !== node || $inTableCell(p)) return
           const sel = $getSelection()
           if (!$isRangeSelection(sel) || !sel.isCollapsed() || sel.anchor.key !== node.getKey()) return
           const text = node.getTextContent()
