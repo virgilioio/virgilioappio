@@ -103,6 +103,7 @@ import {
   type WrittenLabels,
 } from '@/components/sign/written/nodes'
 import { DocTitle, EmptyLineHints, TypingShortcuts } from '@/components/sign/written/typing'
+import { BlockHandles, DuplicateShortcut } from '@/components/sign/written/blockHandles'
 import { FieldList } from './FieldList'
 import { BLOCK_PREVIEWS, SlashItem, SlashPanel, fieldPreview, rememberPick, signPreview, signerFieldPreview, slashRows, type Preview, type SlashIcon } from '@/components/sign/written/slashMenu'
 import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
@@ -717,6 +718,8 @@ export function WrittenPane({
   sample: Sample | null
 }) {
   const editorRef = useRef<LexicalEditor | null>(null)
+  // The page, where the block handles sit (Gio Docs' gutter, in its left margin).
+  const [paper, setPaper] = useState<HTMLDivElement | null>(null)
   const people = d.roles.filter((r) => r.role !== 'cc')
   const [who, setWho] = useState(people[0]?.id ?? null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -862,7 +865,7 @@ export function WrittenPane({
             <div className={cn('flex min-h-0 flex-1 flex-col', preview && 'hidden')}>
               <Toolbar />
               <div className="min-h-0 flex-1 overflow-y-auto bg-[#ECEAE2] px-6 py-8" data-no-swipe>
-                <div className="gio-written-paper mx-auto">
+                <div ref={setPaper} className="gio-written-paper mx-auto">
                   <DocTitle value={doc.name} onChange={(name) => set((x) => ({ ...x, written: x.written.map((w) => (w.id === doc.id ? { ...w, name } : w)) }))} />
                   <RichTextPlugin
                     contentEditable={<ContentEditable className="gio-written-root" aria-label="Document text" aria-multiline="true" role="textbox" />}
@@ -913,6 +916,8 @@ export function WrittenPane({
         <SectionLabels label={sectionLabel} />
         <SlashMenu items={items} />
         <TypingShortcuts />
+        {paper && !preview && <BlockHandles anchor={paper} />}
+        <DuplicateShortcut />
         <EmptyLineHints />
         <OnChangePlugin
           ignoreSelectionChange

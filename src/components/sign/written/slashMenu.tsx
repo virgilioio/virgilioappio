@@ -36,6 +36,11 @@ export const SLASH_IC = {
   checkbox: 'M5.4 4h13a1.4 1.4 0 0 1 1.4 1.4v13a1.4 1.4 0 0 1-1.4 1.4h-13A1.4 1.4 0 0 1 4 18.4v-13A1.4 1.4 0 0 1 5.4 4zM8.3 12.1l2.6 2.6 4.8-5.2',
   section: 'M8 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-2',
   pageBreak: 'M6 3v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V3M6 21v-5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5M3 12h2M8 12h2M14 12h2M19 12h2',
+  // The block menu's rows (Docs' dup, chevUp, chevDown and trash).
+  duplicate: 'M9 9h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zM5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
+  up: 'm18 15-6-6-6 6',
+  down: 'm6 9 6 6 6-6',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3',
 } as const
 export type SlashIcon = keyof typeof SLASH_IC
 

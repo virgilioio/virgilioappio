@@ -1879,18 +1879,20 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   width: 100%;
   max-width: 720px;
   min-height: 900px;
-  padding: 56px 64px 72px;
+  /* The side margins live on the text area (below), so it spans the page and a block dragged by its handle can land from the margin. */
+  padding: 56px 0 72px;
   background: #fff;
   border-radius: 3px;
   box-shadow: 0 2px 10px rgba(13, 13, 9, .08);
   font: 400 13.5px/1.65 Inter, sans-serif;
   color: #0d0d09;
 }
-@media (max-width: 900px) { .gio-written-paper { padding: 32px; min-height: 0; } }
-.gio-written-root { outline: none; min-height: 600px; }
+@media (max-width: 900px) { .gio-written-paper { padding: 32px 0; min-height: 0; } }
+.gio-written-root { outline: none; min-height: 600px; padding: 0 64px; }
+@media (max-width: 900px) { .gio-written-root { padding: 0 32px; } .gio-written-title { padding: 0 32px !important; } }
 /* The document's title, Docs-style (in the ATS's type): big, borderless, grows with its text. */
 .gio-written-title {
-  display: block; width: 100%; margin: 0 0 18px; padding: 0; border: 0; resize: none; overflow: hidden;
+  display: block; width: 100%; margin: 0 0 18px; padding: 0 64px; border: 0; resize: none; overflow: hidden;
   background: transparent; outline: none;
   font: 600 30px/1.15 Poppins, sans-serif; letter-spacing: -0.04em; color: #0d0d09;
 }
@@ -2009,6 +2011,24 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   border-top: 1px solid #ECEBE6; border-radius: 0 0 12px 12px; font: 400 12.5px/1 Inter, sans-serif; color: #3A3D48; text-align: left;
 }
 @media (hover: hover) and (pointer: fine) { .gio-slash-close:hover { background: #F4F3EF; } }
+/* Block handles (Gio Docs' gutter): "+" and "⋮⋮" beside the hovered block, in the page's left margin.
+   The drag-block plugin moves the gutter with transform and shows it instantly; colours ease on hover. */
+.gio-block-gutter { position: absolute; top: 0; left: 0; z-index: 5; display: flex; align-items: center; gap: 2px; margin-left: 12px; will-change: transform; }
+.gio-gutter-btn {
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; color: #B5B9C4;
+  transition: color var(--dur-hover) ease, background-color var(--dur-hover) ease;
+}
+@media (hover: hover) and (pointer: fine) { .gio-gutter-btn:hover { color: #5A6072; background: rgba(13, 13, 9, .08); } }
+.gio-block-gutter[data-open] { opacity: 1 !important; transform: var(--gutter-t) !important; }
+.gio-block-gutter[data-open] .gio-gutter-btn[aria-expanded="true"] { color: #6F3FF5; background: rgba(111, 63, 245, .08); }
+/* Where a dragged block lands. */
+.gio-drop-line { position: absolute; top: 0; left: 0; height: 4px; border-radius: 2px; background: #6F3FF5; pointer-events: none; opacity: 0; margin-left: 40px; width: calc(100% - 104px) !important; }
+.gio-block-menu-row {
+  display: flex; width: 100%; align-items: center; gap: 9px; height: 30px; padding: 0 8px; border-radius: 6px;
+  font: 500 12.5px/1 Inter, sans-serif; color: #0d0d09;
+}
+.gio-block-menu-row[data-active] { background: #F4F3EF; }
+.gio-block-menu-row[data-danger] { color: #C2372B; }
 .gio-slash-preview { width: 190px; padding: 8px; border-radius: 10px; background: #0d0d09; box-shadow: 0 10px 28px rgba(13, 13, 9, .22); }
 .gio-slash-preview-page { min-height: 64px; padding: 10px 12px; border-radius: 6px; background: #fff; font-family: Inter, sans-serif; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .gio-slash-docs { animation-name: gio-fade-only; } }
