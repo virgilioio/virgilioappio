@@ -23,6 +23,7 @@ export const SLASH_IC = {
   quote: 'M5 5.5v13M10.5 8.5h9.5M10.5 12.5h9.5M10.5 16.5h6',
   callout: 'M9.6 21h4.8M10.4 18.2h3.2M12 3a6.2 6.2 0 0 0-3.6 11.2v3.2h7.2v-3.2A6.2 6.2 0 0 0 12 3z',
   divider: 'M3 12h18M7 7.4h10M7 16.6h10',
+  columns: 'M5 5h4.5a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM14.5 5H19a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-4.5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
   table: 'M4.5 5h15a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11A1.5 1.5 0 0 1 4.5 5zM3 10h18M9.5 10v9',
   image:
     'M4.5 5h15A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11A1.5 1.5 0 0 1 4.5 5zM3 15.4l5-4.4 4.6 4M13.6 13.2 16.4 11 21 14.6M15.6 8.4h.01',
@@ -59,7 +60,7 @@ export interface Preview {
   what: string
 }
 
-export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'numbered' | 'quote' | 'callout' | 'table' | 'divider' | 'section' | 'pageBreak', Preview> = {
+export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'numbered' | 'quote' | 'callout' | 'table' | 'columns' | 'divider' | 'section' | 'pageBreak', Preview> = {
   text: { what: 'Just start writing with plain text.', draw: () => <P>We’re delighted to offer you the role. This letter sets out the <b>main terms</b> of your employment.</P> },
   h1: { what: 'Big section heading.', draw: () => <P size={19} weight={600} color={INK}>Offer of employment</P> },
   h2: {
@@ -126,6 +127,23 @@ export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'nu
         {Array.from({ length: 9 }, (_, i) => (
           <span key={i} style={{ height: 13, background: i < 3 ? '#F1F0EC' : undefined, borderRight: i % 3 < 2 ? '1px solid #D9D8D2' : undefined, borderBottom: i < 6 ? '1px solid #D9D8D2' : undefined }} />
         ))}
+      </span>
+    ),
+  },
+  columns: {
+    what: 'Put blocks side by side.',
+    draw: () => (
+      <span style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <span style={{ display: 'grid', gap: 4 }}>
+          {bar('100%')}
+          {bar('80%')}
+          {bar('90%')}
+        </span>
+        <span style={{ display: 'grid', gap: 4 }}>
+          {bar('90%')}
+          {bar('100%')}
+          {bar('70%')}
+        </span>
       </span>
     ),
   },
@@ -214,8 +232,8 @@ export class SlashItem extends MenuOption {
     public section: string,
     public icon: SlashIcon,
     public run: () => void,
-    /** inline: fits in a line of text, so it's offered inside a table cell too. */
-    public opts: { md?: string; kw?: string; color?: string; preview?: Preview; inline?: boolean } = {},
+    /** inline: fits in a line of text, so it's offered inside a table cell too. topOnly: not offered inside a column. */
+    public opts: { md?: string; kw?: string; color?: string; preview?: Preview; inline?: boolean; topOnly?: boolean } = {},
   ) {
     super(key)
   }

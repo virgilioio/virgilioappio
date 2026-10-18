@@ -68,6 +68,8 @@ import {
   $isGioSignNode,
   $isSignTagNode,
   CalloutNode,
+  ColumnNode,
+  ColumnsNode,
   GioFieldNode,
   GioIfNode,
   GioPageBreakNode,
@@ -84,6 +86,7 @@ import { BlockHandles, DuplicateShortcut } from '@/components/sign/written/block
 import { FloatingToolbar } from '@/components/sign/written/floatingToolbar'
 import { $newCallout, CalloutPicker } from '@/components/sign/written/callout'
 import { $inTableCell, TableTools, insertTable, registerTableRules } from '@/components/sign/written/table'
+import { $inColumn, $lineBlock, insertColumns, registerColumnRules } from '@/components/sign/written/columns'
 import { FieldList } from './FieldList'
 import { BLOCK_PREVIEWS, SlashItem, SlashPanel, fieldPreview, rememberPick, signPreview, signerFieldPreview, slashRows, type Preview, type SlashIcon } from '@/components/sign/written/slashMenu'
 import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
@@ -115,7 +118,7 @@ const THEME = {
   tableSelection: 'gio-w-table-selecting',
   tableCellSelected: 'gio-w-td-selected',
 }
-const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, HorizontalRuleNode, SignTagNode, GioIfNode, GioSignNode, GioFieldNode, GioPageBreakNode, CalloutNode, TableNode, TableRowNode, TableCellNode]
+const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, HorizontalRuleNode, SignTagNode, GioIfNode, GioSignNode, GioFieldNode, GioPageBreakNode, CalloutNode, TableNode, TableRowNode, TableCellNode, ColumnsNode, ColumnNode]
 const WRITTEN_SIGNER_TYPES = ['signature', 'initials', 'date', 'name', 'text', 'checkbox'] as const
 
 /* ---- Inserting ----------------------------------------------------------- */
@@ -126,12 +129,12 @@ function $topBlock(node: LexicalNode): LexicalNode {
   return n
 }
 
-/** A block (signing block, page break) after the caret's paragraph, or in place of an empty one. */
+/** A block (signing block, page break) after the caret's paragraph, or in place of an empty one (inside a column too). */
 function $insertBlock(node: LexicalNode) {
   const sel = $getSelection()
   const root = $getRoot()
   const anchor = $isRangeSelection(sel) ? sel.anchor.getNode() : $isNodeSelection(sel) ? sel.getNodes()[0] ?? null : root.getLastChild()
-  const top = anchor && !$isRootNode(anchor) ? $topBlock(anchor) : null
+  const top = anchor && !$isRootNode(anchor) ? $lineBlock(anchor) : null
   if (top && $isParagraphNode(top) && top.getChildrenSize() === 0) {
     top.insertBefore(node)
     top.select()
@@ -206,7 +209,7 @@ function insertSigner(editor: LexicalEditor, roleId: string, type: FieldType) {
       // A signature block: a line to sign on, with the date beside it.
       $insertBlock($createGioSignNode(roleId, 'signature'))
       const sel = $getSelection()
-      const p = $isRangeSelection(sel) ? $topBlock(sel.anchor.getNode()) : null
+      const p = $isRangeSelection(sel) ? $lineBlock(sel.anchor.getNode()) : null
       const date = $createGioSignNode(roleId, 'date')
       const sig = p?.getPreviousSibling()
       if (sig && $isGioSignNode(sig)) sig.insertAfter(date)
@@ -225,8 +228,13 @@ function SlashMenu({ items }: { items: SlashItem[] }) {
   const [query, setQuery] = useState<string | null>(null)
   const trigger = useBasicTypeaheadTriggerMatch('/', { minLength: 0, maxLength: 40 })
   // In a table cell the menu offers what fits in a line: data tags and signer fields.
+  // In a column, everything but what can't sit in one (columns, sections, page breaks).
   const [inCell, setInCell] = useState(false)
-  const rows = useMemo(() => slashRows(inCell ? items.filter((i) => i.opts.inline) : items, query ?? ''), [items, query, inCell])
+  const [inCol, setInCol] = useState(false)
+  const rows = useMemo(
+    () => slashRows(inCell ? items.filter((i) => i.opts.inline) : inCol ? items.filter((i) => !i.opts.topOnly) : items, query ?? ''),
+    [items, query, inCell, inCol],
+  )
   const close = () => editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown', { key: 'Escape' }))
 
   return (
@@ -237,10 +245,13 @@ function SlashMenu({ items }: { items: SlashItem[] }) {
       // While the menu is open, Esc closes the menu, not the sheet (wizard-sheet honours data-escape-local).
       onOpen={() => {
         editor.getRootElement()?.setAttribute('data-escape-local', '')
-        setInCell(editor.getEditorState().read(() => {
+        const where = editor.getEditorState().read(() => {
           const sel = $getSelection()
-          return $isRangeSelection(sel) && $inTableCell(sel.anchor.getNode())
-        }))
+          const n = $isRangeSelection(sel) ? sel.anchor.getNode() : null
+          return { cell: $inTableCell(n), col: $inColumn(n) }
+        })
+        setInCell(where.cell)
+        setInCol(where.col)
       }}
       onClose={() => editor.getRootElement()?.removeAttribute('data-escape-local')}
       onSelectOption={(option, textNode: TextNode | null, closeMenu) => {
@@ -526,7 +537,7 @@ function EditorRef({ to }: { to: React.MutableRefObject<LexicalEditor | null> })
   const [editor] = useLexicalComposerContext()
   useEffect(() => {
     to.current = editor
-    return mergeRegister(registerWrittenRules(editor), registerTableRules(editor))
+    return mergeRegister(registerWrittenRules(editor), registerTableRules(editor), registerColumnRules(editor))
   }, [editor, to])
   return null
 }
@@ -650,6 +661,7 @@ export function WrittenPane({
     block('quote', 'Quote', 'quote', () => $createQuoteNode(), '>', BLOCK_PREVIEWS.quote, 'quote blockquote')
     block('callout', 'Callout', 'callout', () => $newCallout(), '!>', BLOCK_PREVIEWS.callout, 'callout note tip info warning box highlight')
     out.push(new SlashItem('table', 'Table', 'Basic blocks', 'table', () => run((e) => insertTable(e)), { kw: 'table grid rows columns', preview: BLOCK_PREVIEWS.table }))
+    out.push(new SlashItem('columns', 'Two columns', 'Basic blocks', 'columns', () => run((e) => insertColumns(e)), { kw: 'columns two side by side layout', preview: BLOCK_PREVIEWS.columns, topOnly: true }))
     out.push(new SlashItem('divider', 'Divider', 'Basic blocks', 'divider', () => run((e) => (e.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined), e.focus())), { md: '---', kw: 'divider line rule hr', preview: BLOCK_PREVIEWS.divider }))
 
     for (const r of people) {
@@ -677,8 +689,8 @@ export function WrittenPane({
       out.push(new SlashItem(`tag-${t.key}`, t.label, 'Always available', 'field', () => insertTag(t.key), { kw: 'field', preview: fieldPreview(t.label, sample(t), 'Filled in by Gio when the agreement is sent.'), inline: true }))
     }
 
-    out.push(new SlashItem('section', 'Conditional section', 'Advanced', 'section', addSection, { kw: 'condition if only', preview: BLOCK_PREVIEWS.section }))
-    out.push(new SlashItem('break', 'Page break', 'Advanced', 'pageBreak', () => run((e) => e.update(() => $insertBlock($createGioPageBreakNode()))), { kw: 'page new', preview: BLOCK_PREVIEWS.pageBreak }))
+    out.push(new SlashItem('section', 'Conditional section', 'Advanced', 'section', addSection, { kw: 'condition if only', preview: BLOCK_PREVIEWS.section, topOnly: true }))
+    out.push(new SlashItem('break', 'Page break', 'Advanced', 'pageBreak', () => run((e) => e.update(() => $insertBlock($createGioPageBreakNode()))), { kw: 'page new', preview: BLOCK_PREVIEWS.pageBreak, topOnly: true }))
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tags, who, people.map((r) => `${r.id}:${r.label}:${r.color}`).join('|')])

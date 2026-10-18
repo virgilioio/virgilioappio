@@ -1962,6 +1962,12 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 @media (hover: hover) and (pointer: fine) { .gio-table-add:hover { background: #F1F0EC; color: #5A6072; } }
+/* Two columns (Gio Docs' columns, two only): side by side, each a run of blocks.
+   Their edges show faintly while you point at them. */
+.gio-written-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; margin: 4px 0 10px; }
+.gio-written-column { min-width: 0; border-radius: 4px; outline: 1px dashed transparent; outline-offset: 6px; transition: outline-color var(--dur-hover) ease; }
+.gio-written-column > :last-child { margin-bottom: 0; }
+.gio-written-columns:hover > .gio-written-column { outline-color: #E3E1DA; }
 /* Picker options: 30px, the picked one ringed. */
 .gio-callout-opt {
   display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 7px; color: #5A6072;

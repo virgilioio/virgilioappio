@@ -41,7 +41,8 @@ import {
  * here are a contract: "placeholder" { placeholderKey, format? }, "gio-if"
  * { key, op, value } around blocks, "gio-sign" { roleId, kind }, "gio-field"
  * { roleId, fieldType, required, label } inside the text, "gio-page-break",
- * "gio-callout" { icon, tone } around text.
+ * "gio-callout" { icon, tone } around text, "gio-columns" around exactly two
+ * "gio-column"s of blocks (columns.tsx keeps them in shape).
  * Chips, fields and blocks are selected with a click (a 2px noir ring);
  * Delete or Backspace removes the selection.
  */
@@ -332,6 +333,82 @@ export class CalloutNode extends ElementNode {
 
 export const $createCalloutNode = (icon: CalloutIcon = 'idea', tone: CalloutTone = 'yellow') => $applyNodeReplacement(new CalloutNode(icon, tone))
 export const $isCalloutNode = (n: LexicalNode | null | undefined): n is CalloutNode => n instanceof CalloutNode
+
+/* ---- Two columns ---------------------------------------------------------- */
+
+/** Two columns side by side (Gio Docs' columns, two only). Its children are always two ColumnNodes. */
+export class ColumnsNode extends ElementNode {
+  static getType() {
+    return 'gio-columns'
+  }
+  static clone(node: ColumnsNode) {
+    return new ColumnsNode(node.__key)
+  }
+  static importJSON(json: SerializedElementNode) {
+    return $createColumnsNode().updateFromJSON(json)
+  }
+  exportJSON(): SerializedElementNode {
+    return { ...super.exportJSON(), type: 'gio-columns', version: 1 }
+  }
+  createDOM() {
+    const div = document.createElement('div')
+    div.className = 'gio-written-columns'
+    return div
+  }
+  updateDOM() {
+    return false
+  }
+  isInline() {
+    return false
+  }
+  canBeEmpty() {
+    return false
+  }
+  canIndent() {
+    return false
+  }
+}
+
+/** One column: a run of blocks. Backspace and selection stay inside it (a shadow root). */
+export class ColumnNode extends ElementNode {
+  static getType() {
+    return 'gio-column'
+  }
+  static clone(node: ColumnNode) {
+    return new ColumnNode(node.__key)
+  }
+  static importJSON(json: SerializedElementNode) {
+    return $createColumnNode().updateFromJSON(json)
+  }
+  exportJSON(): SerializedElementNode {
+    return { ...super.exportJSON(), type: 'gio-column', version: 1 }
+  }
+  createDOM() {
+    const div = document.createElement('div')
+    div.className = 'gio-written-column'
+    return div
+  }
+  updateDOM() {
+    return false
+  }
+  isInline() {
+    return false
+  }
+  isShadowRoot() {
+    return true
+  }
+  canBeEmpty() {
+    return false
+  }
+  canIndent() {
+    return false
+  }
+}
+
+export const $createColumnsNode = () => $applyNodeReplacement(new ColumnsNode())
+export const $isColumnsNode = (n: LexicalNode | null | undefined): n is ColumnsNode => n instanceof ColumnsNode
+export const $createColumnNode = () => $applyNodeReplacement(new ColumnNode())
+export const $isColumnNode = (n: LexicalNode | null | undefined): n is ColumnNode => n instanceof ColumnNode
 
 /* ---- Signing block ------------------------------------------------------ */
 

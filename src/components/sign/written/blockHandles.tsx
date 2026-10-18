@@ -27,7 +27,8 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { IconTip } from '@/components/ui/tooltip'
 import { BLOCK_PREVIEWS, SLASH_IC, type Preview, type SlashIcon } from './slashMenu'
 import { $newCallout, OPEN_CALLOUT_PICKER } from './callout'
-import { $isCalloutNode } from './nodes'
+import { $isCalloutNode, $isColumnsNode } from './nodes'
+import { $stackColumns } from './columns'
 
 /**
  * Gio Docs' block handles in the offer editor (2026-10-18): hovering a block
@@ -38,7 +39,7 @@ import { $isCalloutNode } from './nodes'
  * one, with its text. The saved format doesn't change.
  */
 
-type Kind = 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'quote' | 'callout' | 'table' | 'divider' | 'sign' | 'section' | 'break' | 'other'
+type Kind = 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'quote' | 'callout' | 'table' | 'columns' | 'divider' | 'sign' | 'section' | 'break' | 'other'
 const NAME: Record<Kind, string> = {
   text: 'Text',
   h1: 'Heading 1',
@@ -49,6 +50,7 @@ const NAME: Record<Kind, string> = {
   quote: 'Quote',
   callout: 'Callout',
   table: 'Table',
+  columns: 'Two columns',
   divider: 'Divider',
   sign: 'Signature block',
   section: 'Conditional section',
@@ -65,6 +67,7 @@ const ICON: Record<Kind, SlashIcon> = {
   quote: 'quote',
   callout: 'callout',
   table: 'table',
+  columns: 'columns',
   divider: 'divider',
   sign: 'sign',
   section: 'section',
@@ -92,6 +95,7 @@ function $kindOf(n: LexicalNode | null): Kind {
   if ($isQuoteNode(n)) return 'quote'
   if ($isCalloutNode(n)) return 'callout'
   if ($isTableNode(n)) return 'table'
+  if ($isColumnsNode(n)) return 'columns'
   if ($isHorizontalRuleNode(n)) return 'divider'
   const t = n.getType()
   return t === 'gio-sign' ? 'sign' : t === 'gio-if' ? 'section' : t === 'gio-page-break' ? 'break' : 'other'
@@ -231,6 +235,9 @@ export function BlockHandles({ anchor }: { anchor: HTMLElement }) {
       : block
         ? [
             ...(TURNABLE.has(block.kind) ? [{ label: 'Turn into', icon: ICON[block.kind], hint: '›', run: () => (setView('turn'), setHover(0)) }] : []),
+            ...(block.kind === 'columns'
+              ? [{ label: 'Remove columns', icon: 'text' as SlashIcon, hint: 'keeps the text', run: () => (withBlock((n) => $isColumnsNode(n) && $stackColumns(n)), close()) }]
+              : []),
             ...(block.kind === 'callout'
               ? [{ label: 'Icon and colour', icon: 'callout' as SlashIcon, run: () => (close(), setTimeout(() => editor.dispatchCommand(OPEN_CALLOUT_PICKER, block.key), 0)) }]
               : []),

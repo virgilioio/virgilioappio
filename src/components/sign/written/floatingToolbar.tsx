@@ -47,6 +47,7 @@ import { leave } from './slashMenu'
 import { $newCallout } from './callout'
 import { $isCalloutNode } from './nodes'
 import { $inTableCell } from './table'
+import { $inColumn } from './columns'
 
 /**
  * Gio Docs' floating selection toolbar in the offer editor (2026-10-18),
@@ -81,6 +82,8 @@ interface State {
   block: Block
   /** In a table cell: text formatting and alignment only (cells stay plain text). */
   inCell: boolean
+  /** In a column: no Show only if (a section can't sit in a column). */
+  inColumn: boolean
   formats: Set<TextFormatType>
   align: ElementFormatType
 }
@@ -98,7 +101,7 @@ function $readState(): State | null {
     if ($isElementNode(n) && !$isRootNode(n) && !align && n.getFormatType()) align = n.getFormatType()
   }
   const formats = new Set<TextFormatType>((['bold', 'italic', 'underline'] as TextFormatType[]).filter((f) => sel.hasFormat(f)))
-  return { block, formats, align: align || 'left', inCell: $inTableCell(sel.anchor.getNode()) }
+  return { block, formats, align: align || 'left', inCell: $inTableCell(sel.anchor.getNode()), inColumn: $inColumn(sel.anchor.getNode()) }
 }
 
 function Btn({ label, icon: Icon, active, onClick }: { label: string; icon: LucideIcon; active?: boolean; onClick: () => void }) {
@@ -291,7 +294,7 @@ export function FloatingToolbar({ onSection }: { onSection: () => void }) {
           </DropdownMenuItem>
         )),
       )}
-      {!state.inCell && (
+      {!state.inCell && !state.inColumn && (
         <>
           {divider}
           <Btn label="Show only if… · makes these lines a conditional section" icon={Brackets} onClick={() => run(onSection)} />

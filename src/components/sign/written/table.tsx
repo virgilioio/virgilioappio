@@ -40,6 +40,8 @@ import {
 } from 'lexical'
 
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
+import { $isColumnsNode } from './nodes'
+import { $stackColumns } from './columns'
 import { IconTip } from '@/components/ui/tooltip'
 
 /**
@@ -81,6 +83,11 @@ export function registerTableRules(editor: LexicalEditor) {
   return editor.registerNodeTransform(TableCellNode, (cell) => {
     for (const child of cell.getChildren()) {
       if ($isParagraphNode(child)) continue
+      if ($isColumnsNode(child)) {
+        // Columns in a cell: their blocks, one after the other (and then made text, below).
+        $stackColumns(child)
+        continue
+      }
       if ($isListNode(child)) {
         let last: LexicalNode = child
         for (const item of child.getChildren().filter($isListItemNode)) {

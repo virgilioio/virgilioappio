@@ -123,7 +123,7 @@ function $lineOf(node: LexicalNode): LexicalNode | null {
   for (let n: LexicalNode | null = node; n; n = n.getParent()) {
     const parent = n.getParent()
     if ($isListItemNode(n)) return n
-    if (parent && ($isRootNode(parent) || parent.getType() === 'gio-if') && $isElementNode(n)) return n
+    if (parent && ($isRootNode(parent) || parent.getType() === 'gio-if' || parent.getType() === 'gio-column') && $isElementNode(n)) return n
   }
   return null
 }
