@@ -78,7 +78,7 @@ const DEFAULTS: Omit<NotificationPreferences, 'user_id'> = {
   quiet_hours_end: '08:00',
   quiet_hours_tz:
     Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-  sound_on_mention: false,
+  sound_on_mention: true, // on by default (Allan, 2026-10-18)
 }
 
 const PREFS_EVENT = 'gio:notification-prefs'
