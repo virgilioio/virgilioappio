@@ -23,6 +23,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { RunStepStatus } from '@/lib/offerApproval'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { supabase } from '@/integrations/supabase/client'
 
 interface CandidateOfferApprovalsProps {
   candidateId: string
@@ -172,6 +173,28 @@ export function CandidateOfferApprovals({
 
   const [declineNotes, setDeclineNotes] = useState('')
   const [showDeclineForm, setShowDeclineForm] = useState(false)
+  // Remind (2026-10-18): emails the approvers whose turn it is and rings their bell, once an hour at most.
+  const [reminding, setReminding] = useState(false)
+  const [remindedAt, setRemindedAt] = useState<string | null>(null)
+  const remind = async (name: string) => {
+    if (!approvalRequest?.id || reminding) return
+    setReminding(true)
+    // TODO(after Apply): drop the casts once types.ts has offer_approval_remind.
+    const { data, error } = await supabase.rpc('offer_approval_remind' as never, { _request_id: approvalRequest.id } as never)
+    setReminding(false)
+    if (error) {
+      toast.error(error.code === 'GOA02' ? error.message : 'Couldn’t send the reminder. Try again.')
+      return
+    }
+    const r = (data ?? {}) as { reminded?: string[]; wait_minutes?: number }
+    if (r.reminded?.length) {
+      setRemindedAt(approvalRequest.id)
+      toast.success(`Reminder sent to ${r.reminded.join(', ')}`, { description: 'They get an email and a notification.' })
+    } else if (r.wait_minutes) {
+      setRemindedAt(approvalRequest.id)
+      toast(`${name} was reminded recently`, { description: `You can remind them again in ${r.wait_minutes} min.` })
+    }
+  }
 
   const jobLabel = jobTitle || 'this job'
   const firstName = candidateFirstName || 'the candidate'
@@ -388,10 +411,12 @@ export function CandidateOfferApprovals({
                     <Button
                       variant="secondary"
                       size="xs"
-                      icon={Bell}
-                      onClick={() => toast.success(`Reminder sent to ${s.name}`)}
+                      icon={remindedAt === approvalRequest?.id ? Check : Bell}
+                      loading={reminding}
+                      disabled={remindedAt === approvalRequest?.id}
+                      onClick={() => void remind(s.name)}
                     >
-                      Remind
+                      {remindedAt === approvalRequest?.id ? 'Reminded' : 'Remind'}
                     </Button>
                   )}
                   <StatusBadge status={s.runStatus} />
