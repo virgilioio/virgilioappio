@@ -53,7 +53,7 @@ Hard limits:
 - **Template steps are now:** Template info · Signers · Document · Message · Review & save (`WIZARD_STEPS` / `STEP` in `src/lib/sign/templates.ts`). Message is its own step again, because folded into Template info it went unnoticed.
 - **A page rail** (`PagesRail`) sits under the Summary in both Document panes, for written and uploaded documents. The Preview and the rail share one render (`writtenPreviewInput`).
 - **Images were built and then removed** (Allan: "Let's not do images"). Revert `16e3ff0`. Nothing used them: no saved document and no stored file. Don't bring them back without asking.
-- `sign-written-preview` and `sign-dispatch` are redeployed from `main` with this layout (2026-10-18).
+- `sign-written-preview` and `sign-dispatch` are redeployed from `main` with this layout (v16 and v24, 2026-10-18).
 - **Offer approvals: Remind really reminds.** Applied as `20261018051642_offer_approval_remind` (test 24, 14 checks):
   - `offer_approval_remind(request)` queues a reminder email and rings the bell for the approvers whose turn it is. It never reminds the person pressing it, and reminds each approver at most once an hour;
   - `offer_approval_claim_notices_v2` adds who sent the reminder, and `offer-approval-notify` (redeployed) words the email as a reminder from them;
