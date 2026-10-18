@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Bell, Check, CheckCheck, SlidersHorizontal, ArrowLeft, ChevronRight,
   AtSign, Users2, ClipboardCheck, CalendarCheck2, FileCheck2, Briefcase,
-  CalendarDays, Filter, Inbox, MessageSquare, UserPlus, PenLine,
+  CalendarDays, Filter, Inbox, MessageSquare, UserPlus, PenLine, Volume2,
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { useNotifications, NotificationRow, NotificationCategory } from '@/hooks/useNotifications'
+import { useNotificationSound } from '@/hooks/useNotificationSound'
+import { previewNotificationSound } from '@/lib/notificationSound'
 import {
   useNotificationPreferences, PREFS_CATEGORIES, CategoryKey, NotificationPreferences,
 } from '@/hooks/useNotificationPreferences'
@@ -246,7 +248,7 @@ function PreferencesPanel({ onBack }: { onBack: () => void }) {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-[12.5px] font-inter font-medium text-virgilio-text">Quiet hours</div>
-                  <div className="text-[11px] text-[#8B8F9E]">Suppress email during these hours</div>
+                  <div className="text-[11px] text-[#8B8F9E]">Hold emails and sounds during these hours</div>
                 </div>
                 <Switch checked={merged.quiet_hours_enabled} onCheckedChange={(v) => set({ quiet_hours_enabled: v })} />
               </div>
@@ -258,12 +260,24 @@ function PreferencesPanel({ onBack }: { onBack: () => void }) {
                 </div>
               )}
             </div>
-            <div className="rounded-md border border-[#E7E8EE] bg-white px-3 py-2.5 flex items-center justify-between">
-              <div>
-                <div className="text-[12.5px] font-inter font-medium text-virgilio-text">Play sound on new mention</div>
-                <div className="text-[11px] text-[#8B8F9E]">Subtle chime, in-app only</div>
+            <div className="rounded-md border border-[#E7E8EE] bg-white px-3 py-2.5 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[12.5px] font-inter font-medium text-virgilio-text">Play a sound</div>
+                <div className="text-[11px] text-[#8B8F9E]">When someone mentions you or an offer needs your approval</div>
               </div>
-              <Switch checked={merged.sound_on_mention} onCheckedChange={(v) => set({ sound_on_mention: v })} />
+              <div className="flex shrink-0 items-center gap-1.5">
+                <IconTip label="Hear the sound">
+                  <button
+                    type="button"
+                    aria-label="Hear the sound"
+                    onClick={() => void previewNotificationSound('mention')}
+                    className="gio-pressable h-7 w-7 rounded-md flex items-center justify-center text-[#5A6072] hover:bg-[#F1F0EC] hover:text-[#0d0d09]"
+                  >
+                    <Volume2 className="h-[15px] w-[15px]" strokeWidth={2} />
+                  </button>
+                </IconTip>
+                <Switch checked={merged.sound_on_mention} onCheckedChange={(v) => set({ sound_on_mention: v })} />
+              </div>
             </div>
           </div>
         </div>
@@ -285,7 +299,9 @@ export function NotificationCenter() {
   const tabSegRef = useSegmentLayer<HTMLDivElement>()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const { data: notifications = [], markAsRead, markAllAsRead } = useNotifications()
+  const { data: notificationRows, markAsRead, markAllAsRead } = useNotifications()
+  const notifications = useMemo(() => notificationRows ?? [], [notificationRows])
+  useNotificationSound(notificationRows)
 
   const counts = useMemo(() => {
     const unread = notifications.filter((n) => !n.read_at)

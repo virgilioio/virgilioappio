@@ -81,6 +81,8 @@ const DEFAULTS: Omit<NotificationPreferences, 'user_id'> = {
   sound_on_mention: false,
 }
 
+const PREFS_EVENT = 'gio:notification-prefs'
+
 export function useNotificationPreferences() {
   const { user } = useAuth()
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null)
@@ -113,11 +115,22 @@ export function useNotificationPreferences() {
     }
   }, [user?.id])
 
+  useEffect(() => {
+    const onChange = (e: Event) => {
+      const next = (e as CustomEvent<NotificationPreferences>).detail
+      if (next?.user_id === user?.id) setPrefs(next)
+    }
+    window.addEventListener(PREFS_EVENT, onChange)
+    return () => window.removeEventListener(PREFS_EVENT, onChange)
+  }, [user?.id])
+
   const update = useCallback(
     async (patch: Partial<NotificationPreferences>) => {
       if (!user?.id || !prefs) return
       const next = { ...prefs, ...patch }
       setPrefs(next)
+      // Other readers (the notification sound) pick the change up at once.
+      window.dispatchEvent(new CustomEvent(PREFS_EVENT, { detail: next }))
       const { error } = await supabase
         .from('notification_preferences')
         .upsert({ ...next, user_id: user.id }, { onConflict: 'user_id' })

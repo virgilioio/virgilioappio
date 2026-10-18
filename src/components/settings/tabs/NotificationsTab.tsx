@@ -1,7 +1,9 @@
 import { SettingsCard } from '@/components/settings/shared/SettingsCard'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Volume2 } from 'lucide-react'
+import { IconTip } from '@/components/ui/tooltip'
+import { previewNotificationSound } from '@/lib/notificationSound'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
 import { SIGN_PREF_EVENTS, useSignPrefs, type SignPref, type SignPrefEvent } from '@/lib/sign/prefs'
@@ -222,18 +224,30 @@ export function NotificationsTab() {
             )}
           </div>
 
-          {/* Sound on mention */}
+          {/* The notification sound (mentions and offer approvals) */}
           <div className="px-5 py-4 flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <div className="font-inter text-[13px] text-[#0d0d09]">Sound on @mention</div>
+              <div className="font-inter text-[13px] text-[#0d0d09]">Play a sound</div>
               <div className="font-inter text-[12px] text-[#8B8F9E] mt-0.5">
-                Play a chime when someone mentions you in the app.
+                Two soft taps when someone mentions you; a short run when an offer needs your approval. In the app only, and quiet during quiet hours.
               </div>
             </div>
-            <Switch
-              checked={prefs.sound_on_mention}
-              onCheckedChange={(v) => update({ sound_on_mention: v })}
-            />
+            <div className="flex shrink-0 items-center gap-2">
+              <IconTip label="Hear the sound">
+                <button
+                  type="button"
+                  aria-label="Hear the sound"
+                  onClick={() => void previewNotificationSound('mention')}
+                  className="gio-pressable h-8 w-8 rounded-md flex items-center justify-center text-[#5A6072] hover:bg-[#F1F0EC] hover:text-[#0d0d09]"
+                >
+                  <Volume2 className="h-4 w-4" strokeWidth={2} />
+                </button>
+              </IconTip>
+              <Switch
+                checked={prefs.sound_on_mention}
+                onCheckedChange={(v) => update({ sound_on_mention: v })}
+              />
+            </div>
           </div>
         </div>
       </SettingsCard>
