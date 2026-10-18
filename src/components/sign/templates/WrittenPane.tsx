@@ -214,7 +214,7 @@ function SlashMenu({ items }: { items: SlashItem[] }) {
   const close = () => editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown', { key: 'Escape' }))
 
   return (
-    <LexicalTypeaheadMenuPlugin<SlashItem>
+    <LexicalTypeaheadMenuPlugin
       options={rows}
       triggerFn={trigger}
       onQueryChange={setQuery}
