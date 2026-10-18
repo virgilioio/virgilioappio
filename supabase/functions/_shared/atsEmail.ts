@@ -3,7 +3,8 @@
 // desk colour, the Gio ATS logo in the masthead with the product on the right
 // (a lilac tile and its name), a purple eyebrow, a Poppins title with a lilac
 // period, a white inner card, the dark button, a footnote, and the Gio footer.
-// The logo is a PNG (public/gio-logo.png): Gmail and Outlook don't show SVG.
+// The logo is the "gio ats" lockup as a dark PNG (public/brand/gio-ats-logo-dark.png,
+// drawn from GioAtsLogo's master paths): Gmail and Outlook don't show SVG.
 // Tables and inline styles only. ASCII only in this file: typographic
 // characters are HTML entities.
 
@@ -85,7 +86,7 @@ export interface AtsLayout {
 }
 
 export function atsLayout(o: AtsLayout): string {
-  const logo = `${appBase()}/gio-logo.png`;
+  const logo = `${appBase()}/brand/gio-ats-logo-dark.png`;
   const support = esc(o.supportEmail ?? "support@virgilio.tech");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only"><title>${esc(o.title)}</title>
@@ -98,7 +99,7 @@ export function atsLayout(o: AtsLayout): string {
 <table role="presentation" class="gio-card" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:560px;background:#fffcf9;border-radius:20px;box-shadow:0 12px 32px -8px rgba(13,13,9,.08);overflow:hidden">
 <tr><td class="gio-pad" style="padding:24px 40px;border-bottom:1px solid #F1F0EC">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-    <td align="left" valign="middle"><img src="${logo}" width="60" height="32" alt="Gio" style="display:block;border:0;${P};font-size:20px;font-weight:600;color:#0d0d09"></td>
+    <td align="left" valign="middle"><img src="${logo}" width="107" height="34" alt="Gio ATS" style="display:block;border:0;${P};font-size:20px;font-weight:600;color:#0d0d09"></td>
     <td align="right" valign="middle" style="${P};font-weight:600;font-size:15px;color:#1F2230;letter-spacing:-.02em;white-space:nowrap">
       <span style="display:inline-block;width:10px;height:10px;background:#D7C5FB;border-radius:3px;vertical-align:middle;margin-right:8px"></span><span style="vertical-align:middle">${esc(o.product)}</span>
     </td>
