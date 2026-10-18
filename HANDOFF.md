@@ -1,4 +1,4 @@
-# Handoff — where the work stands (2026-10-17)
+# Handoff — where the work stands (2026-10-18)
 
 Read this first in a new Claude session. It covers the three Gio projects, how Allan works, and what is open. `CLAUDE.md` in each repo holds the standing rules and wins where the two differ.
 
@@ -41,7 +41,27 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Done today (2026-10-17, ATS)
+## Done 2026-10-18 (ATS)
+
+- **Write in Gio takes Gio Docs' behaviour** ("Docs DNA", in the ATS's own type and colours; details in `CLAUDE.md`, Implementation map, "Offer editor, Gio Docs DNA"). All in `src/components/sign/written/` and `templates/WrittenPane.tsx`:
+  - a document title and typing shortcuts (`typing.tsx`), the Docs "/" menu (`slashMenu.tsx`), block handles with + and ⋮⋮ (`blockHandles.tsx`), and the dark selection bar (`floatingToolbar.tsx`). There is no fixed toolbar any more; undo/redo are ⌘Z / ⌘⇧Z;
+  - callouts (`callout.tsx`): four icons or none, five colours;
+  - tables (`table.tsx`, Lexical's own): column and row menus, "+" bars, Tab in the last cell adds a row. Cells hold text, data tags and inline signer fields;
+  - two columns (`columns.tsx`): exactly two, so two people can sign side by side. Sections, page breaks and nested columns stay out of a column;
+  - Small text, a whole-document switch kept in the content as `gio.small`. The PDF prints the body at 9.5pt;
+  - every block has a PDF counterpart in `_shared/sign/writtenLayout.ts` (unit tests in `_shared/__tests__/writtenLayout.test.ts`, 33 passing).
+- **Template steps are now:** Template info · Signers · Document · Message · Review & save (`WIZARD_STEPS` / `STEP` in `src/lib/sign/templates.ts`). Message is its own step again, because folded into Template info it went unnoticed.
+- **A page rail** (`PagesRail`) sits under the Summary in both Document panes, for written and uploaded documents. The Preview and the rail share one render (`writtenPreviewInput`).
+- **Images were built and then removed** (Allan: "Let's not do images"). Revert `16e3ff0`. Nothing used them: no saved document and no stored file. Don't bring them back without asking.
+- `sign-written-preview` and `sign-dispatch` are redeployed from `main` with this layout (2026-10-18).
+- **Offer approvals: Remind really reminds.** Applied as `20261018051642_offer_approval_remind` (test 24, 14 checks):
+  - `offer_approval_remind(request)` queues a reminder email and rings the bell for the approvers whose turn it is. It never reminds the person pressing it, and reminds each approver at most once an hour;
+  - `offer_approval_claim_notices_v2` adds who sent the reminder, and `offer-approval-notify` (redeployed) words the email as a reminder from them;
+  - every pending request was synced once, so the offer that was waiting since before the notices went live got its turn email (support@virgilio.tech, 05:17 UTC) and its bell;
+  - the button (`CandidateOfferApprovals.tsx`) says who was reminded, or how long until they can be reminded again;
+  - the approver sees the offer in Your queue under their own login.
+
+## Done 2026-10-17 (ATS)
 
 - **Quiet scheduled jobs** (`quiet_cron`): cron jobs only call Edge Functions when there is work. Allan emptied `net._http_response` (283 MB → 32 kB).
 - **Faster Candidates table and startup:** parallel loading (`src/lib/parallel.ts`), one shared startup (`useAuthBootstrap`), a cached profile. First rows 4.5 s → 2.6 s; revisits 4.9 s → 0.2 s; startup requests 62 → 37.
@@ -67,7 +87,7 @@ Hard limits:
   - App: `src/lib/sign/written.ts` (model, order across uploaded + written, preview), `src/components/sign/written/` (editor sheet, nodes). Documents step: "Write a document"; Fields step says there's nothing to place when every document is written; the send sheet's preview draws written documents filled in.
   - Known gaps: (1) the database still counts a signing block inside a section as the signer's signature (the editor keeps blocks out of sections and the wizard refuses it, so only a hand-made template could do it; tighten `sign_save_template` with the next Sign migration). (2) An envelope whose written document fails 5 times stays queued; the minute job keeps calling sign-dispatch for it (cheap, nothing happens) until the sender voids it. (3) Letters the standard PDF font lacks (Polish, Czech...) print without their accent; a Unicode font would need fontkit. (4) The template's standard "Job title" and an offer form's "Job Title" both show in the field list.
 - **Phase 4.**
-  - Void & resend for out-of-date offers. This needs `'offer_changed'` added to the `sign_events_kind_check` constraint, which takes a `drop`, so it is a desktop-applied migration.
+  - Void & resend for out-of-date offers (parked by Allan, 2026-10-18). This needs `'offer_changed'` added to the `sign_events_kind_check` constraint, which takes a `drop`, so it is a desktop-applied migration.
   - Import from Word into the Gio editor, rather than keeping Word layout.
   - Polish "Other agreement".
   - Retire the old offer letter generator.
@@ -89,7 +109,7 @@ Hard limits:
 - Preview: written documents shown as the real PDF from `sign-written-preview` (it's what's sent), with a preview-only option to underline values in lilac and print empty values as [Label]; uploaded pages as today's `FilledPreview`. The design's HTML "paper" (Poppins/Inter) would not match the Helvetica PDF; matching it means embedding Inter/Poppins in the PDF (fontkit), which also fixes accents.
 
 **New / Edit template workflow (Allan, 2026-10-17; full prompt in chat).**
-- Four steps: Template info, Document (full width), Signers, Review & save. **All ten parts are built and on main (2026-10-17).**
+- Built as four steps (Template info, Document, Signers, Review & save); since 2026-10-18 it's five: Template info · Signers · Document · Message · Review & save. **All ten parts are built and on main (2026-10-17).**
 - What it builds on:
   - `WizardSheet`;
   - `InfoStep`, `RolesStep`, `FieldsEditor` (uploaded pages), `WrittenEditor` + `written/nodes.tsx` (Lexical), `ReviewStep` and `TemplateCard`;
@@ -108,10 +128,11 @@ Hard limits:
   - A signing block inside a conditional section no longer counts as a signature (closes gap 1).
   - `sign_sample_values(form, uses)`: the editor's Preview with the latest offer on the form, for admins only.
 - Where it lives: `TemplateWizard` → `InfoStep` (+ folded Default email), `DocumentStep` (tabs when both sources; `WrittenPane` for Write in Gio, `FieldsEditor` for uploaded pages; both use `FieldList` on the left and `FieldPanel` pieces on the right), `RolesStep`, `ReviewStep`. Formats: `src/lib/sign/formats.ts` (mirrors `sign_format`). Coverage: `draftCoverage()` in `templates.ts` (§7: mapped, missing, skipped, blocking, total). The old `WrittenEditor` sheet and `OfferCoverage` are gone.
-- Write in Gio: toolbar (style incl. Quote, B/I/U, lists, indent, alignment, undo/redo, Insert field), "/" menu (no animation, §12; Line and Page break live there), offer chips with formats, signer field chips (`gio-field`), signature blocks (signature + date), conditional sections (rule `gt0` = "is more than 0" for money/numbers; no database check on rules), click-to-select + Delete, Preview with the latest offer on the form (`sign_sample_values`), empty values red.
+- Write in Gio (as built 2026-10-17; the toolbar and the plain "/" menu were replaced by Gio Docs' "/" menu, block handles and selection bar on 2026-10-18, see above): offer chips with formats, signer field chips (`gio-field`), signature blocks (signature + date), conditional sections (rule `gt0` = "is more than 0" for money/numbers; no database check on rules), click-to-select + Delete, Preview with the latest offer on the form (`sign_sample_values`), empty values red.
 - Allan's rulings (2026-10-17): click places on the page in view (not page 1), stacked; Email tile stays on uploaded pages; Signature on uploaded pages is one box; "Fills from" stays; toolbar extras (alignment, Quote) stay; no strikethrough button; the "/" menu appears instantly. From the Send sheet the editor is stacked on the sheet, so saving returns to it; no "Back to {candidate}" toast.
 - **Client company** (applied 2026-10-17): `20261017235206_sign_client_company` (test 23, 8/8 on the live schema). `{{client}}` = the job's client organization (fed from Gio Sales; Virgilio for its own jobs) on candidate templates, in documents, placed fields and the email; listed under Always available. The email-only `{{company}}` (your workspace) is labelled "Your company". New candidate templates' default subject: "Your offer from {{client}} · please review and sign" (no live template used `{{company}}`).
 - Not built: Word {{placeholder}} mapping (needs a converter Edge Functions can't run; scope separately).
+- Waiting on Allan: his own test of the new editor (title, "/" menu, handles, callout, table, two columns, Small text) and its PDF.
 
 **Offer approvals: tell the approvers (Allan, 2026-10-17). Built and live.**
 - `20261017201333_offer_approval_notices` (test 21, 16/16 on the live schema):
@@ -120,7 +141,8 @@ Hard limits:
   - the outbox `offer_approval_notices` is service-role only.
 - The minute job `offer-approval-notify` calls the Edge Function of the same name (v1, `x-internal-secret`) only when there's mail. It sends through Resend and skips approvers who turned offer emails off.
 - Dashboard: `buildQueue` shows `offer_approval` items as Decisions ("Approve offer"). `fetchPendingOfferApprovals` includes every pending step of a parallel chain.
-- Still to do: a real test, where Allan sends an offer for approval to someone else and checks the email, the bell and Your queue.
+- Remind added 2026-10-18 (see Done 2026-10-18).
+- Still to do: a real test, where Allan sends an offer for approval to someone else and checks the email, the bell, Remind and Your queue.
 
 **Speed and robustness plan (steps 1–3 done)**
 - **Step 4 — database cleanup.**
