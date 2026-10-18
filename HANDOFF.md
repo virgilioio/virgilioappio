@@ -88,7 +88,6 @@ Hard limits:
   - Known gaps: (1) the database still counts a signing block inside a section as the signer's signature (the editor keeps blocks out of sections and the wizard refuses it, so only a hand-made template could do it; tighten `sign_save_template` with the next Sign migration). (2) An envelope whose written document fails 5 times stays queued; the minute job keeps calling sign-dispatch for it (cheap, nothing happens) until the sender voids it. (3) Letters the standard PDF font lacks (Polish, Czech...) print without their accent; a Unicode font would need fontkit. (4) The template's standard "Job title" and an offer form's "Job Title" both show in the field list.
 - **Phase 4.**
   - Void & resend for out-of-date offers (parked by Allan, 2026-10-18). This needs `'offer_changed'` added to the `sign_events_kind_check` constraint, which takes a `drop`, so it is a desktop-applied migration.
-  - Import from Word into the Gio editor, rather than keeping Word layout.
   - Polish "Other agreement".
   - Retire the old offer letter generator.
   - Wrap long text on uploaded PDFs in `_shared/sign/stamp.ts`.
@@ -131,7 +130,7 @@ Hard limits:
 - Write in Gio (as built 2026-10-17; the toolbar and the plain "/" menu were replaced by Gio Docs' "/" menu, block handles and selection bar on 2026-10-18, see above): offer chips with formats, signer field chips (`gio-field`), signature blocks (signature + date), conditional sections (rule `gt0` = "is more than 0" for money/numbers; no database check on rules), click-to-select + Delete, Preview with the latest offer on the form (`sign_sample_values`), empty values red.
 - Allan's rulings (2026-10-17): click places on the page in view (not page 1), stacked; Email tile stays on uploaded pages; Signature on uploaded pages is one box; "Fills from" stays; toolbar extras (alignment, Quote) stay; no strikethrough button; the "/" menu appears instantly. From the Send sheet the editor is stacked on the sheet, so saving returns to it; no "Back to {candidate}" toast.
 - **Client company** (applied 2026-10-17): `20261017235206_sign_client_company` (test 23, 8/8 on the live schema). `{{client}}` = the job's client organization (fed from Gio Sales; Virgilio for its own jobs) on candidate templates, in documents, placed fields and the email; listed under Always available. The email-only `{{company}}` (your workspace) is labelled "Your company". New candidate templates' default subject: "Your offer from {{client}} · please review and sign" (no live template used `{{company}}`).
-- Not built: Word {{placeholder}} mapping (needs a converter Edge Functions can't run; scope separately).
+- No Word templates (Allan, 2026-10-18): no Word {{placeholder}} mapping and no import from Word. Documents are written in Gio (Write in Gio) or uploaded as PDFs. Don't propose it again.
 - Waiting on Allan: his own test of the new editor (title, "/" menu, handles, callout, table, two columns, Small text) and its PDF.
 
 **Offer approvals: tell the approvers (Allan, 2026-10-17). Built and live.**
