@@ -2,7 +2,8 @@
 // editor's own JSON (Lexical): paragraphs, headings, lists, quotes, page
 // breaks, callouts ("gio-callout": icon, tone; added 2026-10-18), tables
 // ("table" > "tablerow" > "tablecell" with headerState; 2026-10-18), small
-// text for the whole document (content.gio.small; 2026-10-18), data tags
+// text for the whole document (content.gio.small; 2026-10-18), two columns
+// ("gio-columns" > two "gio-column"s of blocks; 2026-10-18), data tags
 // ("placeholder", with an optional print "format"),
 // conditional sections ("gio-if"), signing blocks ("gio-sign") and signer
 // fields inside the text ("gio-field": roleId, fieldType, required, label). The output is a list of pages of simple drawing
@@ -432,7 +433,11 @@ class Flow {
   page!: WrittenPage;
   y = MARGIN_TOP;
   blocks: WrittenBlock[] = [];
-  constructor(private maxPages: number) {
+  /**
+   * `bottom`: where the page's text ends. A column is measured on a page that
+   * never ends (Infinity), then placed.
+   */
+  constructor(private maxPages: number, readonly bottom = PAGE_H - MARGIN_BOTTOM) {
     this.newPage();
   }
   get atTop() {
@@ -448,7 +453,7 @@ class Flow {
   }
   /** Starts a new page unless `h` more points fit (or nothing is on this page yet). */
   ensure(h: number) {
-    if (this.y + h > PAGE_H - MARGIN_BOTTOM + 0.01 && !this.atTop) this.newPage();
+    if (this.y + h > this.bottom + 0.01 && !this.atTop) this.newPage();
   }
   space(h: number) {
     if (!this.atTop) this.y += h;
@@ -710,7 +715,7 @@ function table(c: Ctx, n: Node) {
   const drawRow = (row: LaidRow, from: number[]): number[] => {
     const top = flow.y;
     const at = flow.page.ops.length;
-    const room = PAGE_H - MARGIN_BOTTOM - top - CELL_PAD_Y * 2;
+    const room = flow.bottom - top - CELL_PAD_Y * 2;
     const next = from.slice();
     let used = 0;
     row.cells.forEach((cell, ci) => {
@@ -769,6 +774,51 @@ function table(c: Ctx, n: Node) {
   flow.y += PARA_AFTER + 2;
 }
 
+const COLUMN_GAP = 24;
+const TEXT_H = PAGE_H - MARGIN_TOP - MARGIN_BOTTOM;
+
+/** Moves drawing operations down by `dy` points (a column measured on its own page, placed). */
+function shiftOp(op: Op, dy: number): Op {
+  if (op.kind === "line") return { ...op, y1: op.y1 + dy, y2: op.y2 + dy };
+  return { ...op, y: op.y + dy };
+}
+
+/**
+ * Two columns: each column's blocks laid out at half the width, side by
+ * side. The pair stays together: it moves to the next page when it doesn't
+ * fit below what's already there, and when a column is taller than a whole
+ * page the two print one after the other at full width instead. Signature
+ * blocks and signer fields keep their places in the column.
+ */
+function columns(c: Ctx, n: Node) {
+  const flow = c.flow;
+  const cols = ((n.children ?? []) as Node[]).filter((k) => k?.type === "gio-column").slice(0, 2);
+  if (!cols.length) return;
+  const colW = (c.width - COLUMN_GAP) / 2;
+  // Each column on a page of its own that never ends, starting at the top margin.
+  const laid = cols.map((col, i) => {
+    const sub = new Flow(50, Infinity);
+    blocksOf({ ...c, flow: sub, left: c.left + i * (colW + COLUMN_GAP), width: colW }, col.children);
+    // A page break inside a column (the editor keeps them out) makes it a column that can't sit beside the other.
+    return { ops: sub.page.ops, blocks: sub.blocks, h: sub.pages.length > 1 ? Infinity : sub.y - MARGIN_TOP };
+  });
+  const h = Math.max(...laid.map((l) => l.h));
+  if (h > TEXT_H) {
+    // Taller than a page: one after the other, at full width.
+    for (const col of cols) blocksOf(c, col.children);
+    return;
+  }
+  flow.space(4);
+  flow.ensure(h);
+  const dy = flow.y - MARGIN_TOP;
+  const page = flow.pages.length - 1;
+  for (const l of laid) {
+    for (const op of l.ops) flow.page.ops.push(shiftOp(op, dy));
+    for (const b of l.blocks) flow.blocks.push({ ...b, page, y: round3(b.y + (dy / PAGE_H) * 100) });
+  }
+  flow.y += h;
+}
+
 function round3(n: number) {
   return Math.round(n * 1000) / 1000;
 }
@@ -797,6 +847,9 @@ function blocksOf(c: Ctx, nodes: Node[] | undefined) {
         break;
       case "table":
         table(c, n);
+        break;
+      case "gio-columns":
+        columns(c, n);
         break;
       case "list":
         listItems(c, n, 0);

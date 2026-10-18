@@ -321,4 +321,62 @@ describe('writtenKeys', () => {
     // Smaller lines: the next line starts higher on the page.
     expect(small.find((o) => o.text === 'Cell')!.y).toBeLessThan(normal.find((o) => o.text === 'Cell')!.y);
   });
+
+  describe('two columns', () => {
+    const col = (...children: object[]) => ({ type: 'gio-column', children });
+    const pair = (a: object[], b: object[]) => ({ type: 'gio-columns', children: [col(...a), col(...b)] });
+
+    it('lays the two columns side by side at half width', () => {
+      const l = layoutWritten(doc(para(text('Above')), pair([para(text('Left'))], [para(text('Right'))]), para(text('Below'))), { values: {}, measure });
+      const t = texts(l);
+      const left = t.find((o) => o.text === 'Left')!;
+      const right = t.find((o) => o.text === 'Right')!;
+      const above = t.find((o) => o.text === 'Above')!;
+      const below = t.find((o) => o.text === 'Below')!;
+      expect(left.x).toBe(72);
+      expect(right.x).toBe(72 + (468 - 24) / 2 + 24);
+      expect(left.y).toBe(right.y);
+      expect(left.y).toBeGreaterThan(above.y);
+      expect(below.y).toBeGreaterThan(left.y);
+    });
+
+    it('wraps text at the column width and continues below the taller column', () => {
+      const long = Array.from({ length: 60 }, (_, i) => 'w' + i).join(' ');
+      const l = layoutWritten(doc(pair([para(text(long))], [para(text('Short'))]), para(text('After'))), { values: {}, measure });
+      const t = texts(l);
+      const leftWords = t.filter((o) => o.text.startsWith('w'));
+      expect(Math.max(...leftWords.map((o) => o.x + measure(o.text, 'regular', 11)))).toBeLessThanOrEqual(72 + 222 + 0.01);
+      const lastLeft = Math.max(...leftWords.map((o) => o.y));
+      expect(t.find((o) => o.text === 'After')!.y).toBeGreaterThan(lastLeft);
+    });
+
+    it('keeps signature blocks in their column, on the right page and place', () => {
+      const filler = Array.from({ length: 29 }, (_, i) => para(text('Line ' + i)));
+      const l = layoutWritten(
+        doc(...filler, pair([para(text('Company')), { type: 'gio-sign', roleId: 'r1', kind: 'signature' }], [para(text('Candidate')), { type: 'gio-sign', roleId: 'r2', kind: 'signature' }])),
+        { values: {}, measure, roles: { r1: 'Company', r2: 'Candidate' } },
+      );
+      // The pair didn't fit under the filler: it moved to page 2, together.
+      expect(l.pages.length).toBe(2);
+      expect(texts(l, 1).map((o) => o.text)).toEqual(expect.arrayContaining(['Company', 'Candidate']));
+      const [a, b] = l.blocks;
+      expect(a).toMatchObject({ role_id: 'r1', page: 1 });
+      expect(b).toMatchObject({ role_id: 'r2', page: 1 });
+      expect(a.y).toBeCloseTo(b.y, 2);
+      expect(a.x).toBeCloseTo((72 / 612) * 100, 2);
+      expect(b.x).toBeCloseTo(((72 + 222 + 24) / 612) * 100, 2);
+      // The field sits just under its label line, near the top of page 2.
+      expect(a.y).toBeLessThan(25);
+    });
+
+    it('prints one after the other when a column is taller than a page', () => {
+      const tall = Array.from({ length: 80 }, (_, i) => para(text('Tall ' + i)));
+      const l = layoutWritten(doc(pair(tall, [para(text('Second'))])), { values: {}, measure });
+      expect(l.pages.length).toBeGreaterThan(1);
+      const all = l.pages.flatMap((_, p) => texts(l, p));
+      expect(all.find((o) => o.text === 'Tall')!.x).toBe(72);
+      expect(all.find((o) => o.text === 'Second')!.x).toBe(72);
+      expect(all.filter((o) => o.text === 'Tall')).toHaveLength(80);
+    });
+  });
 });
