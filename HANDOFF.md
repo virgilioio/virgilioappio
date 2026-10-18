@@ -1,4 +1,4 @@
-# Handoff — where the work stands (2026-10-18)
+# Handoff — where the work stands (2026-10-18, evening)
 
 Read this first in a new Claude session. It covers the three Gio projects, how Allan works, and what is open. `CLAUDE.md` in each repo holds the standing rules and wins where the two differ.
 
@@ -60,6 +60,17 @@ Hard limits:
   - every pending request was synced once, so the offer that was waiting since before the notices went live got its turn email (support@virgilio.tech, 05:17 UTC) and its bell;
   - the button (`CandidateOfferApprovals.tsx`) says who was reminded, or how long until they can be reminded again;
   - the approver sees the offer in Your queue under their own login.
+
+## Done 2026-10-18 (Gio Docs)
+
+- **The black rail: Gio's look in Gio Docs.** Merged to Gio Docs `main` (e85e9a5) after Allan approved the screenshots. It was built on the branch `claude/docs-black-rail`. The rules are in Gio Docs' `AGENTS.md` ("Decisions (Allan, 2026-10-18: the black rail, Gio's DNA)").
+  - The sidebar is a floating black card, like the Gio ATS and Gio Sales rails, and stays black in dark mode. The page beside it is a rounded card, as in Gio Sales.
+  - Open, the card's top row has the lilac fold button, New page and the Inbox; Search sits below.
+  - Folded, it is the 64px Gio rail. Favorites, Workspace and Private open their pages in a card beside the rail on hover.
+  - The spacing pass tightened the page tree and every page's block spacing. It applies to existing pages too.
+- **Running Gio Docs locally with fake data:**
+  - Install: `bun.lock` points at Lovable's private package cache, so install with the lockfile moved aside: `BUN_CONFIG_REGISTRY=https://registry.npmjs.org bun install`, then `git checkout -- bun.lock`.
+  - Run `npx vite dev --port 8093`, then use Playwright with every request to the Supabase host answered in the browser: a fake session in `localStorage`, and tables served from memory.
 
 ## Done 2026-10-17 (ATS)
 
