@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { conditionHolds, layoutWritten, PAGE_H, writtenImages, writtenKeys, type BoxOp, type IconOp, type ImageOp, type RectOp, type TextOp } from '../sign/writtenLayout';
+import { conditionHolds, layoutWritten, PAGE_H, writtenKeys, type BoxOp, type IconOp, type RectOp, type TextOp } from '../sign/writtenLayout';
 
 // Every character is half the font size wide.
 const measure = (text: string, _style: string, size: number) => text.length * size * 0.5;
@@ -377,42 +377,6 @@ describe('writtenKeys', () => {
       expect(all.find((o) => o.text === 'Tall')!.x).toBe(72);
       expect(all.find((o) => o.text === 'Second')!.x).toBe(72);
       expect(all.filter((o) => o.text === 'Tall')).toHaveLength(80);
-    });
-  });
-
-  describe('images', () => {
-    const img = (extra: object = {}) => ({ type: 'gio-image', path: 't1/templates/x/images/a.png', w: 1200, h: 600, width: 0.5, align: 'center', ...extra });
-    const images = (l: ReturnType<typeof layoutWritten>, page = 0) => l.pages[page].ops.filter((o): o is ImageOp => o.kind === 'image');
-
-    it('draws at its share of the width, at its own proportions, centred', () => {
-      const l = layoutWritten(doc(para(text('Above')), img(), para(text('Below'))), { values: {}, measure });
-      const [i] = images(l);
-      expect(i).toMatchObject({ w: 234, h: 117, x: 72 + (468 - 234) / 2, path: 't1/templates/x/images/a.png' });
-      const below = texts(l).find((o) => o.text === 'Below')!;
-      expect(below.y).toBeGreaterThan(i.y + i.h);
-    });
-
-    it('aligns left and right, and fits a column', () => {
-      expect(images(layoutWritten(doc(img({ align: 'left' })), { values: {}, measure }))[0].x).toBe(72);
-      expect(images(layoutWritten(doc(img({ align: 'right' })), { values: {}, measure }))[0].x).toBe(72 + 468 - 234);
-      const cols = layoutWritten(doc({ type: 'gio-columns', children: [{ type: 'gio-column', children: [img({ width: 1 })] }, { type: 'gio-column', children: [para(text('x'))] }] }), { values: {}, measure });
-      expect(images(cols)[0].w).toBe(222);
-    });
-
-    it('moves to the next page when it doesn\'t fit, and shrinks one taller than a page', () => {
-      const filler = Array.from({ length: 25 }, (_, i) => para(text('Line ' + i)));
-      const moved = layoutWritten(doc(...filler, img({ width: 1, w: 1000, h: 800 })), { values: {}, measure });
-      expect(images(moved, 0)).toHaveLength(0);
-      expect(images(moved, 1)[0].y).toBe(72);
-      const tall = layoutWritten(doc(img({ width: 1, w: 500, h: 2000 })), { values: {}, measure });
-      const [t] = images(tall);
-      expect(t.h).toBe(PAGE_H - 144);
-      expect(t.w).toBeCloseTo((PAGE_H - 144) / 4);
-    });
-
-    it('lists each image once and skips one with no file', () => {
-      expect(writtenImages(doc(img(), img(), img({ path: 't1/templates/x/images/b.png' })))).toEqual(['t1/templates/x/images/a.png', 't1/templates/x/images/b.png']);
-      expect(images(layoutWritten(doc(img({ path: '' })), { values: {}, measure }))).toHaveLength(0);
     });
   });
 });

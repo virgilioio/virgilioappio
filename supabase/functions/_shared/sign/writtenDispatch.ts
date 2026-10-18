@@ -73,14 +73,7 @@ export async function renderPending(supabase: SupabaseClient, limit = 20) {
     // In order: a later document's pages depend on the earlier ones.
     for (const w of docs) {
       try {
-        // Images come from the envelope's own tenant's template files only.
-        const own = `${w.tenant_id}/templates/`;
-        const loadImage = async (p: string) => {
-          if (!p.startsWith(own) || p.includes("..")) return null;
-          const { data, error } = await supabase.storage.from(BUCKET).download(p);
-          return error || !data ? null : new Uint8Array(await data.arrayBuffer());
-        };
-        const pdf = await renderWritten({ name: w.name, content: w.content, values, roles, loadImage });
+        const pdf = await renderWritten({ name: w.name, content: w.content, values, roles });
         const path = `${w.tenant_id}/envelopes/${envelopeId}/written-${w.id}.pdf`;
         const up = await supabase.storage.from(BUCKET).upload(path, pdf.bytes, { contentType: "application/pdf", upsert: true });
         if (up.error) throw up.error;

@@ -7,9 +7,7 @@
 // to print [Label] in a template preview with no record; highlight: { key:
 // label } for the send sheet's preview (values underlined in lilac, empty
 // ones as [Label]; empty: "red" prints those in red, for the template
-// editor). Formatted values come as values["key|format"]. Images are read
-// from sign-files with the service role, but only under the templates of a
-// workspace the caller is an active member of (2026-10-18). ASCII only.
+// editor). Formatted values come as values["key|format"]. ASCII only.
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -56,24 +54,6 @@ Deno.serve(async (req) => {
     return json(400, { error: "bad_request" }, corsHeaders);
   }
 
-  // Images: the send sheet's sender may not be a template admin, so read with
-  // the service role, limited to the caller's own workspaces' template files.
-  const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  let mine: Set<string> | null = null;
-  const loadImage = async (path: string) => {
-    const [tenant, folder] = path.split("/");
-    if (folder !== "templates" || path.includes("..") || !/^[0-9a-f-]{36}$/.test(tenant)) return null;
-    if (!mine) {
-      const { data } = await admin.from("members").select("tenant_id").eq("user_id", who.user.id).eq("user_status", "active");
-      mine = new Set((data ?? []).map((m: { tenant_id: string }) => m.tenant_id));
-    }
-    if (!mine.has(tenant)) return null;
-    const { data, error } = await admin.storage.from("sign-files").download(path);
-    return error || !data ? null : new Uint8Array(await data.arrayBuffer());
-  };
-
   try {
     const tags = body.tags ? strings(body.tags) : null;
     const highlight = body.highlight ? strings(body.highlight) : null;
@@ -85,7 +65,6 @@ Deno.serve(async (req) => {
       tags,
       highlight,
       emptyRed: body.empty === "red",
-      loadImage,
     });
     return new Response(new Uint8Array(pdf.bytes), {
       status: 200,

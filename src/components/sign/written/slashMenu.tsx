@@ -60,7 +60,7 @@ export interface Preview {
   what: string
 }
 
-export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'numbered' | 'quote' | 'callout' | 'table' | 'columns' | 'image' | 'divider' | 'section' | 'pageBreak', Preview> = {
+export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'numbered' | 'quote' | 'callout' | 'table' | 'columns' | 'divider' | 'section' | 'pageBreak', Preview> = {
   text: { what: 'Just start writing with plain text.', draw: () => <P>We’re delighted to offer you the role. This letter sets out the <b>main terms</b> of your employment.</P> },
   h1: { what: 'Big section heading.', draw: () => <P size={19} weight={600} color={INK}>Offer of employment</P> },
   h2: {
@@ -145,16 +145,6 @@ export const BLOCK_PREVIEWS: Record<'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'nu
           {bar('70%')}
         </span>
       </span>
-    ),
-  },
-  image: {
-    what: 'Upload, paste or drop a picture: a logo, a photo, a chart.',
-    draw: () => (
-      <svg viewBox="0 0 160 70" width="100%" height={70} aria-hidden>
-        <rect x="1" y="1" width="158" height="68" rx="4" fill="#F1F0EC" />
-        <path d="M20 58 60 26l26 22 18-12 36 22z" fill="#D9D8D2" />
-        <circle cx="118" cy="20" r="7" fill="#D9D8D2" />
-      </svg>
     ),
   },
   divider: {

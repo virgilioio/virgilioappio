@@ -42,8 +42,7 @@ import {
  * { key, op, value } around blocks, "gio-sign" { roleId, kind }, "gio-field"
  * { roleId, fieldType, required, label } inside the text, "gio-page-break",
  * "gio-callout" { icon, tone } around text, "gio-columns" around exactly two
- * "gio-column"s of blocks (columns.tsx keeps them in shape), "gio-image"
- * { path, w, h, width, align } (image.tsx).
+ * "gio-column"s of blocks (columns.tsx keeps them in shape).
  * Chips, fields and blocks are selected with a click (a 2px noir ring);
  * Delete or Backspace removes the selection.
  */
@@ -73,7 +72,7 @@ function useRemove(nodeKey: NodeKey) {
 }
 
 /** Click selects the node (Shift adds to the selection), through Lexical's own click handling. */
-export function useSelect(nodeKey: NodeKey) {
+function useSelect(nodeKey: NodeKey) {
   const [editor] = useLexicalComposerContext()
   const [selected, setSelected, clear] = useLexicalNodeSelection(nodeKey)
   const ref = useRef<HTMLElement | null>(null)

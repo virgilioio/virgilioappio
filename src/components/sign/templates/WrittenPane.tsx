@@ -87,8 +87,6 @@ import { FloatingToolbar } from '@/components/sign/written/floatingToolbar'
 import { $newCallout, CalloutPicker } from '@/components/sign/written/callout'
 import { $inTableCell, TableTools, insertTable, registerTableRules } from '@/components/sign/written/table'
 import { $inColumn, $lineBlock, insertColumns, registerColumnRules } from '@/components/sign/written/columns'
-import { ImageNode, ImagePlugin, pickImages } from '@/components/sign/written/image'
-import { useAuth } from '@/contexts/AuthContext'
 import { FieldList } from './FieldList'
 import { BLOCK_PREVIEWS, SlashItem, SlashPanel, fieldPreview, rememberPick, signPreview, signerFieldPreview, slashRows, type Preview, type SlashIcon } from '@/components/sign/written/slashMenu'
 import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
@@ -120,7 +118,7 @@ const THEME = {
   tableSelection: 'gio-w-table-selecting',
   tableCellSelected: 'gio-w-td-selected',
 }
-const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, HorizontalRuleNode, SignTagNode, GioIfNode, GioSignNode, GioFieldNode, GioPageBreakNode, CalloutNode, TableNode, TableRowNode, TableCellNode, ColumnsNode, ColumnNode, ImageNode]
+const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, HorizontalRuleNode, SignTagNode, GioIfNode, GioSignNode, GioFieldNode, GioPageBreakNode, CalloutNode, TableNode, TableRowNode, TableCellNode, ColumnsNode, ColumnNode]
 const WRITTEN_SIGNER_TYPES = ['signature', 'initials', 'date', 'name', 'text', 'checkbox'] as const
 
 /* ---- Inserting ----------------------------------------------------------- */
@@ -591,7 +589,6 @@ export function WrittenPane({
   /** The Preview page in view, for the rail. */
   onPage: (page: number | null) => void
 }) {
-  const { organizationId } = useAuth()
   const editorRef = useRef<LexicalEditor | null>(null)
   // The page, where the block handles sit (Gio Docs' gutter, in its left margin).
   const [paper, setPaper] = useState<HTMLDivElement | null>(null)
@@ -664,7 +661,6 @@ export function WrittenPane({
     block('quote', 'Quote', 'quote', () => $createQuoteNode(), '>', BLOCK_PREVIEWS.quote, 'quote blockquote')
     block('callout', 'Callout', 'callout', () => $newCallout(), '!>', BLOCK_PREVIEWS.callout, 'callout note tip info warning box highlight')
     out.push(new SlashItem('table', 'Table', 'Basic blocks', 'table', () => run((e) => insertTable(e)), { kw: 'table grid rows columns', preview: BLOCK_PREVIEWS.table }))
-    out.push(new SlashItem('image', 'Image', 'Basic blocks', 'image', () => run((e) => pickImages(e)), { kw: 'image picture photo logo upload', preview: BLOCK_PREVIEWS.image }))
     out.push(new SlashItem('columns', 'Two columns', 'Basic blocks', 'columns', () => run((e) => insertColumns(e)), { kw: 'columns two side by side layout', preview: BLOCK_PREVIEWS.columns, topOnly: true }))
     out.push(new SlashItem('divider', 'Divider', 'Basic blocks', 'divider', () => run((e) => (e.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined), e.focus())), { md: '---', kw: 'divider line rule hr', preview: BLOCK_PREVIEWS.divider }))
 
@@ -813,7 +809,6 @@ export function WrittenPane({
         {!preview && <FloatingToolbar onSection={addSection} />}
         {!preview && <CalloutPicker />}
         {paper && !preview && <TableTools anchor={paper} />}
-        {!preview && <ImagePlugin tenantId={organizationId} templateId={d.id} $insert={$insertBlock} />}
         {paper && !preview && <BlockHandles anchor={paper} />}
         <DuplicateShortcut />
         <EmptyLineHints />
