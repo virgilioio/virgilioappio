@@ -565,8 +565,13 @@ export function usedTags(d: Pick<TplDraft, 'fields' | 'written'>): Pick<TplField
 /* Validation (one message per step, shown in the footer)                     */
 /* ------------------------------------------------------------------------- */
 
-/** The template workflow's steps (2026-10-17): Template info · Document · Signers · Review & save. */
-export const WIZARD_STEPS = ['Template info', 'Document', 'Signers', 'Review & save'] as const
+/**
+ * The template workflow's steps (2026-10-17; Signers before Document, Allan
+ * 2026-10-18, so the signers exist when their fields are placed):
+ * Template info · Signers · Document · Review & save.
+ */
+export const WIZARD_STEPS = ['Template info', 'Signers', 'Document', 'Review & save'] as const
+export const STEP = { info: 0, signers: 1, document: 2, review: 3 } as const
 export type WizardStepIndex = 0 | 1 | 2
 
 export interface TplIssue {
@@ -619,21 +624,28 @@ export function templateIssues(draft: TplDraft): TplIssue[] {
   const out: TplIssue[] = []
   const add = (step: WizardStepIndex, text: string, blocks = true) => out.push({ step, text, blocks })
   // Template info
-  if (!d.name.trim()) add(0, 'Name the template')
-  if (draft.use_uploads && !draft.docs.length) add(0, 'Upload a document, or untick Upload a document')
-  if (!draft.use_written && !draft.use_uploads) add(0, 'Add at least one document')
-  if (d.docs.some((x) => x.uploading != null)) add(0, 'Waiting for the upload to finish')
-  if (pageCount(d) > 200) add(0, 'A template can hold up to 200 pages')
-  if (d.docs.length + d.written.length > 50) add(0, 'A template can hold up to 50 documents')
-  if (!d.subject.trim()) add(0, 'Add an email subject')
-  if (!d.body.trim()) add(0, 'Add an email message')
+  if (!d.name.trim()) add(STEP.info, 'Name the template')
+  if (draft.use_uploads && !draft.docs.length) add(STEP.info, 'Upload a document, or untick Upload a document')
+  if (!draft.use_written && !draft.use_uploads) add(STEP.info, 'Add at least one document')
+  if (d.docs.some((x) => x.uploading != null)) add(STEP.info, 'Waiting for the upload to finish')
+  if (pageCount(d) > 200) add(STEP.info, 'A template can hold up to 200 pages')
+  if (d.docs.length + d.written.length > 50) add(STEP.info, 'A template can hold up to 50 documents')
+  if (!d.subject.trim()) add(STEP.info, 'Add an email subject')
+  if (!d.body.trim()) add(STEP.info, 'Add an email message')
+  // Signers
+  if (!d.roles.some((r) => r.role === 'signer')) add(STEP.signers, 'Add at least one signer')
+  if (d.roles.some((r) => !r.label.trim())) add(STEP.signers, 'Every role needs a name')
+  const bad = d.roles.find((r) => r.fixed && (!r.name.trim() || !okEmail(r.email)))
+  if (bad) add(STEP.signers, `${bad.label || 'A fixed role'} needs a name and a valid email`)
+  const labels = d.roles.map((r) => r.label.trim().toLowerCase())
+  if (new Set(labels).size !== labels.length) add(STEP.signers, 'Two roles have the same name')
   // Document
   if (draft.use_written && (!d.written.length || d.written.every((w) => isBlankWritten(w.content)))) {
-    add(1, 'Write the document, or untick Write in Gio')
+    add(STEP.document, 'Write the document, or untick Write in Gio')
   }
   const signing = new Set(d.roles.filter((r) => r.role !== 'cc').map((r) => r.id))
   // The document is named on the Document step, where it's written.
-  if (d.written.some((w) => !w.name.trim())) add(1, 'Name the written document')
+  if (d.written.some((w) => !w.name.trim())) add(STEP.document, 'Name the written document')
   const orphan = d.written.find((w) => {
     let bad = false
     walkWritten(w.content, (n) => {
@@ -641,16 +653,9 @@ export function templateIssues(draft: TplDraft): TplIssue[] {
     })
     return bad
   })
-  if (orphan) add(1, `A signer field in “${orphan.name}” belongs to a role that isn’t on the template, or only gets a copy`)
-  // Roles come after the document, so a missing signature keeps Save off but not Continue.
-  for (const r of signersWithoutSignature(d)) add(1, `${r.label || 'A signer'} needs a signature field`, false)
-  // Signers
-  if (!d.roles.some((r) => r.role === 'signer')) add(2, 'Add at least one signer')
-  if (d.roles.some((r) => !r.label.trim())) add(2, 'Every role needs a name')
-  const bad = d.roles.find((r) => r.fixed && (!r.name.trim() || !okEmail(r.email)))
-  if (bad) add(2, `${bad.label || 'A fixed role'} needs a name and a valid email`)
-  const labels = d.roles.map((r) => r.label.trim().toLowerCase())
-  if (new Set(labels).size !== labels.length) add(2, 'Two roles have the same name')
+  if (orphan) add(STEP.document, `A signer field in “${orphan.name}” belongs to a role that isn’t on the template, or only gets a copy`)
+  // A missing signature keeps Save off but not Continue: Review & save lists it with Go to.
+  for (const r of signersWithoutSignature(d)) add(STEP.document, `${r.label || 'A signer'} needs a signature field`, false)
   return out
 }
 

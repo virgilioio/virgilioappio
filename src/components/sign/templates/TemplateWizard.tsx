@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import {
+  STEP,
   WIZARD_STEPS,
   draftCoverage,
   effectiveDraft,
@@ -33,8 +34,8 @@ import { ReviewStep } from './ReviewStep'
 // One sentence under each step's title (the order is WIZARD_STEPS).
 const STEP_SUB = [
   'The name and type people see when picking a template, and the documents they sign.',
-  'Write the agreement or place offer fields on the uploaded pages. Each signer has their own colour.',
   'Who signs, in what order, and where each person comes from when the template is sent.',
+  'Write the agreement or place offer fields on the uploaded pages. Each signer has their own colour.',
   'One last look. Jump back to any step to change it.',
 ]
 
@@ -88,12 +89,12 @@ export function TemplateWizard({
   // What will be saved: only the ticked sources (Template info's cards).
   const e = effectiveDraft(d)
   const issues = templateIssues(d)
-  const issue = step < 3 ? stepIssue(step, d) : null
+  const issue = step < STEP.review ? stepIssue(step, d) : null
   // Values the linked form doesn't have: the database refuses them, so Save waits (Review lists them).
   const offForm = d.kind === 'candidate' && d.offer_form_id && formTags.data ? draftCoverage(e, formTags.data).blocking : []
   const anyIssue = issues.length > 0 || offForm.length > 0
   // Steps after Template info open once it's valid.
-  const reachable = (i: number) => i === 0 || !stepIssue(0, d)
+  const reachable = (i: number) => i === STEP.info || !stepIssue(STEP.info, d)
   const go = (i: number) => {
     if (!reachable(i)) return
     setStep(i)
@@ -144,7 +145,7 @@ export function TemplateWizard({
       <CircleAlert className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} aria-hidden />
       {issue}
     </span>
-  ) : step === 0 ? (
+  ) : step === STEP.info ? (
     <>
       Required fields marked with <span className="text-virgilio-error">*</span>
     </>
@@ -182,16 +183,16 @@ export function TemplateWizard({
           </Badge>
         ) : undefined
       }
-      subtitle={step === 1 ? documentSub(e) : STEP_SUB[step]}
+      subtitle={step === STEP.document ? documentSub(e) : STEP_SUB[step]}
       steps={WIZARD_STEPS.map((t, i) => {
         const mine = issues.filter((x) => x.step === i)
         return {
           title: t,
           state: !reachable(i)
             ? 'locked'
-            : i < 3 && mine.length && (seen.has(i) || isEdit) && i !== step
+            : i < STEP.review && mine.length && (seen.has(i) || isEdit) && i !== step
             ? 'error'
-            : i < 3 && !mine.length && (i < step || seen.has(i + 1) || isEdit)
+            : i < STEP.review && !mine.length && (i < step || seen.has(i + 1) || isEdit)
             ? 'done'
             : 'todo',
         }
@@ -210,37 +211,37 @@ export function TemplateWizard({
           ? { title: `Discard your changes to ${d.name.trim() || 'this template'}?`, detail: 'The saved version stays as it is.' }
           : { title: 'Discard this template?', detail: 'Nothing has been saved, so it won’t appear in Templates.' }
       }
-      flush={step === 1}
-      wide={step === 1}
+      flush={step === STEP.document}
+      wide={step === STEP.document}
       secondary={
-        isEdit && step < 3 ? (
+        isEdit && step < STEP.review ? (
           <Button variant="secondary" onClick={save} disabled={anyIssue || busy}>
             Save and exit
           </Button>
         ) : undefined
       }
       primary={
-        step < 3
-          ? { label: step === 2 ? 'Review & save' : 'Continue', onClick: () => go(step + 1), disabled: !!issue || busy }
+        step < STEP.review
+          ? { label: step === STEP.review - 1 ? 'Review & save' : 'Continue', onClick: () => go(step + 1), disabled: !!issue || busy }
           : { label: isEdit ? 'Save changes' : 'Save template', icon: Check, onClick: save, disabled: anyIssue, loading: busy, className: 'min-w-[140px]' }
       }
     >
-      {step === 0 && organizationId && (
+      {step === STEP.info && organizationId && (
         <>
-          <InfoStep d={d} set={set} tenantId={organizationId} onWrite={reachable(1) ? () => go(1) : undefined} />
+          <InfoStep d={d} set={set} tenantId={organizationId} onWrite={reachable(STEP.document) ? () => go(STEP.document) : undefined} />
           <DefaultEmail d={d} set={set} />
         </>
       )}
-      {step === 1 && <DocumentStep d={e} set={set} />}
-      {step === 2 && <RolesStep d={d} set={set} me={me} />}
-      {step === 3 && <ReviewStep d={e} go={go} />}
+      {step === STEP.signers && <RolesStep d={d} set={set} me={me} />}
+      {step === STEP.document && <DocumentStep d={e} set={set} />}
+      {step === STEP.review && <ReviewStep d={e} go={go} />}
     </WizardSheet>
   )
 }
 
 /** The Document step's sentence, by which sources the template uses (§3). */
 function documentSub(e: TplDraft) {
-  if (e.use_written && e.use_uploads) return STEP_SUB[1]
+  if (e.use_written && e.use_uploads) return STEP_SUB[STEP.document]
   if (e.use_uploads) return 'Drag offer fields onto the pages where the values should go, or click one to place it.'
   return 'Write the agreement. Type / to add offer fields, signer fields, signature blocks and conditional sections.'
 }

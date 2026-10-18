@@ -4,7 +4,7 @@ vi.mock('@/lib/supabaseClient', () => ({ supabase: {}, supabaseUrl: '', supabase
 vi.mock('@/lib/sign/pdf', () => ({ loadTemplatePdf: vi.fn() }))
 
 import { docItems, emptyContent, remapRoles, signBlocks, type TplWritten } from '@/lib/sign/written'
-import { duplicateDraft, effectiveDraft, isBlankWritten, moveItem, newDraft, stepIssue, templateIssues, usedTags, type TplDoc, type TplDraft } from '@/lib/sign/templates'
+import { STEP, duplicateDraft, effectiveDraft, isBlankWritten, moveItem, newDraft, stepIssue, templateIssues, usedTags, type TplDoc, type TplDraft } from '@/lib/sign/templates'
 
 const pdf = (id: string, pages: number, position: number): TplDoc => ({
   id,
@@ -81,20 +81,20 @@ describe('signing blocks and checks', () => {
     expect(templateIssues(ok)).toEqual([])
     const inSection = draft({ written: [written('w', 0, content({ type: 'gio-if', key: 'x', op: 'yes', children: [block('r1')] }))] })
     const issue = templateIssues(inSection).find((i) => /needs a signature field/.test(i.text))
-    // Flagged on the Document step; it keeps Save off but not Continue (roles come after).
-    expect(issue).toMatchObject({ step: 1, blocks: false })
-    expect(stepIssue(1, inSection)).toBeNull()
+    // Flagged on the Document step; it keeps Save off but not Continue (Review & save lists it).
+    expect(issue).toMatchObject({ step: STEP.document, blocks: false })
+    expect(stepIssue(STEP.document, inSection)).toBeNull()
   })
 
   it('flags a block for a removed role', () => {
     const d = draft({ written: [written('Offer', 0, content(block('gone')))] })
-    expect(stepIssue(1, d)).toMatch(/belongs to a role/)
+    expect(stepIssue(STEP.document, d)).toMatch(/belongs to a role/)
   })
 
   it('needs a document of either kind', () => {
-    expect(stepIssue(0, draft({ use_written: false, use_uploads: false }))).toBe('Add at least one document')
-    expect(stepIssue(0, draft({ use_written: false, use_uploads: true }))).toBe('Upload a document, or untick Upload a document')
-    expect(stepIssue(1, draft())).toBe('Write the document, or untick Write in Gio')
+    expect(stepIssue(STEP.info, draft({ use_written: false, use_uploads: false }))).toBe('Add at least one document')
+    expect(stepIssue(STEP.info, draft({ use_written: false, use_uploads: true }))).toBe('Upload a document, or untick Upload a document')
+    expect(stepIssue(STEP.document, draft())).toBe('Write the document, or untick Write in Gio')
   })
 
   it('lists blocks with whether they are conditional', () => {

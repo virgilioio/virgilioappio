@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
   ROLE_SOURCES,
+  STEP,
   WIZARD_STEPS,
   draftCoverage,
   listLabels,
@@ -35,7 +36,7 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
   const issues = [
     ...templateIssues(d).map((i) => ({ step: i.step as number, text: i.text })),
     ...(cov?.blocking.length
-      ? [{ step: 1, text: `${listLabels(cov.blocking.map((k) => tagLabel(d.kind, k)), 3)} ${cov.blocking.length === 1 ? 'isn’t' : 'aren’t'} in the ${formName} form` }]
+      ? [{ step: STEP.document as number, text: `${listLabels(cov.blocking.map((k) => tagLabel(d.kind, k)), 3)} ${cov.blocking.length === 1 ? 'isn’t' : 'aren’t'} in the ${formName} form` }]
       : []),
   ]
 
@@ -97,7 +98,7 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
       )}
 
       {cov && (
-        <FormSection title="Offer form coverage" action={edit('Edit document', 1)}>
+        <FormSection title="Offer form coverage" action={edit('Edit document', STEP.document)}>
           <div className="flex flex-col gap-3">
             <CoverageCard placed={cov.mapped.length} total={cov.total} missing={cov.missing.length} />
             {cov.missing.length > 0 && (
@@ -114,7 +115,7 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
         </FormSection>
       )}
 
-      <FormSection title={`Roles · ${d.roles.length}`} action={edit('Edit signers', 2)}>
+      <FormSection title={`Roles · ${d.roles.length}`} action={edit('Edit signers', STEP.signers)}>
         <ul className="flex flex-col gap-2.5">
           {d.roles.map((r, i) => {
             const src = ROLE_SOURCES[d.kind].find((s) => s.value === roleSource(d, r))?.label ?? 'Typed in when sending'
@@ -134,7 +135,7 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
         </ul>
       </FormSection>
 
-      <FormSection title="Default email" action={edit('Edit email', 0)}>
+      <FormSection title="Default email" action={edit('Edit email', STEP.info)}>
         <p className="font-inter text-[13px] font-medium text-text-primary">
           <TagText text={d.subject || 'No subject yet'} label={(k) => tagLabel(d.kind, k)} />
         </p>
