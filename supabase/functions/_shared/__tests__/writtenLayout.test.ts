@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { conditionHolds, layoutWritten, PAGE_H, writtenKeys, type BoxOp, type IconOp, type TextOp } from '../sign/writtenLayout';
+import { conditionHolds, layoutWritten, PAGE_H, writtenKeys, type BoxOp, type IconOp, type RectOp, type TextOp } from '../sign/writtenLayout';
 
 // Every character is half the font size wide.
 const measure = (text: string, _style: string, size: number) => text.length * size * 0.5;
@@ -238,6 +238,75 @@ describe('writtenKeys', () => {
         layoutWritten(doc({ type: 'gio-if', key: 'remote', op: 'yes', children: [callout({}, text('Remote rules'))] }), { values: { remote: v }, measure });
       expect(boxes(sec('yes')).length).toBe(1);
       expect(boxes(sec('no')).length).toBe(0);
+    });
+  });
+
+  describe('tables', () => {
+    const cell = (header: boolean, ...children: object[]) => ({ type: 'tablecell', headerState: header ? 1 : 0, children: [para(...children)] });
+    const row = (header: boolean, ...texts: (string | object)[]) => ({ type: 'tablerow', children: texts.map((t) => cell(header, typeof t === 'string' ? text(t) : t)) });
+    const tableOf = (...rows: object[]) => ({ type: 'table', children: rows });
+    const rects = (l: ReturnType<typeof layoutWritten>, page = 0) => l.pages[page].ops.filter((o): o is RectOp => o.kind === 'rect');
+
+    it('lays out equal columns with a bold header row on grey', () => {
+      const l = layoutWritten(doc(tableOf(row(true, 'Item', 'Amount'), row(false, 'Base', '100'))), { values: {}, measure });
+      const t = texts(l);
+      const item = t.find((o) => o.text === 'Item')!;
+      const amount = t.find((o) => o.text === 'Amount')!;
+      const base = t.find((o) => o.text === 'Base')!;
+      expect(item).toMatchObject({ x: 72 + 6, style: 'bold' });
+      expect(amount.x).toBe(72 + 234 + 6);
+      expect(base).toMatchObject({ x: 78, style: 'regular' });
+      expect(base.y).toBeGreaterThan(item.y);
+      const [fill] = rects(l);
+      expect(fill).toMatchObject({ x: 72, w: 468, fill: '#F4F3EF' });
+      // The grey goes under the header's text.
+      expect(l.pages[0].ops.indexOf(fill)).toBeLessThan(l.pages[0].ops.indexOf(item));
+      // Three vertical borders per row.
+      const verticals = l.pages[0].ops.filter((o) => o.kind === 'line' && o.x1 === o.x2);
+      expect(verticals.length).toBe(6);
+    });
+
+    it('fills tags and keeps signer fields inside cells', () => {
+      const l = layoutWritten(
+        doc(tableOf(row(false, { type: 'placeholder', placeholderKey: 'salary' }, { type: 'gio-field', roleId: 'r1', fieldType: 'initials', required: true }))),
+        { values: { salary: '$120,000' }, measure },
+      );
+      expect(texts(l).some((o) => o.text === '$120,000')).toBe(true);
+      expect(l.blocks).toHaveLength(1);
+      expect(l.blocks[0]).toMatchObject({ role_id: 'r1', kind: 'initials', page: 0 });
+      expect(l.blocks[0].x).toBeCloseTo(((72 + 234 + 6) / 612) * 100, 1);
+    });
+
+    it('moves whole rows to the next page and repeats the header there', () => {
+      const body = Array.from({ length: 60 }, (_, i) => row(false, 'Row' + i, 'v' + i));
+      const l = layoutWritten(doc(tableOf(row(true, 'Name', 'Value'), ...body)), { values: {}, measure });
+      expect(l.pages.length).toBeGreaterThan(1);
+      for (let p = 0; p < l.pages.length; p++) {
+        // Every page starts with the header, and each row's two cells sit on the same page and line.
+        expect(texts(l, p)[0].text).toBe('Name');
+        expect(rects(l, p).length).toBe(1);
+      }
+      for (let i = 0; i < 60; i++) {
+        const where = l.pages.map((_, p) => texts(l, p).filter((o) => o.text === 'Row' + i || o.text === 'v' + i));
+        const page = where.findIndex((w) => w.length);
+        expect(where[page]).toHaveLength(2);
+        expect(where[page][0].y).toBe(where[page][1].y);
+      }
+    });
+
+    it('carries a row taller than a page onto the next page without losing words', () => {
+      const long = Array.from({ length: 900 }, (_, i) => 'w' + i).join(' ');
+      const l = layoutWritten(doc(tableOf(row(false, long, 'short'))), { values: {}, measure });
+      expect(l.pages.length).toBeGreaterThan(1);
+      const all = l.pages.flatMap((_, p) => texts(l, p).map((o) => o.text));
+      for (let i = 0; i < 900; i += 97) expect(all.filter((t) => t === 'w' + i)).toHaveLength(1);
+      expect(all.filter((t) => t === 'short')).toHaveLength(1);
+    });
+
+    it('prints inside a section only when the section does', () => {
+      const sec = (v: string) => layoutWritten(doc({ type: 'gio-if', key: 'bonus', op: 'yes', children: [tableOf(row(false, 'Bonus'))] }), { values: { bonus: v }, measure });
+      expect(texts(sec('yes')).map((o) => o.text)).toEqual(['Bonus']);
+      expect(texts(sec('no'))).toEqual([]);
     });
   });
 });

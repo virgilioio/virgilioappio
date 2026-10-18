@@ -1,6 +1,7 @@
 // Gio Sign: lays out a document written in Gio (2026-10-17). The input is the
 // editor's own JSON (Lexical): paragraphs, headings, lists, quotes, page
-// breaks, callouts ("gio-callout": icon, tone; added 2026-10-18), data tags
+// breaks, callouts ("gio-callout": icon, tone; added 2026-10-18), tables
+// ("table" > "tablerow" > "tablecell" with headerState; 2026-10-18), data tags
 // ("placeholder", with an optional print "format"),
 // conditional sections ("gio-if"), signing blocks ("gio-sign") and signer
 // fields inside the text ("gio-field": roleId, fieldType, required, label). The output is a list of pages of simple drawing
@@ -51,7 +52,17 @@ export interface IconOp {
   icon: Exclude<CalloutIcon, "none">;
   tone: CalloutTone;
 }
-export type Op = TextOp | LineOp | BoxOp | IconOp;
+/** A plain filled rectangle (a table's header row), drawn under its text. */
+export interface RectOp {
+  kind: "rect";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** "#RRGGBB". */
+  fill: string;
+}
+export type Op = TextOp | LineOp | BoxOp | IconOp | RectOp;
 
 // ---- Callouts (Gio Docs' callout, in the ATS's own colours) -----------------
 export type CalloutTone = "neutral" | "yellow" | "green" | "blue" | "red";
@@ -450,41 +461,47 @@ function alignOf(format: unknown): Align {
   return "left";
 }
 
+/** Draws one line with its top at `top` (no page check, no advance). */
+function drawLine(flow: Flow, line: Line, left: number, width: number, size: number, align: Align, top: number) {
+  const baseline = top + (size * LEAD - size) / 2 + size * 0.8;
+  const spaces = line.units.filter((u) => u.t === "space").length;
+  const slack = Math.max(0, width - line.w);
+  let x = left;
+  let extra = 0;
+  if (align === "center") x += slack / 2;
+  else if (align === "right") x += slack;
+  else if (align === "justify" && !line.hard && spaces > 0) extra = slack / spaces;
+  for (const u of line.units) {
+    if (u.t === "space") {
+      x += u.w + extra;
+      continue;
+    }
+    if (u.t !== "word") continue;
+    for (const p of u.pieces) {
+      if (p.field) {
+        inlineField(flow, p, x, baseline);
+        x += p.w;
+        continue;
+      }
+      flow.page.ops.push({ kind: "text", x, y: baseline, text: p.text, style: p.style, size: p.size, color: p.color, underline: p.underline || undefined, strike: p.strike || undefined });
+      if (p.mark) flow.page.ops.push({ kind: "line", x1: x, y1: baseline + size * 0.22, x2: x + p.w, y2: baseline + size * 0.22, width: Math.max(1.2, size / 8), color: "lilac" });
+      if (p.underline) flow.page.ops.push({ kind: "line", x1: x, y1: baseline + size * 0.12, x2: x + p.w, y2: baseline + size * 0.12, width: Math.max(0.5, size / 18), color: p.color });
+      if (p.strike) flow.page.ops.push({ kind: "line", x1: x, y1: baseline - size * 0.28, x2: x + p.w, y2: baseline - size * 0.28, width: Math.max(0.5, size / 18), color: p.color });
+      x += p.w;
+    }
+  }
+}
+
 function drawLines(flow: Flow, lines: Line[], left: number, width: number, size: number, align: Align, gutter?: (y: number, lead: number) => void, marker?: { text: string; style: Style; w: number }) {
   const lead = size * LEAD;
   lines.forEach((line, i) => {
     flow.ensure(lead);
     const top = flow.y;
-    const baseline = top + (lead - size) / 2 + size * 0.8;
     if (i === 0 && marker) {
+      const baseline = top + (lead - size) / 2 + size * 0.8;
       flow.page.ops.push({ kind: "text", x: left - marker.w - 6, y: baseline, text: marker.text, style: marker.style, size, color: "ink" });
     }
-    const spaces = line.units.filter((u) => u.t === "space").length;
-    const slack = Math.max(0, width - line.w);
-    let x = left;
-    let extra = 0;
-    if (align === "center") x += slack / 2;
-    else if (align === "right") x += slack;
-    else if (align === "justify" && !line.hard && spaces > 0) extra = slack / spaces;
-    for (const u of line.units) {
-      if (u.t === "space") {
-        x += u.w + extra;
-        continue;
-      }
-      if (u.t !== "word") continue;
-      for (const p of u.pieces) {
-        if (p.field) {
-          inlineField(flow, p, x, baseline);
-          x += p.w;
-          continue;
-        }
-        flow.page.ops.push({ kind: "text", x, y: baseline, text: p.text, style: p.style, size: p.size, color: p.color, underline: p.underline || undefined, strike: p.strike || undefined });
-        if (p.mark) flow.page.ops.push({ kind: "line", x1: x, y1: baseline + size * 0.22, x2: x + p.w, y2: baseline + size * 0.22, width: Math.max(1.2, size / 8), color: "lilac" });
-        if (p.underline) flow.page.ops.push({ kind: "line", x1: x, y1: baseline + size * 0.12, x2: x + p.w, y2: baseline + size * 0.12, width: Math.max(0.5, size / 18), color: p.color });
-        if (p.strike) flow.page.ops.push({ kind: "line", x1: x, y1: baseline - size * 0.28, x2: x + p.w, y2: baseline - size * 0.28, width: Math.max(0.5, size / 18), color: p.color });
-        x += p.w;
-      }
-    }
+    drawLine(flow, line, left, width, size, align, top);
     if (gutter) gutter(top, lead);
     flow.y += lead;
   });
@@ -535,16 +552,21 @@ interface Ctx {
   quoteBar: number | null;
 }
 
-function paragraph(c: Ctx, n: Node, size: number, base: Style, marker?: { text: string; style: Style; w: number }) {
+/** A paragraph's lines, where they go, and how they align, without drawing them. */
+function layoutParagraph(c: Ctx, n: Node, size: number, base: Style) {
   const inline = new Inline(c.o, size, c.italic ? (base === "bold" ? "boldItalic" : "italic") : base, c.color);
   collectInline(c.o, n.children, inline);
   const units = inline.done();
   const indent = Math.max(0, Math.min(6, Number(n.indent) || 0)) * 24;
   const left = c.left + indent;
   const width = Math.max(40, c.width - indent);
-  const lines = wrapUnits(units, width, c.o.measure);
+  return { lines: wrapUnits(units, width, c.o.measure), left, width, align: alignOf(n.format) };
+}
+
+function paragraph(c: Ctx, n: Node, size: number, base: Style, marker?: { text: string; style: Style; w: number }) {
+  const { lines, left, width, align } = layoutParagraph(c, n, size, base);
   const bar = c.quoteBar;
-  drawLines(c.flow, lines, left, width, size, alignOf(n.format), bar == null ? undefined : (top, lead) => {
+  drawLines(c.flow, lines, left, width, size, align, bar == null ? undefined : (top, lead) => {
     c.flow.page.ops.push({ kind: "line", x1: bar, y1: top, x2: bar, y2: top + lead, width: 2, color: "rule" });
   }, marker);
 }
@@ -632,6 +654,114 @@ function callout(c: Ctx, n: Node) {
   flow.y += PARA_AFTER + 2;
 }
 
+const CELL_PAD_X = 6;
+const CELL_PAD_Y = 4;
+const CELL_GAP = 2;
+const HEADER_FILL = "#F4F3EF";
+
+type CellLine = { line: Line; left: number; width: number; align: Align; gap: number };
+type LaidRow = { header: boolean; cells: CellLine[][] };
+
+/**
+ * A table: equal columns across the text width, hairline borders, the header
+ * row bold on grey. A row that doesn't fit moves to the next page; one taller
+ * than a page carries on there. When a table runs onto a new page its header
+ * row is drawn again first. Cells hold paragraphs (anything else prints its
+ * text); signer fields inside cells are kept as fields.
+ */
+function table(c: Ctx, n: Node) {
+  const flow = c.flow;
+  const lead = BODY * LEAD;
+  const rows = ((n.children ?? []) as Node[]).filter((r) => r?.type === "tablerow");
+  const cellsOf = (r: Node) => ((r.children ?? []) as Node[]).filter((k) => k?.type === "tablecell");
+  const cols = Math.max(1, ...rows.map((r) => cellsOf(r).length));
+  if (!rows.length) return;
+  const colW = c.width / cols;
+
+  const lay = (r: Node): LaidRow => {
+    const cells = cellsOf(r);
+    const header = cells.length > 0 && cells.every((k) => (Number(k.headerState) || 0) !== 0);
+    return {
+      header,
+      cells: Array.from({ length: cols }, (_, ci) => {
+        const cell = cells[ci];
+        if (!cell) return [];
+        const inner: Ctx = { ...c, left: c.left + ci * colW + CELL_PAD_X, width: colW - CELL_PAD_X * 2, italic: false, color: "ink", quoteBar: null };
+        const out: CellLine[] = [];
+        const paras = ((cell.children ?? []) as Node[]).filter(Boolean);
+        paras.forEach((p, pi) => {
+          const kids = p.type === "paragraph" || Array.isArray(p.children) ? p : { children: [p] };
+          const l = layoutParagraph(inner, kids, BODY, (Number(cell.headerState) || 0) !== 0 ? "bold" : "regular");
+          l.lines.forEach((line, li) => out.push({ line, left: l.left, width: l.width, align: l.align, gap: pi > 0 && li === 0 ? CELL_GAP : 0 }));
+        });
+        return out;
+      }),
+    };
+  };
+
+  // Draws a row from `from` (lines already drawn per cell) on this page; returns where each cell got to.
+  const drawRow = (row: LaidRow, from: number[]): number[] => {
+    const top = flow.y;
+    const at = flow.page.ops.length;
+    const room = PAGE_H - MARGIN_BOTTOM - top - CELL_PAD_Y * 2;
+    const next = from.slice();
+    let used = 0;
+    row.cells.forEach((cell, ci) => {
+      let y = top + CELL_PAD_Y;
+      while (next[ci] < cell.length) {
+        const it = cell[next[ci]];
+        if (y - top - CELL_PAD_Y + it.gap + lead > room + 0.01 && y > top + CELL_PAD_Y) break;
+        y += it.gap;
+        drawLine(flow, it.line, it.left, it.width, BODY, it.align, y);
+        y += lead;
+        next[ci]++;
+      }
+      used = Math.max(used, y - top - CELL_PAD_Y);
+    });
+    const h = Math.max(used, lead) + CELL_PAD_Y * 2;
+    const under: Op[] = [];
+    if (row.header) under.push({ kind: "rect", x: c.left, y: top, w: c.width, h, fill: HEADER_FILL });
+    flow.page.ops.splice(at, 0, ...under);
+    const right = c.left + c.width;
+    const bottom = top + h;
+    flow.page.ops.push({ kind: "line", x1: c.left, y1: top, x2: right, y2: top, width: 0.75, color: "rule" });
+    flow.page.ops.push({ kind: "line", x1: c.left, y1: bottom, x2: right, y2: bottom, width: 0.75, color: "rule" });
+    for (let i = 0; i <= cols; i++) {
+      const x = c.left + i * colW;
+      flow.page.ops.push({ kind: "line", x1: x, y1: top, x2: x, y2: bottom, width: 0.75, color: "rule" });
+    }
+    flow.y = bottom;
+    return next;
+  };
+  const rowHeight = (row: LaidRow) =>
+    Math.max(lead, ...row.cells.map((cell) => cell.reduce((s, it) => s + it.gap + lead, 0))) + CELL_PAD_Y * 2;
+
+  const laid = rows.map(lay);
+  const head = laid[0].header ? laid[0] : null;
+  const headH = head ? rowHeight(head) : 0;
+  flow.space(4);
+  laid.forEach((row, ri) => {
+    let from = row.cells.map(() => 0);
+    let first = true;
+    while (first || row.cells.some((cell, ci) => from[ci] < cell.length)) {
+      const page = flow.pages.length;
+      // The whole row if it fits a page, else at least a line of it; the header row keeps the next row with it.
+      const want = rowHeight(row) + (row === head && laid[1] ? rowHeight(laid[1]) : 0);
+      flow.ensure(Math.min(rowHeight(row), lead + CELL_PAD_Y * 2));
+      if (want <= PAGE_H - MARGIN_TOP - MARGIN_BOTTOM) flow.ensure(want);
+      else if (rowHeight(row) <= PAGE_H - MARGIN_TOP - MARGIN_BOTTOM) flow.ensure(rowHeight(row));
+      // On a new page, the header row again (unless this is the header row, or it can't fit with a line of this row).
+      if (head && ri > 0 && (flow.pages.length !== page || !first) && flow.atTop && headH + lead + CELL_PAD_Y * 2 < PAGE_H - MARGIN_TOP - MARGIN_BOTTOM) {
+        drawRow(head, head.cells.map(() => 0));
+      }
+      from = drawRow(row, from);
+      first = false;
+      if (row.cells.some((cell, ci) => from[ci] < cell.length)) flow.newPage();
+    }
+  });
+  flow.y += PARA_AFTER + 2;
+}
+
 function round3(n: number) {
   return Math.round(n * 1000) / 1000;
 }
@@ -657,6 +787,9 @@ function blocksOf(c: Ctx, nodes: Node[] | undefined) {
       }
       case "gio-callout":
         callout(c, n);
+        break;
+      case "table":
+        table(c, n);
         break;
       case "list":
         listItems(c, n, 0);

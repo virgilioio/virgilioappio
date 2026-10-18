@@ -122,6 +122,8 @@ export async function renderWritten(input: WrittenInput): Promise<WrittenPdf> {
       } else if (op.kind === "box") {
         const t = CALLOUT_TONES[op.tone];
         page.drawSvgPath(roundRect(op.x, op.y, op.w, op.h), { x: 0, y: layout.height, color: hex(t.bg), borderColor: hex(t.ring), borderWidth: 0.75 });
+      } else if (op.kind === "rect") {
+        page.drawRectangle({ x: op.x, y: layout.height - op.y - op.h, width: op.w, height: op.h, color: hex(op.fill) });
       } else if (op.kind === "icon") {
         const ink = hex(CALLOUT_TONES[op.tone].ink);
         const scale = op.size / 24;
