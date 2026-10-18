@@ -309,4 +309,16 @@ describe('writtenKeys', () => {
       expect(texts(sec('no'))).toEqual([]);
     });
   });
+
+  it('prints Small text at 9.5pt with headings in the same ratio', () => {
+    const content = { ...doc({ type: 'heading', tag: 'h1', children: [text('Offer')] }, para(text('Body')), { type: 'table', children: [{ type: 'tablerow', children: [{ type: 'tablecell', children: [para(text('Cell'))] }] }] }), gio: { small: true } };
+    const small = texts(layoutWritten(content, { values: {}, measure }));
+    expect(small.find((o) => o.text === 'Offer')!.size).toBeCloseTo(20 * (9.5 / 11));
+    expect(small.find((o) => o.text === 'Body')!.size).toBe(9.5);
+    expect(small.find((o) => o.text === 'Cell')!.size).toBe(9.5);
+    const normal = texts(layoutWritten({ root: content.root }, { values: {}, measure }));
+    expect(normal.find((o) => o.text === 'Body')!.size).toBe(11);
+    // Smaller lines: the next line starts higher on the page.
+    expect(small.find((o) => o.text === 'Cell')!.y).toBeLessThan(normal.find((o) => o.text === 'Cell')!.y);
+  });
 });

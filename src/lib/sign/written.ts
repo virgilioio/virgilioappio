@@ -13,7 +13,8 @@ import type { TplDoc, TplDraft } from './templates'
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export type LexicalJson = { root: Record<string, any> }
+/** A written document: Lexical's own JSON, plus Gio's document settings (Small text). */
+export type LexicalJson = { root: Record<string, any>; gio?: { small?: boolean } }
 
 export interface TplWritten {
   id: string

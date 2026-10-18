@@ -1,7 +1,8 @@
 // Gio Sign: lays out a document written in Gio (2026-10-17). The input is the
 // editor's own JSON (Lexical): paragraphs, headings, lists, quotes, page
 // breaks, callouts ("gio-callout": icon, tone; added 2026-10-18), tables
-// ("table" > "tablerow" > "tablecell" with headerState; 2026-10-18), data tags
+// ("table" > "tablerow" > "tablecell" with headerState; 2026-10-18), small
+// text for the whole document (content.gio.small; 2026-10-18), data tags
 // ("placeholder", with an optional print "format"),
 // conditional sections ("gio-if"), signing blocks ("gio-sign") and signer
 // fields inside the text ("gio-field": roleId, fieldType, required, label). The output is a list of pages of simple drawing
@@ -144,6 +145,8 @@ const MARGIN_TOP = 72;
 const MARGIN_BOTTOM = 72;
 const CONTENT_W = PAGE_W - MARGIN_X * 2;
 const BODY = 11;
+/** Small text (Gio Docs' page setting): body 9.5pt, headings in the same ratio. */
+export const SMALL_SCALE = 9.5 / 11;
 const LEAD = 1.4;
 const PARA_AFTER = 6;
 const LIST_INDENT = 22;
@@ -550,6 +553,9 @@ interface Ctx {
   italic: boolean;
   color: Ink;
   quoteBar: number | null;
+  /** Body text size: BODY, or smaller with Small text. */
+  body: number;
+  scale: number;
 }
 
 /** A paragraph's lines, where they go, and how they align, without drawing them. */
@@ -582,8 +588,8 @@ function listItems(c: Ctx, list: Node, depth: number) {
     const inner: Ctx = { ...c, left: c.left + LIST_INDENT, width: c.width - LIST_INDENT };
     if (inline.length || !nested.length) {
       const text = numbered ? n + "." : list.listType === "check" ? (item.checked ? "[x]" : "[ ]") : BULLET;
-      const marker = { text, style: "regular" as Style, w: c.o.measure(text, "regular", BODY) };
-      paragraph(inner, { children: inline, format: item.format, indent: 0 }, BODY, "regular", marker);
+      const marker = { text, style: "regular" as Style, w: c.o.measure(text, "regular", c.body) };
+      paragraph(inner, { children: inline, format: item.format, indent: 0 }, c.body, "regular", marker);
       c.flow.y += 2;
       n++;
     }
@@ -631,7 +637,7 @@ function callout(c: Ctx, n: Node) {
   const flow = c.flow;
   const icon = calloutIcon(n.icon);
   const tone = calloutTone(n.tone);
-  const lead = BODY * LEAD;
+  const lead = c.body * LEAD;
   flow.space(4);
   flow.ensure(CALLOUT_PAD * 2 + lead);
   const first = flow.pages.length - 1;
@@ -641,9 +647,10 @@ function callout(c: Ctx, n: Node) {
   const inner: Ctx = { ...c, left: c.left + CALLOUT_PAD + shift, width: c.width - CALLOUT_PAD * 2 - shift };
   flow.y += CALLOUT_PAD;
   if (icon !== "none") {
-    flow.page.ops.push({ kind: "icon", x: c.left + CALLOUT_PAD, y: flow.y + (lead - CALLOUT_ICON) / 2, size: CALLOUT_ICON, icon, tone });
+    const size = CALLOUT_ICON * c.scale;
+    flow.page.ops.push({ kind: "icon", x: c.left + CALLOUT_PAD, y: flow.y + (lead - size) / 2, size, icon, tone });
   }
-  paragraph(inner, n, BODY, "regular");
+  paragraph(inner, n, c.body, "regular");
   flow.y += CALLOUT_PAD;
   const last = flow.pages.length - 1;
   for (let i = first; i <= last; i++) {
@@ -671,7 +678,7 @@ type LaidRow = { header: boolean; cells: CellLine[][] };
  */
 function table(c: Ctx, n: Node) {
   const flow = c.flow;
-  const lead = BODY * LEAD;
+  const lead = c.body * LEAD;
   const rows = ((n.children ?? []) as Node[]).filter((r) => r?.type === "tablerow");
   const cellsOf = (r: Node) => ((r.children ?? []) as Node[]).filter((k) => k?.type === "tablecell");
   const cols = Math.max(1, ...rows.map((r) => cellsOf(r).length));
@@ -691,7 +698,7 @@ function table(c: Ctx, n: Node) {
         const paras = ((cell.children ?? []) as Node[]).filter(Boolean);
         paras.forEach((p, pi) => {
           const kids = p.type === "paragraph" || Array.isArray(p.children) ? p : { children: [p] };
-          const l = layoutParagraph(inner, kids, BODY, (Number(cell.headerState) || 0) !== 0 ? "bold" : "regular");
+          const l = layoutParagraph(inner, kids, c.body, (Number(cell.headerState) || 0) !== 0 ? "bold" : "regular");
           l.lines.forEach((line, li) => out.push({ line, left: l.left, width: l.width, align: l.align, gap: pi > 0 && li === 0 ? CELL_GAP : 0 }));
         });
         return out;
@@ -712,7 +719,7 @@ function table(c: Ctx, n: Node) {
         const it = cell[next[ci]];
         if (y - top - CELL_PAD_Y + it.gap + lead > room + 0.01 && y > top + CELL_PAD_Y) break;
         y += it.gap;
-        drawLine(flow, it.line, it.left, it.width, BODY, it.align, y);
+        drawLine(flow, it.line, it.left, it.width, c.body, it.align, y);
         y += lead;
         next[ci]++;
       }
@@ -774,14 +781,14 @@ function blocksOf(c: Ctx, nodes: Node[] | undefined) {
       case "heading": {
         const h = HEADING[String(n.tag)] ?? HEADING.h2;
         c.flow.space(h.before);
-        c.flow.ensure(h.size * LEAD * 2);
-        paragraph(c, n, h.size, "bold");
+        c.flow.ensure(h.size * c.scale * LEAD * 2);
+        paragraph(c, n, h.size * c.scale, "bold");
         c.flow.y += h.after;
         break;
       }
       case "quote": {
         const inner: Ctx = { ...c, left: c.left + 18, width: c.width - 18, italic: true, color: "muted", quoteBar: c.left + 4 };
-        paragraph(inner, n, BODY, "regular");
+        paragraph(inner, n, c.body, "regular");
         c.flow.y += PARA_AFTER;
         break;
       }
@@ -827,7 +834,7 @@ function blocksOf(c: Ctx, nodes: Node[] | undefined) {
           blocksOf(c, n.children);
           break;
         }
-        paragraph(c, n ?? {}, BODY, "regular");
+        paragraph(c, n ?? {}, c.body, "regular");
         c.flow.y += PARA_AFTER;
     }
   }
@@ -836,7 +843,8 @@ function blocksOf(c: Ctx, nodes: Node[] | undefined) {
 /** Lays a written document out on US Letter pages. */
 export function layoutWritten(content: Node, o: LayoutOptions): WrittenLayout {
   const flow = new Flow(o.maxPages ?? 200);
-  const c: Ctx = { o, flow, left: MARGIN_X, width: CONTENT_W, italic: false, color: "ink", quoteBar: null };
+  const scale = content?.gio?.small === true ? SMALL_SCALE : 1;
+  const c: Ctx = { o, flow, left: MARGIN_X, width: CONTENT_W, italic: false, color: "ink", quoteBar: null, body: BODY * scale, scale };
   blocksOf(c, content?.root?.children);
   const total = flow.pages.length;
   flow.pages.forEach((p, i) => {

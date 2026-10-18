@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { uid, useSampleValues, type TplDraft } from '@/lib/sign/templates'
 import { emptyContent, nextPosition, useWrittenPreview } from '@/lib/sign/written'
 import { FieldsEditor } from './FieldsEditor'
@@ -106,6 +107,22 @@ export function DocumentStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
           </div>
         )}
         <span className="flex-1" />
+        {tab === 'written' && doc && (
+          // Gio Docs' Small text, for the whole document: smaller here and in the PDF (body 9.5pt).
+          <label className="flex cursor-pointer items-center gap-2 font-inter text-[12.5px] font-medium text-text-secondary">
+            <Switch
+              checked={!!doc.content.gio?.small}
+              onCheckedChange={(on) =>
+                set((x) => ({
+                  ...x,
+                  written: x.written.map((w) => (w.id === doc.id ? { ...w, content: { ...w.content, gio: { ...w.content.gio, small: on || undefined } } } : w)),
+                }))
+              }
+              aria-label="Small text"
+            />
+            Small text
+          </label>
+        )}
         {tab === 'written' && doc && (
           <div ref={segRef} role="radiogroup" aria-label="Edit or preview" className="gio-seg inline-flex gap-1 rounded-[10px] bg-[#F1F0EC] p-1">
             {(['edit', 'preview'] as const).map((v) => (

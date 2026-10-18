@@ -740,7 +740,7 @@ export function WrittenPane({
           <div className="flex min-h-0 min-w-0 flex-col">
             <div className={cn('flex min-h-0 flex-1 flex-col', preview && 'hidden')}>
               <div className="min-h-0 flex-1 overflow-y-auto bg-[#ECEAE2] px-6 py-8" data-no-swipe>
-                <div ref={setPaper} className="gio-written-paper mx-auto">
+                <div ref={setPaper} className="gio-written-paper mx-auto" data-small={doc.content.gio?.small || undefined}>
                   <DocTitle value={doc.name} onChange={(name) => set((x) => ({ ...x, written: x.written.map((w) => (w.id === doc.id ? { ...w, name } : w)) }))} />
                   <RichTextPlugin
                     contentEditable={<ContentEditable className="gio-written-root" aria-label="Document text" aria-multiline="true" role="textbox" />}
@@ -803,9 +803,10 @@ export function WrittenPane({
         <OnChangePlugin
           ignoreSelectionChange
           onChange={(state) => {
-            const content = state.toJSON() as unknown as LexicalJson
+            const json = state.toJSON() as unknown as LexicalJson
             setProblem(null)
-            set((x) => ({ ...x, written: x.written.map((w) => (w.id === doc.id ? { ...w, content } : w)) }))
+            // The editor owns the text; the document's settings (Small text) ride along.
+            set((x) => ({ ...x, written: x.written.map((w) => (w.id === doc.id ? { ...w, content: w.content.gio ? { ...json, gio: w.content.gio } : json } : w)) }))
           }}
         />
       </LexicalComposer>
