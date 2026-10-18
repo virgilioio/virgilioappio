@@ -1045,7 +1045,8 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
-          job_id: string
+          is_private: boolean
+          job_id: string | null
           organization_id: string
           updated_at: string | null
         }
@@ -1056,7 +1057,8 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
-          job_id: string
+          is_private?: boolean
+          job_id?: string | null
           organization_id: string
           updated_at?: string | null
         }
@@ -1067,7 +1069,8 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
-          job_id?: string
+          is_private?: boolean
+          job_id?: string | null
           organization_id?: string
           updated_at?: string | null
         }
@@ -10936,6 +10939,15 @@ export type Database = {
       cleanup_expired_cache_rows: { Args: never; Returns: Json }
       cleanup_expired_draft_conversations: { Args: never; Returns: undefined }
       cleanup_expired_invitations: { Args: never; Returns: number }
+      comment_people: {
+        Args: { _candidate_id: string }
+        Returns: {
+          avatar_url: string
+          email: string
+          name: string
+          user_id: string
+        }[]
+      }
       company_key: { Args: { p: string }; Returns: string }
       consume_bonus_credits: {
         Args: { p_credits_to_consume: number; p_tenant_id: string }
@@ -12065,6 +12077,10 @@ export type Database = {
       }
       user_can_manage_org_members: {
         Args: { org_id_param: string }
+        Returns: boolean
+      }
+      user_can_see_candidate: {
+        Args: { _candidate_id: string; _user_id: string }
         Returns: boolean
       }
       user_deletion_blockers: {

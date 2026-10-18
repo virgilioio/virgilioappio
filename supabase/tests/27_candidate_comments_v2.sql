@@ -1,4 +1,4 @@
--- Run after 20261019000000_candidate_comments_v2 inside a transaction that is rolled back.
+-- Run after 20261018235003_candidate_comments_v2 and 20261018234855_candidate_comments_job_optional inside a transaction that is rolled back.
 -- Fake comments on a real candidate in Virgilio's workspace: Allan writes, the
 -- support account and another teammate are tagged. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
@@ -14,7 +14,7 @@ insert into t_ids values
   ('stranger', '00000000-0000-4000-8000-000000000099'),
   ('job', '7d16b23e-0ff0-4583-8ff7-19cdb6fb6e07'),
   ('cand', '26226545-59d7-44b6-8de6-cf9a7e4e51d5'),
-  ('c1', gen_random_uuid()), ('c2', gen_random_uuid()), ('c3', gen_random_uuid());
+  ('c1', gen_random_uuid()), ('c2', gen_random_uuid()), ('c3', gen_random_uuid()), ('c4', gen_random_uuid());
 
 -- ---- Allan writes ---------------------------------------------------------------
 set local role authenticated;
@@ -49,6 +49,10 @@ begin
   exception when others then
     insert into t_out values ('forged', 0, sqlstate);
   end;
+  -- c4: on the standalone profile, outside any job (needs 20261018234855).
+  insert into public.candidate_comments (id, candidate_id, author_id, author_email, content)
+  values ((i->>'c4')::uuid, (i->>'cand')::uuid, (i->>'allan')::uuid, 'allan@virgilio.tech', 'Fake: a note outside any job');
+  insert into t_out values ('c4', 1, 'none');
   -- Edit c1 to also tag the third teammate.
   update public.candidate_comments set content = content || ' and @[Third](user:' || (i->>'third') || ')'
   where id = (i->>'c1')::uuid;
@@ -71,6 +75,9 @@ insert into t_results select 'save: a comment in a job saves again', (select n =
 insert into t_results select 'save: the organization comes from the job',
   (select organization_id = (select organization_id from public.jobs where id = (select v from t_ids where k = 'job'))
    from public.candidate_comments where id = (select v from t_ids where k = 'c1'));
+insert into t_results select 'save: a comment outside any job saves, in the author''s workspace',
+  (select n = 1 from t_out where k = 'c4')
+  and exists (select 1 from public.candidate_comments where id = (select v from t_ids where k = 'c4') and job_id is null and organization_id is not null);
 insert into t_results select 'tag: support is notified, with a link to the candidate in the job',
   exists (select 1 from public.notifications where user_id = (select v from t_ids where k = 'support') and category = 'mention'
           and metadata->>'comment_id' = (select v from t_ids where k = 'c1')::text
