@@ -10,10 +10,9 @@ import { HorizontalRuleNode, INSERT_HORIZONTAL_RULE_COMMAND } from '@lexical/rea
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin, useBasicTypeaheadTriggerMatch } from '@lexical/react/LexicalTypeaheadMenuPlugin'
-import { HeadingNode, QuoteNode, $createHeadingNode, $createQuoteNode, $isHeadingNode, $isQuoteNode } from '@lexical/rich-text'
-import { ListItemNode, ListNode, INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND, REMOVE_LIST_COMMAND, $isListNode } from '@lexical/list'
+import { HeadingNode, QuoteNode, $createHeadingNode, $createQuoteNode } from '@lexical/rich-text'
+import { ListItemNode, ListNode, INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list'
 import { $setBlocksType } from '@lexical/selection'
-import { mergeRegister } from '@lexical/utils'
 import {
   $createParagraphNode,
   $getNodeByKey,
@@ -24,54 +23,26 @@ import {
   $isParagraphNode,
   $isRangeSelection,
   $isRootNode,
-  $isTextNode,
   $setSelection,
-  CAN_REDO_COMMAND,
-  CAN_UNDO_COMMAND,
-  COMMAND_PRIORITY_LOW,
-  FORMAT_ELEMENT_COMMAND,
-  FORMAT_TEXT_COMMAND,
-  INDENT_CONTENT_COMMAND,
   KEY_ESCAPE_COMMAND,
-  OUTDENT_CONTENT_COMMAND,
-  REDO_COMMAND,
-  UNDO_COMMAND,
-  type ElementFormatType,
   type ElementNode,
   type LexicalEditor,
   type LexicalNode,
-  type TextFormatType,
   type TextNode,
 } from 'lexical'
 import {
-  AlignCenter,
-  AlignJustify,
-  AlignLeft,
-  AlignRight,
-  Bold,
   Brackets,
   Database,
-  IndentDecrease,
-  IndentIncrease,
   Info,
-  Italic,
-  List,
-  ListOrdered,
   Lock,
   PenLine,
-  Plus,
-  Redo2,
   Trash2,
   TriangleAlert,
-  Underline,
-  Undo2,
-  type LucideIcon,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { IconTip } from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PdfPage } from '@/components/sign/PdfPage'
@@ -104,6 +75,7 @@ import {
 } from '@/components/sign/written/nodes'
 import { DocTitle, EmptyLineHints, TypingShortcuts } from '@/components/sign/written/typing'
 import { BlockHandles, DuplicateShortcut } from '@/components/sign/written/blockHandles'
+import { FloatingToolbar } from '@/components/sign/written/floatingToolbar'
 import { FieldList } from './FieldList'
 import { BLOCK_PREVIEWS, SlashItem, SlashPanel, fieldPreview, rememberPick, signPreview, signerFieldPreview, slashRows, type Preview, type SlashIcon } from '@/components/sign/written/slashMenu'
 import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
@@ -230,148 +202,6 @@ function insertSigner(editor: LexicalEditor, roleId: string, type: FieldType) {
     $insertInline($createGioFieldNode(roleId, type as InlineFieldType, type !== 'text' && type !== 'checkbox', ''))
   })
   editor.focus()
-}
-
-/* ---- Toolbar ------------------------------------------------------------- */
-
-type BlockType = 'paragraph' | 'h1' | 'h2' | 'h3' | 'quote' | 'bullet' | 'number'
-
-function useToolState(editor: LexicalEditor) {
-  const [s, setS] = useState<{ block: BlockType; formats: Set<TextFormatType>; align: ElementFormatType }>({ block: 'paragraph', formats: new Set(), align: 'left' })
-  const [undo, setUndo] = useState({ undo: false, redo: false })
-  useEffect(
-    () =>
-      mergeRegister(
-        editor.registerUpdateListener(({ editorState }) =>
-          editorState.read(() => {
-            const sel = $getSelection()
-            if (!$isRangeSelection(sel)) return
-            let block: BlockType = 'paragraph'
-            let align: ElementFormatType = ''
-            for (let n: LexicalNode | null = sel.anchor.getNode(); n; n = n.getParent()) {
-              if ($isListNode(n)) block = n.getListType() === 'number' ? 'number' : 'bullet'
-              else if ($isHeadingNode(n) && block === 'paragraph') block = n.getTag() as BlockType
-              else if ($isQuoteNode(n) && block === 'paragraph') block = 'quote'
-              if ($isElementNode(n) && !$isRootNode(n) && !align && n.getFormatType()) align = n.getFormatType()
-            }
-            const formats = new Set<TextFormatType>((['bold', 'italic', 'underline'] as TextFormatType[]).filter((f) => sel.hasFormat(f)))
-            setS({ block, formats, align: align || 'left' })
-          }),
-        ),
-        editor.registerCommand(CAN_UNDO_COMMAND, (v) => (setUndo((u) => ({ ...u, undo: v })), false), COMMAND_PRIORITY_LOW),
-        editor.registerCommand(CAN_REDO_COMMAND, (v) => (setUndo((u) => ({ ...u, redo: v })), false), COMMAND_PRIORITY_LOW),
-      ),
-    [editor],
-  )
-  return { ...s, ...undo }
-}
-
-function Tool({ label, icon: Icon, active, onClick, disabled }: { label: string; icon: LucideIcon; active?: boolean; onClick: () => void; disabled?: boolean }) {
-  return (
-    <IconTip label={label}>
-      <button type="button" className="gio-wtool" aria-label={label} aria-pressed={active ?? undefined} disabled={disabled} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>
-        <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
-      </button>
-    </IconTip>
-  )
-}
-
-const BLOCK_STYLES: { value: BlockType; label: string; className: string }[] = [
-  { value: 'h1', label: 'Heading 1', className: 'font-poppins text-[16px] font-semibold' },
-  { value: 'h2', label: 'Heading 2', className: 'font-poppins text-[14px] font-semibold' },
-  { value: 'h3', label: 'Heading 3', className: 'font-inter text-[13px] font-semibold' },
-  { value: 'paragraph', label: 'Body', className: 'font-inter text-[13px]' },
-  { value: 'quote', label: 'Quote', className: 'font-inter text-[13px] italic text-text-secondary' },
-]
-const ALIGNS: { value: ElementFormatType; label: string; icon: LucideIcon }[] = [
-  { value: 'left', label: 'Align left', icon: AlignLeft },
-  { value: 'center', label: 'Centre', icon: AlignCenter },
-  { value: 'right', label: 'Align right', icon: AlignRight },
-  { value: 'justify', label: 'Justify', icon: AlignJustify },
-]
-
-function Toolbar() {
-  const [editor] = useLexicalComposerContext()
-  const s = useToolState(editor)
-  const setBlock = (b: BlockType) => {
-    if (b === 'bullet') return editor.dispatchCommand(s.block === 'bullet' ? REMOVE_LIST_COMMAND : INSERT_UNORDERED_LIST_COMMAND, undefined)
-    if (b === 'number') return editor.dispatchCommand(s.block === 'number' ? REMOVE_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND, undefined)
-    if (s.block === 'bullet' || s.block === 'number') editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined)
-    editor.update(() => {
-      const sel = $getSelection()
-      if ($isRangeSelection(sel)) $setBlocksType(sel, () => (b === 'paragraph' ? $createParagraphNode() : b === 'quote' ? $createQuoteNode() : $createHeadingNode(b)))
-    })
-  }
-  const format = (f: TextFormatType) => editor.dispatchCommand(FORMAT_TEXT_COMMAND, f)
-  // Opens the "/" menu at the caret, as if you'd typed it.
-  const openMenu = () => {
-    editor.update(() => {
-      const sel = $getSelection()
-      if (!$isRangeSelection(sel)) {
-        $getRoot().selectEnd()
-      }
-      const now = $getSelection()
-      if (!$isRangeSelection(now)) return
-      const node = now.anchor.getNode()
-      const before = $isTextNode(node) ? node.getTextContent().slice(0, now.anchor.offset) : ''
-      now.insertText(before && !/\s$/.test(before) ? ' /' : '/')
-    })
-    editor.focus()
-  }
-  const current = s.block === 'bullet' || s.block === 'number' ? 'paragraph' : s.block
-  const align = ALIGNS.find((a) => a.value === s.align) ?? ALIGNS[0]
-
-  return (
-    <div role="toolbar" aria-label="Formatting" className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 border-b border-virgilio-border bg-white px-3 py-1.5">
-      <Select value={current} onValueChange={(v) => setBlock(v as BlockType)}>
-        <SelectTrigger className="h-[30px] w-[118px] text-[12.5px]" aria-label="Text style" onMouseDown={(e) => e.preventDefault()}>
-          <SelectValue>{BLOCK_STYLES.find((b) => b.value === current)?.label}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {BLOCK_STYLES.map((b) => (
-            <SelectItem key={b.value} value={b.value}>
-              <span className={b.className}>{b.label}</span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <span className="mx-1 h-5 w-px bg-virgilio-border" aria-hidden />
-      <Tool label="Bold" icon={Bold} active={s.formats.has('bold')} onClick={() => format('bold')} />
-      <Tool label="Italic" icon={Italic} active={s.formats.has('italic')} onClick={() => format('italic')} />
-      <Tool label="Underline" icon={Underline} active={s.formats.has('underline')} onClick={() => format('underline')} />
-      <span className="mx-1 h-5 w-px bg-virgilio-border" aria-hidden />
-      <Tool label="Bulleted list" icon={List} active={s.block === 'bullet'} onClick={() => setBlock('bullet')} />
-      <Tool label="Numbered list" icon={ListOrdered} active={s.block === 'number'} onClick={() => setBlock('number')} />
-      <Tool label="Indent" icon={IndentIncrease} onClick={() => editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined)} />
-      <Tool label="Outdent" icon={IndentDecrease} onClick={() => editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined)} />
-      <Select value={align.value} onValueChange={(v) => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, v as ElementFormatType)}>
-        <SelectTrigger className="ml-0.5 h-[30px] w-[52px] px-2" aria-label="Alignment" onMouseDown={(e) => e.preventDefault()}>
-          <SelectValue>
-            <align.icon className="h-4 w-4 text-text-secondary" strokeWidth={2} aria-hidden />
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {ALIGNS.map((a) => (
-            <SelectItem key={a.value} value={a.value}>
-              <span className="inline-flex items-center gap-2">
-                <a.icon className="h-4 w-4" strokeWidth={2} aria-hidden />
-                {a.label}
-              </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <span className="mx-1 h-5 w-px bg-virgilio-border" aria-hidden />
-      <Tool label="Undo" icon={Undo2} disabled={!s.undo} onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)} />
-      <Tool label="Redo" icon={Redo2} disabled={!s.redo} onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)} />
-      <span className="flex-1" />
-      <button type="button" className="gio-wtool gap-1.5 px-2.5 font-inter text-[12.5px] font-medium text-text-primary" onMouseDown={(e) => e.preventDefault()} onClick={openMenu}>
-        <Plus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-        Insert field
-        <kbd className="rounded border border-virgilio-border bg-[#FAFAF7] px-1 font-inter text-[11px] text-text-tertiary">/</kbd>
-      </button>
-    </div>
-  )
 }
 
 /* ---- "/" menu ------------------------------------------------------------- */
@@ -863,7 +693,6 @@ export function WrittenPane({
 
           <div className="flex min-h-0 min-w-0 flex-col">
             <div className={cn('flex min-h-0 flex-1 flex-col', preview && 'hidden')}>
-              <Toolbar />
               <div className="min-h-0 flex-1 overflow-y-auto bg-[#ECEAE2] px-6 py-8" data-no-swipe>
                 <div ref={setPaper} className="gio-written-paper mx-auto">
                   <DocTitle value={doc.name} onChange={(name) => set((x) => ({ ...x, written: x.written.map((w) => (w.id === doc.id ? { ...w, name } : w)) }))} />
@@ -916,6 +745,7 @@ export function WrittenPane({
         <SectionLabels label={sectionLabel} />
         <SlashMenu items={items} />
         <TypingShortcuts />
+        {!preview && <FloatingToolbar onSection={addSection} />}
         {paper && !preview && <BlockHandles anchor={paper} />}
         <DuplicateShortcut />
         <EmptyLineHints />

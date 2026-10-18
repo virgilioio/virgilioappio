@@ -249,7 +249,7 @@ const W = 324
 const PREVIEW_W = 190
 
 /** On close the panel leaves as a copy that shrinks and fades (--dur-menu-out), since the menu itself is gone at once. */
-function leave(el: HTMLElement) {
+export function leave(el: HTMLElement) {
   const rect = el.getBoundingClientRect()
   const ghost = el.cloneNode(true) as HTMLElement
   ghost.style.cssText += `;position:fixed;left:${rect.left}px;top:${rect.top}px;bottom:auto;right:auto;margin:0;pointer-events:none;animation:none`

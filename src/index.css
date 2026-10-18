@@ -1982,16 +1982,28 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 }
 .gio-written-break::before, .gio-written-break::after { content: ""; flex: 1; border-top: 1px dashed #C9C8C1; }
 .gio-written-break .gio-written-x { margin-left: 0; }
-/* Toolbar buttons: 30px, pressed state follows the selection, scale .95 while pressed. */
-.gio-wtool {
-  display: inline-flex; align-items: center; justify-content: center; height: 30px; min-width: 30px; border-radius: 7px;
-  color: #5A6072; transition: background-color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+/* Floating selection toolbar, ported from Gio Docs (2026-10-18): a dark bar
+   that grows in above the selection (below when there's no room) at
+   --dur-menu-in and leaves faster (a copy made by leave() in slashMenu.tsx).
+   Width and padding stay off the buttons so Tailwind's px-* / w-auto apply. */
+.gio-fbar {
+  position: fixed; z-index: 95; display: flex; align-items: center; gap: 2px; height: 34px; padding: 0 4px;
+  border-radius: 9px; background: #0d0d09; color: #FFFCF9; box-shadow: 0 8px 24px rgba(13, 13, 9, .22);
+  transform-origin: bottom center; animation: gio-slash-in var(--dur-menu-in) var(--ease-out);
 }
-.gio-wtool:active:not(:disabled) { transform: scale(.95); }
-.gio-wtool[aria-pressed="true"] { background: #ECEAE2; color: #0d0d09; }
-.gio-wtool:disabled { opacity: .4; }
-@media (hover: hover) and (pointer: fine) { .gio-wtool:hover:not(:disabled):not([aria-pressed="true"]) { background: #F4F3EF; } }
-@media (prefers-reduced-motion: reduce) { .gio-wtool:active:not(:disabled) { transform: none; } }
+.gio-fbar[data-flipped] { transform-origin: top center; }
+.gio-fbar-btn {
+  display: inline-flex; align-items: center; justify-content: center; height: 26px; min-width: 26px; border-radius: 6px;
+  color: rgba(255, 252, 249, .85); transition: background-color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+}
+.gio-fbar-btn:active { transform: scale(.94); }
+.gio-fbar-btn[aria-pressed="true"], .gio-fbar-btn[data-state="open"] { background: rgba(255, 255, 255, .18); color: #D7C5FB; }
+.gio-fbar-btn[data-state="open"] { color: #FFFCF9; }
+@media (hover: hover) and (pointer: fine) { .gio-fbar-btn:hover:not([aria-pressed="true"]) { background: rgba(255, 255, 255, .12); color: #FFFCF9; } }
+@media (prefers-reduced-motion: reduce) {
+  .gio-fbar { animation-name: gio-fade-only; }
+  .gio-fbar-btn:active { transform: none; }
+}
 /* The "/" menu, ported from Gio Docs (2026-10-18): grows in from the caret
    (scale .96 + opacity, --dur-menu-in) and leaves faster (--dur-menu-out, a
    copy made in slashMenu.tsx); typing and the highlight never animate. */
