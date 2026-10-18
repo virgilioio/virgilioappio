@@ -1,4 +1,4 @@
--- Run after 20261018060000_offer_approval_remind inside a transaction that is rolled back.
+-- Run after 20261018051642_offer_approval_remind inside a transaction that is rolled back.
 -- Fake approval requests on a real offer. Allan presses Remind; the support
 -- account is the approver being reminded. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
