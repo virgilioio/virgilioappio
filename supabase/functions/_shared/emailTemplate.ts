@@ -1,233 +1,56 @@
 /**
- * GoGio Email Template System
- * Unified branding for all system emails
+ * The shared email template for system emails (bookings, calendar replies,
+ * chat notifications, account emails). Since 2026-10-18 it draws the Gio ATS
+ * design (_shared/atsEmail.ts): the cream card, the gio ats logo with the
+ * product in the masthead, a title with a lilac period, the dark button and
+ * the Gio footer. Callers keep their options; `product` and `eyebrow` name
+ * the email's part of Gio ATS. ASCII only.
  */
+
+import { atsLayout, esc, gioContent } from './atsEmail.ts';
 
 export interface EmailTemplateOptions {
   recipientName: string;
   preheaderText?: string;
   title: string;
+  /** HTML: paragraphs, lists (formatEmailList), bold and links get Gio styles. */
   content: string;
   ctaText?: string;
   ctaUrl?: string;
+  /** Shown in the footer, above the Gio line. HTML. */
   footerNote?: string;
+  /** The part of Gio ATS in the masthead, e.g. "Scheduling". */
+  product?: string;
+  /** The small purple line above the title. */
+  eyebrow?: string;
 }
 
-const GOGIO_COLORS = {
-  primary: '#6366f1', // Indigo
-  primaryDark: '#4f46e5',
-  text: '#1f2937',
-  textLight: '#6b7280',
-  background: '#f9fafb',
-  white: '#ffffff',
-  border: '#e5e7eb',
-};
+/** A title ends on the lilac period: drop any closing punctuation of its own. */
+const cleanTitle = (t: string) => String(t ?? '').trim().replace(/[.!?:\s]+$/, '');
 
 export function createEmailTemplate(options: EmailTemplateOptions): string {
-  const {
-    recipientName,
-    preheaderText = 'Important notification from GoGio',
-    title,
-    content,
-    ctaText,
-    ctaUrl,
-    footerNote,
-  } = options;
-
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>${title}</title>
-  <!--[if mso]>
-  <noscript>
-    <xml>
-      <o:OfficeDocumentSettings>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-      </o:OfficeDocumentSettings>
-    </xml>
-  </noscript>
-  <![endif]-->
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      line-height: 1.6;
-      color: ${GOGIO_COLORS.text};
-      background-color: ${GOGIO_COLORS.background};
-    }
-    .email-wrapper {
-      width: 100%;
-      background-color: ${GOGIO_COLORS.background};
-      padding: 40px 20px;
-    }
-    .email-container {
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: ${GOGIO_COLORS.white};
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-      overflow: hidden;
-    }
-    .email-header {
-      background: linear-gradient(135deg, ${GOGIO_COLORS.primary} 0%, ${GOGIO_COLORS.primaryDark} 100%);
-      padding: 32px 40px;
-      text-align: center;
-    }
-    .logo {
-      font-size: 28px;
-      font-weight: 700;
-      color: ${GOGIO_COLORS.white};
-      text-decoration: none;
-      letter-spacing: -0.5px;
-    }
-    .email-body {
-      padding: 40px;
-    }
-    .greeting {
-      font-size: 18px;
-      font-weight: 600;
-      color: ${GOGIO_COLORS.text};
-      margin: 0 0 24px 0;
-    }
-    .title {
-      font-size: 24px;
-      font-weight: 700;
-      color: ${GOGIO_COLORS.text};
-      margin: 0 0 24px 0;
-      line-height: 1.3;
-    }
-    .content {
-      font-size: 15px;
-      color: ${GOGIO_COLORS.text};
-      margin: 0 0 24px 0;
-      line-height: 1.7;
-    }
-    .content p {
-      margin: 0 0 16px 0;
-    }
-    .content ul {
-      margin: 0 0 16px 0;
-      padding-left: 24px;
-    }
-    .content li {
-      margin-bottom: 8px;
-    }
-    .cta-container {
-      text-align: center;
-      margin: 32px 0;
-    }
-    .cta-button {
-      display: inline-block;
-      padding: 14px 32px;
-      background: linear-gradient(135deg, ${GOGIO_COLORS.primary} 0%, ${GOGIO_COLORS.primaryDark} 100%);
-      color: ${GOGIO_COLORS.white} !important;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 15px;
-      transition: transform 0.2s;
-    }
-    .cta-button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-    }
-    .footer-note {
-      font-size: 13px;
-      color: ${GOGIO_COLORS.textLight};
-      padding: 20px 40px;
-      background-color: ${GOGIO_COLORS.background};
-      border-top: 1px solid ${GOGIO_COLORS.border};
-    }
-    .email-footer {
-      padding: 32px 40px;
-      text-align: center;
-      font-size: 13px;
-      color: ${GOGIO_COLORS.textLight};
-      border-top: 1px solid ${GOGIO_COLORS.border};
-    }
-    .email-footer a {
-      color: ${GOGIO_COLORS.primary};
-      text-decoration: none;
-    }
-    .divider {
-      height: 1px;
-      background-color: ${GOGIO_COLORS.border};
-      margin: 24px 0;
-    }
-    @media only screen and (max-width: 600px) {
-      .email-header {
-        padding: 24px 20px;
-      }
-      .email-body {
-        padding: 24px 20px;
-      }
-      .title {
-        font-size: 20px;
-      }
-      .footer-note {
-        padding: 16px 20px;
-      }
-      .email-footer {
-        padding: 24px 20px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="email-wrapper">
-    <div style="display: none; max-height: 0; overflow: hidden;">
-      ${preheaderText}
-    </div>
-    <div class="email-container">
-      <div class="email-header">
-        <img src="https://app.gogio.io/gio-logo-light.svg" alt="Gio" height="28" style="height:28px;width:auto;display:inline-block;" />
-      </div>
-      <div class="email-body">
-        <p class="greeting">Hi ${recipientName},</p>
-        <h1 class="title">${title}</h1>
-        <div class="content">
-          ${content}
-        </div>
-        ${ctaText && ctaUrl ? `
-        <div class="cta-container">
-          <a href="${ctaUrl}" class="cta-button">${ctaText}</a>
-        </div>
-        ` : ''}
-      </div>
-      ${footerNote ? `
-      <div class="footer-note">
-        ${footerNote}
-      </div>
-      ` : ''}
-      <div class="email-footer">
-        <p style="margin: 0 0 8px 0;">
-          <strong>Gio ATS</strong> by Virgilio
-        </p>
-        <p style="margin: 0 0 16px 0;">
-          Need help? Contact us at <a href="mailto:support@virgilio.tech">support@virgilio.tech</a>
-        </p>
-        <p style="margin: 0; font-size: 12px;">
-          © ${new Date().getFullYear()} Virgilio Technologies LLC. <a href="https://app.gogio.io/privacy">Privacy Policy</a>
-        </p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
-  `.trim();
+  const { recipientName, preheaderText, title, content, ctaText, ctaUrl, footerNote, product, eyebrow } = options;
+  const name = String(recipientName ?? '').trim() || 'there';
+  return atsLayout({
+    preheader: preheaderText || cleanTitle(title),
+    product: product || 'Gio ATS',
+    eyebrow,
+    title: cleanTitle(title),
+    lead: `Hi <strong style="color:#1F2230;font-weight:600">${esc(name)}</strong>,`,
+    body: gioContent(content),
+    cta: ctaText && ctaUrl ? { label: ctaText, url: ctaUrl } : undefined,
+    whyHtml: footerNote,
+  });
 }
 
 // Helper function for simple text content
 export function formatEmailContent(paragraphs: string[]): string {
-  return paragraphs.map(p => `<p>${p}</p>`).join('\n');
+  return paragraphs.map((p) => `<p>${p}</p>`).join('\n');
 }
 
-// Helper function for lists
+// Helper function for lists: drawn as a white details card, one row per item.
 export function formatEmailList(items: string[]): string {
-  return `<ul>${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
+  return `<ul>${items
+    .map((item, i) => `<li${i === items.length - 1 ? ' style="border-bottom:0"' : ''}>${item}</li>`)
+    .join('')}</ul>`;
 }

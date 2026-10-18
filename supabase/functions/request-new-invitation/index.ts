@@ -102,7 +102,7 @@ const handler = async (req: Request): Promise<Response> => {
           <div class="divider"></div>
           <p><strong>What to do:</strong></p>
           ${formatEmailList([
-            'Log in to GoGio',
+            'Log in to Gio ATS',
             'Go to Settings → Members',
             'Find the member and click "Resend Invitation"'
           ])}
@@ -111,7 +111,9 @@ const handler = async (req: Request): Promise<Response> => {
         const emailHtml = createEmailTemplate({
           recipientName: ownerName,
           preheaderText: `${email} needs a new invitation`,
-          title: 'Invitation Request',
+          title: `${email} needs a new invitation`,
+          product: 'Members',
+          eyebrow: 'Invitation request',
           content: emailContent,
           ctaText: 'Go to Members',
           ctaUrl: 'https://app.gogio.io/settings?tab=members',

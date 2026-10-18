@@ -71,17 +71,21 @@ export interface AtsLayout {
   preheader: string;
   /** The product in the masthead, e.g. "Offer approvals". */
   product: string;
-  eyebrow: string;
+  eyebrow?: string;
   /** Plain text; the lilac period is added. */
   title: string;
-  /** HTML (escape what you put in). */
-  lead: string;
+  /** HTML (escape what you put in): the opening paragraph. */
+  lead?: string;
+  /** HTML already styled for the email (see gioContent), after the lead. */
+  body?: string;
   card?: string;
   cta?: { label: string; url: string };
   /** HTML. */
   note?: string;
   /** Why they got it. Plain text. */
-  why: string;
+  why?: string;
+  /** Or the same as HTML (escape what you put in). */
+  whyHtml?: string;
   supportEmail?: string;
 }
 
@@ -106,15 +110,16 @@ export function atsLayout(o: AtsLayout): string {
   </tr></table>
 </td></tr>
 <tr><td class="gio-pad" style="padding:38px 40px 34px">
-  <p style="margin:0 0 14px;${F};font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6F3FF5">${esc(o.eyebrow)}</p>
+  ${o.eyebrow ? `<p style="margin:0 0 14px;${F};font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6F3FF5">${esc(o.eyebrow)}</p>` : ""}
   <h1 class="gio-headline" style="margin:0 0 16px;${P};font-weight:600;font-size:30px;line-height:1.12;letter-spacing:-.035em;color:#0d0d09">${esc(o.title)}<span style="color:#D7C5FB">.</span></h1>
-  <p style="margin:0 0 24px;${F};font-size:14.5px;line-height:1.62;color:#5A6072">${o.lead}</p>
+  ${o.lead ? `<p style="margin:0 0 ${o.body ? 14 : 24}px;${F};font-size:14.5px;line-height:1.62;color:#5A6072">${o.lead}</p>` : ""}
+  ${o.body ? `<div style="margin:0 0 10px">${o.body}</div>` : ""}
   ${o.card ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #E7E8EE;border-radius:16px;box-shadow:0 4px 14px -6px rgba(13,13,9,.06);margin:0 0 28px"><tr><td style="padding:18px">${o.card}</td></tr></table>` : ""}
   ${o.cta ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px"><tr><td bgcolor="#0d0d09" style="border-radius:12px;box-shadow:0 6px 16px -6px rgba(13,13,9,.35)"><a href="${esc(o.cta.url)}" style="display:inline-block;padding:14px 26px;${P};font-weight:600;font-size:15px;color:#fffcf9;text-decoration:none;line-height:20px">${esc(o.cta.label)}&nbsp;&nbsp;&rarr;</a></td></tr></table>` : ""}
   ${o.note ? `<p style="margin:0;${F};font-size:12px;line-height:1.5;color:#6B7080">${o.note}</p>` : ""}
 </td></tr>
 <tr><td class="gio-pad" bgcolor="#FBFAF7" style="padding:20px 40px 28px;background:#FBFAF7;border-top:1px solid #F1F0EC">
-  <p style="margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid #F1F0EC;${F};font-size:11.5px;line-height:1.55;color:#6B7080">${esc(o.why)}</p>
+  ${o.whyHtml || o.why ? `<p style="margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid #F1F0EC;${F};font-size:11.5px;line-height:1.55;color:#6B7080">${o.whyHtml ?? esc(o.why)}</p>` : ""}
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
     <td align="left" style="${P};font-weight:600;font-size:13px;color:#5A6072;letter-spacing:-.02em">Gio ATS<span style="${F};font-weight:400;font-size:11.5px;color:#6B7080;margin-left:6px">&middot; Modern recruiting</span></td>
     <td align="right" style="${F};font-size:11.5px;color:#6B7080">Need help? <a href="mailto:${support}" style="color:#6F3FF5;text-decoration:none;font-weight:600">${support}</a></td>
@@ -122,3 +127,25 @@ export function atsLayout(o: AtsLayout): string {
 </td></tr>
 </table></td></tr></table></body></html>`;
 }
+
+const TXT = `${F};font-size:14.5px;line-height:1.62;color:#5A6072`;
+
+/** Gio styles for free-form email HTML (paragraphs, lists, bold, links,
+ *  the old "divider"), inlined so mail clients keep them. A tag that already
+ *  has a style keeps it after ours. */
+export function gioContent(html: string): string {
+  const add = (tag: string, style: string) => (src: string) =>
+    src.replace(new RegExp(`<${tag}(\\s[^>]*)?>`, "gi"), (m: string, attrs = "") => {
+      if (/style\s*=\s*"/i.test(attrs)) return `<${tag}${attrs.replace(/style\s*=\s*"/i, `style="${style};`)}>`;
+      return `<${tag} style="${style}"${attrs}>`;
+    });
+  let out = String(html ?? "").replace(/<div class="divider"><\/div>/g, `<div style="height:1px;background:#F1F0EC;margin:20px 0"></div>`);
+  out = add("p", `margin:0 0 14px;${TXT}`)(out);
+  out = add("ul", `margin:0 0 18px;padding:4px 18px;list-style:none;background:#ffffff;border:1px solid #E7E8EE;border-radius:14px`)(out);
+  out = add("ol", `margin:0 0 18px;padding-left:22px;${TXT}`)(out);
+  out = add("li", `padding:9px 0;border-bottom:1px solid #F1F0EC;${F};font-size:13.5px;line-height:1.5;color:#5A6072`)(out);
+  out = add("strong", "color:#1F2230;font-weight:600")(out);
+  out = add("a", "color:#6F3FF5;font-weight:600;text-decoration:none")(out);
+  return out;
+}
+

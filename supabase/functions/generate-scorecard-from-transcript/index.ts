@@ -2,6 +2,8 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { Resend } from "npm:resend@2.0.0";
+import { atsLayout, esc, gioContent } from "../_shared/atsEmail.ts";
+import { formatEmailList } from "../_shared/emailTemplate.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
@@ -480,46 +482,26 @@ ${questionsContext}`;
 
       try {
 
+        const candName = booking.candidate?.candidate_name || 'the candidate';
         await resend.emails.send({
-          from: 'GoGio <noreply@app.gogio.io>',
+          from: 'Gio <noreply@app.gogio.io>',
           to: [interviewer.email],
-          subject: `📝 Interview notes ready: ${booking.candidate?.candidate_name || 'Candidate'}`,
-          html: `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #1a1a1a; margin-bottom: 20px;">Your Interview Notes Are Ready</h2>
-              
-              <p style="color: #4a4a4a; line-height: 1.6;">
-                Hi ${interviewer.first_name || 'there'},
-              </p>
-              
-              <p style="color: #4a4a4a; line-height: 1.6;">
-                We've processed the transcript from your interview with <strong>${booking.candidate?.candidate_name || 'the candidate'}</strong>
-                ${booking.job?.title ? ` for the <strong>${booking.job.title}</strong> position` : ''}.
-              </p>
-              
-              <p style="color: #4a4a4a; line-height: 1.6;">
-                AI-generated interview notes have been prepared for your review. Please take a moment to:
-              </p>
-              
-              <ul style="color: #4a4a4a; line-height: 1.8;">
-                <li>Review the AI-generated notes for accuracy</li>
-                <li>Make any edits or additions</li>
-                <li>Confirm your overall rating</li>
-                <li>Submit your scorecard</li>
-              </ul>
-              
-              <div style="margin: 30px 0;">
-                <a href="${scorecardUrl}" 
-                   style="background: #6F3FF5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 500;">
-                  Review & Submit Scorecard
-                </a>
-              </div>
-              
-              <p style="color: #888; font-size: 14px; margin-top: 30px;">
-                This email was sent by GoGio's interview management system.
-              </p>
-            </div>
-          `,
+          subject: `Interview notes ready: ${booking.candidate?.candidate_name || 'Candidate'}`,
+          html: atsLayout({
+            preheader: `Gio wrote up your interview with ${candName}. Review it and submit your scorecard.`,
+            product: 'Scorecards',
+            eyebrow: 'Interview notes ready',
+            title: `Your notes on ${candName} are ready`,
+            lead: `Hi <strong style="color:#1F2230;font-weight:600">${esc(interviewer.first_name || 'there')}</strong>, Gio read the transcript of your interview with <strong style="color:#1F2230;font-weight:600">${esc(candName)}</strong>${booking.job?.title ? ` for <strong style="color:#1F2230;font-weight:600">${esc(booking.job.title)}</strong>` : ''} and drafted your scorecard.`,
+            body: gioContent(`<p>Take a couple of minutes to:</p>${formatEmailList([
+              'Check the notes are accurate',
+              'Add or change anything',
+              'Confirm your overall rating',
+              'Submit your scorecard',
+            ])}`),
+            cta: { label: 'Review and submit', url: scorecardUrl },
+            why: "You're getting this because you interviewed this candidate and the meeting's transcript reached Gio.",
+          }),
         });
 
         console.log('[generate-scorecard] Notification email sent to:', interviewer.email);

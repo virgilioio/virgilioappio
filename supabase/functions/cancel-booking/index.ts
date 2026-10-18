@@ -295,8 +295,10 @@ serve(async (req) => {
     const candidateEmailHtml = createEmailTemplate({
       recipientName: booking.candidate_name,
       preheaderText: `Your ${isMeeting ? 'meeting' : 'interview'} scheduled for ${formattedDate} has been cancelled`,
-      title: `${Kind} Cancelled`,
+      title: `Your ${isMeeting ? 'meeting' : 'interview'} is cancelled`,
       content: candidateContent,
+      product: 'Scheduling',
+      eyebrow: 'Cancelled',
       footerNote: 'We apologize for any inconvenience this may cause.'
     });
 
@@ -317,7 +319,7 @@ serve(async (req) => {
     // Send cancellation email to interviewer if available
     if (interviewerProfile?.email) {
       const interviewerCancellationDetails = [
-        `<strong>${isMeeting ? 'Booked by' : 'Candidate'}:</strong> ${booking.candidate_name} (<a href="mailto:${booking.candidate_email}" style="color: #6366f1;">${booking.candidate_email}</a>)`,
+        `<strong>${isMeeting ? 'Booked by' : 'Candidate'}:</strong> ${booking.candidate_name} (<a href="mailto:${booking.candidate_email}">${booking.candidate_email}</a>)`,
         `<strong>${Kind}:</strong> ${interviewTitle}`,
         `<strong>Originally Scheduled:</strong> ${formattedDate}`,
       ];
@@ -336,8 +338,10 @@ serve(async (req) => {
       const interviewerEmailHtml = createEmailTemplate({
         recipientName: interviewerProfile.first_name,
         preheaderText: `${Kind} with ${booking.candidate_name} has been cancelled`,
-        title: `${Kind} Cancelled`,
+        title: `${Kind} cancelled`,
         content: interviewerContent,
+        product: 'Scheduling',
+        eyebrow: 'Cancelled',
       });
 
       await supabase.functions.invoke('send-user-email', {
@@ -379,8 +383,10 @@ serve(async (req) => {
           const guestEmailHtml = createEmailTemplate({
             recipientName: 'there',
             preheaderText: `${Kind} scheduled for ${formattedDate} has been cancelled`,
-            title: `${Kind} Cancelled`,
+            title: `${Kind} cancelled`,
             content: guestContent,
+            product: 'Scheduling',
+            eyebrow: 'Cancelled',
           });
 
           await supabase.functions.invoke('send-user-email', {

@@ -752,7 +752,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               summary: interviewTitle,
-              description: `${Kind} ${isMeeting ? 'booked' : 'scheduled'} via GoGio\n\n${isMeeting ? 'BOOKED BY' : 'CANDIDATE DETAILS'}:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}${transcriptIngestEmail ? `\n\n🎙️ TRANSCRIPT EMAIL:\n${transcriptIngestEmail}\n(Add this to your note-taking app to auto-generate interview notes)` : ''}`,
+              description: `${Kind} ${isMeeting ? 'booked' : 'scheduled'} via Gio ATS\n\n${isMeeting ? 'BOOKED BY' : 'CANDIDATE DETAILS'}:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}${transcriptIngestEmail ? `\n\n🎙️ TRANSCRIPT EMAIL:\n${transcriptIngestEmail}\n(Add this to your note-taking app to auto-generate interview notes)` : ''}`,
               start: {
                 dateTime: scheduled_start,
                 timeZone: config.timezone,
@@ -1089,7 +1089,7 @@ serve(async (req) => {
       `DTSTART:${formatDateForICS(new Date(scheduled_start))}`,
       `DTEND:${formatDateForICS(new Date(scheduled_end))}`,
       `SUMMARY:${escapeICSText(interviewTitle)}`,
-      `DESCRIPTION:${escapeICSText(`Scheduled via GoGio\n\n${isMeeting ? 'Notes' : 'Candidate Notes'}:\n${notes || 'None'}`)}`,
+      `DESCRIPTION:${escapeICSText(`Scheduled via Gio ATS\n\n${isMeeting ? 'Notes' : 'Candidate Notes'}:\n${notes || 'None'}`)}`,
       `LOCATION:${escapeICSText(
         meeting_type_preference === 'google_meet' 
           ? (googleMeetLink || config.meeting_location || '') 
@@ -1133,7 +1133,7 @@ serve(async (req) => {
         ];
 
         if (googleMeetLink) {
-          meetingDetails.push(`<strong>Join via:</strong> <a href="${googleMeetLink}" style="color: #7e3eff;">Google Meet</a>`);
+          meetingDetails.push(`<strong>Join via:</strong> <a href="${googleMeetLink}">Google Meet</a>`);
         } else if (custom_meeting_location) {
           meetingDetails.push(`<strong>Location:</strong> ${custom_meeting_location}`);
         } else if (config.meeting_location) {
@@ -1141,7 +1141,7 @@ serve(async (req) => {
         }
 
         let emailContent = `
-          <p>Your ${kind} with <strong>${interviewersDisplay}</strong> has been confirmed${isMeeting ? '.' : '!'}</p>
+          <p>Your ${kind} with <strong>${interviewersDisplay}</strong> has been confirmed.</p>
           <div class="divider"></div>
           <p><strong>${Kind} Details:</strong></p>
           ${formatEmailList(meetingDetails)}
@@ -1154,7 +1154,9 @@ serve(async (req) => {
         const candidateEmailBody = createEmailTemplate({
           recipientName: candidate_name,
           preheaderText: `Your ${kind} is confirmed for ${formattedDate}`,
-          title: `${Kind} Confirmed: ${headline}`,
+          title: `Your ${kind} is confirmed`,
+          eyebrow: headline,
+          product: 'Scheduling',
           content: emailContent,
           footerNote: 'If you need to reschedule, please contact us as soon as possible.'
         });
@@ -1201,7 +1203,7 @@ serve(async (req) => {
 
       const candidateDetails = [
         `<strong>Name:</strong> ${candidate_name}`,
-        `<strong>Email:</strong> <a href="mailto:${candidate_email}" style="color: #6366f1;">${candidate_email}</a>`,
+        `<strong>Email:</strong> <a href="mailto:${candidate_email}">${candidate_email}</a>`,
       ];
 
       if (candidate_phone) {
@@ -1239,7 +1241,7 @@ serve(async (req) => {
         }
 
         if (googleMeetLink) {
-          interviewDetails.push(`<strong>Location:</strong> <a href="${googleMeetLink}" style="color: #6366f1;">Google Meet (Click to Join)</a>`);
+          interviewDetails.push(`<strong>Location:</strong> <a href="${googleMeetLink}">Google Meet (Click to Join)</a>`);
         } else if (config.meeting_location) {
           interviewDetails.push(`<strong>Location:</strong> ${config.meeting_location}`);
         }
@@ -1269,9 +1271,11 @@ serve(async (req) => {
         const interviewerEmailBody = createEmailTemplate({
           recipientName: recipient.first_name,
           preheaderText: isMeeting ? `${candidate_name} booked ${interviewTitle}` : `New interview scheduled with ${candidate_name}`,
-          title: isMeeting ? `New Meeting: ${interviewTitle}` : `New Interview: ${headlineWithName}`,
+          title: isMeeting ? `New meeting: ${interviewTitle}` : `New interview: ${headlineWithName}`,
+          eyebrow: isMeeting ? 'Meeting booked' : 'Interview scheduled',
+          product: 'Scheduling',
           content: interviewerContent,
-          ctaText: candidateProfileUrl ? 'View Candidate Profile' : 'View in Dashboard',
+          ctaText: candidateProfileUrl ? 'View the candidate' : 'Open Gio ATS',
           ctaUrl: candidateProfileUrl || `${frontendUrl}/settings`,
         });
 
@@ -1318,7 +1322,7 @@ serve(async (req) => {
         ];
 
         if (googleMeetLink) {
-          guestMeetingDetails.push(`<strong>Join via:</strong> <a href="${googleMeetLink}" style="color: #7e3eff;">Google Meet</a>`);
+          guestMeetingDetails.push(`<strong>Join via:</strong> <a href="${googleMeetLink}">Google Meet</a>`);
         } else if (custom_meeting_location) {
           guestMeetingDetails.push(`<strong>Location:</strong> ${custom_meeting_location}`);
         } else if (config.meeting_location) {
@@ -1339,7 +1343,9 @@ serve(async (req) => {
             const guestEmailBody = createEmailTemplate({
               recipientName: 'there',
               preheaderText: `${Kind} invite for ${formattedDateGuest}`,
-              title: `${Kind} Invite: ${headline}`,
+              title: `You're invited: ${headline}`,
+              eyebrow: `${Kind} invitation`,
+              product: 'Scheduling',
               content: guestEmailContent,
             });
 

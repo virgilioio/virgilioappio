@@ -243,9 +243,11 @@ async function buildEmail(
       recipientName: prof.first_name || recipientName(prof.email),
       preheaderText: excerpt ?? subject,
       title: subject,
+      product: 'Chat',
+      eyebrow: 'New message',
       content: `
         <p><strong>${escapeHtml(ctx.candidate_name)}</strong> wrote:</p>
-        <blockquote style="margin:12px 0;padding:10px 14px;border-left:3px solid #6366f1;background:#f9fafb;color:#374151;border-radius:4px;">
+        <blockquote style="margin:12px 0 24px;padding:10px 14px;border-left:3px solid #D7C5FB;background:#ffffff;color:#1F2230;border-radius:10px;font-family:Inter,Arial,sans-serif;font-size:14px;line-height:1.55;">
           ${excerpt ? escapeHtml(excerpt) : "(no message body)"}
         </blockquote>
         ${count > 1 ? `<p style="color:#6b7280;font-size:13px;">+${count - 1} more message${count - 1 === 1 ? "" : "s"} in this thread.</p>` : ""}
@@ -269,9 +271,11 @@ async function buildEmail(
       recipientName: prof.first_name || recipientName(prof.email),
       preheaderText: `Gio asked for a human on ${ctx.candidate_name}'s chat.`,
       title: subject,
+      product: 'Chat',
+      eyebrow: 'Needs a human',
       content: `
         <p>Gio handed this chat over and is waiting for a teammate to step in${jobLabel}.</p>
-        ${excerpt ? `<blockquote style="margin:12px 0;padding:10px 14px;border-left:3px solid #f59e0b;background:#fffbeb;color:#374151;border-radius:4px;">
+        ${excerpt ? `<blockquote style="margin:12px 0 24px;padding:10px 14px;border-left:3px solid #F59E0B;background:#ffffff;color:#1F2230;border-radius:10px;font-family:Inter,Arial,sans-serif;font-size:14px;line-height:1.55;">
           ${escapeHtml(excerpt)}
         </blockquote>` : ""}
       `,

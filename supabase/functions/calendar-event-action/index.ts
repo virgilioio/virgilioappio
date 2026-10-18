@@ -287,6 +287,7 @@ serve(async (req) => {
         recipientName,
         preheaderText: `${headline}: ${when}`,
         title: headline,
+        product: 'Scheduling',
         content: `
           <p>${
             action === 'cancel'

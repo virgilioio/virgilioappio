@@ -206,8 +206,10 @@ serve(async (req) => {
         const interviewerHtml = createEmailTemplate({
           recipientName: interviewerProfile.first_name,
           preheaderText: `Interview with ${booking.candidate_name} has been cancelled`,
-          title: 'Interview Cancelled by Candidate',
+          title: 'Interview cancelled by the candidate',
           content: interviewerContent,
+          product: 'Scheduling',
+          eyebrow: 'Cancelled',
         });
 
         await supabase.functions.invoke('send-user-email', {
@@ -230,8 +232,10 @@ serve(async (req) => {
       const candidateHtml = createEmailTemplate({
         recipientName: booking.candidate_name,
         preheaderText: `Your interview has been cancelled`,
-        title: 'Interview Cancelled',
+        title: 'Your interview is cancelled',
         content: candidateContent,
+        product: 'Scheduling',
+        eyebrow: 'Cancelled',
       });
 
       await supabase.functions.invoke('send-user-email', {

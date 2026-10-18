@@ -81,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { createEmailTemplate } = await import('../_shared/emailTemplate.ts');
     
     const emailContent = `
-      <p>We received a request to reset the password for your GoGio account.</p>
+      <p>We received a request to reset the password for your Gio ATS account.</p>
       <p>Click the button below to create a new password. This link will expire in <strong>30 minutes</strong> for security reasons.</p>
       <div class="divider"></div>
       <p style="font-size: 14px; color: #6b7280; margin-top: 32px;">
@@ -91,12 +91,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailHtml = createEmailTemplate({
       recipientName: email.split('@')[0], // Use email prefix as fallback
-      preheaderText: 'Reset your GoGio password',
-      title: 'Reset Your Password',
+      preheaderText: 'Reset your Gio ATS password',
+      title: 'Reset your password',
+      product: 'Account',
+      eyebrow: 'Password reset',
       content: emailContent,
-      ctaText: 'Reset Password',
+      ctaText: 'Reset password',
       ctaUrl: resetUrl,
-      footerNote: '🔒 This is a secure password reset link. For your security, this link will expire in 30 minutes and can only be used once.'
+      footerNote: 'This is a secure password reset link. For your security, this link will expire in 30 minutes and can only be used once.'
     });
     
     // Send email with Resend

@@ -15,6 +15,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
+import { atsLayout, esc, gioContent } from "../_shared/atsEmail.ts";
 import { marked } from "npm:marked@12.0.2";
 
 const FROM = "Gio <noreply@app.gogio.io>";
@@ -260,20 +261,20 @@ Deno.serve(async (req) => {
               from: FROM,
               to,
               subject: headline,
-              html:
-                `<p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#1F2230">` +
-                `<strong>${headline}</strong><br/>${job.title ?? ""}</p>` +
-                (reasons.length
-                  ? `<p style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#1F2230">${
-                    reasons.map((r: string) => r.replace(/[<>]/g, "")).join(" · ")
-                  }</p>`
-                  : "") +
-                (note
-                  ? `<p style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#5A6072">“${
-                    note.replace(/[<>]/g, "")
-                  }”</p>`
-                  : "") +
-                `<p style="font-family:Inter,Arial,sans-serif;font-size:12px;color:#8B8F9E">Recorded on the link we shared. We do not know which person at the client answered.</p>`,
+              html: atsLayout({
+                preheader: `${headline}${job.title ? ` (${job.title})` : ""}, from the dossier link you shared.`,
+                product: "Dossiers",
+                eyebrow: decision === "interview_requested" ? "Interview requested" : "Not a fit",
+                title: headline,
+                lead: `The client answered on the dossier link you shared${job.title ? ` for <strong style="color:#1F2230;font-weight:600">${esc(job.title)}</strong>` : ""}.`,
+                body: gioContent(
+                  (reasons.length
+                    ? `<p><strong>Reasons:</strong> ${reasons.map((r: string) => esc(r)).join(" &middot; ")}</p>`
+                    : "") + (note ? `<p><strong>Their note:</strong> &ldquo;${esc(note)}&rdquo;</p>` : ""),
+                ),
+                note: "Recorded on the link we shared. We don't know which person at the client answered.",
+                why: "You're getting this because you're a recruiter on this job.",
+              }),
             } as never);
           } catch (mailError) {
             console.error("[dossier-public] email", mailError);

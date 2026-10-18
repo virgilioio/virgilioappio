@@ -55,7 +55,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     const emailContent = `
       <p>Thank you for signing up! We're excited to have you on board.</p>
-      <p>To get started with GoGio, please verify your email address by clicking the button below.</p>
+      <p>To get started with Gio ATS, please verify your email address by clicking the button below.</p>
       <div class="divider"></div>
       <p><strong>What happens after verification?</strong></p>
       ${formatEmailList([
@@ -69,18 +69,20 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailHtml = createEmailTemplate({
       recipientName: user.email.split('@')[0], // Use email prefix as fallback
-      preheaderText: 'Verify your email to get started with GoGio',
-      title: 'Welcome to GoGio!',
+      preheaderText: 'Verify your email to get started with Gio ATS',
+      title: 'Welcome to Gio ATS',
+      product: 'Account',
+      eyebrow: 'Confirm your email',
       content: emailContent,
-      ctaText: 'Verify Email Address',
+      ctaText: 'Verify email address',
       ctaUrl: confirmUrl,
-      footerNote: `If you didn't create a GoGio account, you can safely ignore this email.`
+      footerNote: `If you didn't create a Gio ATS account, you can safely ignore this email.`
     });
 
     const emailResponse = await resend.emails.send({
       from: emailFrom,
       to: [user.email],
-      subject: "Confirm your GoGio account",
+      subject: "Confirm your Gio ATS account",
       html: emailHtml,
     });
 
