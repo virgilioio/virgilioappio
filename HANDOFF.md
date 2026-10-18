@@ -61,6 +61,17 @@ Hard limits:
   - the button (`CandidateOfferApprovals.tsx`) says who was reminded, or how long until they can be reminded again;
   - the approver sees the offer in Your queue under their own login.
 
+- **Every email in the Gio ATS design.**
+  - `_shared/atsEmail.ts` is the one layout for team and system emails: the "gio ats" logo (`public/brand/gio-ats-logo-dark.png`, drawn from `GioAtsLogo`'s paths, because Gmail and Outlook don't show SVG), the product in the masthead, an eyebrow, a title with a lilac period, a candidate card, the dark button and the Gio footer.
+  - The old `createEmailTemplate` now draws this layout, which covers bookings, cancellations, calendar replies, chat notifications, invitation requests, password reset and the account confirmation email.
+  - The offer approval emails and the "Interview notes ready" and dossier-decision emails were moved onto it by hand.
+  - All 11 functions are deployed.
+  - Left as they are: the privacy notices (Virgilio's own brand) and the reference emails (the agency's logo, by design).
+- **The bell is live, and it has a sound** (`20261018231352_notifications_live`, test 25 4/4).
+  - Notifications are in Realtime, so the bell updates at once.
+  - "Play a sound" plays "Pebble, low, tighter" (Allan chose it in the sound lab, https://claude.ai/artifact/7EkkBu9Q5Tyq2uJ9kkA7on): two wooden taps for a mention, a run of four for an offer that needs your approval.
+  - The code is in `src/lib/notificationSound.ts` and `src/hooks/useNotificationSound.ts`.
+
 ## Done 2026-10-18 (Gio Docs)
 
 - **The black rail: Gio's look in Gio Docs.** Merged to Gio Docs `main` (e85e9a5) after Allan approved the screenshots. It was built on the branch `claude/docs-black-rail`. The rules are in Gio Docs' `AGENTS.md` ("Decisions (Allan, 2026-10-18: the black rail, Gio's DNA)").
