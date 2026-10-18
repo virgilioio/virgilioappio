@@ -1968,6 +1968,32 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 .gio-written-column { min-width: 0; border-radius: 4px; outline: 1px dashed transparent; outline-offset: 6px; transition: outline-color var(--dur-hover) ease; }
 .gio-written-column > :last-child { margin-bottom: 0; }
 .gio-written-columns:hover > .gio-written-column { outline-color: #E3E1DA; }
+/* Images (Gio Docs' image block): a share of the text width, aligned; selected,
+   a 2px noir ring, the dark bar for alignment and Delete, and a corner handle
+   that follows the pointer exactly (no transition). */
+.gio-written-image-wrap { margin: 6px 0 12px; }
+.gio-written-image { position: relative; margin: 0 auto; max-width: 100%; border-radius: 3px; user-select: none; }
+.gio-written-image[data-align="left"] { margin-left: 0; }
+.gio-written-image[data-align="right"] { margin-right: 0; }
+.gio-written-image img { display: block; width: 100%; height: auto; border-radius: 3px; }
+.gio-written-image[data-selected] { box-shadow: 0 0 0 2px #0d0d09; }
+.gio-written-image-empty {
+  display: flex; align-items: center; justify-content: center; width: 100%; border-radius: 3px;
+  background: #F1F0EC; box-shadow: inset 0 0 0 1px #E3E1DA; font: 500 12px/1 Inter, sans-serif; color: #6B7080;
+}
+.gio-written-image-bar {
+  position: absolute; top: -42px; left: 50%; translate: -50% 0; z-index: 3;
+  display: flex; align-items: center; gap: 2px; height: 34px; padding: 0 4px; border-radius: 9px;
+  background: #0d0d09; color: #FFFCF9; box-shadow: 0 8px 24px rgba(13, 13, 9, .22);
+  animation: gio-slash-in var(--dur-menu-in) var(--ease-out); transform-origin: bottom center;
+}
+.gio-written-image-handle {
+  position: absolute; bottom: -5px; width: 12px; height: 12px; border-radius: 3px; z-index: 3;
+  background: #fff; box-shadow: 0 0 0 2px #0d0d09; cursor: ew-resize; touch-action: none;
+}
+.gio-written-image-handle[data-side="right"] { right: -5px; }
+.gio-written-image-handle[data-side="left"] { left: -5px; }
+@media (prefers-reduced-motion: reduce) { .gio-written-image-bar { animation-name: gio-fade-only; } }
 /* Picker options: 30px, the picked one ringed. */
 .gio-callout-opt {
   display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 7px; color: #5A6072;

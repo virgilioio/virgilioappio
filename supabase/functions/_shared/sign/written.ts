@@ -2,8 +2,8 @@
 // writtenLayout.ts (shared with the app); this file only measures text with
 // the PDF's own fonts and draws the result. Text stays real text. ASCII only.
 
-import { LineCapStyle, PDFDocument, PDFFont, rgb, StandardFonts } from "npm:pdf-lib@1.17.1";
-import { CALLOUT_ICONS, CALLOUT_TONES, layoutWritten, type Style, type WrittenBlock } from "./writtenLayout.ts";
+import { LineCapStyle, PDFDocument, PDFFont, type PDFImage, rgb, StandardFonts } from "npm:pdf-lib@1.17.1";
+import { CALLOUT_ICONS, CALLOUT_TONES, layoutWritten, writtenImages, type Style, type WrittenBlock } from "./writtenLayout.ts";
 
 export interface WrittenPdf {
   bytes: Uint8Array;
@@ -24,6 +24,27 @@ export interface WrittenInput {
   highlight?: Record<string, string> | null;
   /** With highlight: empty values' [Label] in red (the template editor's preview). */
   emptyRed?: boolean;
+  /**
+   * Loads an image the document uses (a sign-files path), or null when it
+   * can't or mustn't (the caller checks the path is the tenant's own). With
+   * no loader, images print as grey boxes.
+   */
+  loadImage?: (path: string) => Promise<Uint8Array | null>;
+}
+
+const MAX_IMAGES = 40;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+/** PNG or JPEG by their first bytes; anything else isn't drawn. */
+async function embedImage(pdf: PDFDocument, bytes: Uint8Array): Promise<PDFImage | null> {
+  if (bytes.length > MAX_IMAGE_BYTES) return null;
+  try {
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return await pdf.embedPng(bytes);
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) return await pdf.embedJpg(bytes);
+  } catch {
+    // A damaged image prints as a grey box.
+  }
+  return null;
 }
 
 const COLORS = {
@@ -113,6 +134,15 @@ export async function renderWritten(input: WrittenInput): Promise<WrittenPdf> {
     measure: (text, style, size) => fonts[style].widthOfTextAtSize(text, size),
   });
 
+  // Each image once, however often it's used.
+  const images = new Map<string, PDFImage | null>();
+  if (input.loadImage) {
+    for (const path of writtenImages(input.content).slice(0, MAX_IMAGES)) {
+      const bytes = await input.loadImage(path).catch(() => null);
+      images.set(path, bytes ? await embedImage(pdf, bytes) : null);
+    }
+  }
+
   for (const p of layout.pages) {
     const page = pdf.addPage([layout.width, layout.height]);
     for (const op of p.ops) {
@@ -122,6 +152,17 @@ export async function renderWritten(input: WrittenInput): Promise<WrittenPdf> {
       } else if (op.kind === "box") {
         const t = CALLOUT_TONES[op.tone];
         page.drawSvgPath(roundRect(op.x, op.y, op.w, op.h), { x: 0, y: layout.height, color: hex(t.bg), borderColor: hex(t.ring), borderWidth: 0.75 });
+      } else if (op.kind === "image") {
+        const img = images.get(op.path);
+        if (img) {
+          page.drawImage(img, { x: op.x, y: layout.height - op.y - op.h, width: op.w, height: op.h });
+        } else {
+          page.drawRectangle({ x: op.x, y: layout.height - op.y - op.h, width: op.w, height: op.h, color: hex("#F1F0EC"), borderColor: hex("#E3E1DA"), borderWidth: 0.75 });
+          const label = "Image not available";
+          const size = 9;
+          const tw = fonts.regular.widthOfTextAtSize(label, size);
+          if (tw < op.w - 8) page.drawText(label, { x: op.x + (op.w - tw) / 2, y: layout.height - op.y - op.h / 2 - size / 3, size, font: fonts.regular, color: COLORS.muted });
+        }
       } else if (op.kind === "rect") {
         page.drawRectangle({ x: op.x, y: layout.height - op.y - op.h, width: op.w, height: op.h, color: hex(op.fill) });
       } else if (op.kind === "icon") {

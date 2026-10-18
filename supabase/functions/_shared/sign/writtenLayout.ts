@@ -3,7 +3,9 @@
 // breaks, callouts ("gio-callout": icon, tone; added 2026-10-18), tables
 // ("table" > "tablerow" > "tablecell" with headerState; 2026-10-18), small
 // text for the whole document (content.gio.small; 2026-10-18), two columns
-// ("gio-columns" > two "gio-column"s of blocks; 2026-10-18), data tags
+// ("gio-columns" > two "gio-column"s of blocks; 2026-10-18), images
+// ("gio-image": path in sign-files, width as a share of the text, natural
+// w/h, align; 2026-10-18), data tags
 // ("placeholder", with an optional print "format"),
 // conditional sections ("gio-if"), signing blocks ("gio-sign") and signer
 // fields inside the text ("gio-field": roleId, fieldType, required, label). The output is a list of pages of simple drawing
@@ -64,7 +66,16 @@ export interface RectOp {
   /** "#RRGGBB". */
   fill: string;
 }
-export type Op = TextOp | LineOp | BoxOp | IconOp | RectOp;
+/** An image from sign-files, drawn at this size (written.ts embeds it; a missing one is a grey box). */
+export interface ImageOp {
+  kind: "image";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  path: string;
+}
+export type Op = TextOp | LineOp | BoxOp | IconOp | RectOp | ImageOp;
 
 // ---- Callouts (Gio Docs' callout, in the ATS's own colours) -----------------
 export type CalloutTone = "neutral" | "yellow" | "green" | "blue" | "red";
@@ -819,6 +830,44 @@ function columns(c: Ctx, n: Node) {
   flow.y += h;
 }
 
+/**
+ * An image: `width` of the text (or column) width, at its own proportions,
+ * aligned left, centre or right. It moves to the next page when it doesn't
+ * fit, and one taller than a page is shrunk to fit it.
+ */
+function image(c: Ctx, n: Node) {
+  const path = String(n.path ?? "");
+  if (!path) return;
+  const share = Math.max(0.1, Math.min(1, Number(n.width) || 1));
+  const nw = Number(n.w) || 0;
+  const nh = Number(n.h) || 0;
+  let w = c.width * share;
+  let h = nw > 0 && nh > 0 ? (w * nh) / nw : w * 0.6;
+  const room = Math.min(TEXT_H, c.flow.bottom - MARGIN_TOP);
+  if (h > room) {
+    w = (w * room) / h;
+    h = room;
+  }
+  c.flow.space(4);
+  c.flow.ensure(h);
+  const align = n.align === "left" || n.align === "right" ? n.align : "center";
+  const x = align === "left" ? c.left : align === "right" ? c.left + c.width - w : c.left + (c.width - w) / 2;
+  c.flow.page.ops.push({ kind: "image", x, y: c.flow.y, w, h, path });
+  c.flow.y += h + PARA_AFTER + 2;
+}
+
+/** Every image a written document uses (the renderer loads them before it draws). */
+export function writtenImages(content: Node): string[] {
+  const out = new Set<string>();
+  const walk = (n: Node | undefined) => {
+    if (!n) return;
+    if (n.type === "gio-image" && typeof n.path === "string" && n.path) out.add(n.path);
+    for (const k of (n.children ?? []) as Node[]) walk(k);
+  };
+  walk(content?.root);
+  return [...out];
+}
+
 function round3(n: number) {
   return Math.round(n * 1000) / 1000;
 }
@@ -850,6 +899,9 @@ function blocksOf(c: Ctx, nodes: Node[] | undefined) {
         break;
       case "gio-columns":
         columns(c, n);
+        break;
+      case "gio-image":
+        image(c, n);
         break;
       case "list":
         listItems(c, n, 0);

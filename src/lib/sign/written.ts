@@ -106,7 +106,7 @@ export function writtenCounts(content: LexicalJson | null | undefined) {
 export function hasText(content: LexicalJson | null | undefined) {
   let found = false
   walkWritten(content, (n) => {
-    if ((n.type === 'text' && String(n.text ?? '').trim()) || ['placeholder', 'gio-sign', 'gio-field', 'horizontalrule'].includes(n.type)) found = true
+    if ((n.type === 'text' && String(n.text ?? '').trim()) || ['placeholder', 'gio-sign', 'gio-field', 'horizontalrule', 'gio-image'].includes(n.type)) found = true
   })
   return found
 }

@@ -39,7 +39,7 @@ import { $stackColumns } from './columns'
  * one, with its text. The saved format doesn't change.
  */
 
-type Kind = 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'quote' | 'callout' | 'table' | 'columns' | 'divider' | 'sign' | 'section' | 'break' | 'other'
+type Kind = 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'quote' | 'callout' | 'table' | 'columns' | 'image' | 'divider' | 'sign' | 'section' | 'break' | 'other'
 const NAME: Record<Kind, string> = {
   text: 'Text',
   h1: 'Heading 1',
@@ -51,6 +51,7 @@ const NAME: Record<Kind, string> = {
   callout: 'Callout',
   table: 'Table',
   columns: 'Two columns',
+  image: 'Image',
   divider: 'Divider',
   sign: 'Signature block',
   section: 'Conditional section',
@@ -68,6 +69,7 @@ const ICON: Record<Kind, SlashIcon> = {
   callout: 'callout',
   table: 'table',
   columns: 'columns',
+  image: 'image',
   divider: 'divider',
   sign: 'sign',
   section: 'section',
@@ -98,6 +100,7 @@ function $kindOf(n: LexicalNode | null): Kind {
   if ($isColumnsNode(n)) return 'columns'
   if ($isHorizontalRuleNode(n)) return 'divider'
   const t = n.getType()
+  if (t === 'gio-image') return 'image'
   return t === 'gio-sign' ? 'sign' : t === 'gio-if' ? 'section' : t === 'gio-page-break' ? 'break' : 'other'
 }
 
