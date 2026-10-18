@@ -1888,6 +1888,15 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 }
 @media (max-width: 900px) { .gio-written-paper { padding: 32px; min-height: 0; } }
 .gio-written-root { outline: none; min-height: 600px; }
+/* The document's title, Docs-style (in the ATS's type): big, borderless, grows with its text. */
+.gio-written-title {
+  display: block; width: 100%; margin: 0 0 18px; padding: 0; border: 0; resize: none; overflow: hidden;
+  background: transparent; outline: none;
+  font: 600 30px/1.15 Poppins, sans-serif; letter-spacing: -0.04em; color: #0d0d09;
+}
+.gio-written-title::placeholder { color: #B5B9C4; }
+/* Docs' empty-line hints: the empty line you're on, and empty headings and list items. */
+.gio-written-root [data-hint]::before { content: attr(data-hint); float: left; height: 0; pointer-events: none; color: #B5B9C4; }
 .gio-written-placeholder {
   position: absolute; top: 56px; left: 64px; right: 64px;
   color: #6B7080; pointer-events: none; user-select: none;

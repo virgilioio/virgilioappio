@@ -103,6 +103,7 @@ import {
   type InlineFieldType,
   type WrittenLabels,
 } from '@/components/sign/written/nodes'
+import { DocTitle, EmptyLineHints, TypingShortcuts } from '@/components/sign/written/typing'
 import { FieldList } from './FieldList'
 import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
 import { FIELD_ICON } from './fieldIcons'
@@ -854,9 +855,10 @@ export function WrittenPane({
               <Toolbar />
               <div className="min-h-0 flex-1 overflow-y-auto bg-[#ECEAE2] px-6 py-8" data-no-swipe>
                 <div className="gio-written-paper mx-auto">
+                  <DocTitle value={doc.name} onChange={(name) => set((x) => ({ ...x, written: x.written.map((w) => (w.id === doc.id ? { ...w, name } : w)) }))} />
                   <RichTextPlugin
                     contentEditable={<ContentEditable className="gio-written-root" aria-label="Document text" aria-multiline="true" role="textbox" />}
-                    placeholder={<p className="gio-written-placeholder">Start writing. Type / to add offer fields, signer fields and blocks.</p>}
+                    placeholder={null}
                     ErrorBoundary={LexicalErrorBoundary}
                   />
                 </div>
@@ -902,6 +904,8 @@ export function WrittenPane({
         <EditorRef to={editorRef} />
         <SectionLabels label={sectionLabel} />
         <SlashMenu options={options} />
+        <TypingShortcuts />
+        <EmptyLineHints />
         <OnChangePlugin
           ignoreSelectionChange
           onChange={(state) => {

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 
-import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -46,7 +45,6 @@ export function DocumentStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
   const sampleQ = useSampleValues(formId, formatUses(doc?.content))
   const sample = sampleQ.data ? { firstName: sampleQ.data.firstName, values: sampleQ.data.values } : null
   const previewLabel = sample ? `Preview with ${sample.firstName ? `${sample.firstName}’s` : 'the latest'} offer` : 'Preview'
-  const rename = (name: string) => doc && set((x) => ({ ...x, written: x.written.map((w) => (w.id === doc.id ? { ...w, name } : w)) }))
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -80,15 +78,6 @@ export function DocumentStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
                 </SelectContent>
               </Select>
             )}
-            <Input
-              value={doc.name}
-              maxLength={200}
-              aria-label="Document name"
-              placeholder="Name the document"
-              aria-invalid={!doc.name.trim() || undefined}
-              className="h-8 w-[220px] text-[13px] font-medium"
-              onChange={(e) => rename(e.target.value)}
-            />
           </div>
         )}
         <span className="flex-1" />
