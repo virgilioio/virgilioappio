@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Check, ChevronDown, CircleAlert } from 'lucide-react'
+import { Check, CircleAlert } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { WizardSheet } from '@/components/ui/wizard-sheet'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import {
@@ -17,14 +16,12 @@ import {
   offerCoverage,
   saveTemplate,
   stepIssue,
-  tagLabel,
   templateIssues,
   usedTags,
   useOfferForms,
   useOfferFormTags,
   type TplDraft,
 } from '@/lib/sign/templates'
-import { TagText } from './parts'
 import { InfoStep } from './InfoStep'
 import { RolesStep } from './RolesStep'
 import { DocumentStep } from './DocumentStep'
@@ -36,6 +33,7 @@ const STEP_SUB = [
   'The name and type people see when picking a template, and the documents they sign.',
   'Who signs, in what order, and where each person comes from when the template is sent.',
   'Write the agreement or place offer fields on the uploaded pages. Each signer has their own colour.',
+  'The email each person gets with their signing link, and how long the link lasts. The sender can change the email when sending.',
   'One last look. Jump back to any step to change it.',
 ]
 
@@ -227,13 +225,11 @@ export function TemplateWizard({
       }
     >
       {step === STEP.info && organizationId && (
-        <>
-          <InfoStep d={d} set={set} tenantId={organizationId} onWrite={reachable(STEP.document) ? () => go(STEP.document) : undefined} />
-          <DefaultEmail d={d} set={set} />
-        </>
+        <InfoStep d={d} set={set} tenantId={organizationId} onWrite={reachable(STEP.document) ? () => go(STEP.document) : undefined} />
       )}
       {step === STEP.signers && <RolesStep d={d} set={set} me={me} />}
       {step === STEP.document && <DocumentStep d={e} set={set} />}
+      {step === STEP.message && <MessageStep d={d} set={set} />}
       {step === STEP.review && <ReviewStep d={e} go={go} />}
     </WizardSheet>
   )
@@ -244,34 +240,4 @@ function documentSub(e: TplDraft) {
   if (e.use_written && e.use_uploads) return STEP_SUB[STEP.document]
   if (e.use_uploads) return 'Drag offer fields onto the pages where the values should go, or click one to place it.'
   return 'Write the agreement. Type / to add offer fields, signer fields, signature blocks and conditional sections.'
-}
-
-/**
- * The email each person gets with their link, folded under Template info (the
- * Message step's content). Open when it needs attention.
- */
-function DefaultEmail({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) => TplDraft) => void }) {
-  const empty = !d.subject.trim() || !d.body.trim()
-  const [open, setOpen] = useState(empty)
-  useEffect(() => {
-    if (empty) setOpen(true)
-  }, [empty])
-  return (
-    <Collapsible open={open} onOpenChange={setOpen} className="mt-2 max-w-[1000px] border-t border-virgilio-border pt-5">
-      <CollapsibleTrigger className="flex w-full items-start gap-3 text-left [&[data-state=open]_svg.gio-disclosure-chevron]:rotate-180">
-        <div className="min-w-0 flex-1">
-          <p className="font-poppins text-[12.5px] font-semibold uppercase tracking-[0.06em] text-[#1F2230]">Default email</p>
-          <p className="mt-[3px] truncate font-inter text-[11.5px] text-text-tertiary">
-            {d.subject.trim() ? <TagText text={d.subject} label={(k) => tagLabel(d.kind, k)} /> : 'No subject yet'} · the sender can change it when sending
-          </p>
-        </div>
-        <ChevronDown className="gio-disclosure-chevron mt-1 h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={2} aria-hidden />
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="pt-4">
-          <MessageStep d={d} set={set} />
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  )
 }

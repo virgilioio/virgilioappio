@@ -566,13 +566,14 @@ export function usedTags(d: Pick<TplDraft, 'fields' | 'written'>): Pick<TplField
 /* ------------------------------------------------------------------------- */
 
 /**
- * The template workflow's steps (2026-10-17; Signers before Document, Allan
- * 2026-10-18, so the signers exist when their fields are placed):
- * Template info · Signers · Document · Review & save.
+ * The template workflow's steps (2026-10-17; Allan 2026-10-18: Signers before
+ * Document, so the signers exist when their fields are placed, and Message
+ * back as a step of its own): Template info · Signers · Document · Message ·
+ * Review & save.
  */
-export const WIZARD_STEPS = ['Template info', 'Signers', 'Document', 'Review & save'] as const
-export const STEP = { info: 0, signers: 1, document: 2, review: 3 } as const
-export type WizardStepIndex = 0 | 1 | 2
+export const WIZARD_STEPS = ['Template info', 'Signers', 'Document', 'Message', 'Review & save'] as const
+export const STEP = { info: 0, signers: 1, document: 2, message: 3, review: 4 } as const
+export type WizardStepIndex = 0 | 1 | 2 | 3
 
 export interface TplIssue {
   step: WizardStepIndex
@@ -630,8 +631,6 @@ export function templateIssues(draft: TplDraft): TplIssue[] {
   if (d.docs.some((x) => x.uploading != null)) add(STEP.info, 'Waiting for the upload to finish')
   if (pageCount(d) > 200) add(STEP.info, 'A template can hold up to 200 pages')
   if (d.docs.length + d.written.length > 50) add(STEP.info, 'A template can hold up to 50 documents')
-  if (!d.subject.trim()) add(STEP.info, 'Add an email subject')
-  if (!d.body.trim()) add(STEP.info, 'Add an email message')
   // Signers
   if (!d.roles.some((r) => r.role === 'signer')) add(STEP.signers, 'Add at least one signer')
   if (d.roles.some((r) => !r.label.trim())) add(STEP.signers, 'Every role needs a name')
@@ -656,6 +655,9 @@ export function templateIssues(draft: TplDraft): TplIssue[] {
   if (orphan) add(STEP.document, `A signer field in “${orphan.name}” belongs to a role that isn’t on the template, or only gets a copy`)
   // A missing signature keeps Save off but not Continue: Review & save lists it with Go to.
   for (const r of signersWithoutSignature(d)) add(STEP.document, `${r.label || 'A signer'} needs a signature field`, false)
+  // Message
+  if (!d.subject.trim()) add(STEP.message, 'Add an email subject')
+  if (!d.body.trim()) add(STEP.message, 'Add an email message')
   return out
 }
 

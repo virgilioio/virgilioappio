@@ -135,7 +135,7 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
         </ul>
       </FormSection>
 
-      <FormSection title="Default email" action={edit('Edit email', STEP.info)}>
+      <FormSection title="Default email" action={edit('Edit email', STEP.message)}>
         <p className="font-inter text-[13px] font-medium text-text-primary">
           <TagText text={d.subject || 'No subject yet'} label={(k) => tagLabel(d.kind, k)} />
         </p>
