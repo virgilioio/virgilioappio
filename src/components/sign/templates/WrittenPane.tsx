@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
@@ -10,7 +9,7 @@ import { HorizontalRulePlugin } from '@lexical/react/LexicalHorizontalRulePlugin
 import { HorizontalRuleNode, INSERT_HORIZONTAL_RULE_COMMAND } from '@lexical/react/LexicalHorizontalRuleNode'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { LexicalTypeaheadMenuPlugin, MenuOption, useBasicTypeaheadTriggerMatch } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import { LexicalTypeaheadMenuPlugin, useBasicTypeaheadTriggerMatch } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import { HeadingNode, QuoteNode, $createHeadingNode, $createQuoteNode, $isHeadingNode, $isQuoteNode } from '@lexical/rich-text'
 import { ListItemNode, ListNode, INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND, REMOVE_LIST_COMMAND, $isListNode } from '@lexical/list'
 import { $setBlocksType } from '@lexical/selection'
@@ -33,10 +32,12 @@ import {
   FORMAT_ELEMENT_COMMAND,
   FORMAT_TEXT_COMMAND,
   INDENT_CONTENT_COMMAND,
+  KEY_ESCAPE_COMMAND,
   OUTDENT_CONTENT_COMMAND,
   REDO_COMMAND,
   UNDO_COMMAND,
   type ElementFormatType,
+  type ElementNode,
   type LexicalEditor,
   type LexicalNode,
   type TextFormatType,
@@ -57,11 +58,9 @@ import {
   List,
   ListOrdered,
   Lock,
-  Minus,
   PenLine,
   Plus,
   Redo2,
-  SeparatorHorizontal,
   Trash2,
   TriangleAlert,
   Underline,
@@ -77,7 +76,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PdfPage } from '@/components/sign/PdfPage'
 import { cn } from '@/lib/utils'
-import { OFFER_CATEGORIES, formatKind, offerCategory, type ValueFormat } from '@/lib/sign/formats'
+import { OFFER_CATEGORIES, formatKind, formatSample, offerCategory, type ValueFormat } from '@/lib/sign/formats'
 import { tagLabel, type FieldType, type TplDraft } from '@/lib/sign/templates'
 import { useWrittenTags, type Tag } from './writtenTags'
 import { BLOCK_LABEL, IF_LABEL, useWrittenPreview, type IfOp, type LexicalJson, type TplWritten } from '@/lib/sign/written'
@@ -105,6 +104,7 @@ import {
 } from '@/components/sign/written/nodes'
 import { DocTitle, EmptyLineHints, TypingShortcuts } from '@/components/sign/written/typing'
 import { FieldList } from './FieldList'
+import { BLOCK_PREVIEWS, SlashItem, SlashPanel, fieldPreview, rememberPick, signPreview, signerFieldPreview, slashRows, type Preview, type SlashIcon } from '@/components/sign/written/slashMenu'
 import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
 import { FIELD_ICON } from './fieldIcons'
 
@@ -375,77 +375,45 @@ function Toolbar() {
 
 /* ---- "/" menu ------------------------------------------------------------- */
 
-class SlashOption extends MenuOption {
-  constructor(
-    key: string,
-    public label: string,
-    public group: string,
-    public icon: LucideIcon,
-    public run: () => void,
-    public color?: string,
-  ) {
-    super(key)
-  }
-}
-
-function SlashMenu({ options }: { options: SlashOption[] }) {
+function SlashMenu({ items }: { items: SlashItem[] }) {
   const [editor] = useLexicalComposerContext()
   const [query, setQuery] = useState<string | null>(null)
   const trigger = useBasicTypeaheadTriggerMatch('/', { minLength: 0, maxLength: 40 })
-  const shown = useMemo(() => {
-    const q = (query ?? '').trim().toLowerCase()
-    return (q ? options.filter((o) => o.label.toLowerCase().includes(q) || o.group.toLowerCase().includes(q)) : options).slice(0, 60)
-  }, [options, query])
+  const rows = useMemo(() => slashRows(items, query ?? ''), [items, query])
+  const close = () => editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown', { key: 'Escape' }))
 
   return (
-    <LexicalTypeaheadMenuPlugin<SlashOption>
-      options={shown}
+    <LexicalTypeaheadMenuPlugin<SlashItem>
+      options={rows}
       triggerFn={trigger}
       onQueryChange={setQuery}
       // While the menu is open, Esc closes the menu, not the sheet (wizard-sheet honours data-escape-local).
       onOpen={() => editor.getRootElement()?.setAttribute('data-escape-local', '')}
       onClose={() => editor.getRootElement()?.removeAttribute('data-escape-local')}
-      onSelectOption={(option, textNode: TextNode | null, close) => {
+      onSelectOption={(option, textNode: TextNode | null, closeMenu) => {
         editor.update(() => {
           if (textNode) {
             textNode.selectPrevious()
             textNode.remove()
           }
         })
+        rememberPick(option.key.replace(/^s:/, ''))
         option.run()
-        close()
+        closeMenu()
       }}
       menuRenderFn={(anchor, { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }) =>
-        anchor.current
-          ? createPortal(
-              // §12: opens under the caret with no animation; the highlight moves instantly.
-              <div className="gio-slash-menu" role="listbox" aria-label="Insert">
-                {shown.length ? (
-                  shown.map((o, i) => (
-                    <div key={o.key}>
-                      {(i === 0 || shown[i - 1].group !== o.group) && <p className="gio-slash-group">{o.group}</p>}
-                      <div
-                        ref={o.setRefElement}
-                        role="option"
-                        id={`slash-${o.key}`}
-                        aria-selected={selectedIndex === i}
-                        className="gio-slash-item"
-                        onMouseEnter={() => setHighlightedIndex(i)}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => selectOptionAndCleanUp(o)}
-                      >
-                        {o.color ? <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: o.color }} /> : <o.icon className="h-3.5 w-3.5 shrink-0 text-text-secondary" strokeWidth={2} aria-hidden />}
-                        <span className="min-w-0 flex-1 truncate">{o.label}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="px-3 py-2.5 font-inter text-[12.5px] text-text-tertiary">Nothing matches “{(query ?? '').trim()}”.</p>
-                )}
-              </div>,
-              anchor.current,
-            )
-          : null
+        anchor.current ? (
+          <SlashPanel
+            anchor={anchor.current}
+            host={editor.getRootElement()?.closest<HTMLElement>('[role="dialog"]') ?? document.body}
+            rows={rows}
+            active={selectedIndex}
+            query={query ?? ''}
+            onHover={setHighlightedIndex}
+            onPick={selectOptionAndCleanUp}
+            onClose={close}
+          />
+        ) : null
       }
     />
   )
@@ -793,21 +761,61 @@ export function WrittenPane({
       editor.focus()
     })
 
-  // The "/" menu: the form's fields by category, the values every template has, then blocks.
-  const options = useMemo(() => {
-    const out: SlashOption[] = []
+  // The "/" menu, Gio Docs' sections: basic blocks, signing, the form's fields by category, the values every template has, then advanced.
+  const items = useMemo(() => {
+    const out: SlashItem[] = []
+    const block = (key: string, label: string, icon: SlashIcon, make: () => ElementNode, md: string, preview: Preview, kw: string) =>
+      out.push(
+        new SlashItem(key, label, 'Basic blocks', icon, () =>
+          run((e) => {
+            e.update(() => {
+              const sel = $getSelection()
+              if ($isRangeSelection(sel)) $setBlocksType(sel, make)
+            })
+            e.focus()
+          }),
+        { md, preview, kw },
+        ),
+      )
+    block('text', 'Text', 'text', () => $createParagraphNode(), '', BLOCK_PREVIEWS.text, 'text paragraph plain body')
+    block('h1', 'Heading 1', 'h1', () => $createHeadingNode('h1'), '#', BLOCK_PREVIEWS.h1, 'h1 heading title')
+    block('h2', 'Heading 2', 'h2', () => $createHeadingNode('h2'), '##', BLOCK_PREVIEWS.h2, 'h2 heading subheading')
+    block('h3', 'Heading 3', 'h3', () => $createHeadingNode('h3'), '###', BLOCK_PREVIEWS.h3, 'h3 heading')
+    out.push(new SlashItem('bullet', 'Bulleted list', 'Basic blocks', 'bullet', () => run((e) => (e.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined), e.focus())), { md: '-', kw: 'bullet list ul', preview: BLOCK_PREVIEWS.bullet }))
+    out.push(new SlashItem('numbered', 'Numbered list', 'Basic blocks', 'numbered', () => run((e) => (e.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined), e.focus())), { md: '1.', kw: 'number list ol', preview: BLOCK_PREVIEWS.numbered }))
+    block('quote', 'Quote', 'quote', () => $createQuoteNode(), '>', BLOCK_PREVIEWS.quote, 'quote blockquote')
+    out.push(new SlashItem('divider', 'Divider', 'Basic blocks', 'divider', () => run((e) => (e.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined), e.focus())), { md: '---', kw: 'divider line rule hr', preview: BLOCK_PREVIEWS.divider }))
+
+    for (const r of people) {
+      out.push(new SlashItem(`sign-${r.id}`, `${r.label || 'Unnamed role'} · Signature block`, 'Signing', 'sign', () => run((e) => insertSigner(e, r.id, 'signature')), { color: r.color, kw: 'signature sign', preview: signPreview(r.label, r.color) }))
+    }
+    const whoR = people.find((r) => r.id === who)
+    if (whoR) {
+      const fields: [InlineFieldType, SlashIcon][] = [['initials', 'initials'], ['date', 'date'], ['name', 'name'], ['text', 'input'], ['checkbox', 'checkbox']]
+      for (const [t, ic] of fields) {
+        out.push(new SlashItem(`field-${t}`, `${INLINE_FIELD_LABEL[t]} · ${whoR.label || 'Signer'}`, 'Signing', ic, () => run((e) => insertSigner(e, whoR.id, t)), { kw: 'signer field', preview: signerFieldPreview(whoR.label, whoR.color, INLINE_FIELD_LABEL[t], FIELD_NOTE[t]) }))
+      }
+    }
+
+    const sample = (t: Tag) => {
+      const k = formatKind(t.key, t.type)
+      return k ? formatSample(k, null, t.tag?.config) : null
+    }
     const form = tags.filter((t) => t.tag)
     for (const c of OFFER_CATEGORIES) {
-      for (const t of form.filter((x) => offerCategory(x.tag!) === c)) out.push(new SlashOption(`tag-${t.key}`, t.label, c, Database, () => insertTag(t.key)))
+      for (const t of form.filter((x) => offerCategory(x.tag!) === c)) {
+        out.push(new SlashItem(`tag-${t.key}`, t.label, c, 'field', () => insertTag(t.key), { kw: 'offer field', preview: fieldPreview(t.label, sample(t), 'Filled in from the offer when it’s sent.') }))
+      }
     }
-    for (const t of tags.filter((x) => !x.tag)) out.push(new SlashOption(`tag-${t.key}`, t.label, 'Always available', Database, () => insertTag(t.key)))
-    for (const r of people) out.push(new SlashOption(`sign-${r.id}`, `${r.label || 'Unnamed role'} · Signature block`, 'Blocks', PenLine, () => run((e) => insertSigner(e, r.id, 'signature')), r.color))
-    out.push(new SlashOption('section', 'Conditional section', 'Blocks', Brackets, addSection))
-    out.push(new SlashOption('line', 'Line', 'Blocks', Minus, () => run((e) => e.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined))))
-    out.push(new SlashOption('break', 'Page break', 'Blocks', SeparatorHorizontal, () => run((e) => e.update(() => $insertBlock($createGioPageBreakNode())))))
+    for (const t of tags.filter((x) => !x.tag)) {
+      out.push(new SlashItem(`tag-${t.key}`, t.label, 'Always available', 'field', () => insertTag(t.key), { kw: 'field', preview: fieldPreview(t.label, sample(t), 'Filled in by Gio when the agreement is sent.') }))
+    }
+
+    out.push(new SlashItem('section', 'Conditional section', 'Advanced', 'section', addSection, { kw: 'condition if only', preview: BLOCK_PREVIEWS.section }))
+    out.push(new SlashItem('break', 'Page break', 'Advanced', 'pageBreak', () => run((e) => e.update(() => $insertBlock($createGioPageBreakNode()))), { kw: 'page new', preview: BLOCK_PREVIEWS.pageBreak }))
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tags, people.map((r) => `${r.id}:${r.label}:${r.color}`).join('|')])
+  }, [tags, who, people.map((r) => `${r.id}:${r.label}:${r.color}`).join('|')])
 
   const initialConfig = useMemo(
     () => ({
@@ -903,7 +911,7 @@ export function WrittenPane({
         <HorizontalRulePlugin />
         <EditorRef to={editorRef} />
         <SectionLabels label={sectionLabel} />
-        <SlashMenu options={options} />
+        <SlashMenu items={items} />
         <TypingShortcuts />
         <EmptyLineHints />
         <OnChangePlugin
