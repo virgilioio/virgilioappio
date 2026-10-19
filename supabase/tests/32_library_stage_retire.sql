@@ -1,4 +1,4 @@
--- Run after 20261019_library_stage_retire inside a transaction that is rolled back.
+-- Run after 20261019042407_library_stage_retire inside a transaction that is rolled back.
 -- Fake stages no job uses; signs in as real Virgilio users. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
 grant insert on t_results to authenticated;

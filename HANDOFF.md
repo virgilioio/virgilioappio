@@ -66,6 +66,11 @@ Hard limits:
   - New offer form sheet (`src/components/settings/offerForms/`): the name as the title with its purple period, description, Active, then the sections as recruiters meet them. Fields drag within and between sections (board motion; long press on touch) or move through their ⋯ menu; they open in place to edit. Sections rename in place; their ⋯ menu has one/two columns, move up/down and Remove (with Undo). Preview shows the Terms step. Everything saves as you go ("Saving…" → "Saved"). Only field types the composer can fill in are offered (no Dropdown or File: the composer shows both as a plain text box).
   - Toasts now stay clickable while a sheet or dialog is open (an Undo inside a sheet couldn't be clicked before), and a click on one no longer counts as clicking outside the sheet.
 - **One recruiting library: who may edit it.** Applied as `20261019040505_library_editors` (test 31, 14 checks, passed on live, rolled back). `library_editor()` is a platform admin or an owner/admin of Virgilio's workspace; library editors manage the shared rows and Virgilio's own rows of pipeline stages, application fields, offer forms (with their fields and choices), email templates, rejection reasons, rejection emails and candidate sources. Before this, only platform admins could edit the shared rows and only a workspace owner (Virgilio has none) its own, so the two admins could edit neither. Other workspaces' rows stay out of reach; reading is unchanged.
+- **Settings clean-up** (Allan: "I agree with everything"):
+  - the Platform dashboard is gone (SaaS-era, most numbers wrong); platform admins land on the usual default tab; SaaS customers stays;
+  - the application confirmation email (the only live automation in Settings › Automations) is the "When someone applies" card on Careers page (`settings/careers/ApplyConfirmationCard.tsx`); the Automations tab, its "coming soon" card and Job Defaults' copy are gone;
+  - one recruiting library in Settings › Recruiting: Pipeline stages, Application form and every Templates tab are one list each (shared rows and Virgilio's own together), editable by workspace admins; Job defaults is gone (old links open Pipeline stages). The lists share `LibraryCard` (`settings/shared/LibraryCard.tsx`): skeleton, LoadError with Retry, the flag scene when empty, IconTips, row collapse. Offer forms now lists the two shared forms we use;
+  - removing a stage works for admins too: applied as `20261019042407_library_stage_retire` (test 32, 5 checks, passed on live, rolled back).
 - **Stage banners wrap on phones** (`StatusBanner`: offer, hired, rejected). One row from lg up; below that the buttons move to their own row and wrap as whole buttons.
 - **Waiting on Allan:** a real test of the approval emails end to end (send an offer for approval to a teammate: their email, bell and Remind; then your "approved" bell, sound and email once they approve).
 
@@ -193,12 +198,10 @@ Hard limits:
 - Remind added 2026-10-18 (see Done 2026-10-18).
 - Still to do: a real test, where Allan sends an offer for approval to someone else and checks the email, the bell, Remind and Your queue.
 
-**Settings clean-up (Allan, 2026-10-19: "I agree with everything")**
-- Remove the Platform dashboard (SaaS-era; most numbers are wrong: new organizations and active jobs always 0, two queries read tables dropped in 2025, health and recent activity are fixed text). SaaS customers stays.
-- One library: Job Defaults merges into Settings › Recruiting (pipeline stages, application fields, templates), one list each with no Inherited split, editable by workspace admins (a database change for who may edit the shared rows; stop for "Apply!"). Other workspaces' rows stay hidden and untouched. Unused files go: `JobSettingsManager`, `PlatformApplicationFieldsManager`, `automations/ConfirmationEmailAutomation`, `dashboard/PlatformDashboard`. Note: the job and posting default triggers (`handle_new_job_defaults`, `add_default_application_fields_to_posting`) don't filter by workspace; harmless with one workspace (no workspace has its own default rows).
-- Automations: the application confirmation email is live (careers-page applications, `public-submit-application`); it moves to Settings › Careers page as "When someone applies", and the Automations tab with its "coming soon" card goes. Per-job stage automations are the real tool. Job Defaults › Automations edited our own workspace's email, not a default.
-- Tables in Templates and Job Defaults to the table rules (after the merge): one shared list with `Loadable` + skeleton, `LoadError`, `AnimatedEmpty`, IconTips on Edit, row collapse, inline edit (Esc, blur save, flash), `TabsList indicator="pill"` sub-navs, Boards rules on draggable lists.
-- Later decision: the Job wizard's auto-reject and hiring-team notification switches are saved nowhere and do nothing; build them or hide them.
+**Settings clean-up (Allan, 2026-10-19): done, see Done 2026-10-19.** Left:
+- Decide: the Job wizard's auto-reject and hiring-team notification switches are saved nowhere and do nothing; build them or hide them.
+- The job and posting default triggers (`handle_new_job_defaults`, `add_default_application_fields_to_posting`) don't filter by workspace; harmless with one workspace.
+- The `platform-admin-metrics` Edge Function is no longer called; Allan may remove it from the Supabase dashboard.
 
 **Speed and robustness plan (steps 1–3 done)**
 - **Step 4 — database cleanup.**
