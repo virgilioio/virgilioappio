@@ -8,6 +8,7 @@ interface ActivityFeedItemProps {
   activity: Activity;
   isLast?: boolean;
   onOpenInEmails?: (emailLogId: string) => void;
+  onEmailAction?: (emailLogId: string, mode: 'reply' | 'forward') => void | Promise<void>;
 }
 
 /** Plain lines — for the system's facts. */
@@ -32,7 +33,7 @@ function BodyBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ActivityFeedItem({ activity, isLast, onOpenInEmails }: ActivityFeedItemProps) {
+export function ActivityFeedItem({ activity, isLast, onOpenInEmails, onEmailAction }: ActivityFeedItemProps) {
   const meta = activityMeta(activity.activity_type);
   const Icon = meta.icon;
   const tone = ACTIVITY_TONES[meta.tone];
@@ -154,7 +155,7 @@ export function ActivityFeedItem({ activity, isLast, onOpenInEmails }: ActivityF
 
         {quoted && <BodyBlock>{quoted}</BodyBlock>}
 
-        {email && <ActivityEmailCard email={email} onOpenInEmails={onOpenInEmails} />}
+        {email && <ActivityEmailCard email={email} onOpenInEmails={onOpenInEmails} onAction={onEmailAction} />}
 
         {activity.activity_type === 'candidate_attachment_uploaded' && md.file_name && (
           <div className="mt-2 flex flex-wrap gap-1.5">

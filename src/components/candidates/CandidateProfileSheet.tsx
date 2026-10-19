@@ -71,7 +71,7 @@ import { useJobClient } from '@/hooks/useJobClient'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
-import { EmailHistoryList } from './EmailHistoryList'
+import { fetchEmailForReply } from '@/lib/emailLog'
 import { EmailsTabContent, EmailsSidebarContainer } from '@/components/candidates/profile/tabs/EmailsTabContent'
 import { EmailHistoryCardEmail } from './EmailHistoryCard'
 import { formatQuotedReply, formatForwardedMessage, getReplySubject, getForwardSubject } from '@/utils/emailFormatUtils'
@@ -1105,6 +1105,17 @@ const stageHasAutomation = useMemo(() => {
     setEmailComposerOpen(true)
   }
 
+  // Reply / Forward from an email in the Activity feed: read the full message, then open the composer.
+  const handleActivityEmail = async (emailLogId: string, mode: 'reply' | 'forward') => {
+    const email = await fetchEmailForReply(emailLogId)
+    if (!email) {
+      toast({ title: 'Couldn\u2019t open that email', description: 'It may have been removed. Refresh the activity and try again.', variant: 'destructive' })
+      return
+    }
+    if (mode === 'reply') handleEmailReply(email)
+    else handleEmailForward(email)
+  }
+
   const resetEmailComposer = () => {
     setEmailComposerMode('compose')
     setEmailComposerSubject(undefined)
@@ -1969,27 +1980,10 @@ const stageHasAutomation = useMemo(() => {
                                     setFocusEmailId(id)
                                     setActiveTab('emails')
                                   }}
+                                  onEmailAction={handleActivityEmail}
                                 />
                               </div>
                             </ScrollArea>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle>Email History</CardTitle>
-                          </CardHeader>
-                          <CardContent className="p-0">
-                            <div className="h-[460px] overflow-y-auto">
-                              <div className="p-6">
-                                <EmailHistoryList 
-                                  candidateId={candidate.id} 
-                                  jobId={jobId}
-                                  onReply={handleEmailReply}
-                                  onForward={handleEmailForward}
-                                />
-                              </div>
-                            </div>
                           </CardContent>
                         </Card>
                       </>

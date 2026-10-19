@@ -1,19 +1,33 @@
 import { useState } from 'react';
-import { ArrowUpRight, ChevronDown, ChevronUp, Eye, Inbox, Send } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronUp, Eye, Forward, Inbox, Reply, Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { ActivityEmail } from '@/hooks/useActivityFeed';
 
 interface ActivityEmailCardProps {
   email: ActivityEmail;
   /** Switch to the Emails tab and scroll this message into view. */
   onOpenInEmails?: (emailLogId: string) => void;
+  /** Reply or Forward in the Gio composer (2026-10-19, so the Activity tab can stand in for the Emails tab). */
+  onAction?: (emailLogId: string, mode: 'reply' | 'forward') => void | Promise<void>;
 }
 
 /**
  * Compact, expandable email card inside an activity entry.
  * Collapsed by default; expansion is local state and never persisted.
  */
-export function ActivityEmailCard({ email, onOpenInEmails }: ActivityEmailCardProps) {
+export function ActivityEmailCard({ email, onOpenInEmails, onAction }: ActivityEmailCardProps) {
   const [expanded, setExpanded] = useState(false);
+  // The full message is read before the composer opens; the button shows it's working.
+  const [opening, setOpening] = useState<'reply' | 'forward' | null>(null);
+  const act = async (mode: 'reply' | 'forward') => {
+    if (!onAction || opening) return;
+    setOpening(mode);
+    try {
+      await onAction(email.emailLogId, mode);
+    } finally {
+      setOpening(null);
+    }
+  };
   const isReceived = email.direction === 'received';
   const address = isReceived ? email.from : email.to;
 
@@ -85,6 +99,17 @@ export function ActivityEmailCard({ email, onOpenInEmails }: ActivityEmailCardPr
               Open in Emails
               <ArrowUpRight size={11} />
             </button>
+          )}
+
+          {onAction && (
+            <div className="ml-auto flex items-center gap-1">
+              <Button variant="ghost" size="xs" icon={Reply} loading={opening === 'reply'} onClick={() => void act('reply')}>
+                Reply
+              </Button>
+              <Button variant="ghost" size="xs" icon={Forward} loading={opening === 'forward'} onClick={() => void act('forward')}>
+                Forward
+              </Button>
+            </div>
           )}
         </div>
 
