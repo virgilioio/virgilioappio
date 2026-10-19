@@ -9,11 +9,8 @@ import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
-import { Send, Pencil, Undo2, Check, X, FileText, DollarSign, MapPin, Calendar, Briefcase, User, BadgeCheck, Building2, PenLine, Lock } from 'lucide-react'
+import { Send, Pencil, Undo2, Check, X, FileText, DollarSign, MapPin, Calendar, Briefcase, User, BadgeCheck, Building2 } from 'lucide-react'
 import { InlineEmpty } from '@/components/ui/empty-state'
-import { IconTip } from '@/components/ui/tooltip'
-import { useOfferApprovalSummary } from '@/hooks/useOfferApprovalSummary'
-import { offerSendRefusal } from '@/lib/sign/send'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
@@ -46,8 +43,6 @@ interface CandidateOfferDetailsProps {
   organization?: any
   onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any>; opening_id?: string | null }) => void
   associationStatus?: string | null
-  /** Opens the Send for signature sheet for this offer (Gio Sign); only while the candidate is at the offer stage. */
-  onSendForSignature?: () => void
 }
 
 function getStatusTone(status: string): BadgeTone {
@@ -70,7 +65,7 @@ function getStatusLabel(status: string) {
 }
 
 
-export function CandidateOfferDetails({ candidateId, jobId, organizationId, job, onEdit, associationStatus, onSendForSignature }: CandidateOfferDetailsProps) {
+export function CandidateOfferDetails({ candidateId, jobId, organizationId, job, onEdit, associationStatus }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
   const { openings } = useJobOpenings(jobId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId || null)
@@ -85,8 +80,6 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, job,
   const [declineComment, setDeclineComment] = useState('')
   const [showApproveForm, setShowApproveForm] = useState(false)
   const [showDeclineForm, setShowDeclineForm] = useState(false)
-  // The database's send rule (offer_can_send): approved and not already out.
-  const summary = useOfferApprovalSummary(candidateId, jobId)
 
   if (isLoading) {
     return (
@@ -221,9 +214,6 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, job,
           <OfferApproved
             approvers={approvalRequest.steps.filter(s => s.status === 'approved').map(s => s.approver_name)}
             decidedAt={approvalRequest.steps.map(s => s.decided_at).filter(Boolean).sort().pop() ?? null}
-            canSend={summary.canSend}
-            refusal={summary.canSend ? null : offerSendRefusal(summary.gate?.reason)}
-            onSend={onSendForSignature}
           />
         )}
         {approvalRequest?.status === 'declined' && offerLetter.status === 'draft' && (
@@ -398,51 +388,24 @@ function joinNames(names: string[]) {
 
 /**
  * The approved offer (2026-10-19, replacing the green "This offer has been
- * approved" box and the old Generate Offer Letter flow): who approved it,
- * when, and the one next step, Send for signature (Gio Sign). Nothing has
- * gone to the candidate yet.
+ * approved" box and the old Generate Offer Letter flow): who approved it and
+ * when. Sending it is the stage banner's Send for signature (Allan: one
+ * button, in the banner). Nothing has gone to the candidate yet.
  */
-function OfferApproved({
-  approvers,
-  decidedAt,
-  canSend,
-  refusal,
-  onSend,
-}: {
-  approvers: string[]
-  decidedAt: string | null
-  canSend: boolean
-  refusal: string | null
-  onSend?: () => void
-}) {
+function OfferApproved({ approvers, decidedAt }: { approvers: string[]; decidedAt: string | null }) {
   const who = approvers.length > 0 ? `Approved by ${joinNames(approvers)}` : 'Approved'
   const when = decidedAt ? format(new Date(decidedAt), 'MMM d') : null
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-3 rounded-[12px] border border-[#E7E8EE] bg-[#FAFAF7] px-4 py-3">
+    <div className="flex items-center gap-3 rounded-[12px] border border-[#E7E8EE] bg-[#FAFAF7] px-4 py-3">
       <span aria-hidden className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E3F5EC] text-[#12805C]">
         <Check className="h-4 w-4" strokeWidth={2.4} />
       </span>
-      <div className="min-w-0 flex-1 basis-[220px]">
+      <div className="min-w-0 flex-1">
         <p className="font-poppins text-[13.5px] font-semibold leading-snug text-[#0d0d09]">{who}</p>
         <p className="mt-0.5 font-inter text-[12px] leading-[1.45] text-[#6B7080]">
-          {when ? `${when} · ` : ''}Nothing has gone to the candidate yet. Send it for signature when you’re ready.
+          {when ? `${when} · ` : ''}Nothing has gone to the candidate yet.
         </p>
       </div>
-      {onSend && (
-        canSend ? (
-          <Button variant="primary" icon={PenLine} onClick={onSend} className="max-sm:w-full">
-            Send for signature
-          </Button>
-        ) : (
-          <IconTip label={refusal || 'This offer can’t be sent right now.'}>
-            <span className="max-sm:w-full" tabIndex={0}>
-              <Button variant="primary" icon={Lock} disabled className="max-sm:w-full">
-                Send for signature
-              </Button>
-            </span>
-          </IconTip>
-        )
-      )}
     </div>
   )
 }

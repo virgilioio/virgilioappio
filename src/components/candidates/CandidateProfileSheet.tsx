@@ -1958,13 +1958,7 @@ const stageHasAutomation = useMemo(() => {
                           </TabsTrigger>
                         </TabsList>
                         <TabsContent value="offer-details" className="mt-4">
-                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }}
-                            onSendForSignature={
-                              associationStatus === 'offer' && offerApproval.offerLetter
-                                ? () => window.dispatchEvent(new CustomEvent('gio-sign-send-offer', { detail: { offerId: offerApproval.offerLetter!.id } }))
-                                : undefined
-                            }
-                          />
+                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }} />
                         </TabsContent>
                         <TabsContent value="offer-approvals" className="mt-4">
                           <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidateFirstName={candidate?.candidate_name?.split(' ')[0]} jobTitle={(job as any)?.title || undefined} />
