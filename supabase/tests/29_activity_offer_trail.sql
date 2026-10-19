@@ -39,7 +39,7 @@ update public.offer_letters set field_values = '{"base":4}' where id = (select v
 update public.offer_letters set field_values = '{"base":5}' where id = (select v from t_ids where k = 'o1');
 insert into t_results select 'offer: someone else''s burst of edits is one "Offer updated", naming what changed',
   (select count(*) = 1 from t_feed where activity_type = 'offer_updated' and user_id = (select v from t_ids where k = 'support')
-     and description = 'Changed: base'));
+     and description = 'Changed: base');
 update public.offer_letters set title = 'Renamed' where id = (select v from t_ids where k = 'o1');
 insert into t_results select 'offer: a change that isn''t the offer''s values writes nothing',
   (select count(*) = 1 from t_feed where activity_type = 'offer_updated');
