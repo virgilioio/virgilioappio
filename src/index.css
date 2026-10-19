@@ -1195,12 +1195,38 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-tablist[data-indicator-ready] > .gio-tab-indicator {
   visibility: visible;
 }
-/* Pill: a lilac fill clipped to the active tab; the clip slides. */
+/* Pill: a lilac fill and a copy of the labels in their active look, clipped to the
+ * active tab; the clip slides, so the colour change travels with it. */
 .gio-tablist[data-indicator="pill"] > .gio-tab-indicator {
   inset: 0;
-  background: #d7c5fb;
+  z-index: 1;
+  background: var(--tab-fill, #d7c5fb);
   clip-path: inset(var(--tab-y, 0) var(--tab-right, 0) var(--tab-bottom, 0) var(--tab-x, 0) round var(--tab-radius, 8px));
   transition: clip-path var(--dur-tabs) var(--ease-in-out);
+}
+.gio-tab-indicator > .gio-tab-clone {
+  position: absolute;
+  margin: 0;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  pointer-events: none;
+  transition: none !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+/* Under the layer every tab keeps its resting look: nothing changes width or colour
+ * ahead of the layer, and no tab draws its own active fill. */
+.gio-tablist[data-indicator="pill"][data-tab-idle] > [role="tab"][data-state="active"] {
+  font-weight: var(--tab-idle-weight);
+  border-color: var(--tab-idle-border);
+  background-color: transparent;
+  box-shadow: none;
+}
+.gio-tablist[data-indicator="pill"][data-tab-idle] > [role="tab"][data-state="active"]:not(:hover) {
+  color: var(--tab-idle-color);
 }
 /* Underline: a 2px bar on the list's bottom edge, moved and stretched. */
 .gio-tablist[data-indicator="underline"] > .gio-tab-indicator {
