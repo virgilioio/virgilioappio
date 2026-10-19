@@ -41,6 +41,20 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-19 (ATS)
+
+- **Candidate comments, mentions and tabs** (Allan's plan of 2026-10-18, all four parts on main; details in `CLAUDE.md`, Implementation map, "Candidate comments"):
+  - database, applied as `20261018234855_candidate_comments_job_optional` (from Allan's desktop) and `20261018235003_candidate_comments_v2` (test 27, 17 checks). Comments are shared with everyone who can see the candidate, or private to the author; a tagged comment can't be private; a tag notifies only people who can see the candidate; a comment can sit outside any job. It also fixed comments not saving at all since May (`tg_notify_mention` read a column that doesn't exist);
+  - the Comments card above Details on both profiles (`src/components/candidates/comments/`): "@" to tag a teammate, chips, the Private switch, and the reminders row under the box. The Comments tab is gone; `?tab=comments` opens Job overview / Overview;
+  - Reply and Forward on every email in the Activity feed (`fetchEmailForReply`), and the duplicate Email History card is gone;
+  - an Activity tab on the standalone profile (every job and the person); its Send email opens the Gio composer. The email numbers moved into the Activity sidebar's Email block, and the Emails tab is gone on both profiles; `?tab=emails` and `?tab=communications` open Activity.
+- **Offer fully approved: the person who asked is told.** Applied as `20261019011108_offer_approval_complete` (test 28, 12 checks, passed on live, rolled back):
+  - once the whole chain is done (request approved, no step pending or declined; skipped steps count), the requester gets one bell (`approval_complete`, with the approval sound) and one email, "The offer for X is approved", in the Gio ATS design. Nothing if they made the last approval themselves;
+  - `offer_approval_announce` fires from triggers on requests and steps, so the order the browser writes them in doesn't matter; the email waits in `offer_approval_outcomes` and goes out through `offer-approval-notify` (v15).
+- **The approved offer on the profile** (`CandidateOfferDetails`): the green "This offer has been approved" box is now `OfferApproved` (who approved, when, "Nothing has gone to the candidate yet"). Send for signature lives only in the dark stage banner (Allan). "Generate Offer Letter" (`GenerateOfferDialog`, `offerLetterUtils`), the old "Send Offer" email and the "Offer document generated" box are gone; PDFs made with the old generator stay in the candidate's files. The route is create offer → request approval (if any) → Send for signature → choose a template.
+- **Stage banners wrap on phones** (`StatusBanner`: offer, hired, rejected). One row from lg up; below that the buttons move to their own row and wrap as whole buttons.
+- **Waiting on Allan:** a real test of the approval emails end to end (send an offer for approval to a teammate: their email, bell and Remind; then your "approved" bell, sound and email once they approve).
+
 ## Done 2026-10-18 (ATS)
 
 - **Write in Gio takes Gio Docs' behaviour** ("Docs DNA", in the ATS's own type and colours; details in `CLAUDE.md`, Implementation map, "Offer editor, Gio Docs DNA"). All in `src/components/sign/written/` and `templates/WrittenPane.tsx`:
@@ -102,16 +116,6 @@ Hard limits:
 
 ## Open work, in Allan's order
 
-**Candidate comments, mentions and tabs (Allan, 2026-10-18; in this order)**
-- Part 1, database: applied (`20261018234855_candidate_comments_job_optional`, `20261018235003_candidate_comments_v2`, test 27). Comments are shared with everyone who can see the candidate or private to the author; a tagged comment can't be private; tags notify only people who can see the candidate; a comment can sit outside any job.
-- Part 2, the Comments card above Details on both profiles, with "@" tags, Private and the reminders row; the Comments tab is gone (old `?tab=comments` links land on Job overview / Overview). On main 2026-10-19.
-- Part 3: Reply and Forward on the Activity tab's emails; the duplicate Email History card is gone. On main 2026-10-19.
-- Part 4: an Activity tab on the standalone profile (every job and the person), its Send email opens the Gio composer, the email numbers are the Activity sidebar's Email block, and the Emails tab is gone on both profiles (old `?tab=emails` links open Activity). On main 2026-10-19.
-
-**Offers, next (Allan, 2026-10-19)**
-- Done 2026-10-19: when an offer's approval chain is fully complete (request approved, no step pending or declined; skipped steps count), the person who requested approval gets one bell (`approval_complete`, approval sound) and one email ("The offer for X is approved", Gio ATS design). Nothing when they made the last approval themselves. Migration `20261019011108_offer_approval_complete` (test 28, 12 checks, passed again on live, rolled back); the email is sent by offer-approval-notify (v15).
-- Done 2026-10-19, on main: the approved-offer state on the profile: the green "This offer has been approved" box is replaced by `OfferApproved` in `CandidateOfferDetails` (who approved, when, "Nothing has gone to the candidate yet", Send for signature, locked with the reason when `offer_can_send` refuses). "Generate Offer Letter" (`GenerateOfferDialog`, `offerLetterUtils`), the legacy "Send Offer" email and the "Offer document generated" box are gone; old generated PDFs stay in the candidate's files. The route is create offer → request approval (if any) → Send for signature → choose a template. Send for signature lives only in the stage banner (Allan, 2026-10-19). `StatusBanner` (offer, hired, rejected) is one row from lg up; below that the actions move to their own row and wrap as whole buttons.
-
 **Gio Sign × offers**
 - **Phase 3 — write documents in Gio. Built 2026-10-17** (needs a real test from Allan: write a template, send it to yourself).
   - Database: `20261017180441_sign_written_docs` (test 19, 28/28). `sign_written_docs` holds Lexical JSON for templates and frozen copies on envelopes. Node types (a contract between editor and server): `placeholder` (placeholderKey), `gio-if` (key, op yes/no/filled/empty/equals/not_equals, value; values used only inside never block a send), `gio-sign` (roleId, kind signature/initials/date/name), `gio-page-break`. `sign_template_keys()` is the one list of values a template fills in. `sign_claim_due` holds an envelope until every written copy has its PDF.
@@ -121,7 +125,7 @@ Hard limits:
 - **Phase 4.**
   - Void & resend for out-of-date offers (parked by Allan, 2026-10-18). This needs `'offer_changed'` added to the `sign_events_kind_check` constraint, which takes a `drop`, so it is a desktop-applied migration.
   - Polish "Other agreement".
-  - Retire the old offer letter generator.
+  - Retire the old offer letter generator. The profile side is done (2026-10-19: no Generate Offer Letter, no "Send Offer" email). Still there: the legacy offer letter templates screens in Settings (`OfferTemplatesManager`, `OfferLetterSheet`, `OfferTemplateFieldsManager`, `PlaceholderHelper`; mounted from `Settings.tsx`, `JobSettingsManager`, `PlatformJobDefaults`, `PlatformOfferTemplatesManager`). Nothing uses those templates any more; ask Allan before removing the screens (their table and rows stay).
   - Wrap long text on uploaded PDFs in `_shared/sign/stamp.ts`.
 - Allan's choice: build with the existing ATS design; he'll say if he wants changes.
 - Fixed 2026-10-17: renaming an offer form field's label no longer renames its stored name (`OfferFormFieldsManager.handleUpdateField`).
