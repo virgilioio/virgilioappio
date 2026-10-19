@@ -10,6 +10,10 @@
 //
 // Body: { action, org_id, user: { id, name, email }, ... }
 //   templates                         -> { templates: [...] } Gio Sales templates
+//   preview  { template_id, values, labels, people, subject?, body? }
+//                                     -> { pdf (base64), pages, documents, email }
+//            the documents filled in with the deal's values and the
+//            invitation the first person will get, before anything is sent
 //   send     { template_id, deal_id, company_id, label, values, people,
 //              send_at?, subject?, body? } -> { envelope_id, dispatch_at }
 //   manage   { envelope_id, op: undo|remind|void|send_now, reason? } -> { ok, emailed }
@@ -18,7 +22,9 @@
 // ASCII only.
 
 import { adminClient } from "../_shared/sign/signer.ts";
-import { notifyVoided, remindRecipient } from "../_shared/sign/notify.ts";
+import { brandOf, notifyVoided, remindRecipient } from "../_shared/sign/notify.ts";
+import { fillTags, inviteEmail } from "../_shared/sign/emails.ts";
+import { previewTemplate } from "../_shared/sign/preview.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -37,6 +43,28 @@ function safeEqual(a: string, b: string) {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const uuid = (v: unknown) => (typeof v === "string" && UUID.test(v) ? v : null);
+
+/** The tags a Customer template can print (sign_send_sales keeps only these, plus today and sender). */
+const CUSTOMER_KEYS = ["company", "contact", "contact_email", "deal", "value", "currency", "fee", "openings", "start", "owner"];
+
+/** The values sign_send_sales would freeze for this deal, today. */
+function salesValues(raw: unknown, senderName: string) {
+  const src = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const out: Record<string, string> = {};
+  for (const k of CUSTOMER_KEYS) {
+    const v = src[k];
+    if (v != null && typeof v !== "object" && String(v).trim() !== "") out[k] = String(v).trim().slice(0, 300);
+  }
+  out.today = new Intl.DateTimeFormat("en-US", { timeZone: "America/Mexico_City", month: "long", day: "numeric", year: "numeric" }).format(new Date());
+  out.sender = senderName;
+  return out;
+}
+
+function base64(bytes: Uint8Array) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
 
 /** Database errors the rep can act on, in plain words; anything else is generic. */
 function refusal(err: { code?: string; message?: string }) {
@@ -85,18 +113,84 @@ Deno.serve(async (req) => {
       if (error) throw error;
       const ids = (tpls ?? []).map((t: any) => t.id);
       const pick = ids.length ? ids : ["00000000-0000-0000-0000-000000000000"];
-      const [{ data: roles }, { data: fields }, { data: docs }] = await Promise.all([
+      const [{ data: roles }, { data: docs }, { data: written }, keys] = await Promise.all([
         db.from("sign_recipients").select("id, template_id, position, role, label, name, email, fixed, color").in("template_id", pick).is("envelope_id", null).is("removed_at", null).order("position"),
-        db.from("sign_fields").select("template_id, type, data_key").in("template_id", pick).is("envelope_id", null).is("removed_at", null),
-        db.from("sign_documents").select("template_id, name, page_count").in("template_id", pick).is("envelope_id", null).is("removed_at", null).order("position"),
+        db.from("sign_documents").select("template_id, name, page_count, position").in("template_id", pick).is("envelope_id", null).is("removed_at", null).order("position"),
+        db.from("sign_written_docs").select("template_id, name, position").in("template_id", pick).is("envelope_id", null).is("removed_at", null).order("position"),
+        // Every value a template prints, placed or written; one only a conditional section uses never blocks a send.
+        Promise.all(ids.map(async (id: string) => ({ id, rows: (await db.rpc("sign_template_keys", { _template_id: id })).data ?? [] }))),
       ]);
-      const templates = (tpls ?? []).map((t: any) => ({
-        ...t,
-        roles: (roles ?? []).filter((r: any) => r.template_id === t.id).map(({ template_id: _t, ...r }: any) => r),
-        data_keys: [...new Set((fields ?? []).filter((f: any) => f.template_id === t.id && f.type === "data").map((f: any) => f.data_key))],
-        documents: (docs ?? []).filter((d: any) => d.template_id === t.id).map((d: any) => ({ name: d.name, pages: d.page_count })),
-      }));
+      const templates = (tpls ?? []).map((t: any) => {
+        const k = keys.find((x) => x.id === t.id)?.rows ?? [];
+        return {
+          ...t,
+          roles: (roles ?? []).filter((r: any) => r.template_id === t.id).map(({ template_id: _t, ...r }: any) => r),
+          data_keys: k.filter((x: any) => x.needed).map((x: any) => x.key),
+          optional_keys: k.filter((x: any) => !x.needed).map((x: any) => x.key),
+          // Written documents get their pages when they're made, so their count is null here.
+          documents: [
+            ...(docs ?? []).filter((d: any) => d.template_id === t.id).map((d: any) => ({ name: d.name, pages: d.page_count, position: d.position, written: false })),
+            ...(written ?? []).filter((d: any) => d.template_id === t.id).map((d: any) => ({ name: d.name, pages: null, position: d.position, written: true })),
+          ]
+            .sort((a, b) => a.position - b.position || (a.written ? 1 : -1))
+            .map(({ position: _p, ...d }) => d),
+        };
+      });
       return json({ templates });
+    }
+
+    if (action === "preview") {
+      const templateId = uuid(p.template_id);
+      const { data: t } = templateId
+        ? await db.from("sign_templates").select("id, name, subject, body, expiry_days, ordered").eq("id", templateId)
+          .eq("tenant_id", tenant).eq("app", "sales").eq("kind", "customer").is("archived_at", null).maybeSingle()
+        : { data: null };
+      if (!t) return json({ error: "That template isn't available in Gio Sales.", code: "GSN10" }, 409);
+      const values = salesValues(p.values, userName || userEmail);
+      const labels: Record<string, string> = {};
+      if (p.labels && typeof p.labels === "object") {
+        for (const [k, v] of Object.entries(p.labels as Record<string, unknown>)) if (typeof v === "string") labels[k.slice(0, 60)] = v.slice(0, 60);
+      }
+      let filled;
+      try {
+        filled = await previewTemplate(db, t.id, values, labels);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("sign-gateway preview", msg);
+        return json({ error: msg.startsWith("The document is longer") ? msg : "The documents couldn't be drawn for the preview.", code: "render" }, 422);
+      }
+
+      // The invitation, as the first person in the order gets it (the link opens nothing).
+      const { data: roles } = await db.from("sign_recipients").select("id, role, label, name, email, fixed")
+        .eq("template_id", t.id).is("envelope_id", null).is("removed_at", null).order("position");
+      const typed = new Map<string, { name: string; email: string }>();
+      for (const x of Array.isArray(p.people) ? p.people : []) {
+        if (uuid(x?.role_id)) typed.set(x.role_id, { name: String(x.name ?? "").trim().slice(0, 120), email: String(x.email ?? "").trim().toLowerCase() });
+      }
+      const first = (roles ?? []).find((r: any) => r.role !== "cc");
+      let email = null;
+      if (first) {
+        const who = first.fixed ? { name: first.name ?? "", email: first.email ?? "" } : typed.get(first.id) ?? { name: "", email: "" };
+        const docName = filled.documents[0].name.replace(/\.pdf$/i, "") + (filled.documents.length > 1 ? ` + ${filled.documents.length - 1} more` : "");
+        const subject = typeof p.subject === "string" && p.subject.trim() ? p.subject.trim().slice(0, 200) : t.subject;
+        const body = typeof p.body === "string" ? p.body.slice(0, 5000) : t.body;
+        const mail = inviteEmail({
+          brand: await brandOf(db, tenant),
+          senderName: userName || userEmail,
+          senderEmail: userEmail,
+          recipientName: who.name || first.label || "there",
+          recipientEmail: who.email || "their email",
+          role: first.role,
+          subject: fillTags(subject, values),
+          body: fillTags(body, values),
+          docName,
+          pages: filled.pages,
+          expiresAt: new Date(Date.now() + (Number(t.expiry_days) || 30) * 86_400_000).toISOString(),
+          link: "#",
+        });
+        email = { from: mail.from, to: mail.to, reply_to: mail.replyTo ?? null, subject: mail.subject, html: mail.html, role_label: first.label, ordered: t.ordered };
+      }
+      return json({ pdf: base64(filled.bytes), pages: filled.pages, documents: filled.documents, email });
     }
 
     if (action === "send") {

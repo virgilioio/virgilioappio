@@ -479,10 +479,10 @@ export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
         <div className="mt-5">
           <FieldLabel>Pay period</FieldLabel>
           <div className="mt-2">
-            <Seg<'monthly' | 'annual'>
+            <Seg
               label="Pay period"
               value={(jobData.salary_period ?? '') as 'monthly' | 'annual'}
-              onChange={(v) => set('salary_period', v)}
+              onChange={(v: 'monthly' | 'annual') => set('salary_period', v)}
               options={[
                 { value: 'monthly', label: 'Per month' },
                 { value: 'annual', label: 'Per year' },

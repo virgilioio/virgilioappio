@@ -150,7 +150,7 @@ function $turnInto(node: LexicalNode, kind: Kind) {
 function $duplicate(node: LexicalNode) {
   const ser = (n: LexicalNode): SerializedLexicalNode => {
     const j = n.exportJSON() as SerializedLexicalNode & { children?: SerializedLexicalNode[] }
-    return $isElementNode(n) ? { ...j, children: n.getChildren().map(ser) } : j
+    return $isElementNode(n) ? ({ ...j, children: n.getChildren().map(ser) } as unknown as SerializedLexicalNode) : j
   }
   const [copy] = $generateNodesFromSerializedNodes([ser(node)])
   if (copy) node.insertAfter(copy)
