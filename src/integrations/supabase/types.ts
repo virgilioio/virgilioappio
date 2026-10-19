@@ -5617,6 +5617,48 @@ export type Database = {
         }
         Relationships: []
       }
+      offer_approval_outcomes: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          kind: string
+          last_approver_user_id: string | null
+          request_id: string
+          requester_user_id: string
+          sent_at: string | null
+          tenant_id: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          last_approver_user_id?: string | null
+          request_id: string
+          requester_user_id: string
+          sent_at?: string | null
+          tenant_id: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          last_approver_user_id?: string | null
+          request_id?: string
+          requester_user_id?: string
+          sent_at?: string | null
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       offer_approval_request_steps: {
         Row: {
           approver_user_id: string
@@ -11442,6 +11484,10 @@ export type Database = {
       }
       nightly_storage_cleanup: { Args: never; Returns: undefined }
       normalize_linkedin_slug: { Args: { raw_url: string }; Returns: string }
+      offer_approval_announce: {
+        Args: { _request_id: string }
+        Returns: undefined
+      }
       offer_approval_claim_notices: {
         Args: { _limit?: number }
         Returns: {
@@ -11475,7 +11521,27 @@ export type Database = {
           wants_email: boolean
         }[]
       }
+      offer_approval_claim_outcomes: {
+        Args: { _limit?: number }
+        Returns: {
+          approver_names: string[]
+          candidate_id: string
+          candidate_name: string
+          company: string
+          job_id: string
+          job_title: string
+          last_approver_name: string
+          outcome_id: string
+          requester_email: string
+          requester_name: string
+          wants_email: boolean
+        }[]
+      }
       offer_approval_finish_notice: {
+        Args: { _error?: string; _id: string; _ok: boolean }
+        Returns: undefined
+      }
+      offer_approval_finish_outcome: {
         Args: { _error?: string; _id: string; _ok: boolean }
         Returns: undefined
       }
