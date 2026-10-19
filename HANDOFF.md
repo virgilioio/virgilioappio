@@ -60,6 +60,11 @@ Hard limits:
   - status changes (offer, hired, rejected, unhire) were already logged by `log_candidate_status_change`.
   - Older entries that only carried `metadata.jobId` (23, including "Hired · filled" from Mark hired) were hidden from the in-job feed; `activities_a_job_id` now copies it to `job_id` on every insert, and they were backfilled.
   - App: the feed's filter has an "Offer & signing" category; an external signer shows as the author (`external_actor`); `OfferComposerBody` and `useOfferApprovalRequest` no longer log from the browser.
+- **Offer form sections you shape** (Allan: "default sections, but the ability to add more… nothing is hardcoded… even the defaults could be edited or even removed"). Applied as `20261019031231_offer_form_sections` (test 30, 14 checks, passed on live, rolled back):
+  - `offer_forms.sections` holds each form's sections in order (`id`, `title`, `columns` 1 or 2); `offer_form_fields.section_key` places each field. New forms start with Role & start, Compensation, Benefits & conditions and Additional terms; every one can be renamed, reordered, given one or two columns or taken out, and new ones added. A removed section hands its fields to the last one left; a field added without a section goes in the last one. Existing fields went where the composer used to guess them (all 25 checked).
+  - The offer composer reads the sections (`groupBySection`, `src/lib/offerSections.ts`): Req ID at the top of the first section, the Y1 total under the section holding the base salary. The always-on "Band checked" badge and the "Comp band check" note are gone (nothing checked a band).
+  - New offer form sheet (`src/components/settings/offerForms/`): the name as the title with its purple period, description, Active, then the sections as recruiters meet them. Fields drag within and between sections (board motion; long press on touch) or move through their ⋯ menu; they open in place to edit. Sections rename in place; their ⋯ menu has one/two columns, move up/down and Remove (with Undo). Preview shows the Terms step. Everything saves as you go ("Saving…" → "Saved"). Only field types the composer can fill in are offered (no Dropdown or File: the composer shows both as a plain text box).
+  - Toasts now stay clickable while a sheet or dialog is open (an Undo inside a sheet couldn't be clicked before), and a click on one no longer counts as clicking outside the sheet.
 - **Stage banners wrap on phones** (`StatusBanner`: offer, hired, rejected). One row from lg up; below that the buttons move to their own row and wrap as whole buttons.
 - **Waiting on Allan:** a real test of the approval emails end to end (send an offer for approval to a teammate: their email, bell and Remind; then your "approved" bell, sound and email once they approve).
 
@@ -186,6 +191,13 @@ Hard limits:
 - Dashboard: `buildQueue` shows `offer_approval` items as Decisions ("Approve offer"). `fetchPendingOfferApprovals` includes every pending step of a parallel chain.
 - Remind added 2026-10-18 (see Done 2026-10-18).
 - Still to do: a real test, where Allan sends an offer for approval to someone else and checks the email, the bell, Remind and Your queue.
+
+**Settings clean-up (Allan, 2026-10-19: "I agree with everything")**
+- Remove the Platform dashboard (SaaS-era; most numbers are wrong: new organizations and active jobs always 0, two queries read tables dropped in 2025, health and recent activity are fixed text). SaaS customers stays.
+- One library: Job Defaults merges into Settings › Recruiting (pipeline stages, application fields, templates), one list each with no Inherited split, editable by workspace admins (a database change for who may edit the shared rows; stop for "Apply!"). Other workspaces' rows stay hidden and untouched. Unused files go: `JobSettingsManager`, `PlatformApplicationFieldsManager`, `automations/ConfirmationEmailAutomation`, `dashboard/PlatformDashboard`. Note: the job and posting default triggers (`handle_new_job_defaults`, `add_default_application_fields_to_posting`) don't filter by workspace; harmless with one workspace (no workspace has its own default rows).
+- Automations: the application confirmation email is live (careers-page applications, `public-submit-application`); it moves to Settings › Careers page as "When someone applies", and the Automations tab with its "coming soon" card goes. Per-job stage automations are the real tool. Job Defaults › Automations edited our own workspace's email, not a default.
+- Tables in Templates and Job Defaults to the table rules (after the merge): one shared list with `Loadable` + skeleton, `LoadError`, `AnimatedEmpty`, IconTips on Edit, row collapse, inline edit (Esc, blur save, flash), `TabsList indicator="pill"` sub-navs, Boards rules on draggable lists.
+- Later decision: the Job wizard's auto-reject and hiring-team notification switches are saved nowhere and do nothing; build them or hide them.
 
 **Speed and robustness plan (steps 1–3 done)**
 - **Step 4 — database cleanup.**
