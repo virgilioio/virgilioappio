@@ -5,7 +5,7 @@ Gio ATS is Virgilio's applicant tracking system (Vite, React 18, React Router 6,
 **New session? Read `HANDOFF.md` first:** how Allan works, how a database change ships, and the open work across Gio ATS, Gio Sales and Gio Docs.
 
 ## Scope and precedence
-- **The ATS keeps its own visual identity.** Colours, fonts, sizes, spacing, radii, borders, layout and copy don't change. Gio Sales' visual amendments (its fonts, colour tokens, the three-shadows rule) don't carry over. Only timing, easing, transform origins, press states, state handling and edge cases change. Two visual exceptions: the Block B one (menus, popovers and hover cards swap a solid border for `--shadow-pop`), and tab bars, which take the Motion & Feel demo's look so the ecosystem shares one DNA (Allan, 2026-10-19): a noir pill with white labels on an `#ECEAE2` bar (radius 9, 3px padding, 2px gap), tabs Inter 500 13px `#5A6072`, 8px 14px, radius 7.
+- **The ATS keeps its own visual identity.** Colours, fonts, sizes, spacing, radii, borders, layout and copy don't change. Gio Sales' visual amendments (its fonts, colour tokens, the three-shadows rule) don't carry over. Only timing, easing, transform origins, press states, state handling and edge cases change. Three visual exceptions: the Block B one (popovers and hover cards swap a solid border for `--shadow-pop`); menus, which take Gio Docs' design (§19, Allan, 2026-10-19); and tab bars, which take the Motion & Feel demo's look so the ecosystem shares one DNA (Allan, 2026-10-19): a noir pill with white labels on an `#ECEAE2` bar (radius 9, 3px padding, 2px gap), tabs Inter 500 13px `#5A6072`, 8px 14px, radius 7.
 - **Behaviour contracts stay.** Gio Sales ↔ ATS sync, Mark hired / unhire, openings and Req IDs, the draft→open publish gate, draft auto-save and role assignment keep working exactly as they do. Motion changes are presentational, except where §5 changes when the UI updates (optimistic updates and Undo).
 - **New feature designs never override what's built.** When a design clashes with these rules or with a primitive listed in the Implementation map, the rule wins and the design value is mapped onto it; list the mappings in the feature's report.
 - **The ATS is responsive.** Unlike Gio Sales it has a phone layout and public pages for candidates, referees and clients, so the touch rules (§4 long-press, §9 swipe-to-dismiss, §12 16px inputs on phones) apply in full.
@@ -22,7 +22,8 @@ Gio ATS is Virgilio's applicant tracking system (Vite, React 18, React Router 6,
 Shared primitives as they land. New components use these; don't add per-component animation classes.
 - **Tokens** — `:root` in `src/index.css`, mapped in `tailwind.config.ts` (`ease-out`, `ease-in-out`, `ease-drawer`, `ease-spring`; `duration-press`, `duration-hover`, `duration-menu-in`, …; `shadow-pop`, `shadow-lift`). Reduced-motion base layer at the end of `src/index.css`.
 - **`gio-pressable`** — the Button primitive and every pressable: scale 0.97 on press. **`gio-field`** — Input, Textarea, PlaceholderInput: colour/shadow only, focus border `--input-border-focus` + `shadow-input`.
-- **`menuPanel` / `gio-pop`** (`src/lib/menu-classes.ts`) — DropdownMenu, Popover, Select, Command popovers, tag/filter popovers: grow from the trigger, `shadow-pop`, no border. **`gio-context-menu`** — right-click menus, no animation.
+- **`menuPanel` / `gio-pop`** (`src/lib/menu-classes.ts`) — DropdownMenu, Popover, Select, Command popovers, tag/filter popovers: grow from the trigger, `shadow-menu`, no border. **`gio-context-menu`** — right-click menus (`ContextMenu`), same look, no animation.
+- **Menus (§19)** — every menu row is `menuItem` (adds `gio-mrow`; its 14px/20px type sits in a components-layer rule, so a colour class can't drop it and a caller's own `text-*` size still wins): a leading Lucide icon as the row's first child (or any glyph in `<span data-menu-lead>`) is drawn 20px at a 1.6 stroke; the label is a `truncate` span; hints and counts are `DropdownMenuShortcut` / `menuKbd`; the chosen option's tick is `<span className="gio-mrow-check">` at the end (Select, checkbox and radio items do this already); a submenu ends in `gio-mrow-chev`; danger rows add `text-destructive` (or `data-danger`). Headers are `DropdownMenuLabel` / `menuGroupLabel` (`text-menu-head`), dividers `DropdownMenuSeparator` / `menuSeparator`, `inset` is `pl-9`. Content is 220px minimum, 272px for an actions menu. A hand-made menu (absolute panel, `role="menu"`) uses `cn(menuPanel)` with `data-state="open"` and `cn(menuItem, 'hover:bg-[hsl(var(--menu-hover))]')` on its buttons; prefer the `DropdownMenu` primitive. A colour on a menu class is written `[color:…]`, never `text-[…]`, so tailwind-merge keeps the size. Reference: `ProfileActionMenu`, `JobShareMenu`, `EventMenu`, the job team member menu, the Calendar People filter, `TemplateSelect`.
 - **`TooltipProvider`** (`src/components/ui/tooltip.tsx`) — fixed 400/400ms; nested providers can't override. **`gio-tip`** on TooltipContent. No native `title` on a control that has a tooltip.
 - **`gio-dialog` + `gio-dialog-overlay`** — Dialog, AlertDialog (centred with the `translate` property). **`gio-static`** — the command dialog and top-bar search results: no animation.
 - **`gio-drawer`** — Sheet (needs `data-side`, set by SheetContent).
@@ -92,7 +93,7 @@ Shared primitives as they land. New components use these; don't add per-componen
 - **DropdownMenu, Popover, Select, row menus:**
   - Enter from `scale(0.96)` plus opacity 0.
   - Origin is `var(--radix-*-content-transform-origin)`, so it grows from the trigger. A right-aligned ⋯ menu therefore grows from its top-right.
-  - 180ms in and 120ms out, both `--ease-out`, with `--shadow-pop` and no solid border.
+  - 180ms in and 120ms out, both `--ease-out`, with `--shadow-menu` (menus, §19) or `--shadow-pop` (popovers) and no solid border.
 - **Tooltip:**
   - Opens after `delayDuration` 400 (`skipDelayDuration` 400).
   - Enters from `scale(0.97)` plus opacity at 125ms.
@@ -340,6 +341,19 @@ Shared primitives as they land. New components use these; don't add per-componen
 - **Undo, not confirm:** archives with no restore screen, dismissals and status changes act at once with an Undo toast. Never Undo after a hard delete. Switches stay instant, except Pause all candidate chat.
 - **Unsaved changes** are not a delete dialog: they use `UnsavedGuard` (§13).
 - **Reduced motion:** no nudge, slide or collapse; the dialog fades.
+
+### 19. Menus: Gio Docs' design (Allan, 2026-10-19)
+Every dropdown menu in the ATS (DropdownMenu, Select, Command lists, right-click menus, row ⋯ menus and hand-made menus) takes Gio Docs' menu design, so the ecosystem shares one DNA. Size, spacing and proportions come from Gio Docs (`src/styles.css` MENUS in giodocs); the ATS keeps Inter and its own colours.
+- **Panel:** radius 12, 4px padding, no border, `--shadow-menu` (`0 0 0 1px rgba(13,13,9,.07), 0 3px 6px rgba(13,13,9,.06), 0 9px 24px rgba(13,13,9,.14)`). 220px minimum; 272px for an actions menu.
+- **Row:** at least 28px high, padding 4px 8px, 8px gap, radius 6; label 14px on a 20px line, weight 400, one line with an ellipsis. Hover and keyboard highlight `#F1F0EC`, instant.
+- **Leading icon:** a 20px slot, the icon 20px at a 1.6 stroke. Colour dots and avatars sit centred in the same slot.
+- **End of the row:** hints, shortcuts and counts 12px faint, `tabular-nums`, at most 112px; the chosen option shows a 16px purple tick at the row's end, never a filled row; a submenu ends in a 16px faint chevron.
+- **Second line:** a row that needs one (e.g. "For this job only") puts it under the label in 12px faint, and the icon aligns to the first line.
+- **Headers and dividers:** headers are 12px sentence case, faint, on a 28px line (never uppercase caps); dividers are 1px, inset 8px, 4px above and below.
+- **Danger rows** (Delete, Remove…) sit last after a divider, neutral until pointed at or focused, then red (`--color-danger`); on touch they stay red.
+- **Disabled rows** turn faint; they don't fade the whole row.
+- **Touch:** rows at least 36px on a coarse pointer.
+- Motion stays §2: grow from the trigger, 180ms in / 120ms out; right-click menus don't animate (§14).
 
 If a change does go through Lovable, paste this at the end of the prompt:
 ```

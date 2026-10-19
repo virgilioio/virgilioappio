@@ -288,7 +288,7 @@ export function TemplateSelect<T extends PickTemplate>({
                       <span className="tsel-sub">{subline(t)}</span>
                     </span>
                     <TemplateStatus status={st} />
-                    <span className="flex justify-end">{on && <Check className="h-3.5 w-3.5 text-[#0d0d09]" strokeWidth={2.2} aria-hidden />}</span>
+                    <span className="gio-mrow-check">{on && <Check className="h-4 w-4" strokeWidth={2} aria-hidden />}</span>
                   </div>
                 )
               })}

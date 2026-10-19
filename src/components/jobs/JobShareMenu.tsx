@@ -6,6 +6,8 @@ import { pipelinePublicUrl, useJobPipelineShare } from '@/hooks/useJobPipelineSh
 import { copyToClipboardSilent } from '@/utils/clipboard'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { cn } from '@/lib/utils'
+import { menuItem, menuPanel, menuSeparator } from '@/lib/menu-classes'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 
@@ -191,64 +193,24 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
           role="menu"
           aria-label="Share job"
           onKeyDown={onPanelKeyDown}
-          className="absolute bg-white"
-          style={{
-            top: 40,
-            right: 0,
-            width: 288,
-            border: '1px solid #E7E8EE',
-            borderRadius: 12,
-            boxShadow:
-              '0 18px 44px -12px rgba(13,13,9,0.22), 0 2px 6px rgba(13,13,9,0.05)',
-            padding: 6,
-            zIndex: 70,
-          }}
+          data-state="open"
+          className={cn('absolute right-0 top-10 z-[70] w-[288px] origin-top-right', menuPanel)}
         >
           <button
             ref={copyRowRef}
             role="menuitem"
             type="button"
             onClick={handleCopy}
-            className="w-full text-left transition-colors hover:bg-[#F6F5F1] focus:bg-[#F6F5F1] focus:outline-none"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '7px 10px',
-              borderRadius: 8,
-              background: 'transparent',
-            }}
+            className={cn(menuItem, 'items-start hover:bg-[hsl(var(--menu-hover))]')}
           >
-            <span
-              className="grid place-items-center shrink-0"
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 7,
-                background: copied ? '#E4F5EA' : '#F1F0EC',
-              }}
-            >
-              {copied ? (
-                <Check size={13} style={{ color: '#1F7A45' }} />
-              ) : (
-                <Link2 size={13} style={{ color: '#5A6072' }} />
-              )}
+            <span data-menu-lead className="grid place-items-center">
+              <IconSwap swapped={copied} from={<Link2 />} to={<Check className="text-[#1F7A45]" />} />
             </span>
-            <span className="min-w-0">
-              <span
-                className="block font-inter truncate"
-                style={{ fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}
-              >
-                {copied
-                  ? 'Copied to clipboard'
-                  : manualCopy
-                    ? 'Press ⌘C to copy'
-                    : 'Copy job link'}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">
+                {copied ? 'Copied to clipboard' : manualCopy ? 'Press ⌘C to copy' : 'Copy job link'}
               </span>
-              <span
-                className="block font-inter"
-                style={{ fontSize: 11, color: '#8B8F9E', lineHeight: 1.4 }}
-              >
+              <span className="block text-[12px] leading-5 text-[hsl(var(--menu-group-color))]">
                 Only people with access to this job can open it
               </span>
             </span>
@@ -256,6 +218,7 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
 
           {pipelineShare?.is_public && (
             <button
+              role="menuitem"
               type="button"
               onClick={async () => {
                 if (await copyToClipboardSilent(pipelinePublicUrl(pipelineShare.token))) {
@@ -263,55 +226,39 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
                   setTimeout(() => setPipelineCopied(false), 1600)
                 }
               }}
-              className="w-full flex items-center text-left rounded-lg hover:bg-[#F1F0EC]"
-              style={{ gap: 10, padding: '8px 10px', marginTop: 6, borderTop: '1px solid #F1F0EC' }}
+              className={cn(menuItem, 'items-start hover:bg-[hsl(var(--menu-hover))]')}
             >
-              <span className="inline-flex items-center justify-center shrink-0" style={{ width: 28, height: 28, borderRadius: 8, background: '#EDE4FF', color: '#5B21B6' }}>
-                <IconSwap swapped={pipelineCopied} from={<Globe size={14} />} to={<Check size={14} />} />
+              <span data-menu-lead className="grid place-items-center">
+                <IconSwap swapped={pipelineCopied} from={<Globe />} to={<Check className="text-[#1F7A45]" />} />
               </span>
-              <span className="min-w-0">
-                <span className="block font-inter" style={{ fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}>
-                  {pipelineCopied ? 'Copied to clipboard' : 'Copy client pipeline link'}
-                </span>
-                <span className="block font-inter" style={{ fontSize: 11, color: '#8B8F9E', lineHeight: 1.4 }}>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{pipelineCopied ? 'Copied to clipboard' : 'Copy client pipeline link'}</span>
+                <span className="block text-[12px] leading-5 text-[hsl(var(--menu-group-color))]">
                   Anyone with the link · shared stages onward
                 </span>
               </span>
             </button>
           )}
 
-          <div
-            style={{
-              borderTop: '1px solid #F1F0EC',
-              padding: '9px 10px 4px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginTop: 6,
-            }}
-          >
-            <div className="flex -space-x-1.5 shrink-0">
+          {/* The footer (Gio Docs' menu foot): who has access, and Manage. */}
+          <div aria-hidden className={menuSeparator} />
+          <div className="flex min-h-[28px] items-center gap-2 px-2 py-1 font-inter text-[12px] leading-5 text-[hsl(var(--menu-group-color))]">
+            <div className="flex shrink-0 -space-x-1.5">
               {visible.map((p) => (
                 <Avatar key={p.id} className="h-5 w-5 ring-2 ring-white">
                   {p.avatarUrl ? <AvatarImage src={p.avatarUrl} alt="" /> : null}
-                  <AvatarFallback className="text-[9px] font-medium bg-virgilio-purple text-white">
+                  <AvatarFallback className="bg-virgilio-purple text-[9px] font-medium text-white">
                     {initials(p.name)}
                   </AvatarFallback>
                 </Avatar>
               ))}
               {overflow > 0 && (
-                <div
-                  className="h-5 min-w-5 px-1 rounded-full bg-[#F1F0EC] ring-2 ring-white grid place-items-center"
-                  style={{ fontSize: 9, fontWeight: 500, color: '#5A6072' }}
-                >
+                <div className="grid h-5 min-w-5 place-items-center rounded-full bg-[#F1F0EC] px-1 text-[9px] font-medium text-[#5A6072] ring-2 ring-white">
                   +{overflow}
                 </div>
               )}
             </div>
-            <span
-              className="font-inter truncate"
-              style={{ fontSize: 11, color: '#8B8F9E' }}
-            >
+            <span className="truncate">
               {people.length} {people.length === 1 ? 'person has' : 'people have'} access
             </span>
             {canManageTeam && onManage && (
@@ -322,8 +269,7 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
                   setOpen(false)
                   onManage()
                 }}
-                className="ml-auto shrink-0 font-inter hover:underline focus:outline-none focus:underline"
-                style={{ fontSize: 11.5, fontWeight: 600, color: '#6F3FF5' }}
+                className="ml-auto shrink-0 font-semibold text-virgilio-purple hover:underline focus:underline"
               >
                 Manage
               </button>

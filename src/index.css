@@ -307,6 +307,8 @@
     --input-ring: 0 0 0 3px rgba(13, 13, 9, 0.08);
     --input-border-focus: #3a3d48;
     --shadow-pop: 0 0 0 1px rgba(13, 13, 9, 0.06), 0 10px 28px -8px rgba(13, 13, 9, 0.18);
+    /* Menus (Gio Docs' menus, Allan 2026-10-19): a hairline ring and two soft layers. */
+    --shadow-menu: 0 0 0 1px rgba(13, 13, 9, 0.07), 0 3px 6px rgba(13, 13, 9, 0.06), 0 9px 24px rgba(13, 13, 9, 0.14);
     --shadow-lift: 0 16px 32px -12px rgba(13, 13, 9, 0.32);
 
     /* Enhanced Shadow System */
@@ -360,9 +362,9 @@
     /* === Dropdowns / Menus (Gio Foundation v1.0 §5) === */
     --menu-radius:        12px;
     --menu-pad:           4px;
-    --menu-shadow:        0 12px 32px -8px rgb(0 0 0 / 0.18);
-    --menu-item-h:        30px;
-    --menu-item-radius:   8px;
+    --menu-shadow:        var(--shadow-menu);
+    --menu-item-h:        28px;   /* Gio Docs' row: 4px 8px on a 20px line */
+    --menu-item-radius:   6px;
     --menu-hover:         40 14% 93%;     /* #F1F0EC */
     --menu-selected:      264 73% 95%;    /* #EDE4FF */
     --menu-group-color:   228 9% 58%;     /* #8B8F9E */
@@ -994,7 +996,59 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-context-menu,
 .gio-context-menu[data-state] {
   animation: none !important;
-  box-shadow: var(--shadow-pop);
+  box-shadow: var(--shadow-menu);
+}
+
+/* MENUS: Gio Docs' row grammar for every menu (Allan, 2026-10-19), measured
+ * from Notion's: 28px rows (4px 8px, 14px on a 20px line, 6px corners, 8px
+ * gap), a 20px leading icon at a 1.6 stroke, shortcuts and values in the UI
+ * font at 12px, the tick at the row's end, dividers inset 8px, a 12px
+ * sentence-case header. Inter and the ATS's colours stay. Rows come from
+ * `menuItem` (src/lib/menu-classes.ts), which adds `gio-mrow`. */
+/* The row's type sits here, under utilities, rather than as a text-* class in
+ * `menuItem`: tailwind-merge takes a custom text size for a colour, so a row
+ * given text-destructive would lose it. A caller's own text-* size still wins. */
+@layer components {
+  .gio-mrow { font-size: 14px; line-height: 20px; font-weight: 400; }
+}
+.gio-mrow > svg:first-child,
+.gio-mrow > [data-menu-lead] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+.gio-mrow > svg:first-child { stroke-width: 1.6; }
+.gio-mrow > [data-menu-lead] { display: grid; place-items: center; }
+.gio-mrow > [data-menu-lead] svg { width: 20px; height: 20px; stroke-width: 1.6; }
+.gio-mrow > .truncate { flex: 1; min-width: 0; }
+/* The chosen option's tick, at the row's end (Select, checkbox and radio items). */
+.gio-mrow-check {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  color: hsl(var(--virgilio-purple));
+}
+/* A row that opens a submenu ends in a 16px chevron. */
+.gio-mrow-chev { flex: none; width: 16px; height: 16px; margin-left: auto; color: hsl(var(--menu-group-color)); }
+/* Delete and friends: neutral until pointed at or focused, then the label
+ * and icon turn red. Touch screens have no hover, so they stay red there. */
+.gio-mrow[data-danger],
+.gio-mrow.text-destructive { color: var(--color-danger); }
+@media (hover: hover) and (pointer: fine) {
+  .gio-mrow[data-danger]:not([data-highlighted]):not(:focus-visible):not(:hover),
+  .gio-mrow.text-destructive:not([data-highlighted]):not(:focus-visible):not(:hover) { color: hsl(var(--foreground)); }
+}
+.gio-mrow[data-danger][data-highlighted],
+.gio-mrow.text-destructive[data-highlighted],
+.gio-mrow[data-danger]:focus-visible,
+.gio-mrow.text-destructive:focus-visible { color: var(--color-danger); }
+/* Menus on a touch screen: rows a finger can hit. */
+@media (pointer: coarse) {
+  .gio-mrow { min-height: 36px; }
 }
 
 /* §2 Tooltip: after the delay it grows from the trigger (scale 0.97 + fade,
@@ -1875,8 +1929,8 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 .tsel-p {
   position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20;
   display: flex; flex-direction: column; overflow: hidden;
-  background: #fff; border-radius: 12px;
-  box-shadow: 0 0 0 1px rgba(13, 13, 9, .06), 0 16px 36px -10px rgba(13, 13, 9, .22);
+  background: #fff; border-radius: var(--menu-radius);
+  box-shadow: var(--shadow-menu);
   transform-origin: top center;
   opacity: 0; transform: scale(.96); pointer-events: none; visibility: hidden;
   transition: opacity var(--dur-menu-out) var(--ease-out), transform var(--dur-menu-out) var(--ease-out), visibility 0s linear var(--dur-menu-out);
@@ -1885,22 +1939,26 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   opacity: 1; transform: none; pointer-events: auto; visibility: visible;
   transition: opacity var(--dur-menu-in) var(--ease-out), transform var(--dur-menu-in) var(--ease-out), visibility 0s;
 }
-.tsel-q { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 12px; border-bottom: 1px solid #F0EFEA; flex: none; }
-.tsel-q input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 400 13px/1 Inter, sans-serif; color: #0d0d09; }
+.tsel-q { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-bottom: 1px solid hsl(var(--tbl-divider-color)); flex: none; }
+.tsel-q input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 400 14px/20px Inter, sans-serif; color: #0d0d09; }
 .tsel-q input::placeholder { color: #6B7080; }
 .tsel-l { max-height: min(320px, 38vh); overflow-y: auto; padding: 4px; }
 .tsel-g {
   position: sticky; top: -4px; z-index: 1; background: #fff;
-  padding: 10px 8px 4px; font: 600 10.5px/1.2 Inter, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #6B7080;
+  display: flex; align-items: center; gap: 6px; min-height: 28px;
+  padding: 4px 8px; font: 400 12px/20px Inter, sans-serif; color: hsl(var(--menu-group-color));
 }
-.tsel-g-n { text-transform: none; font-weight: 500; font-variant-numeric: tabular-nums; }
+.tsel-g-n { font-variant-numeric: tabular-nums; }
 .tsel-o {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; gap: 12px; align-items: center;
-  padding: 8px 10px; border-radius: 8px; background: transparent; cursor: pointer;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; gap: 8px; align-items: center;
+  min-height: 28px; padding: 4px 8px; border-radius: var(--menu-item-radius); background: transparent; cursor: default;
 }
-.tsel-o[data-hi] { background: #F4F3EF; }
+.tsel-o .tsel-name { font: 400 14px/20px Inter, sans-serif; }
+.tsel-o .tsel-sub { font: 400 12px/16px Inter, sans-serif; }
+.tsel-o[data-hi] { background: hsl(var(--menu-hover)); }
+@media (pointer: coarse) { .tsel-o { min-height: 36px; } }
 .tsel-o[data-blocked] .tsel-name { color: #5A6072; }
-.tsel-none { padding: 14px 10px; font: 400 12.5px/1.4 Inter, sans-serif; color: #6B7080; }
+.tsel-none { padding: 12px 8px; font: 400 14px/20px Inter, sans-serif; color: hsl(var(--menu-group-color)); }
 @media (prefers-reduced-motion: reduce) {
   .tsel-p, .tsel-p[data-open] { transform: none; }
   .tsel-swap { animation-name: tsel-swap-fade; }

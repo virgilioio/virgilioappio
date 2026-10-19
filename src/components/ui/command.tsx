@@ -9,6 +9,7 @@ import {
   menuItem,
   menuGroupLabel,
   menuKbd,
+  menuSeparator,
 } from "@/lib/menu-classes"
 
 const Command = React.forwardRef<
@@ -115,9 +116,10 @@ const CommandGroup = React.forwardRef<
     ref={ref}
     className={cn(
       "overflow-hidden text-foreground",
-      "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1",
-      "[&_[cmdk-group-heading]]:text-menu-group [&_[cmdk-group-heading]]:font-inter [&_[cmdk-group-heading]]:uppercase",
-      "[&_[cmdk-group-heading]]:text-[hsl(var(--menu-group-color))]",
+      // Gio Docs' menu header: 12px sentence case on a 28px line.
+      "[&_[cmdk-group-heading]]:flex [&_[cmdk-group-heading]]:min-h-[28px] [&_[cmdk-group-heading]]:items-center [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1",
+      "[&_[cmdk-group-heading]]:text-menu-head [&_[cmdk-group-heading]]:font-inter",
+      "[&_[cmdk-group-heading]]:[color:hsl(var(--menu-group-color))]",
       className
     )}
     {...props}
@@ -131,7 +133,7 @@ const CommandSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.Separator
     ref={ref}
-    className={cn("-mx-[var(--menu-pad)] my-1 h-px bg-[hsl(var(--tbl-divider-color))]", className)}
+    className={cn(menuSeparator, className)}
     {...props}
   />
 ))

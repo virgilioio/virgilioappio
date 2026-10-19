@@ -292,11 +292,13 @@ export default {
 				'table-num': ['13px', { lineHeight: '1.30', fontWeight: '500' }],
 				'table-mono': ['12.5px', { lineHeight: '1.30', fontWeight: '500' }],
 				// === Dropdowns / Menus (Gio Foundation v1.0 §5) ===
-				'menu-item': ['12.5px', { lineHeight: '1.30', fontWeight: '400' }],
-				'menu-item-emphasis': ['12.5px', { lineHeight: '1.30', fontWeight: '500' }],
+				'menu-item': ['14px', { lineHeight: '20px', fontWeight: '400' }],
+				'menu-item-emphasis': ['14px', { lineHeight: '20px', fontWeight: '500' }],
 				'menu-group': ['10px', { lineHeight: '1.20', letterSpacing: '0.08em', fontWeight: '500' }],
+				// A menu's section header (Gio Docs' menus): 12px sentence case.
+				'menu-head': ['12px', { lineHeight: '20px', fontWeight: '400' }],
 				'menu-sub': ['11px', { lineHeight: '1.30', fontWeight: '400' }],
-				'menu-kbd': ['11px', { lineHeight: '1.20', letterSpacing: '0.04em', fontWeight: '500' }],
+				'menu-kbd': ['12px', { lineHeight: '20px', fontWeight: '400' }],
 			},
 			lineHeight: {
 				tight: 'var(--line-height-tight)',
@@ -350,6 +352,7 @@ export default {
 			boxShadow: {
 				// Motion-state shadows (menus in flight, dragged cards) — Block B §1
 				pop: 'var(--shadow-pop)',
+				menu: 'var(--shadow-menu)',
 				lift: 'var(--shadow-lift)',
 				input: 'var(--input-ring)',
 				// Mark hired dialog (was a second boxShadow key above, silently overridden by this one)

@@ -75,6 +75,7 @@ import {
   type CalendarTone,
 } from '@/lib/calendar/colors'
 import { cn } from '@/lib/utils'
+import { menuItem, menuKbd, menuPanel, menuSeparator } from '@/lib/menu-classes'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 
 // ─── Tokens ──────────────────────────────────────────────────
@@ -1599,16 +1600,8 @@ export default function CalendarPage() {
                       <div className="fixed inset-0 z-40" onClick={() => setPeopleOpen(false)} />
                       <div
                         role="menu"
-                        className="absolute right-0 z-50 mt-1 bg-white"
-                        style={{
-                          width: 220,
-                          borderRadius: 10,
-                          border: `1px solid ${C.border}`,
-                          boxShadow: '0 12px 32px -8px rgba(13,13,9,0.18)',
-                          padding: 4,
-                          maxHeight: 320,
-                          overflowY: 'auto',
-                        }}
+                        data-state="open"
+                        className={cn('absolute right-0 z-50 mt-1 max-h-[320px] w-[240px] origin-top-right overflow-y-auto', menuPanel)}
                       >
                         {(
                           [
@@ -1625,49 +1618,42 @@ export default function CalendarPage() {
                               setPeopleFilter(opt.key)
                               setPeopleOpen(false)
                             }}
-                            className="flex w-full items-center rounded-md px-2.5 font-inter hover:bg-[#F1F0EC]"
-                            style={{
-                              height: 30,
-                              fontSize: 12.5,
-                              color: C.ink2,
-                              background: peopleFilter === opt.key ? '#EDE4FF' : 'transparent',
-                            }}
+                            className={cn(menuItem, 'hover:bg-[hsl(var(--menu-hover))]')}
                           >
-                            {opt.label}
+                            <span className="truncate">{opt.label}</span>
+                            {peopleFilter === opt.key && (
+                              <span className="gio-mrow-check"><Check className="h-4 w-4" strokeWidth={2} aria-hidden /></span>
+                            )}
                           </button>
                         ))}
-                        <div style={{ height: 1, background: C.hairline, margin: '4px 6px' }} />
+                        <div className={menuSeparator} />
                         {members.map(m => {
                           const t = toneForHost(m.userId, user?.id, colorIndexByUser)
                           const isMe = m.userId === user?.id
+                          const on = peopleFilter === m.userId
                           return (
                             <button
                               key={m.userId}
                               type="button"
                               role="menuitemradio"
-                              aria-checked={peopleFilter === m.userId}
+                              aria-checked={on}
                               onClick={() => {
                                 setPeopleFilter(m.userId)
                                 setPeopleOpen(false)
                               }}
-                              className="flex w-full items-center gap-2 rounded-md px-2.5 font-inter hover:bg-[#F1F0EC]"
-                              style={{
-                                height: 30,
-                                fontSize: 12.5,
-                                color: C.ink2,
-                                background: peopleFilter === m.userId ? '#EDE4FF' : 'transparent',
-                              }}
+                              className={cn(menuItem, 'hover:bg-[hsl(var(--menu-hover))]')}
                             >
-                              <span
-                                style={{ width: 8, height: 8, borderRadius: 3, background: t.edge }}
-                              />
+                              <span data-menu-lead aria-hidden>
+                                <span style={{ width: 8, height: 8, borderRadius: 3, background: t.edge }} />
+                              </span>
                               <span className="truncate">
                                 {m.name}
                                 {isMe ? ' (you)' : ''}
                               </span>
-                              <span className="ml-auto" style={{ fontSize: 11, color: C.tertiary }}>
-                                {countsByHost.get(m.userId) ?? 0}
-                              </span>
+                              <span className={menuKbd}>{countsByHost.get(m.userId) ?? 0}</span>
+                              {on && (
+                                <span className="gio-mrow-check !ml-0"><Check className="h-4 w-4" strokeWidth={2} aria-hidden /></span>
+                              )}
                             </button>
                           )
                         })}
