@@ -83,14 +83,15 @@ export async function confirmDeleteStage(
     description = `${plural(usage.jobs, 'job')}${where} lose${usage.jobs === 1 ? 's' : ''} this stage.${moved}${cards} Its interviewers, unanswered questions and automations on those jobs are deleted. This can’t be undone.`
   }
 
-  const typed = opts.global || !usage || usage.candidates > 0
+  // Default stages are added to every new job, so they're typed too.
+  const typed = opts.global || stage.is_default || !usage || usage.candidates > 0
   const friendly = (e: unknown) => {
     const msg = String((e as { message?: unknown } | null)?.message ?? '')
     // The database stops it when a job would be left with nowhere to put them.
     const only = msg.match(/It is the only stage on (.+), which has candidates or scorecards in it/)
     if (only) return `${name} is the only stage on ${only[1]}, which has candidates or scorecards in it. Add another stage to that job first; nothing was removed.`
     return msg.includes('Only platform administrators') || msg.includes('Only workspace owners')
-      ? `Only ${opts.global ? 'platform admins' : 'workspace owners'} can delete ${name}.`
+      ? `Only workspace admins can delete ${name}.`
       : `Couldn\u2019t delete ${name}. Nothing was removed; try again.`
   }
   const ok = await confirmDestructive({

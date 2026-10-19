@@ -5,7 +5,6 @@ import { ProfileTab } from '@/components/settings/ProfileTab'
 import OrganizationTab from '@/components/settings/OrganizationTab'
 import { MembersTab } from '@/components/settings/MembersTab'
 import { DepartmentsManager } from '@/components/settings/DepartmentsManager'
-import { PlatformJobDefaults } from '@/components/settings/platform/PlatformJobDefaults'
 import { PlatformCustomers } from '@/components/settings/platform/PlatformCustomers'
 
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab'
@@ -36,7 +35,9 @@ const LEGACY_TAB_MAP: Record<string, string> = {
   'workspace-deal-stages': 'workspace-deal-stages',
   // Old Platform group → new Platform group
   'platform-saas-customers': 'platform-customers',
-  'platform-job-settings': 'platform-job-defaults',
+  // Job defaults merged into Settings › Recruiting (2026-10-19).
+  'platform-job-settings': 'pipeline-stages',
+  'platform-job-defaults': 'pipeline-stages',
   'platform-settings': 'platform-customers',
   // The platform dashboard was removed (Allan, 2026-10-19).
   'platform-dashboard': 'platform-customers',
@@ -126,21 +127,19 @@ export default function Settings() {
       case 'billing':
         return <Billing />
       case 'pipeline-stages':
-        return <JobStagesManager context="organization" />
+        return <JobStagesManager />
       case 'gio':
         return <GioRecruitingSettings />
       case 'application-form':
-        return <ApplicationFieldsManager context="organization" />
+        return <ApplicationFieldsManager />
       case 'templates':
-        return <OfferTemplatesManager context="organization" />
+        return <OfferTemplatesManager />
       case 'careers-page':
         return <CareersPageTab />
       case 'job-boards':
         return <JobBoardsTab />
       case 'customers':
         return <CustomersTab />
-      case 'platform-job-defaults':
-        return <PlatformJobDefaults />
       case 'platform-customers':
         return <PlatformCustomers />
       default:

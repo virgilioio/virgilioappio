@@ -24,7 +24,7 @@ export function useRejectionReasons(context: 'platform-defaults' | 'organization
   const queryClient = useQueryClient()
   const { user } = useAuth()
 
-  const { data: reasons = [], isLoading } = useQuery({
+  const { data: reasons = [], isLoading, error: loadError, refetch } = useQuery({
     queryKey: ['rejection-reasons', context],
     queryFn: async () => {
       let query = supabase
@@ -168,6 +168,8 @@ export function useRejectionReasons(context: 'platform-defaults' | 'organization
     platformReasons,
     tenantReasons,
     isLoading,
+    loadError,
+    refetch,
     createReason: createReason.mutateAsync,
     updateReason: updateReason.mutateAsync,
     deleteReason: deleteReason.mutateAsync,

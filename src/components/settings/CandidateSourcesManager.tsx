@@ -1,42 +1,30 @@
 import { useState } from 'react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { IconTip } from '@/components/ui/tooltip'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { Field } from '@/components/sign/templates/parts'
 import { undoToast } from '@/lib/undoToast'
 import { collapseRows, restoreRows, rowsById } from '@/lib/motion'
-import { TableSkeleton } from '@/components/ui/skeleton'
-import { Plus, Edit, Trash2, Check, X } from 'lucide-react'
 import { useCandidateSources, type CandidateSource } from '@/hooks/useCandidateSources'
+import { LibraryCard } from './shared/LibraryCard'
 
-interface CandidateSourcesManagerProps {
-  context?: 'platform-defaults' | 'organization'
-}
-
-export function CandidateSourcesManager({ context = 'organization' }: CandidateSourcesManagerProps) {
-  const [newSourceName, setNewSourceName] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingName, setEditingName] = useState('')
-
-  const {
-    sources,
-    platformSources,
-    tenantSources,
-    isLoading,
-    createSource,
-    updateSource,
-    deleteSource,
-    restoreSource,
-    isCreating
-  } = useCandidateSources(context)
+/**
+ * Settings › Templates › Candidate sources (2026-10-19): one list, the shared
+ * sources and Virgilio's own together. A deleted source is soft-deleted, so
+ * it has Undo.
+ */
+export function CandidateSourcesManager() {
+  const [newName, setNewName] = useState('')
+  const [editing, setEditing] = useState<CandidateSource | null>(null)
+  const { sources, isLoading, loadError, refetch, createSource, deleteSource, restoreSource, isCreating } = useCandidateSources('organization')
 
   // S19 (Block B §16): a soft delete, so it says what stays and offers Undo.
   const handleDelete = async (source: CandidateSource) => {
     const ok = await confirmDestructive({
-      title: `Delete \u201c${source.name}\u201d?`,
-      description: 'It\u2019s no longer offered when you add a candidate. Candidates already tagged with it keep it.',
+      title: `Delete “${source.name}”?`,
+      description: 'It’s no longer offered when you add a candidate. Candidates already tagged with it keep it.',
       confirmLabel: 'Delete source',
     })
     if (!ok) return
@@ -48,162 +36,102 @@ export function CandidateSourcesManager({ context = 'organization' }: CandidateS
       exit.revert()
       return
     }
-    undoToast(`\u201c${source.name}\u201d deleted`, async () => {
+    undoToast(`“${source.name}” deleted`, async () => {
       await restoreSource(source.id)
       requestAnimationFrame(() => restoreRows(rowsById([source.id])))
     })
   }
 
   const handleCreate = async () => {
-    if (!newSourceName.trim()) return
-    await createSource({ name: newSourceName.trim() })
-    setNewSourceName('')
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleCreate()
-  }
-
-  const startEdit = (source: CandidateSource) => {
-    setEditingId(source.id)
-    setEditingName(source.name)
-  }
-
-  const cancelEdit = () => {
-    setEditingId(null)
-    setEditingName('')
-  }
-
-  const saveEdit = async () => {
-    if (!editingId || !editingName.trim()) return
-    await updateSource({ id: editingId, name: editingName.trim() })
-    setEditingId(null)
-    setEditingName('')
-  }
-
-  const renderSourcesTable = (sourcesList: CandidateSource[], editable: boolean, title?: string) => (
-    <div className="mb-6">
-      {title && (
-        <>
-          <h4 className="text-sm font-semibold mb-2">{title}</h4>
-          {!editable && (
-            <p className="text-sm text-muted-foreground mb-4">
-              Default sources provided by the platform. These cannot be edited.
-            </p>
-          )}
-        </>
-      )}
-      {sourcesList.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          No candidate sources yet
-        </div>
-      ) : (
-        <div className="rounded-md border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Source Name</TableHead>
-                <TableHead>Description</TableHead>
-                {editable && <TableHead className="text-right w-24">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sourcesList.map((source) => (
-                <TableRow key={source.id} data-row-id={source.id}>
-                  <TableCell className="font-medium">
-                    {editingId === source.id ? (
-                      <Input
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                        autoFocus
-                        className="h-8"
-                      />
-                    ) : (
-                      source.name
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {source.description || '—'}
-                  </TableCell>
-                  {editable && (
-                    <TableCell className="text-right">
-                      {editingId === source.id ? (
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={saveEdit}>
-                            <Check className="h-4 w-4 text-primary" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                            <X className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => startEdit(source)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <IconTip label={`Delete ${source.name}`}>
-                            <Button variant="ghost" size="sm" aria-label={`Delete ${source.name}`} onClick={() => void handleDelete(source)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </IconTip>
-                        </div>
-                      )}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </div>
-  )
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <TableSkeleton rows={3} />
-      </div>
-    )
+    const name = newName.trim()
+    if (!name || isCreating) return
+    try {
+      await createSource({ name })
+      setNewName('')
+    } catch {
+      // the hook shows the error
+    }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Candidate Sources</CardTitle>
-        <CardDescription>
-          Manage sources for tracking where candidates come from
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Quick Add Row */}
-        <div className="flex items-center gap-2">
+    <>
+      <LibraryCard
+        title="Candidate sources"
+        description="Where candidates come from, picked when you add one."
+        what="candidate sources"
+        loading={isLoading}
+        error={loadError}
+        onRetry={() => void refetch()}
+        emptyTitle="No sources yet"
+        emptyBody="Add one above."
+        items={sources.map((s) => ({
+          id: s.id,
+          name: s.name,
+          meta: s.description || undefined,
+          onEdit: () => setEditing(s),
+          onDelete: () => void handleDelete(s),
+        }))}
+      >
+        <div className="flex items-center gap-2 border-b border-[#F1F0EC] px-[18px] py-3">
           <Input
-            placeholder="Add a new candidate source..."
-            value={newSourceName}
-            onChange={(e) => setNewSourceName(e.target.value)}
-            onKeyDown={handleKeyDown}
+            placeholder="Add a source, e.g. Referral"
+            aria-label="New source"
+            value={newName}
+            maxLength={120}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && void handleCreate()}
             className="flex-1"
           />
-          <Button onClick={handleCreate} disabled={!newSourceName.trim() || isCreating}>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button icon={Plus} onClick={() => void handleCreate()} disabled={!newName.trim()} loading={isCreating}>
             Add
           </Button>
         </div>
+      </LibraryCard>
 
-        {/* Platform sources (read-only in org context) */}
-        {context === 'organization' && platformSources.length > 0 && (
-          renderSourcesTable(platformSources, false, 'Platform Defaults')
-        )}
+      <EditSourceDialog source={editing} onClose={() => setEditing(null)} />
+    </>
+  )
+}
 
-        {/* Tenant/editable sources */}
-        {context === 'organization' ? (
-          renderSourcesTable(tenantSources, true, 'Custom Sources')
-        ) : (
-          renderSourcesTable(sources, true)
-        )}
-      </CardContent>
-    </Card>
+function EditSourceDialog({ source, onClose }: { source: CandidateSource | null; onClose: () => void }) {
+  const { updateSource, isUpdating } = useCandidateSources('organization')
+  const [name, setName] = useState('')
+  const [shown, setShown] = useState<string | null>(null)
+  if (source && shown !== source.id) {
+    setShown(source.id)
+    setName(source.name)
+  }
+  if (!source && shown) setShown(null)
+
+  const save = async () => {
+    if (!source || !name.trim()) return
+    try {
+      await updateSource({ id: source.id, name: name.trim() })
+      onClose()
+    } catch {
+      // the hook shows the error; the dialog stays open
+    }
+  }
+
+  return (
+    <Dialog open={!!source} onOpenChange={(o) => !o && !isUpdating && onClose()}>
+      <DialogContent className="max-w-[440px]">
+        <DialogHeader>
+          <DialogTitle>Rename source</DialogTitle>
+          <DialogDescription>Candidates already tagged with it show the new name.</DialogDescription>
+        </DialogHeader>
+        <Field label="Source" required htmlFor="source-name">
+          <Input id="source-name" value={name} maxLength={120} disabled={isUpdating} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void save()} />
+        </Field>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={isUpdating}>
+            Cancel
+          </Button>
+          <Button onClick={() => void save()} loading={isUpdating} disabled={!name.trim()}>
+            Save source
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

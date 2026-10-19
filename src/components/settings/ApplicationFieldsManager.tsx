@@ -1,172 +1,109 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { IconTip } from '@/components/ui/tooltip'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import { useApplicationFields, ApplicationField } from '@/hooks/useApplicationFields'
+import { fieldTypeLabel } from '@/components/shared/FormFieldEditor'
+import { collapseRows, rowsById } from '@/lib/motion'
 import { ApplicationFieldForm } from './ApplicationFieldForm'
-import { Plus, Copy, Pencil, Trash2, Loader2 } from 'lucide-react'
-import { SpecCard } from './shared/SpecCard'
-import { SpecRow, SpecEmpty, NOIR_BTN, SEC_BTN } from './shared/SpecRow'
+import { LibraryCard } from './shared/LibraryCard'
 import { SpecChip } from './shared/SpecChip'
 
-interface ApplicationFieldsManagerProps {
-  context?: 'platform-defaults' | 'organization'
+const typeLabel = (t: string) => {
+  const l = fieldTypeLabel(t)
+  return l.charAt(0).toUpperCase() + l.slice(1).replace(/_/g, ' ')
 }
 
-export function ApplicationFieldsManager({ context = 'organization' }: ApplicationFieldsManagerProps) {
-  const { fields, isLoading, deleteField, refetch, copyPlatformTemplate } = useApplicationFields(context)
+/**
+ * Settings › Application form (2026-10-19): the standard fields every
+ * application collects (read-only), then one list of the other fields, the
+ * shared ones and Virgilio's own together. "Default" fields are added to
+ * every new job posting.
+ */
+export function ApplicationFieldsManager() {
+  const { fields, isLoading, loadError, deleteField, refetch } = useApplicationFields('organization')
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<ApplicationField | null>(null)
 
-  // S10 (Block B §16): name the field; a failed delete says so (it used to fail silently).
+  // S10 (Block B §16): name the field; a failed delete says so.
   const handleDelete = async (f: ApplicationField) => {
     const label = f.field_label || f.field_name
     const ok = await confirmDestructive({
-      title: `Delete the \u201c${label}\u201d field?`,
-      description: 'It\u2019s removed from your application form, so new applicants aren\u2019t asked it. Answers candidates already gave stay. This can\u2019t be undone.',
+      title: `Delete the “${label}” field?`,
+      description: 'It’s removed from the application form, so new applicants aren’t asked it. Answers candidates already gave stay. This can’t be undone.',
       confirmLabel: 'Delete field',
     })
     if (!ok) return
+    const exit = collapseRows(rowsById([f.id]))
     try {
+      await exit.done
       await deleteField(f.id)
       await refetch()
     } catch (e) {
       console.error('Failed to delete application field:', e)
-      toast({ title: `Couldn\u2019t delete \u201c${label}\u201d`, description: 'Nothing was removed; try again.', variant: 'destructive' })
+      exit.revert()
+      toast({ title: `Couldn’t delete “${label}”`, description: 'Nothing was removed; try again.', variant: 'destructive' })
     }
   }
 
-  const allPlatform = (fields || []).filter(f => f.source === 'platform')
-  const coreFields = allPlatform
-    .filter(f => f.is_core_field === true)
-    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-  const platformFields = allPlatform.filter(f => f.is_core_field !== true)
-  const tenantFields = (fields || []).filter(f => f.source === 'tenant')
-  const listFields = context === 'organization' ? tenantFields : (fields || []).filter(f => f.is_core_field !== true)
+  const all = fields || []
+  const core = all.filter((f) => f.is_core_field === true).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+  const rest = all.filter((f) => f.is_core_field !== true)
 
   return (
     <div className="max-w-[860px]">
-      <SpecCard
+      <LibraryCard
         title="Standard fields"
-        description="Always collected on every application. Required by the platform and can't be edited."
-      >
-        {isLoading ? (
-          <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
-        ) : coreFields.length === 0 ? (
-          <SpecEmpty title="No standard fields available." />
-        ) : (
-          coreFields.map((f, i) => (
-            <SpecRow key={f.id} last={i === coreFields.length - 1}>
-              <div className="flex-1 min-w-0 flex items-baseline gap-2">
-                <span className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 500 }}>
-                  {f.field_label}
-                </span>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#8B8F9E' }}>
-                  {f.field_name}
-                </span>
-              </div>
-              <SpecChip tone="gray">{f.field_type}</SpecChip>
+        description="Every application collects these. They can't be changed."
+        what="the standard fields"
+        loading={isLoading}
+        error={loadError}
+        onRetry={() => void refetch()}
+        emptyTitle="No standard fields"
+        items={core.map((f) => ({
+          id: f.id,
+          name: f.field_label,
+          chips: (
+            <>
+              <SpecChip tone="gray">{typeLabel(f.field_type)}</SpecChip>
               <SpecChip tone="purple">Required</SpecChip>
-            </SpecRow>
-          ))
-        )}
-      </SpecCard>
+            </>
+          ),
+        }))}
+      />
 
-      {context === 'organization' && (
-        <SpecCard
-          title="Platform fields"
-          description="Optional fields you can copy and customize."
-        >
-          {isLoading ? (
-            <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
-          ) : platformFields.length === 0 ? (
-            <SpecEmpty title="No optional platform fields available." />
-          ) : (
-            platformFields.map((f, i) => (
-              <SpecRow key={f.id} last={i === platformFields.length - 1}>
-                <div className="flex-1 min-w-0 flex items-baseline gap-2">
-                  <span className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 500 }}>
-                    {f.field_label}
-                  </span>
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#8B8F9E' }}>
-                    {f.field_name}
-                  </span>
-                </div>
-                <SpecChip tone="gray">{f.field_type}</SpecChip>
-                <button
-                  type="button"
-                  className={SEC_BTN}
-                  style={{ height: 26, padding: '0 10px', fontSize: 11.5 }}
-                  onClick={() => copyPlatformTemplate(f.id)}
-                >
-                  <Copy size={11} /> Copy
-                </button>
-              </SpecRow>
-            ))
-          )}
-        </SpecCard>
-      )}
-
-
-      <SpecCard
-        title="My custom fields"
-        description="Organization-specific questions on every application."
-        action={
-          <button
-            type="button"
-            className={NOIR_BTN}
-            style={{ height: 30, padding: '0 12px', fontSize: 12 }}
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus size={13} /> Add custom field
-          </button>
-        }
-      >
-        {isLoading ? (
-          <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
-        ) : listFields.length === 0 ? (
-          <SpecEmpty title="No custom fields yet" body="Add one to start collecting more from applicants." />
-        ) : (
-          listFields.map((f, i) => (
-            <SpecRow key={f.id} last={i === listFields.length - 1}>
-              <div className="flex-1 min-w-0 flex items-baseline gap-2">
-                <span className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 500 }}>
-                  {f.field_label}
-                </span>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#8B8F9E' }}>
-                  {f.field_name}
-                </span>
-              </div>
-              <SpecChip tone="gray">{f.field_type}</SpecChip>
-              <button
-                type="button"
-                className="text-[#8B8F9E] hover:text-[#0d0d09] transition-colors"
-                onClick={() => setEditing(f)}
-                aria-label="Edit"
-              >
-                <Pencil size={13} />
-              </button>
-              <IconTip label={`Delete ${f.field_label || f.field_name}`}>
-                <button
-                  type="button"
-                  className="text-[#8B8F9E] hover:text-[#B91C1C] transition-colors"
-                  onClick={() => void handleDelete(f)}
-                  aria-label={`Delete ${f.field_label || f.field_name}`}
-                >
-                  <Trash2 size={13} />
-                </button>
-              </IconTip>
-            </SpecRow>
-          ))
-        )}
-      </SpecCard>
+      <LibraryCard
+        title="Application fields"
+        description="More questions for applicants. Default fields are added to every new job posting."
+        what="application fields"
+        addLabel="Add field"
+        onAdd={() => setCreateOpen(true)}
+        loading={isLoading}
+        error={loadError}
+        onRetry={() => void refetch()}
+        emptyTitle="No extra fields yet"
+        emptyBody="Add a question to ask every applicant."
+        onceKey="settings-application-fields"
+        items={rest.map((f) => ({
+          id: f.id,
+          name: f.field_label || f.field_name,
+          meta: f.help_text || undefined,
+          chips: (
+            <>
+              <SpecChip tone="gray">{typeLabel(f.field_type)}</SpecChip>
+              {f.is_default && <SpecChip tone="green">Default</SpecChip>}
+            </>
+          ),
+          onEdit: () => setEditing(f),
+          onDelete: () => void handleDelete(f),
+        }))}
+      />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create new field</DialogTitle>
-            <DialogDescription>Add a new field to the application form</DialogDescription>
+            <DialogTitle>New field</DialogTitle>
+            <DialogDescription>Add a question to the application form.</DialogDescription>
           </DialogHeader>
           <ApplicationFieldForm onClose={() => setCreateOpen(false)} onSaved={refetch} />
         </DialogContent>
@@ -176,12 +113,11 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit field</DialogTitle>
-            <DialogDescription>Update the field details</DialogDescription>
+            <DialogDescription>Changes apply to new applications.</DialogDescription>
           </DialogHeader>
           {editing && <ApplicationFieldForm field={editing} onClose={() => setEditing(null)} onSaved={refetch} />}
         </DialogContent>
       </Dialog>
-
     </div>
   )
 }

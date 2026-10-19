@@ -21,7 +21,7 @@ export function useCandidateSources(context: 'platform-defaults' | 'organization
   const queryClient = useQueryClient()
   const { user } = useAuth()
 
-  const { data: sources = [], isLoading } = useQuery({
+  const { data: sources = [], isLoading, error: loadError, refetch } = useQuery({
     queryKey: ['candidate-sources', context],
     queryFn: async () => {
       let query = supabase
@@ -148,6 +148,8 @@ export function useCandidateSources(context: 'platform-defaults' | 'organization
     platformSources,
     tenantSources,
     isLoading,
+    loadError,
+    refetch,
     createSource: createSource.mutateAsync,
     updateSource: updateSource.mutateAsync,
     deleteSource: deleteSource.mutateAsync,

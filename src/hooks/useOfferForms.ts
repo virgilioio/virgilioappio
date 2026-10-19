@@ -23,6 +23,8 @@ export type OfferFormsContext = 'platform-defaults' | 'organization'
 export function useOfferForms(context: OfferFormsContext = 'organization') {
   const [forms, setForms] = useState<OfferForm[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  // A failed load shows Retry (LoadError) instead of reading as an empty list.
+  const [loadError, setLoadError] = useState<unknown>(null)
   const { toast } = useToast()
 
   const fetchForms = async () => {
@@ -62,13 +64,10 @@ export function useOfferForms(context: OfferFormsContext = 'organization') {
       }))
 
       setForms(formsWithSource)
+      setLoadError(null)
     } catch (error) {
       console.error('Error fetching offer forms:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch offer forms',
-        variant: 'destructive'
-      })
+      setLoadError(error)
     } finally {
       setIsLoading(false)
     }
@@ -155,6 +154,7 @@ export function useOfferForms(context: OfferFormsContext = 'organization') {
   return {
     forms,
     isLoading,
+    loadError,
     createForm,
     updateForm,
     deleteForm,

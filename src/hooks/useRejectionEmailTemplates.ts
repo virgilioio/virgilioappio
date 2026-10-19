@@ -21,6 +21,8 @@ type RejectionEmailTemplatesContext = 'platform-defaults' | 'organization';
 export function useRejectionEmailTemplates(context: RejectionEmailTemplatesContext = 'organization') {
   const [templates, setTemplates] = useState<RejectionEmailTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // A failed load shows Retry (LoadError) instead of reading as an empty list.
+  const [loadError, setLoadError] = useState<unknown>(null)
   const { toast } = useToast();
 
   const fetchTemplates = async () => {
@@ -41,13 +43,10 @@ export function useRejectionEmailTemplates(context: RejectionEmailTemplatesConte
       } else {
         setTemplates(data || []);
       }
+      setLoadError(null);
     } catch (error: any) {
       console.error('Error fetching rejection email templates:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch rejection email templates',
-        variant: 'destructive',
-      });
+      setLoadError(error);
     } finally {
       setIsLoading(false);
     }
@@ -182,6 +181,7 @@ export function useRejectionEmailTemplates(context: RejectionEmailTemplatesConte
   return {
     templates,
     isLoading,
+    loadError,
     createTemplate,
     updateTemplate,
     deleteTemplate,

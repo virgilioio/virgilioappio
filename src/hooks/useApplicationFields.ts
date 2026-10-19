@@ -37,6 +37,8 @@ export type ApplicationFieldsContext = 'platform-defaults' | 'organization'
 export function useApplicationFields(context: ApplicationFieldsContext = 'organization') {
   const [fields, setFields] = useState<ApplicationFieldWithRelations[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
+  // A failed load shows Retry (LoadError) instead of reading as an empty list.
+  const [loadError, setLoadError] = useState<unknown>(null)
   const { toast } = useToast()
 
   const fetchFields = async () => {
@@ -83,10 +85,10 @@ export function useApplicationFields(context: ApplicationFieldsContext = 'organi
       }))
 
       setFields(mapped)
+      setLoadError(null)
     } catch (err) {
       console.error('Error fetching application fields:', err)
-      toast({ title: 'Error', description: 'Failed to load application fields', variant: 'destructive' })
-      setFields([])
+      setLoadError(err)
     } finally {
       setIsLoading(false)
     }
@@ -239,5 +241,5 @@ export function useApplicationFields(context: ApplicationFieldsContext = 'organi
     fetchFields()
   }, [])
 
-  return { fields, isLoading, createField, updateField, deleteField, copyPlatformTemplate, refetch: fetchFields }
+  return { fields, isLoading, loadError, createField, updateField, deleteField, copyPlatformTemplate, refetch: fetchFields }
 }

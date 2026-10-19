@@ -1,27 +1,20 @@
 import { useState } from 'react'
-import { InlineEmpty } from '@/components/ui/empty-state'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { IconTip } from '@/components/ui/tooltip'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
-import { Plus, Edit, Trash2, ClipboardList } from 'lucide-react'
-import { useOfferForms, type OfferFormsContext } from '@/hooks/useOfferForms'
+import { useOfferForms } from '@/hooks/useOfferForms'
+import { formSections } from '@/lib/offerSections'
 import { OfferFormSheet } from './offerForms/OfferFormSheet'
+import { LibraryCard } from './shared/LibraryCard'
+import { SpecChip } from './shared/SpecChip'
 
-interface OfferFormsManagerProps {
-  context?: OfferFormsContext
-}
-
-export function OfferFormsManager({ context = 'organization' }: OfferFormsManagerProps) {
-  const { forms, isLoading, deleteForm, createForm, refetchForms } = useOfferForms(context)
+/**
+ * Settings › Templates › Offer forms (2026-10-19): every form recruiters can
+ * pick, in one list (before, the shared ones only showed under Job Defaults).
+ */
+export function OfferFormsManager() {
+  const { forms, isLoading, loadError, deleteForm, createForm, refetchForms } = useOfferForms('organization')
   const [formSheet, setFormSheet] = useState({ open: false, formId: undefined as string | undefined })
-
-  const tenantForms = forms.filter(f => f.source === 'tenant')
-  const displayForms = context === 'organization' ? tenantForms : forms
 
   // S15 (Block B §16). A form used by an offer can't be deleted
   // (offer_letters.form_id has no ON DELETE), so that is blocked up front
@@ -61,81 +54,31 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>
-            {context === 'platform-defaults' ? 'Platform Default Offer Forms' : 'Offer Forms'}
-          </CardTitle>
-          <CardDescription>
-            {context === 'platform-defaults'
-              ? 'Manage platform-wide default offer forms'
-              : 'Manage offer forms for your organization'
-            }
-          </CardDescription>
-        </div>
-        <Button onClick={() => setFormSheet({ open: true, formId: undefined })}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Form
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="text-center py-8">Loading forms...</div>
-        ) : displayForms.length === 0 ? (
-          <InlineEmpty
-            text="No offer forms yet. Create your first form to get started."
-            action="Create form"
-            onAction={() => setFormSheet({ open: true, formId: undefined })}
-          />
-        ) : (
-          <div className="rounded-md border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayForms.map((form) => (
-                  <TableRow key={form.id}>
-                    <TableCell className="font-medium">{form.name}</TableCell>
-                    <TableCell>
-                      {form.description || <span className="text-muted-foreground italic">No description</span>}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={form.is_active ? 'default' : 'secondary'}>
-                        {form.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setFormSheet({ open: true, formId: form.id })}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <IconTip label={`Delete ${form.name}`}>
-                          <Button variant="ghost" size="sm" aria-label={`Delete ${form.name}`} onClick={() => void handleDelete({ id: form.id, name: form.name })}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </IconTip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
+    <>
+      <LibraryCard
+        title="Offer forms"
+        description="What recruiters fill in when they write an offer, in sections."
+        what="offer forms"
+        addLabel="New form"
+        onAdd={() => setFormSheet({ open: true, formId: undefined })}
+        loading={isLoading}
+        error={loadError}
+        onRetry={() => void refetchForms()}
+        emptyTitle="No offer forms yet"
+        emptyBody="Create the form recruiters fill in for an offer."
+        onceKey="settings-offer-forms"
+        items={forms.map((form) => {
+          const n = formSections(form).length
+          return {
+            id: form.id,
+            name: form.name,
+            meta: form.description || `${n} ${n === 1 ? 'section' : 'sections'}`,
+            chips: form.is_active ? <SpecChip tone="green">Active</SpecChip> : <SpecChip tone="gray">Inactive</SpecChip>,
+            onEdit: () => setFormSheet({ open: true, formId: form.id }),
+            onDelete: () => void handleDelete({ id: form.id, name: form.name }),
+          }
+        })}
+      />
 
       <OfferFormSheet
         open={formSheet.open}
@@ -144,6 +87,6 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
         createForm={createForm}
         onChanged={() => void refetchForms()}
       />
-    </Card>
+    </>
   )
 }

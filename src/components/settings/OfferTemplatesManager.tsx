@@ -1,17 +1,15 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, Loader2, FilePlus2 } from 'lucide-react'
 import { useEmailTemplates } from '@/hooks/useEmailTemplates'
 import { EmailTemplateSheet } from './templates/EmailTemplateSheet'
 import { RejectionReasonsManager } from './RejectionReasonsManager'
 import { RejectionEmailTemplatesManager } from './RejectionEmailTemplatesManager'
 import { OfferFormsManager } from './OfferFormsManager'
 import { CandidateSourcesManager } from './CandidateSourcesManager'
-import { SpecCard } from './shared/SpecCard'
-import { SpecRow, SpecEmpty, NOIR_BTN } from './shared/SpecRow'
-import { SpecChip } from './shared/SpecChip'
+import { LibraryCard } from './shared/LibraryCard'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
-import { IconTip } from '@/components/ui/tooltip'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { collapseRows, rowsById } from '@/lib/motion'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 /** How many rows point at a template (null if the check failed). */
@@ -21,22 +19,6 @@ async function countUses(table: 'stage_automation_emails', column: string, id: s
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
-const libraryLine = (context: 'platform-defaults' | 'organization') =>
-  context === 'platform-defaults' ? 'It\u2019s removed from the defaults every organization inherits.' : ''
-
-function DeleteIcon({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
-  return (
-    <IconTip label={label}>
-      <button type="button" className="text-[#8B8F9E] hover:text-[#B91C1C] disabled:opacity-40" onClick={onClick} disabled={disabled} aria-label={label}>
-        <Trash2 size={13} />
-      </button>
-    </IconTip>
-  )
-}
-
-interface OfferTemplatesManagerProps {
-  context?: 'platform-defaults' | 'organization'
-}
 
 type TabKey = 'offer-forms' | 'email-templates' | 'rejection-reasons' | 'rejection-templates' | 'candidate-sources'
 
@@ -48,52 +30,38 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'candidate-sources', label: 'Candidate sources' },
 ]
 
-export function OfferTemplatesManager({ context = 'organization' }: OfferTemplatesManagerProps) {
+/**
+ * Settings › Templates (2026-10-19): one library per kind, the shared rows and
+ * Virgilio's own together, editable by workspace admins (library_editor).
+ * The kinds are tabs with the moving pill (TabsList).
+ */
+export function OfferTemplatesManager() {
   const [tab, setTab] = useState<TabKey>('offer-forms')
 
   return (
     <div className="max-w-[860px]">
-      {/* Pill sub-nav */}
-      <div className="flex flex-wrap gap-1.5 mb-[14px]">
-        {TABS.map(t => {
-          const active = tab === t.key
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className="font-inter transition-colors"
-              style={{
-                height: 26,
-                padding: '0 10px',
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 500,
-                borderWidth: 1,
-                borderStyle: 'solid',
-                background: active ? '#EDE4FF' : '#FFFFFF',
-                color: active ? '#5B21B6' : '#5A6072',
-                borderColor: active ? '#D7C5FB' : '#E7E8EE',
-              }}
-            >
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="mb-[14px]">
+        <TabsList>
+          {TABS.map((t) => (
+            <TabsTrigger key={t.key} value={t.key}>
               {t.label}
-            </button>
-          )
-        })}
-      </div>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
-      {tab === 'email-templates' && <EmailTemplatesSection context={context} />}
-      {tab === 'offer-forms' && <div className="[&_.bg-white]:!shadow-none"><OfferFormsManager context={context} /></div>}
-      {tab === 'rejection-reasons' && <div className="[&_.bg-white]:!shadow-none"><RejectionReasonsManager context={context} /></div>}
-      {tab === 'rejection-templates' && <div className="[&_.bg-white]:!shadow-none"><RejectionEmailTemplatesManager context={context} /></div>}
-      {tab === 'candidate-sources' && <div className="[&_.bg-white]:!shadow-none"><CandidateSourcesManager context={context} /></div>}
+      {tab === 'email-templates' && <EmailTemplatesSection />}
+      {tab === 'offer-forms' && <OfferFormsManager />}
+      {tab === 'rejection-reasons' && <RejectionReasonsManager />}
+      {tab === 'rejection-templates' && <RejectionEmailTemplatesManager />}
+      {tab === 'candidate-sources' && <CandidateSourcesManager />}
     </div>
   )
 }
 
 // ─── Email Templates ───
-function EmailTemplatesSection({ context }: { context: 'platform-defaults' | 'organization' }) {
-  const { templates, isLoading, deleteTemplate } = useEmailTemplates(context)
+function EmailTemplatesSection() {
+  const { templates, isLoading, loadError, deleteTemplate, refetchTemplates } = useEmailTemplates('organization')
   const [sheet, setSheet] = useState<{ open: boolean; id?: string }>({ open: false })
 
   // S12 (Block B §16): stage automations hold the template (the database
@@ -115,43 +83,47 @@ function EmailTemplatesSection({ context }: { context: 'platform-defaults' | 'or
     }
     const ok = await confirmDestructive({
       title: `Delete ${t.name}?`,
-      description: `It\u2019s no longer offered when you write an email. Emails already sent with it stay. ${libraryLine(context)} This can\u2019t be undone.`.replace('  ', ' '),
+      description: 'It\u2019s no longer offered when you write an email. Emails already sent with it stay. This can\u2019t be undone.',
       confirmLabel: 'Delete template',
     })
-    if (ok) deleteTemplate(t.id).catch(() => {})
+    if (!ok) return
+    const exit = collapseRows(rowsById([t.id]))
+    await exit.done
+    await deleteTemplate(t.id).catch(() => exit.revert())
   }
 
   return (
     <>
-      <SpecCard
+      <LibraryCard
         title="Email templates"
-        description="Manage email templates for your organization."
-        action={<button type="button" className={NOIR_BTN} style={{ height: 30, padding: '0 12px', fontSize: 12 }} onClick={() => setSheet({ open: true })}><Plus size={13} /> Create</button>}
-      >
-        {isLoading ? (
-          <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
-        ) : templates.length === 0 ? (
-          <SpecEmpty icon={FilePlus2} title="No email templates yet" body="Create your first to get started." />
-        ) : (
-          templates.map((t, i) => {
-            const isPlatform = context === 'organization' && t.source === 'platform'
-            return (
-              <SpecRow key={t.id} last={i === templates.length - 1}>
-                <div className="flex-1 min-w-0">
-                  <div className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 600 }}>{t.name}</div>
-                  <div className="font-inter text-[#8B8F9E] truncate" style={{ fontSize: 11 }}>{t.subject}</div>
-                </div>
-                {isPlatform && <SpecChip tone="gray">Inherited</SpecChip>}
-                <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09] disabled:opacity-40" onClick={() => setSheet({ open: true, id: t.id })} disabled={isPlatform} aria-label="Edit"><Pencil size={13} /></button>
-                <DeleteIcon label={`Delete ${t.name}`} onClick={() => void handleDelete({ id: t.id, name: t.name })} disabled={isPlatform} />
-              </SpecRow>
-            )
-          })
-        )}
-      </SpecCard>
+        description="Ready-made emails to start from when you write to a candidate."
+        what="email templates"
+        addLabel="New template"
+        onAdd={() => setSheet({ open: true })}
+        loading={isLoading}
+        error={loadError}
+        onRetry={() => void refetchTemplates()}
+        emptyTitle="No email templates yet"
+        emptyBody="Write one you send often."
+        onceKey="settings-email-templates"
+        items={templates.map((t) => ({
+          id: t.id,
+          name: t.name,
+          meta: t.subject,
+          onEdit: () => setSheet({ open: true, id: t.id }),
+          onDelete: () => void handleDelete({ id: t.id, name: t.name }),
+        }))}
+      />
 
-      <EmailTemplateSheet open={sheet.open} onOpenChange={(o) => setSheet({ open: o, id: undefined })} templateId={sheet.id} context={context} />
-
+      <EmailTemplateSheet
+        open={sheet.open}
+        onOpenChange={(o) => {
+          setSheet({ open: o, id: undefined })
+          if (!o) void refetchTemplates()
+        }}
+        templateId={sheet.id}
+        context="organization"
+      />
     </>
   )
 }

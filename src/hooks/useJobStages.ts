@@ -32,6 +32,8 @@ export type JobStagesContext = 'platform-defaults' | 'organization'
 export function useJobStages(context: JobStagesContext = 'organization') {
   const [stages, setStages] = useState<JobStage[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  // A failed load shows Retry (LoadError) instead of reading as an empty list.
+  const [loadError, setLoadError] = useState<unknown>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -80,13 +82,10 @@ export function useJobStages(context: JobStagesContext = 'organization') {
       }))
       
       setStages(stagesWithSource)
+      setLoadError(null)
     } catch (error) {
       console.error('Error fetching job stages:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch job stages',
-        variant: 'destructive'
-      })
+      setLoadError(error)
     } finally {
       setIsLoading(false)
     }
@@ -264,6 +263,7 @@ export function useJobStages(context: JobStagesContext = 'organization') {
   return {
     stages,
     isLoading,
+    loadError,
     isCreating,
     isUpdating,
     isDeleting,

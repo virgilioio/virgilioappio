@@ -1,45 +1,36 @@
 import { useState } from 'react'
+import { Plus, UserMinus, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { IconTip } from '@/components/ui/tooltip'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { Field, Seg } from '@/components/sign/templates/parts'
 import { undoToast } from '@/lib/undoToast'
 import { collapseRows, restoreRows, rowsById } from '@/lib/motion'
-import { TableSkeleton } from '@/components/ui/skeleton'
-import { Plus, Edit, Trash2, UserX, UserMinus, Check, X } from 'lucide-react'
 import { useRejectionReasons, type RejectionCategory, type RejectionReason } from '@/hooks/useRejectionReasons'
+import { LibraryCard } from './shared/LibraryCard'
 
-interface RejectionReasonsManagerProps {
-  context?: 'platform-defaults' | 'organization'
+const CATEGORY_LABEL: Record<RejectionCategory, string> = {
+  recruiter_rejected: 'We rejected them',
+  candidate_declined: 'They declined',
 }
 
-export function RejectionReasonsManager({ context = 'organization' }: RejectionReasonsManagerProps) {
+/**
+ * Settings › Templates › Rejection reasons (2026-10-19): one list per
+ * category, the shared reasons and Virgilio's own together, all editable by
+ * workspace admins. A deleted reason is soft-deleted, so it has Undo.
+ */
+export function RejectionReasonsManager() {
   const [category, setCategory] = useState<RejectionCategory>('recruiter_rejected')
-  const [newReasonName, setNewReasonName] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingName, setEditingName] = useState('')
-  const [editingClientLabel, setEditingClientLabel] = useState('')
+  const [newName, setNewName] = useState('')
+  const [editing, setEditing] = useState<RejectionReason | null>(null)
 
-  const { 
-    reasons, 
-    platformReasons,
-    tenantReasons,
-    isLoading, 
-    createReason, 
-    updateReason, 
-    deleteReason,
-    restoreReason,
-    isCreating 
-  } = useRejectionReasons(context)
+  const { reasons, isLoading, loadError, refetch, createReason, deleteReason, restoreReason, isCreating } = useRejectionReasons('organization')
 
-  // S17 (Block B §16): a soft delete, so it says what stays and offers Undo.
   const handleDelete = async (reason: RejectionReason) => {
     const ok = await confirmDestructive({
-      title: `Delete \u201c${reason.name}\u201d?`,
-      description: 'It\u2019s no longer offered when you reject someone or record that they declined. Candidates already rejected with it keep it in their history.',
+      title: `Delete “${reason.name}”?`,
+      description: 'It’s no longer offered when you reject someone or record that they declined. Candidates already rejected with it keep it in their history.',
       confirmLabel: 'Delete reason',
     })
     if (!ok) return
@@ -51,207 +42,122 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
       exit.revert()
       return
     }
-    undoToast(`\u201c${reason.name}\u201d deleted`, async () => {
+    undoToast(`“${reason.name}” deleted`, async () => {
       await restoreReason(reason.id)
       requestAnimationFrame(() => restoreRows(rowsById([reason.id])))
     })
   }
 
-  const filteredPlatformReasons = platformReasons.filter(r => r.category === category)
-  const filteredTenantReasons = tenantReasons.filter(r => r.category === category)
-  const filteredReasons = reasons.filter(r => r.category === category)
-
   const handleCreate = async () => {
-    if (!newReasonName.trim()) return
-    await createReason({ 
-      name: newReasonName.trim(), 
-      category 
-    })
-    setNewReasonName('')
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleCreate()
+    const name = newName.trim()
+    if (!name || isCreating) return
+    try {
+      await createReason({ name, category })
+      setNewName('')
+    } catch {
+      // the hook shows the error
     }
   }
 
-  const startEdit = (reason: RejectionReason) => {
-    setEditingId(reason.id)
-    setEditingName(reason.name)
-    setEditingClientLabel(reason.client_label || '')
-  }
+  const listed = reasons.filter((r) => r.category === category)
 
-  const cancelEdit = () => {
-    setEditingId(null)
-    setEditingName('')
-    setEditingClientLabel('')
-  }
-
-  const saveEdit = async () => {
-    if (!editingId || !editingName.trim()) return
-    await updateReason({ id: editingId, name: editingName.trim(), client_label: editingClientLabel.trim() || null })
-    setEditingId(null)
-    setEditingName('')
-    setEditingClientLabel('')
-  }
-
-  const renderReasonsTable = (reasonsList: RejectionReason[], editable: boolean, title?: string) => (
-    <div className="mb-6">
-      {title && (
-        <>
-          <h4 className="text-sm font-semibold mb-2">{title}</h4>
-          {!editable && (
-            <p className="text-sm text-muted-foreground mb-4">
-              Default reasons provided by the platform. These cannot be edited.
-            </p>
-          )}
-        </>
-      )}
-      {reasonsList.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          No {category === 'recruiter_rejected' ? '"We Rejected"' : '"They Declined"'} reasons yet
+  return (
+    <>
+      <LibraryCard
+        title="Rejection reasons"
+        description="Offered when you reject a candidate or record that they declined."
+        what="rejection reasons"
+        loading={isLoading}
+        error={loadError}
+        onRetry={() => void refetch()}
+        emptyTitle={`No “${CATEGORY_LABEL[category]}” reasons yet`}
+        emptyBody="Add one above."
+        items={listed.map((r) => ({
+          id: r.id,
+          name: r.name,
+          meta: `Clients see “${r.client_label || 'Not progressed'}”`,
+          onEdit: () => setEditing(r),
+          onDelete: () => void handleDelete(r),
+        }))}
+      >
+        <div className="flex flex-col gap-3 border-b border-[#F1F0EC] px-[18px] py-3">
+          <Seg
+            label="Kind of reason"
+            value={category}
+            onChange={(v) => setCategory(v as RejectionCategory)}
+            options={[
+              { value: 'recruiter_rejected', label: CATEGORY_LABEL.recruiter_rejected, icon: UserX },
+              { value: 'candidate_declined', label: CATEGORY_LABEL.candidate_declined, icon: UserMinus },
+            ]}
+          />
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder={`Add a “${CATEGORY_LABEL[category]}” reason`}
+              aria-label="New reason"
+              value={newName}
+              maxLength={120}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void handleCreate()}
+              className="flex-1"
+            />
+            <Button icon={Plus} onClick={() => void handleCreate()} disabled={!newName.trim()} loading={isCreating}>
+              Add
+            </Button>
+          </div>
         </div>
-      ) : (
-        <div className="rounded-md border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Reason</TableHead>
-                <TableHead>Client label</TableHead>
-                <TableHead>Description</TableHead>
-                {editable && <TableHead className="text-right w-24">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {reasonsList.map((reason) => (
-                <TableRow key={reason.id} data-row-id={reason.id}>
-                  <TableCell className="font-medium">
-                    {editingId === reason.id ? (
-                      <Input
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                        autoFocus
-                        className="h-8"
-                      />
-                    ) : (
-                      reason.name
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {editingId === reason.id ? (
-                      <Input
-                        value={editingClientLabel}
-                        onChange={(e) => setEditingClientLabel(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                        placeholder='Shown to clients, e.g. “Skills gap”'
-                        className="h-8"
-                      />
-                    ) : (
-                      reason.client_label || 'Not progressed'
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {reason.description || '—'}
-                  </TableCell>
-                  {editable && (
-                    <TableCell className="text-right">
-                      {editingId === reason.id ? (
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={saveEdit}>
-                            <Check className="h-4 w-4 text-primary" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                            <X className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => startEdit(reason)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <IconTip label={`Delete ${reason.name}`}>
-                            <Button variant="ghost" size="sm" aria-label={`Delete ${reason.name}`} onClick={() => void handleDelete(reason)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </IconTip>
-                        </div>
-                      )}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </div>
+      </LibraryCard>
+
+      <EditReasonDialog reason={editing} onClose={() => setEditing(null)} />
+    </>
   )
+}
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <TableSkeleton rows={3} />
-      </div>
-    )
+function EditReasonDialog({ reason, onClose }: { reason: RejectionReason | null; onClose: () => void }) {
+  const { updateReason, isUpdating } = useRejectionReasons('organization')
+  const [name, setName] = useState('')
+  const [clientLabel, setClientLabel] = useState('')
+  const [shown, setShown] = useState<string | null>(null)
+  if (reason && shown !== reason.id) {
+    setShown(reason.id)
+    setName(reason.name)
+    setClientLabel(reason.client_label || '')
+  }
+  if (!reason && shown) setShown(null)
+
+  const save = async () => {
+    if (!reason || !name.trim()) return
+    try {
+      await updateReason({ id: reason.id, name: name.trim(), client_label: clientLabel.trim() || null })
+      onClose()
+    } catch {
+      // the hook shows the error; the dialog stays open
+    }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Rejection Reasons</CardTitle>
-        <CardDescription>
-          Manage reasons for rejecting candidates or tracking when candidates decline offers
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Category Toggle */}
-        <ToggleGroup
-          type="single"
-          value={category}
-          onValueChange={(value) => value && setCategory(value as RejectionCategory)}
-          variant="outline"
-          size="sm"
-          className="justify-start"
-        >
-          <ToggleGroupItem value="recruiter_rejected" aria-label="We Rejected">
-            <UserX className="h-4 w-4 mr-2" />
-            We Rejected Them
-          </ToggleGroupItem>
-          <ToggleGroupItem value="candidate_declined" aria-label="They Declined">
-            <UserMinus className="h-4 w-4 mr-2" />
-            They Declined
-          </ToggleGroupItem>
-        </ToggleGroup>
-
-        {/* Quick Add Row */}
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder={`Add a ${category === 'recruiter_rejected' ? '"We Rejected"' : '"They Declined"'} reason...`}
-            value={newReasonName}
-            onChange={(e) => setNewReasonName(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="flex-1"
-          />
-          <Button onClick={handleCreate} disabled={!newReasonName.trim() || isCreating}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add
-          </Button>
+    <Dialog open={!!reason} onOpenChange={(o) => !o && !isUpdating && onClose()}>
+      <DialogContent className="max-w-[440px]">
+        <DialogHeader>
+          <DialogTitle>Edit reason</DialogTitle>
+          <DialogDescription>Candidates already rejected with it show the new name.</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <Field label="Reason" required htmlFor="reason-name">
+            <Input id="reason-name" value={name} maxLength={120} disabled={isUpdating} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void save()} />
+          </Field>
+          <Field label="Clients see" optional htmlFor="reason-client" help="What a client sees for this candidate. Leave it empty for “Not progressed”.">
+            <Input id="reason-client" value={clientLabel} maxLength={80} disabled={isUpdating} placeholder="e.g. Skills gap" onChange={(e) => setClientLabel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void save()} />
+          </Field>
         </div>
-
-        {/* Platform reasons (read-only in org context) */}
-        {context === 'organization' && filteredPlatformReasons.length > 0 && (
-          renderReasonsTable(filteredPlatformReasons, false, 'Platform Defaults')
-        )}
-
-        {/* Tenant/editable reasons */}
-        {context === 'organization' ? (
-          renderReasonsTable(filteredTenantReasons, true, 'Custom Reasons')
-        ) : (
-          renderReasonsTable(filteredReasons, true)
-        )}
-      </CardContent>
-    </Card>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={isUpdating}>
+            Cancel
+          </Button>
+          <Button onClick={() => void save()} loading={isUpdating} disabled={!name.trim()}>
+            Save reason
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
