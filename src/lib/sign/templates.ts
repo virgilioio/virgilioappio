@@ -346,6 +346,18 @@ export function roleSource(d: Pick<TplDraft, 'kind' | 'roles'>, r: TplRole): Fil
   return r.fill_from && r.fill_from !== 'fixed' ? r.fill_from : r.id === firstOpen ? 'record' : 'typed'
 }
 
+/**
+ * The stored source for a role on a template of this type, as save_sign_template
+ * accepts it: customer roles keep none (the deal fills them), and only candidate
+ * templates have a hiring manager. Keeps a type switch from leaving a source behind.
+ */
+export function fillFromFor(kind: SignKind, r: TplRole): FillFrom | null {
+  if (r.fixed) return 'fixed'
+  if (kind === 'customer') return null
+  if (r.fill_from === 'hiring_manager' && kind !== 'candidate') return 'typed'
+  return r.fill_from ?? null
+}
+
 /** Values every candidate template can use without an offer form field. */
 export const ALWAYS_AVAILABLE = new Set(['name', 'job', 'salary', 'start', 'client', 'today', 'sender'])
 
@@ -478,7 +490,11 @@ export function withKind(d: TplDraft, kind: SignKind): TplDraft {
     kind,
     app: kind === 'customer' ? 'sales' : d.app === 'sales' && d.kind === 'customer' ? 'ats' : d.app,
     ...(untouched ? DEFAULT_MESSAGE[kind] : null),
-    roles: d.roles.map((r, i) => (i === 0 && r.label === FIRST_ROLE[d.kind] ? { ...r, label: FIRST_ROLE[kind] } : r)),
+    roles: d.roles.map((r, i) => ({
+      ...r,
+      fill_from: fillFromFor(kind, r),
+      ...(i === 0 && r.label === FIRST_ROLE[d.kind] ? { label: FIRST_ROLE[kind] } : null),
+    })),
     offer_form_id: keepForm ? d.offer_form_id : null,
     fields: d.fields.filter((f) => f.type !== 'data' || allowed.has(f.data_key ?? '') || (keepForm && d.offer_form_id)),
   }
@@ -781,7 +797,7 @@ export async function saveTemplate(draft: TplDraft, tenantId: string) {
       position: x.position,
     })),
     written: d.written.map((w) => ({ id: w.id, name: w.name.trim(), position: w.position, content: w.content })),
-    roles: d.roles.map((r) => ({ id: r.id, label: r.label.trim(), role: r.role, fixed: r.fixed, fill_from: r.fixed ? 'fixed' : r.fill_from ?? null, name: r.name, email: r.email, color: r.color })),
+    roles: d.roles.map((r) => ({ id: r.id, label: r.label.trim(), role: r.role, fixed: r.fixed, fill_from: fillFromFor(d.kind, r), name: r.name, email: r.email, color: r.color })),
     fields: d.fields.map((f) => {
       const w = Math.min(f.w, 100)
       const h = Math.min(f.h, 100)
