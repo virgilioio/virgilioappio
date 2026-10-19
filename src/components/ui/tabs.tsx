@@ -7,6 +7,9 @@ const Tabs = TabsPrimitive.Root
 
 type Indicator = "pill" | "underline" | "none"
 
+/** Which mark the surrounding TabsList draws, so a tab can size itself for it. */
+const IndicatorContext = React.createContext<Indicator>("pill")
+
 /**
  * Motion & Feel §2 Tabs (CLAUDE.md): one active layer moves between tabs at
  * --dur-tabs on --ease-in-out; tabs never crossfade one by one. The list measures
@@ -14,9 +17,9 @@ type Indicator = "pill" | "underline" | "none"
  * (src/index.css) follows with clip-path (pill) or translate + scaleX (underline).
  * The first measurement and resizes jump; only a change of tab animates.
  *
- * Pill, as in the reference demo: the layer is the fill plus a copy of every label
- * in its active look (inert, aria-hidden), so the colour and weight change travel
- * with the clip. The real tabs underneath all keep their resting colour and weight
+ * Pill, as in the reference demo: a noir layer on the #ECEAE2 bar, holding a copy
+ * of every label in white (inert, aria-hidden), so the colour change travels with
+ * the clip. The real tabs underneath all keep their resting colour and weight
  * (read from a resting tab into --tab-idle-*), so no tab changes width or colour
  * ahead of the layer.
  */
@@ -61,6 +64,7 @@ function buildClones(list: HTMLElement, layer: HTMLElement | null) {
   const clear = !fill || fill === "transparent" || /^rgba\(.*,\s*0\)$/.test(fill)
   if (clear) list.style.removeProperty("--tab-fill")
   else list.style.setProperty("--tab-fill", fill)
+  list.toggleAttribute("data-tab-own-fill", !clear)
 }
 
 /** Lays each copy exactly over its tab and records the tabs' resting look. */
@@ -181,7 +185,7 @@ function useTabIndicator(listRef: React.RefObject<HTMLElement>, indicator: Indic
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & {
-    /** How the active tab is marked: a sliding lilac pill (default), a sliding 2px underline, or nothing. */
+    /** How the active tab is marked: a sliding dark pill on the grey bar (default), a sliding 2px underline, or nothing. */
     indicator?: Indicator
   }
 >(({ className, children, indicator = "pill", ...props }, ref) => {
@@ -193,14 +197,17 @@ const TabsList = React.forwardRef<
       ref={listRef}
       data-indicator={indicator}
       className={cn(
-        "inline-flex h-auto max-w-full items-center justify-center rounded-xl p-1.5 text-text-secondary shadow-[var(--shadow-xs)] border border-virgilio-border/20",
-        "bg-[#fffcf9] dark:bg-surface-secondary/50",
+        "inline-flex h-auto max-w-full items-center justify-center",
+        // The Motion & Feel demo's tab bar (Allan, 2026-10-19: one DNA with Gio Sales).
+        indicator === "underline"
+          ? "justify-start gap-6 bg-transparent p-0"
+          : "gap-[2px] rounded-[9px] bg-[#ECEAE2] p-[3px] dark:bg-surface-secondary/50",
         "gio-tablist",
         className
       )}
       {...props}
     >
-      {children}
+      <IndicatorContext.Provider value={indicator}>{children}</IndicatorContext.Provider>
       {indicator !== "none" && <span aria-hidden="true" className="gio-tab-indicator" />}
     </TabsPrimitive.List>
   )
@@ -210,22 +217,28 @@ TabsList.displayName = TabsPrimitive.List.displayName
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-lg border-y border-transparent px-4 py-2.5 text-sm font-poppins font-medium tracking-tight transition-colors duration-hover",
-      "disabled:pointer-events-none disabled:opacity-50",
-      "text-virgilio-muted hover:text-virgilio-text",
-      // The lilac fill and the active label are drawn by TabsList's moving layer
-      // (pill), never by each tab; the underline keeps the active label on the tab.
-      "data-[state=active]:text-[#0d0d09] data-[state=active]:font-semibold",
-      "min-h-[40px] md:min-h-0",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  // The pill's tabs are padded chips; an underline sits exactly under its label.
+  const underline = React.useContext(IndicatorContext) === "underline"
+  return (
+    <TabsPrimitive.Trigger
+      ref={ref}
+      className={cn(
+        "inline-flex items-center justify-center gap-1.5 whitespace-nowrap py-2 font-inter text-[13px] font-medium transition-colors duration-hover",
+        underline ? "px-0" : "rounded-[7px] px-[14px]",
+        "disabled:pointer-events-none disabled:opacity-50",
+        "text-[#5A6072] hover:text-[#1F2230]",
+        // The dark fill and the white active label are drawn by TabsList's moving layer
+        // (pill), never by each tab; the underline keeps the active label on the tab.
+        // One weight throughout, so no tab changes width.
+        "data-[state=active]:text-[#0d0d09]",
+        "min-h-[40px] md:min-h-0",
+        className
+      )}
+      {...props}
+    />
+  )
+})
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
 const TabsContent = React.forwardRef<

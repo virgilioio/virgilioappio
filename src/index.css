@@ -1195,12 +1195,13 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-tablist[data-indicator-ready] > .gio-tab-indicator {
   visibility: visible;
 }
-/* Pill: a lilac fill and a copy of the labels in their active look, clipped to the
- * active tab; the clip slides, so the colour change travels with it. */
+/* Pill (the Motion & Feel demo's tabs): a noir fill and a copy of the labels in
+ * white, clipped to the active tab; the clip slides, so the colour change travels
+ * with it. A tab bar whose tabs draw their own active chip slides that chip instead. */
 .gio-tablist[data-indicator="pill"] > .gio-tab-indicator {
   inset: 0;
   z-index: 1;
-  background: var(--tab-fill, #d7c5fb);
+  background: var(--tab-fill, #0d0d09);
   clip-path: inset(var(--tab-y, 0) var(--tab-right, 0) var(--tab-bottom, 0) var(--tab-x, 0) round var(--tab-radius, 8px));
   transition: clip-path var(--dur-tabs) var(--ease-in-out);
 }
@@ -1224,9 +1225,13 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   border-color: var(--tab-idle-border);
   background-color: transparent;
   box-shadow: none;
-}
-.gio-tablist[data-indicator="pill"][data-tab-idle] > [role="tab"][data-state="active"]:not(:hover) {
   color: var(--tab-idle-color);
+}
+.gio-tablist[data-indicator="pill"][data-tab-idle] > [role="tab"][data-state="active"]:hover {
+  color: #1f2230;
+}
+.gio-tablist[data-indicator="pill"]:not([data-tab-own-fill]) > .gio-tab-indicator > .gio-tab-clone {
+  color: #fff;
 }
 /* Underline: a 2px bar on the list's bottom edge, moved and stretched. */
 .gio-tablist[data-indicator="underline"] > .gio-tab-indicator {
@@ -1234,7 +1239,7 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   bottom: -1px;
   width: 1px;
   height: 2px;
-  background: hsl(var(--text-primary));
+  background: #0d0d09;
   transform-origin: left center;
   transform: translateX(var(--tab-x, 0)) scaleX(var(--tab-w, 0));
   transition: transform var(--dur-tabs) var(--ease-in-out);
