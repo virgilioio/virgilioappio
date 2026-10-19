@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { LucideIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { menuItem, menuPanel, menuSeparator } from '@/lib/menu-classes'
 
 export type EventMenuAction =
   | 'reschedule'
@@ -63,26 +65,19 @@ export function EventMenu({
     <div
       ref={ref}
       role="menu"
-      style={{
-        position: 'absolute',
-        right: 3,
-        width: 208,
-        background: '#fff',
-        border: '1px solid #E7E8EE',
-        borderRadius: 10,
-        padding: 4,
-        boxShadow: '0 14px 32px -10px rgba(13,13,9,0.28)',
-        zIndex: 40,
-        ...placement,
-      }}
+      data-state="open"
+      className={cn(
+        'absolute right-[3px] z-40 w-[220px]',
+        'top' in placement ? 'origin-top-right' : 'origin-bottom-right',
+        menuPanel,
+      )}
+      style={placement}
     >
       {rendered.map((item, i) => {
         const showSeparator = !!item.separatorBefore && i > 0
         return (
           <div key={`${item.action}-${item.label}`}>
-            {showSeparator && (
-              <div style={{ height: 1, background: '#F1F0EC', margin: '4px 2px' }} />
-            )}
+            {showSeparator && <div aria-hidden className={menuSeparator} />}
             <button
               type="button"
               role="menuitem"
@@ -90,49 +85,19 @@ export function EventMenu({
                 onClose()
                 onSelect(item.action)
               }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 9,
-                width: '100%',
-                height: 30,
-                padding: '0 9px',
-                border: 'none',
-                borderRadius: 7,
-                background: 'transparent',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
-                fontWeight: 500,
-                fontSize: 12,
-                color: item.danger ? '#E03131' : '#1F2230',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = item.danger ? '#FFF1F1' : '#F6F5F1'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent'
-              }}
+              className={cn(menuItem, 'hover:bg-[hsl(var(--menu-hover))]', item.danger && 'text-destructive')}
             >
-              <item.Icon size={13} strokeWidth={2} color={item.danger ? '#E03131' : '#8B8F9E'} />
-              {item.label}
+              <item.Icon aria-hidden />
+              <span className="truncate">{item.label}</span>
             </button>
           </div>
         )
       })}
       {note && (
-        <div
-          style={{
-            fontFamily: 'Inter, sans-serif',
-            fontWeight: 400,
-            fontSize: 10.5,
-            lineHeight: 1.45,
-            color: '#8B8F9E',
-            padding: '4px 9px 6px',
-          }}
-        >
-          {note}
-        </div>
+        <>
+          <div aria-hidden className={menuSeparator} />
+          <div className="px-2 py-1 font-inter text-[12px] leading-5 text-[hsl(var(--menu-group-color))]">{note}</div>
+        </>
       )}
     </div>
   )
