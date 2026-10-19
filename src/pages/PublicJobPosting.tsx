@@ -961,21 +961,10 @@ export default function PublicJobPosting() {
 
       <main className="flex-1 w-full">
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-8">
-          {/* Tab switcher kept accessible but visually minimal */}
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-            <TabsList className="bg-transparent p-0 h-auto gap-2">
-              <TabsTrigger
-                value="overview"
-                className="data-[state=active]:bg-white data-[state=active]:text-[#0d0d09] data-[state=active]:border-black/10 border border-transparent rounded-lg h-8 px-3 text-[12.5px]"
-              >
-                Job overview
-              </TabsTrigger>
-              <TabsTrigger
-                value="application"
-                className="data-[state=active]:bg-white data-[state=active]:text-[#0d0d09] data-[state=active]:border-black/10 border border-transparent rounded-lg h-8 px-3 text-[12.5px]"
-              >
-                Application
-              </TabsTrigger>
+            <TabsList>
+              <TabsTrigger value="overview">Job overview</TabsTrigger>
+              <TabsTrigger value="application">Application</TabsTrigger>
             </TabsList>
           </div>
 
