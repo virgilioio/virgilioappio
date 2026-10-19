@@ -200,6 +200,8 @@ export function useReferenceRequestPeople(userIds: (string | null | undefined)[]
 function invalidateRequest(queryClient: ReturnType<typeof useQueryClient>, requestId: string) {
   queryClient.invalidateQueries({ queryKey: ['reference-requests'] })
   queryClient.invalidateQueries({ queryKey: ['reference-referees', requestId] })
+  // Every send writes a row to the request's activity log.
+  queryClient.invalidateQueries({ queryKey: ['reference-activity', requestId] })
 }
 
 /**

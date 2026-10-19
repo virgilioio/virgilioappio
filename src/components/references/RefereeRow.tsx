@@ -46,7 +46,11 @@ function fmt(iso?: string | null) {
   )}`
 }
 
+/** When the referee reached their current status: a resend makes them Invited
+ *  again, so it shows the latest email, not an older open. */
 function statusTimestamp(r: RefereeRowData) {
+  if (r.status === 'invited') return fmt(r.invited_at)
+  if (r.status === 'opened' || r.status === 'in_progress') return fmt(r.opened_at) ?? fmt(r.invited_at)
   return fmt(r.submitted_at) ?? fmt(r.declined_at) ?? fmt(r.opened_at) ?? fmt(r.invited_at)
 }
 
@@ -214,6 +218,9 @@ export function RefereeRow({
                   .filter(Boolean)
                   .join(' · ')}
               />
+              {!hasAnswers && referee.invited_at && (
+                <KeyValueRow label="Last email" value={fmt(referee.invited_at)} />
+              )}
             </div>
 
             {held && referee.hold_note && (
