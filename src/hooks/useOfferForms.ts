@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
+import type { OfferSection } from '@/lib/offerSections'
 
 export interface OfferForm {
   id: string
@@ -10,6 +11,8 @@ export interface OfferForm {
   tenant_id?: string | null
   source: 'platform' | 'tenant'
   is_active: boolean
+  /** The form's sections in order (offer_forms.sections). */
+  sections?: OfferSection[]
   created_by?: string
   created_at: string
   updated_at: string

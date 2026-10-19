@@ -19,6 +19,8 @@ export interface OfferFormField {
   max_file_size_mb?: number
   field_config?: SalaryFieldConfig | LocationFieldConfig | PhoneFieldConfig | null
   triggers_approval_restart: boolean
+  /** The id of the form section it sits in (offer_forms.sections); null when the form has none. */
+  section_key?: string | null
   created_by?: string
   created_at: string
   updated_at: string

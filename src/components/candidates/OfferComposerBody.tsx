@@ -27,6 +27,7 @@ import { useJobOpenings } from '@/hooks/useJobOpenings'
 import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { formSections, groupBySection, isWideField } from '@/lib/offerSections'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -48,9 +49,6 @@ interface OfferComposerBodyProps {
 }
 
 const fieldKey = (field: OfferFormField) => `${field.field_name} ${field.field_label}`.toLowerCase()
-const isCompField = (field: OfferFormField) => /salary|compensation|currency|pay period|bonus|equity|vesting/.test(fieldKey(field)) || field.field_type === 'salary'
-const isRoleField = (field: OfferFormField) => /title|role|reports|manager|start date|location|employment|expire/.test(fieldKey(field)) || ['date', 'recruiter', 'employment_type', 'work_location', 'location'].includes(field.field_type)
-const isBenefitField = (field: OfferFormField) => field.field_type === 'checkbox' || /benefit|pto|stipend|relocation|non-compete|background check/.test(fieldKey(field))
 
 function numericValue(value: any): number {
   if (typeof value === 'number') return value
@@ -66,8 +64,20 @@ function shortMoney(value: number, currency = 'USD') {
   return new Intl.NumberFormat('en', { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 }).format(value)
 }
 
-function OfferSection({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
-  return <section className="mb-[18px]"><div className="mb-2.5 flex items-center justify-between gap-3"><h3 className="font-poppins text-[12.5px] font-semibold uppercase tracking-[0.06em] text-dup-text">{title}</h3>{action}</div><div className="rounded-lg border border-virgilio-border bg-card p-4">{children}</div></section>
+/** Tick-box fields next to each other stay one stacked list, as rows. */
+function fieldRuns(fields: OfferFormField[]): { checks: boolean; fields: OfferFormField[] }[] {
+  const runs: { checks: boolean; fields: OfferFormField[] }[] = []
+  for (const field of fields) {
+    const checks = field.field_type === 'checkbox'
+    const last = runs[runs.length - 1]
+    if (last && last.checks && checks) last.fields.push(field)
+    else runs.push({ checks, fields: [field] })
+  }
+  return runs
+}
+
+function OfferSection({ title, action, children }: { title?: string; action?: ReactNode; children: ReactNode }) {
+  return <section className="mb-[18px]">{(title || action) && <div className="mb-2.5 flex items-center justify-between gap-3"><h3 className="font-poppins text-[12.5px] font-semibold uppercase tracking-[0.06em] text-dup-text">{title}</h3>{action}</div>}<div className="rounded-lg border border-virgilio-border bg-card p-4">{children}</div></section>
 }
 
 export function OfferComposerBody({
@@ -128,13 +138,8 @@ export function OfferComposerBody({
 
 
   const sortedFields = useMemo(() => [...fields].sort((a, b) => a.display_order - b.display_order), [fields])
-  const groups = useMemo(() => {
-    const role = sortedFields.filter(isRoleField)
-    const compensation = sortedFields.filter((field) => !role.includes(field) && isCompField(field))
-    const benefits = sortedFields.filter((field) => !role.includes(field) && !compensation.includes(field) && isBenefitField(field))
-    const additional = sortedFields.filter((field) => !role.includes(field) && !compensation.includes(field) && !benefits.includes(field))
-    return { role, compensation, benefits, additional }
-  }, [sortedFields])
+  const selectedForm = forms.find((form) => form.id === selectedFormId)
+  const groups = useMemo(() => groupBySection(formSections(selectedForm), fields), [selectedForm, fields])
   const comp = useMemo(() => {
     const salary = sortedFields.find((field) => /base salary|base compensation|annual salary/.test(fieldKey(field))) || sortedFields.find((field) => field.field_type === 'salary')
     const equity = sortedFields.find((field) => /equity.*value|equity grant|stock/.test(fieldKey(field)))
@@ -146,7 +151,7 @@ export function OfferComposerBody({
     const base = salary ? numericValue(salaryRaw) : 0
     const equityValue = equity ? numericValue(fieldValues[equity.field_name]) : 0
     const bonusValue = bonus ? numericValue(fieldValues[bonus.field_name]) : 0
-    return { base, equity: equityValue, bonus: bonusValue, total: base + equityValue + bonusValue, currency }
+    return { field: salary ?? null, base, equity: equityValue, bonus: bonusValue, total: base + equityValue + bonusValue, currency }
   }, [sortedFields, fieldValues])
   const firstName = candidateName.trim().split(/\s+/)[0] || candidateName
   const selectedOpening = openings.find((opening) => opening.id === openingId)
@@ -456,11 +461,14 @@ export function OfferComposerBody({
     }
   }
 
-  const Field = ({ field }: { field: OfferFormField }) => {
+  const Field = ({ field, wide }: { field: OfferFormField; wide?: boolean }) => {
     const Icon = /title|role/.test(fieldKey(field)) ? Briefcase : /manager|reports/.test(fieldKey(field)) ? UserRound : /location/.test(fieldKey(field)) ? MapPin : /date/.test(fieldKey(field)) ? CalendarDays : null
     if (field.field_type === 'checkbox') return <div className="flex items-center justify-between gap-4 border-b border-dup-rule py-2.5 last:border-0"><div><p className="font-inter text-[12.5px] font-medium text-dup-text">{field.field_label}</p>{field.help_text && <p className="mt-0.5 font-inter text-[11px] leading-[1.4] text-dup-subtle">{field.help_text}</p>}</div>{renderFieldInput(field)}</div>
-    return <div className={cn('min-w-0', field.field_type === 'location' && 'sm:col-span-2')}><Label htmlFor={field.field_name} className="mb-1.5 flex items-center gap-1 font-inter text-[11.5px] font-medium text-dup-text">{Icon && <Icon className="h-[13px] w-[13px] text-dup-subtle" />}{field.field_label}{field.is_required ? <span className="text-destructive">*</span> : <span className="text-[10.5px] text-dup-subtle">(optional)</span>}{field.triggers_approval_restart && <TooltipProvider><Tooltip><TooltipTrigger asChild><RefreshCcw className="h-3 w-3 text-warning-foreground" /></TooltipTrigger><TooltipContent>Editing this field restarts approval</TooltipContent></Tooltip></TooltipProvider>}</Label>{renderFieldInput(field)}{field.help_text && <p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-subtle">{field.help_text}</p>}</div>
+    return <div className={cn('min-w-0', wide && 'sm:col-span-2')}><Label htmlFor={field.field_name} className="mb-1.5 flex items-center gap-1 font-inter text-[11.5px] font-medium text-dup-text">{Icon && <Icon className="h-[13px] w-[13px] text-dup-subtle" />}{field.field_label}{field.is_required ? <span className="text-destructive">*</span> : <span className="text-[10.5px] text-dup-subtle">(optional)</span>}{field.triggers_approval_restart && <TooltipProvider><Tooltip><TooltipTrigger asChild><RefreshCcw className="h-3 w-3 text-warning-foreground" /></TooltipTrigger><TooltipContent>Editing this field restarts approval</TooltipContent></Tooltip></TooltipProvider>}</Label>{renderFieldInput(field)}{field.help_text && <p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-subtle">{field.help_text}</p>}</div>
   }
+
+  const reqIdBlock = <div className="mb-3"><Label className="mb-1.5 block font-inter text-[11.5px] font-medium text-dup-text">Req ID <span className="text-destructive">*</span></Label><Select value={openingId} onValueChange={handleOpeningChange} disabled={openingsLoading || availableOpenings.length === 0}><SelectTrigger><SelectValue placeholder={openingsLoading ? 'Loading openings…' : 'Choose an opening…'} /></SelectTrigger><SelectContent>{openings.map((opening) => { const unavailable = opening.status === 'filled' || (opening.status === 'offer' && opening.candidate_id !== candidateId && opening.id !== currentOffer?.opening_id); return <SelectItem key={opening.id} value={opening.id} disabled={unavailable}>{opening.req_id} · {opening.status === 'open' ? 'Open' : opening.status === 'offer' ? 'Reserved' : 'Filled'}</SelectItem> })}</SelectContent></Select><p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-subtle">The opening this offer fills. It's reserved while the offer is out and filled when {firstName} is marked hired.</p></div>
+  const compCard = <div className="mt-3.5 rounded-lg border border-dup-hairline bg-dup-canvas-alt p-3.5"><div className="mb-2.5 flex items-center justify-between"><p className="font-inter text-[11px] font-semibold uppercase tracking-[0.06em] text-dup-subtle">Y1 total compensation</p><Badge tone="lilac" size="xs">Auto-calculated</Badge></div><div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">{[['Base', comp.base], ['Equity (annualized)', comp.equity], ['Sign-on', comp.bonus], ['Total Y1', comp.total]].map(([label, value], index) => <div key={String(label)} className={cn('rounded-md border border-virgilio-border bg-card p-2.5', index === 3 && 'border-dup-purple-soft')}><p className="font-inter text-[10px] uppercase tracking-[0.06em] text-dup-subtle">{label}</p><p className={cn('mt-0.5 font-poppins text-[18px] font-semibold text-dup-ink', index === 3 && 'text-virgilio-purple')}>{shortMoney(Number(value), comp.currency)}</p></div>)}</div></div>
 
   const steps = ['Template', 'Terms', 'Letter & approvals']
   return (
@@ -468,15 +476,28 @@ export function OfferComposerBody({
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-[168px] shrink-0 overflow-y-auto border-r border-dup-hairline bg-dup-canvas-alt px-3 py-5 sm:block">
           {steps.map((label, index) => { const number = index + 1; const done = number < step; const active = number === step; return <button key={label} type="button" onClick={() => number <= step && setStep(number)} disabled={number > step} className={cn('mb-0.5 flex w-full items-center gap-2 rounded-md px-2.5 py-[7px] text-left', active && 'bg-card shadow-sm')}><span className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full font-poppins text-[10px] font-bold', done ? 'bg-virgilio-success text-primary-foreground' : active ? 'bg-primary text-primary-foreground' : 'bg-dup-hairline text-dup-muted')}>{done ? <Check className="h-2.5 w-2.5 stroke-[3]" /> : number}</span><span className={cn('font-poppins text-[12.5px]', active ? 'font-semibold text-dup-ink' : 'font-medium text-dup-muted')}>{label}</span></button> })}
-          <div className="mt-3 rounded-md bg-dup-purple-soft p-2.5"><p className="font-inter text-[10.5px] font-semibold uppercase tracking-[0.06em] text-dup-purple-deep">Comp band check</p><p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-muted">{comp.base ? `Compensation entered for ${jobTitle || 'this role'}. Gio checked automatically.` : 'Enter compensation to check it against the role band.'}</p></div>
         </aside>
         <main className="min-w-0 flex-1 overflow-y-auto bg-dup-canvas-alt px-4 py-5 sm:px-6 sm:pb-6">
           {step === 1 && <OfferSection title="Offer template">{draftRestored && <Badge tone="neutral" size="xs" className="mb-3">Draft restored</Badge>}{formsLoading ? <div className="flex items-center gap-2 py-3 text-dup-muted"><Loader2 className="h-4 w-4 animate-spin" /> Loading forms…</div> : activeForms.length === 0 ? <InlineEmpty text="No offer forms available. Create one in Settings → Templates → Offer Forms." /> : <div><Label className="mb-1.5 block font-inter text-[11.5px] font-medium text-dup-text">Offer form <span className="text-destructive">*</span></Label><Select value={selectedFormId} onValueChange={onSelectedFormIdChange}><SelectTrigger><SelectValue placeholder="Choose an offer form…" /></SelectTrigger><SelectContent>{activeForms.map((form) => <SelectItem key={form.id} value={form.id}><span className="font-medium">{form.name}</span>{form.description && <span className="ml-2 text-dup-subtle">{form.description}</span>}</SelectItem>)}</SelectContent></Select></div>}</OfferSection>}
           {step === 2 && (fieldsLoading ? <div className="flex items-center gap-2 py-8 text-dup-muted"><Loader2 className="h-4 w-4 animate-spin" /> Loading offer terms…</div> : <>
-            <OfferSection title="Role & start"><div className="mb-3"><Label className="mb-1.5 block font-inter text-[11.5px] font-medium text-dup-text">Req ID <span className="text-destructive">*</span></Label><Select value={openingId} onValueChange={handleOpeningChange} disabled={openingsLoading || availableOpenings.length === 0}><SelectTrigger><SelectValue placeholder={openingsLoading ? 'Loading openings…' : 'Choose an opening…'} /></SelectTrigger><SelectContent>{openings.map((opening) => { const unavailable = opening.status === 'filled' || (opening.status === 'offer' && opening.candidate_id !== candidateId && opening.id !== currentOffer?.opening_id); return <SelectItem key={opening.id} value={opening.id} disabled={unavailable}>{opening.req_id} · {opening.status === 'open' ? 'Open' : opening.status === 'offer' ? 'Reserved' : 'Filled'}</SelectItem> })}</SelectContent></Select><p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-subtle">The opening this offer fills. It's reserved while the offer is out and filled when {firstName} is marked hired.</p></div><div className="grid gap-3.5 sm:grid-cols-2">{groups.role.map((field) => <Field key={field.id} field={field} />)}</div></OfferSection>
-            {groups.compensation.length > 0 && <OfferSection title="Compensation" action={<Badge tone="green" size="xs" dot>Band checked</Badge>}><div className="grid gap-3.5">{groups.compensation.map((field) => <Field key={field.id} field={field} />)}</div><div className="mt-3.5 rounded-lg border border-dup-hairline bg-dup-canvas-alt p-3.5"><div className="mb-2.5 flex items-center justify-between"><p className="font-inter text-[11px] font-semibold uppercase tracking-[0.06em] text-dup-subtle">Y1 total compensation</p><Badge tone="lilac" size="xs">Auto-calculated</Badge></div><div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">{[['Base', comp.base], ['Equity (annualized)', comp.equity], ['Sign-on', comp.bonus], ['Total Y1', comp.total]].map(([label, value], index) => <div key={String(label)} className={cn('rounded-md border border-virgilio-border bg-card p-2.5', index === 3 && 'border-dup-purple-soft')}><p className="font-inter text-[10px] uppercase tracking-[0.06em] text-dup-subtle">{label}</p><p className={cn('mt-0.5 font-poppins text-[18px] font-semibold text-dup-ink', index === 3 && 'text-virgilio-purple')}>{shortMoney(Number(value), comp.currency)}</p></div>)}</div></div></OfferSection>}
-            {groups.benefits.length > 0 && <OfferSection title="Benefits & conditions">{groups.benefits.map((field) => <Field key={field.id} field={field} />)}</OfferSection>}
-            {groups.additional.length > 0 && <OfferSection title="Additional terms"><div className="grid gap-3.5 sm:grid-cols-2">{groups.additional.map((field) => <Field key={field.id} field={field} />)}</div></OfferSection>}
+            {groups.map((group, index) => {
+              // The Req ID is always asked, at the top of the first section.
+              if (index > 0 && group.fields.length === 0) return null
+              const two = (group.section?.columns ?? 2) === 2
+              return (
+                <OfferSection key={group.section?.id ?? 'all'} title={group.section?.title}>
+                  {index === 0 && reqIdBlock}
+                  {group.fields.length > 0 && (
+                    <div className={cn('grid gap-3.5', two && 'sm:grid-cols-2')}>
+                      {fieldRuns(group.fields).map((run) => run.checks
+                        ? <div key={run.fields[0].id} className={cn(two && 'sm:col-span-2')}>{run.fields.map((field) => <Field key={field.id} field={field} />)}</div>
+                        : run.fields.map((field) => <Field key={field.id} field={field} wide={two && isWideField(field)} />))}
+                    </div>
+                  )}
+                  {comp.field && group.fields.includes(comp.field) && compCard}
+                </OfferSection>
+              )
+            })}
           </>)}
           {step === 3 && <><OfferSection title="Letter preview"><div className="space-y-3 font-inter text-[12.5px] text-dup-muted"><div className="flex justify-between gap-4 border-b border-dup-rule pb-3"><span>Candidate</span><strong className="text-dup-text">{candidateName}</strong></div><div className="flex justify-between gap-4 border-b border-dup-rule pb-3"><span>Role</span><strong className="text-dup-text">{jobTitle || '—'}</strong></div><div className="flex justify-between gap-4"><span>Opening</span><strong className="text-dup-text">{selectedOpening?.req_id || '—'}</strong></div></div></OfferSection><OfferSection title="Approval route">{chainLoading ? <div className="flex items-center gap-2 text-dup-muted"><Loader2 className="h-4 w-4 animate-spin" /> Loading approval route…</div> : !chain?.is_enabled || chain.steps.length === 0 ? <p className="font-inter text-[12.5px] text-dup-muted">No approval chain is required for this job. The offer will remain a draft until it is sent.</p> : <div className="space-y-2">{chain.steps.map((approvalStep, index) => <div key={approvalStep.id} className="flex items-center gap-3 rounded-md border border-virgilio-border px-3 py-2.5"><span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-dup-hairline font-poppins text-[10px] font-bold text-dup-muted">{index + 1}</span><div><p className="font-inter text-[12.5px] font-medium text-dup-text">{approvalStep.approver_name}</p><p className="font-inter text-[11px] text-dup-subtle">{approvalStep.condition === 'always' ? 'Always required' : approvalStep.condition.replace(/_/g, ' ')}</p></div></div>)}</div>}</OfferSection></>}
         </main>
