@@ -7,7 +7,6 @@ import { ActivityEmailCard } from './ActivityEmailCard';
 interface ActivityFeedItemProps {
   activity: Activity;
   isLast?: boolean;
-  onOpenInEmails?: (emailLogId: string) => void;
   onEmailAction?: (emailLogId: string, mode: 'reply' | 'forward') => void | Promise<void>;
 }
 
@@ -33,7 +32,7 @@ function BodyBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ActivityFeedItem({ activity, isLast, onOpenInEmails, onEmailAction }: ActivityFeedItemProps) {
+export function ActivityFeedItem({ activity, isLast, onEmailAction }: ActivityFeedItemProps) {
   const meta = activityMeta(activity.activity_type);
   const Icon = meta.icon;
   const tone = ACTIVITY_TONES[meta.tone];
@@ -155,7 +154,7 @@ export function ActivityFeedItem({ activity, isLast, onOpenInEmails, onEmailActi
 
         {quoted && <BodyBlock>{quoted}</BodyBlock>}
 
-        {email && <ActivityEmailCard email={email} onOpenInEmails={onOpenInEmails} onAction={onEmailAction} />}
+        {email && <ActivityEmailCard email={email} onAction={onEmailAction} />}
 
         {activity.activity_type === 'candidate_attachment_uploaded' && md.file_name && (
           <div className="mt-2 flex flex-wrap gap-1.5">

@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { ArrowUpRight, ChevronDown, ChevronUp, Eye, Forward, Inbox, Reply, Send } from 'lucide-react';
+import { ChevronDown, ChevronUp, Eye, Forward, Inbox, Reply, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ActivityEmail } from '@/hooks/useActivityFeed';
 
 interface ActivityEmailCardProps {
   email: ActivityEmail;
-  /** Switch to the Emails tab and scroll this message into view. */
-  onOpenInEmails?: (emailLogId: string) => void;
-  /** Reply or Forward in the Gio composer (2026-10-19, so the Activity tab can stand in for the Emails tab). */
+  /** Reply or Forward in the Gio composer (2026-10-19: the Activity tab replaced the Emails tab). */
   onAction?: (emailLogId: string, mode: 'reply' | 'forward') => void | Promise<void>;
 }
 
@@ -15,7 +13,7 @@ interface ActivityEmailCardProps {
  * Compact, expandable email card inside an activity entry.
  * Collapsed by default; expansion is local state and never persisted.
  */
-export function ActivityEmailCard({ email, onOpenInEmails, onAction }: ActivityEmailCardProps) {
+export function ActivityEmailCard({ email, onAction }: ActivityEmailCardProps) {
   const [expanded, setExpanded] = useState(false);
   // The full message is read before the composer opens; the button shows it's working.
   const [opening, setOpening] = useState<'reply' | 'forward' | null>(null);
@@ -89,17 +87,6 @@ export function ActivityEmailCard({ email, onOpenInEmails, onAction }: ActivityE
             {expanded ? 'See less' : 'See more'}
             {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
           </button>
-
-          {expanded && onOpenInEmails && (
-            <button
-              type="button"
-              onClick={() => onOpenInEmails(email.emailLogId)}
-              className="inline-flex items-center gap-1 border-0 bg-transparent p-0 font-inter text-[11.5px] text-[#5A6072]"
-            >
-              Open in Emails
-              <ArrowUpRight size={11} />
-            </button>
-          )}
 
           {onAction && (
             <div className="ml-auto flex items-center gap-1">

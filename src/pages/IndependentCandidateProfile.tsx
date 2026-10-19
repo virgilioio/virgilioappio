@@ -5,7 +5,7 @@ import { ResumeStatusLine } from '@/components/candidates/profile/ResumeStatus'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon,
-  Heart, Briefcase, MapPin, Mail, Phone, DollarSign, Calendar, Sparkles,
+  Heart, Briefcase, MapPin, Mail, Phone, Activity, DollarSign, Calendar, Sparkles,
   FileText, File as FileIcon, GraduationCap, Info, UserPlus,
   Upload, Globe, Download, Clock, User as UserIcon, Plus, PenLine,
 } from 'lucide-react'
@@ -46,7 +46,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { CommentsCard } from '@/components/candidates/comments/CommentsCard'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
-import { EmailsTabContent } from '@/components/candidates/profile/tabs/EmailsTabContent'
+import { ActivityTabCard, ActivityTabSidebar } from '@/components/candidates/profile/tabs/ActivityTab'
+import { useCandidateActivity } from '@/hooks/useCandidateActivity'
+import { fetchEmailForReply } from '@/lib/emailLog'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import type { EmailHistoryCardEmail } from '@/components/candidates/EmailHistoryCard'
 import { getReplySubject, getForwardSubject, formatQuotedReply, formatForwardedMessage } from '@/utils/emailFormatUtils'
@@ -94,7 +96,7 @@ function looksLikeHtml(s?: string | null) {
 
 // ───────────────────────────── page ─────────────────────────────
 
-type TabKey = 'overview' | 'resume' | 'experience' | 'education' | 'details' | 'emails'
+type TabKey = 'overview' | 'resume' | 'experience' | 'education' | 'details' | 'activity'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
@@ -117,9 +119,10 @@ export default function IndependentCandidateProfile() {
   const total = candidates.length
 
 
-  // The Comments tab became the Comments card in the sidebar (2026-10-19).
+  // The Comments tab became the Comments card in the sidebar, and the Emails tab
+  // the Activity tab (2026-10-19); old links land where their content went.
   const tabParam = searchParams.get('tab')
-  const tabFromUrl = (tabParam === 'comments' ? 'overview' : (tabParam as TabKey)) || 'overview'
+  const tabFromUrl = (tabParam === 'comments' ? 'overview' : tabParam === 'emails' || tabParam === 'communications' ? 'activity' : (tabParam as TabKey)) || 'overview'
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
   useEffect(() => { setActiveTab(tabFromUrl) }, [tabFromUrl])
   const setTab = (t: TabKey) => {
@@ -128,6 +131,9 @@ export default function IndependentCandidateProfile() {
     next.set('tab', t)
     setSearchParams(next, { replace: true })
   }
+
+  // Everything about this person across every job, plus the emails.
+  const activity = useCandidateActivity(candidateId)
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [addToPipelineOpen, setAddToPipelineOpen] = useState(false)
@@ -294,7 +300,7 @@ export default function IndependentCandidateProfile() {
     { value: 'experience', label: 'Experience', Icon: Briefcase, count: workExperience.length || null },
     { value: 'education', label: 'Education', Icon: GraduationCap, count: education.length || null },
     { value: 'details', label: 'Details', Icon: Info },
-    { value: 'emails', label: 'Emails', Icon: Mail },
+    { value: 'activity', label: 'Activity', Icon: Activity, count: activity.isLoading ? null : activity.events.length || null },
   ]
 
   const goPrev = () => hasPrev && navigate(`/candidates/${candidates[idx - 1].id}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
@@ -306,7 +312,17 @@ export default function IndependentCandidateProfile() {
       toast({ title: 'No email on file', description: 'Add an email address first.', variant: 'destructive' })
       return
     }
-    window.location.href = `mailto:${candidate.email}`
+    openComposeEmail()
+  }
+  // Reply / Forward from an email in the Activity feed: read the full message, then open the composer.
+  const onActivityEmail = async (emailLogId: string, mode: 'reply' | 'forward') => {
+    const email = await fetchEmailForReply(emailLogId)
+    if (!email) {
+      toast({ title: 'Couldn\u2019t open that email', description: 'It may have been removed. Refresh the activity and try again.', variant: 'destructive' })
+      return
+    }
+    if (mode === 'reply') openReplyEmail(email)
+    else openForwardEmail(email)
   }
   const onSchedule = () => toast({ title: 'Schedule', description: 'Pick a job application to schedule from.' })
 
@@ -711,21 +727,22 @@ export default function IndependentCandidateProfile() {
                 )}
 
 
-                {activeTab === 'emails' && (
-                  <EmailsTabContent
-                    candidateId={candidate.id}
-                    onCompose={openComposeEmail}
-                    onReply={openReplyEmail}
-                    onForward={openForwardEmail}
-                  />
+                {activeTab === 'activity' && (
+                  <ActivityTabCard activity={activity} candidateId={candidate.id} onEmailAction={onActivityEmail} />
                 )}
 
               </div>
 
               {/* Sidebar — sticky on tall screens */}
               <div className="space-y-4 lg:sticky lg:top-6">
-                <CommentsCard candidateId={candidate.id} jobId={null} />
-                {sidebar}
+                {activeTab === 'activity' ? (
+                  <ActivityTabSidebar activity={activity} candidateId={candidate.id} />
+                ) : (
+                  <>
+                    <CommentsCard candidateId={candidate.id} jobId={null} />
+                    {sidebar}
+                  </>
+                )}
               </div>
             </div>
             </div>

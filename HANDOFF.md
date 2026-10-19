@@ -104,9 +104,9 @@ Hard limits:
 
 **Candidate comments, mentions and tabs (Allan, 2026-10-18; in this order)**
 - Part 1, database: applied (`20261018234855_candidate_comments_job_optional`, `20261018235003_candidate_comments_v2`, test 27). Comments are shared with everyone who can see the candidate or private to the author; a tagged comment can't be private; tags notify only people who can see the candidate; a comment can sit outside any job.
-- Part 2, the Comments card above Details on both profiles, with "@" tags, Private and the reminders row; the Comments tab is gone (old `?tab=comments` links land on Job overview / Overview). Built 2026-10-19 on the branch, screenshots sent; waits for Allan's Go.
-- Part 3: Reply and Forward on the Activity tab's emails; remove the duplicate Email History card there.
-- Part 4: an Activity tab on the standalone profile, its Send email opens the Gio composer, the email stats move into the Activity sidebar, and the Emails tab goes on both profiles.
+- Part 2, the Comments card above Details on both profiles, with "@" tags, Private and the reminders row; the Comments tab is gone (old `?tab=comments` links land on Job overview / Overview). On main 2026-10-19.
+- Part 3: Reply and Forward on the Activity tab's emails; the duplicate Email History card is gone. On main 2026-10-19.
+- Part 4: an Activity tab on the standalone profile (every job and the person), its Send email opens the Gio composer, the email numbers are the Activity sidebar's Email block, and the Emails tab is gone on both profiles (old `?tab=emails` links open Activity). Built 2026-10-19 on the branch; waits for Allan's Go.
 
 **Offers, next (Allan, 2026-10-19)**
 - When an offer's approval chain is fully complete (every approver, not each approval), the person who requested approval gets a bell notification with the approval sound and an email in the Gio ATS design saying the offer is approved. Once per completed chain. Database change: stop for Apply.

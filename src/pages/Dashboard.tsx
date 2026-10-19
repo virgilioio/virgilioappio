@@ -191,8 +191,8 @@ function buildQueue(
       const urgency: Urgency = d >= 2 ? 'overdue' : d >= 1 ? 'today' : 'normal'
       const waitLabel = d >= 1 ? `waiting ${d}d` : `waiting ${Math.max(1, h)}h`
       const replyHref = a.jobId
-        ? `/jobs/${a.jobId}/candidates/${a.candidateId}?tab=emails`
-        : `/candidates/${a.candidateId}?tab=emails`
+        ? `/jobs/${a.jobId}/candidates/${a.candidateId}?tab=activity`
+        : `/candidates/${a.candidateId}?tab=activity`
       out.push({
         id: `e-${a.id}`,
         dismissKey: `reply:${a.messageId ?? a.emailId ?? a.id}`,

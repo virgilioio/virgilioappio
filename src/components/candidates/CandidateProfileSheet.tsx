@@ -18,7 +18,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, RotateCw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus, ArrowRight, ArrowRightLeft,
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus, ArrowRight, ArrowRightLeft,
   ListChecks,
 
 } from 'lucide-react'
@@ -27,7 +27,6 @@ import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Separator } from '@/components/ui/separator'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { EmptyState, InlineEmpty } from '@/components/ui/empty-state'
 import { SoftPaper } from '@/components/ui/EmptyIllustrations'
 
@@ -72,13 +71,8 @@ import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { fetchEmailForReply } from '@/lib/emailLog'
-import { EmailsTabContent, EmailsSidebarContainer } from '@/components/candidates/profile/tabs/EmailsTabContent'
 import { EmailHistoryCardEmail } from './EmailHistoryCard'
 import { formatQuotedReply, formatForwardedMessage, getReplySubject, getForwardSubject } from '@/utils/emailFormatUtils'
-import { activityMeta, ACTIVITY_CATEGORIES, isAutomated, type ActivityCategory } from '@/lib/activityRegistry'
-import { useActivityFeed } from '@/hooks/useActivityFeed'
-import { formatDistanceToNow } from 'date-fns'
-import { ActivityFeedList } from './ActivityFeedList'
 import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
 import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
@@ -124,9 +118,9 @@ import {
   JobOverviewSidebar,
   ResumeSidebar,
   ScorecardsSidebar,
-  ActivitySidebar,
-  EmailsSidebar,
 } from '@/components/candidates/profile/tabs/SidebarRouter'
+import { ActivityTabCard, ActivityTabSidebar } from '@/components/candidates/profile/tabs/ActivityTab'
+import { useCandidateActivity } from '@/hooks/useCandidateActivity'
 import { CandidateTagsBlock } from '@/components/candidates/profile/CandidateTagsBlock'
 import { Upload } from 'lucide-react'
 import { ProfileSummaryCard } from '@/components/candidates/profile/ProfileSummaryCard'
@@ -210,7 +204,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { name: createdByName } = useUserDisplayName(createdByUserId)
 
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'fit' | 'scorecards' | 'activity' | 'emails' | 'offer' | 'rejection-details' | 'onboarding'>('job')
+  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'fit' | 'scorecards' | 'activity' | 'offer' | 'rejection-details' | 'onboarding'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
   
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
@@ -286,49 +280,8 @@ const daysInStage = useMemo(() => {
   if (Number.isNaN(ms) || ms < 0) return 0
   return Math.floor(ms / 86_400_000)
 }, [enteredStageAt])
-const [activityFilters, setActivityFilters] = useState<Record<string, boolean>>({})
-// "Open in Emails" from an activity email card.
-const [focusEmailId, setFocusEmailId] = useState<string | null>(null)
 // Activity feed — one source for the feed, the card subtitle, the sidebar and the tab badge.
-const { data: activityEvents = [], refetch: refetchActivity, isFetching: activityFetching, isLoading: activityLoading } =
-  useActivityFeed(candidateId || undefined, jobId)
-const activityDerived = useMemo(() => {
-  const events = activityEvents || []
-  const byCategory = new Map<string, number>()
-  events.forEach((e) => {
-    const cat = activityMeta(e.activity_type).category
-    byCategory.set(cat, (byCategory.get(cat) || 0) + 1)
-  })
-  const categoryRows = ACTIVITY_CATEGORIES
-    .map((c) => ({ id: c.id as string, label: c.label, count: byCategory.get(c.id) || 0 }))
-    .filter((c) => c.count > 0)
-  // Emails a person wrote, kept apart from what the machine sent.
-  const sentCount = events.filter(
-    (e) => e.activity_type === 'candidate_email_sent' && !isAutomated(e)
-  ).length
-  const automatedCount = events.filter((e) => isAutomated(e)).length
-  const lastContact = events
-    .filter((e) =>
-      e.activity_type === 'candidate_email_sent' ||
-      e.activity_type === 'candidate_email_received' ||
-      e.activity_type === 'candidate_email_automated'
-    )
-    .map((e) => e.created_at)
-    .sort()
-    .pop() || null
-  const lastUpdate = events
-    .map((e) => e.created_at)
-    .sort()
-    .pop() || null
-  return { events, categoryRows, sentCount, automatedCount, lastContact, lastUpdate }
-}, [activityEvents])
-const visibleActivityCategories = useMemo(
-  () =>
-    activityDerived.categoryRows
-      .filter((c) => activityFilters[c.id] ?? true)
-      .map((c) => c.id as ActivityCategory),
-  [activityDerived.categoryRows, activityFilters]
-)
+const activity = useCandidateActivity(candidateId, jobId)
 
 type PlanStageOption = { jhsId: string; stage: JobStage; position: number }
 const [planStages, setPlanStages] = useState<PlanStageOption[]>([])
@@ -728,8 +681,8 @@ const stageHasAutomation = useMemo(() => {
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search)
         const tabParam = params.get('tab')
-        if (tabParam === 'communications' || tabParam === 'emails') initialTab = 'emails'
-        else if (tabParam === 'activity') initialTab = 'activity'
+        // Emails live in the Activity tab since 2026-10-19.
+        if (tabParam === 'communications' || tabParam === 'emails' || tabParam === 'activity') initialTab = 'activity'
         else if (tabParam === 'scorecards') initialTab = 'scorecards'
         else if (tabParam === 'fit') initialTab = 'fit'
         // The Overview tab was removed — its old link resolves to Job overview.
@@ -1557,8 +1510,7 @@ const stageHasAutomation = useMemo(() => {
                             { value: 'resume', label: 'Resume', Icon: FileText },
                             ...(!isRestrictedViewer ? [{ value: 'fit', label: 'Gio Fit', Icon: Sparkles }] : []),
                             { value: 'scorecards', label: 'Scorecards', Icon: Star },
-                            { value: 'activity', label: 'Activity', Icon: Activity, count: activityDerived.events.length },
-                            { value: 'emails', label: 'Emails', Icon: Mail },
+                            { value: 'activity', label: 'Activity', Icon: Activity, count: activity.isLoading ? null : activity.events.length },
                           ]}
                         />
                       }
@@ -1943,63 +1895,13 @@ const stageHasAutomation = useMemo(() => {
                     )}
 
                     {/* Activity Tab */}
-                    {activeTab === 'activity' && (
-                      <>
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-                            <div>
-                              <CardTitle>Activity</CardTitle>
-                              <p className="mt-1 font-inter text-[11.5px] text-[#8B8F9E]">
-                                {/* Never "0 events" while the feed is still loading. */}
-                                {activityLoading ? 'Loading…' : `${activityDerived.events.length} event${activityDerived.events.length === 1 ? '' : 's'}`}
-                                {!activityLoading && activityDerived.lastUpdate
-                                  ? ` · last update ${formatDistanceToNow(new Date(activityDerived.lastUpdate), { addSuffix: true })}`
-                                  : ''}
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              icon={RotateCw}
-                              onClick={() => refetchActivity()}
-                              loading={activityFetching}
-                            >
-                              Refresh
-                            </Button>
-                          </CardHeader>
-                          <CardContent className="p-0">
-                            <ScrollArea className="h-[460px]">
-                              <div className="p-6">
-                                <ActivityFeedList 
-                                  candidateId={candidate.id}
-                                  jobId={jobId}
-                                  visibleCategories={visibleActivityCategories}
-                                  onClearFilters={() => setActivityFilters({})}
-                                  emptyAction={{ label: 'Schedule interview', icon: <Calendar size={16} strokeWidth={2} />, onClick: openScheduleInterview }}
-                                  onOpenInEmails={(id) => {
-                                    setFocusEmailId(id)
-                                    setActiveTab('emails')
-                                  }}
-                                  onEmailAction={handleActivityEmail}
-                                />
-                              </div>
-                            </ScrollArea>
-                          </CardContent>
-                        </Card>
-                      </>
-                    )}
-                    {/* Emails Tab */}
-                    {activeTab === 'emails' && candidate && (
-                      <EmailsTabContent
+                    {activeTab === 'activity' && candidate && (
+                      <ActivityTabCard
+                        activity={activity}
                         candidateId={candidate.id}
                         jobId={jobId}
-                        focusEmailId={focusEmailId}
-                        onCompose={() => {
-                          resetEmailComposer()
-                          setEmailComposerOpen(true)
-                        }}
-                        onReply={handleEmailReply}
-                        onForward={handleEmailForward}
+                        onEmailAction={handleActivityEmail}
+                        emptyAction={{ label: 'Schedule interview', icon: <Calendar size={16} strokeWidth={2} />, onClick: openScheduleInterview }}
                       />
                     )}
 
@@ -2211,19 +2113,8 @@ const stageHasAutomation = useMemo(() => {
                               />
                             )
                           case 'activity':
-                            return (
-                              <ActivitySidebar
-                                totalEvents={activityDerived.events.length}
-                                categoryRows={activityDerived.categoryRows}
-                                filters={activityFilters}
-                                onFilterChange={setActivityFilters}
-                                stats={{ activeDays: daysInStage, eventsLogged: activityDerived.events.length, touchesFromUs: activityDerived.sentCount, automatedEvents: activityDerived.automatedCount, lastContact: activityDerived.lastContact }}
-
-                              />
-                            )
-                          case 'emails':
                             return candidate ? (
-                              <EmailsSidebarContainer candidateId={candidate.id} jobId={jobId} />
+                              <ActivityTabSidebar activity={activity} candidateId={candidate.id} jobId={jobId} activeDays={daysInStage} />
                             ) : null
                           case 'job':
                           default:

@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
+import type { EmailStats } from '@/hooks/useCandidateActivity'
 
 /* ------------------------------------------------------------------ */
 /* Shared building blocks                                              */
@@ -434,12 +435,14 @@ export interface ActivitySidebarProps {
   filters: Record<string, boolean>
   onFilterChange: (filters: Record<string, boolean>) => void
   stats?: {
+    /** Days in the current stage; left out on the standalone profile (no stage). */
     activeDays?: number | null
     eventsLogged?: number | null
-    touchesFromUs?: number | null
     automatedEvents?: number | null
     lastContact?: string | null
   }
+  /** Email numbers (2026-10-19: moved here from the Emails tab). Null while loading. */
+  email?: EmailStats | null
 }
 export function ActivitySidebar(p: ActivitySidebarProps) {
   const allChecked = p.categoryRows.every((r) => p.filters[r.id] ?? true)
@@ -480,76 +483,42 @@ export function ActivitySidebar(p: ActivitySidebarProps) {
       </SidebarBlock>
       {p.stats && (
         <SidebarBlock label="Stats">
-          <MetaRow label="Active" value={p.stats.activeDays != null ? `${p.stats.activeDays}d` : null} />
+          {'activeDays' in p.stats && (
+            <MetaRow label="Active" value={p.stats.activeDays != null ? `${p.stats.activeDays}d` : null} />
+          )}
           <MetaRow label="Events" value={p.stats.eventsLogged != null ? `${p.stats.eventsLogged} logged` : null} />
-          <MetaRow label="Emails sent" value={p.stats.touchesFromUs != null ? `${p.stats.touchesFromUs} by hand` : null} />
           <MetaRow label="Automated" value={p.stats.automatedEvents != null ? `${p.stats.automatedEvents} events` : null} />
           <MetaRow label="Last contact" value={fmtDate(p.stats.lastContact)} />
         </SidebarBlock>
       )}
-    </ProfileSidebar>
-  )
-}
-
-
-export interface EmailsSidebarProps {
-  sent: number
-  opened: number | null
-  replied: number
-  avgResponse?: string | null
-  linksClicked?: number | null
-  openRate?: number | null
-  inboxAddress?: string | null
-  inboxStatus?: 'syncing' | 'paused' | 'not_connected'
-}
-export function EmailsSidebar(p: EmailsSidebarProps) {
-  const showEngagement = p.openRate != null
-  return (
-    <ProfileSidebar>
-      {showEngagement && (
-        <SidebarBlock label="Engagement">
-          <div className="flex flex-col items-center text-center py-1">
-            <div className="font-poppins font-semibold text-[36px] leading-none text-emerald-600 tabular-nums">
-              {Math.round(p.openRate!)}%
-            </div>
-            <div className="font-inter text-[11px] text-[#5A6072] mt-1.5">
-              Open rate · responds same-day
-            </div>
-          </div>
-        </SidebarBlock>
-      )}
-      <SidebarBlock label="Activity">
-        <MetaRow icon={Send} label="Sent" value={p.sent} />
-        <MetaRow icon={Mail} label="Opened" value={p.opened ?? null} />
-        <MetaRow icon={Mail} label="Replied" value={p.replied} />
-        <MetaRow icon={Clock} label="Avg response" value={p.avgResponse ?? null} />
-        <MetaRow icon={Globe} label="Links clicked" value={p.linksClicked ?? null} />
-      </SidebarBlock>
-      {p.inboxAddress && (
-        <SidebarBlock label="Connected inbox">
-          <div className="bg-[#FAFAF7] rounded-md p-2.5 flex items-center gap-2">
-            <div className="h-7 w-7 rounded-md bg-white border border-[#E7E8EE] inline-flex items-center justify-center text-[#5A6072] shrink-0">
-              <Mail className="h-3.5 w-3.5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="font-inter text-[12px] font-medium text-[#1F2230] truncate">
-                {p.inboxAddress}
-              </div>
-              <div className="font-inter text-[10.5px] text-emerald-600 flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                {p.inboxStatus === 'paused'
-                  ? 'Paused'
-                  : p.inboxStatus === 'not_connected'
+      {p.email !== undefined && (
+        <SidebarBlock label="Email">
+          {/* Null while loading: dashes, never a 0 that isn't true yet. */}
+          <MetaRow label="Sent" value={p.email ? p.email.sent : null} />
+          <MetaRow
+            label="Opened"
+            value={p.email ? (p.email.openRate != null ? `${p.email.opened} · ${p.email.openRate}%` : p.email.opened) : null}
+          />
+          <MetaRow label="Replied" value={p.email ? p.email.replied : null} />
+          <MetaRow label="Links clicked" value={p.email ? p.email.clicked : null} />
+          <MetaRow
+            label="Your inbox"
+            value={
+              p.email?.inbox
+                ? p.email.inbox.status === 'syncing'
+                  ? p.email.inbox.email
+                  : `${p.email.inbox.email} · ${p.email.inbox.status === 'paused' ? 'paused' : 'not connected'}`
+                : p.email
                   ? 'Not connected'
-                  : 'Syncing'}
-              </div>
-            </div>
-          </div>
+                  : null
+            }
+          />
         </SidebarBlock>
       )}
     </ProfileSidebar>
   )
 }
+
 
 /* ------------------------------------------------------------------ */
 

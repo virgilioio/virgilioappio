@@ -78,7 +78,7 @@ export function TasksOverview() {
         break;
       case 'email':
         if (activity.emailId) markEmailAsRead.mutate(activity.emailId);
-        window.open(`/jobs/${activity.jobId}?candidate=${activity.candidateId}&tab=communications`, '_blank');
+        window.open(`/jobs/${activity.jobId}?candidate=${activity.candidateId}&tab=activity`, '_blank');
         break;
       case 'offer_approval':
         window.open(`/jobs/${activity.jobId}?candidate=${activity.candidateId}&tab=offer`, '_blank');

@@ -44,7 +44,7 @@ export function PendingActivities() {
           markEmailAsRead.mutate(activity.emailId);
         }
         window.open(
-          `/jobs/${activity.jobId}?candidate=${activity.candidateId}&tab=communications`,
+          `/jobs/${activity.jobId}?candidate=${activity.candidateId}&tab=activity`,
           '_blank'
         );
         break;

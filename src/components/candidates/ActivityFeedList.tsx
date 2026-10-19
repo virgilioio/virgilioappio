@@ -12,8 +12,6 @@ interface ActivityFeedListProps {
   jobId?: string;
   /** Category ids to show. Undefined = show everything. */
   visibleCategories?: ActivityCategory[];
-  /** Jump to the Emails tab and scroll a message into view. */
-  onOpenInEmails?: (emailLogId: string) => void;
   /** Reply to or forward an email in the feed (opens the Gio composer). */
   onEmailAction?: (emailLogId: string, mode: 'reply' | 'forward') => void | Promise<void>;
   /** Shows every category again (filtered empty). */
@@ -22,7 +20,7 @@ interface ActivityFeedListProps {
   emptyAction?: EmptyStateAction;
 }
 
-export function ActivityFeedList({ candidateId, jobId, visibleCategories, onOpenInEmails, onEmailAction, onClearFilters, emptyAction }: ActivityFeedListProps) {
+export function ActivityFeedList({ candidateId, jobId, visibleCategories, onEmailAction, onClearFilters, emptyAction }: ActivityFeedListProps) {
   const { data: activities, isLoading, error, refetch } = useActivityFeed(candidateId, jobId);
 
   const visible = useMemo(() => {
@@ -95,7 +93,6 @@ export function ActivityFeedList({ candidateId, jobId, visibleCategories, onOpen
           key={activity.id}
           activity={activity}
           isLast={index === visible.length - 1}
-          onOpenInEmails={onOpenInEmails}
           onEmailAction={onEmailAction}
         />
       ))}
