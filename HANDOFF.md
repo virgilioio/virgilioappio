@@ -43,6 +43,8 @@ Hard limits:
 
 ## Done 2026-10-19 (ATS)
 
+- **Tabs take the Motion & Feel demo's look and motion** (Allan, 2026-10-19: "one DNA" with Gio Sales). The shared `TabsList` pill is a noir pill with white labels on the `#ECEAE2` bar (Inter 500 13px); the labels ride inside the sliding layer, no tab changes width, tabs use the global purple focus outline, and overflowing bars scroll. Underline tabs sit exactly under their label. The segmented layer (Jobs, People, References, Sign templates list tabs) slides again instead of jumping. Left open: segmented toggles use `#F1F0EC`, one shade lighter than the demo's `#ECEAE2`; the public job page keeps its white chips.
+
 - **Candidate comments, mentions and tabs** (Allan's plan of 2026-10-18, all four parts on main; details in `CLAUDE.md`, Implementation map, "Candidate comments"):
   - database, applied as `20261018234855_candidate_comments_job_optional` (from Allan's desktop) and `20261018235003_candidate_comments_v2` (test 27, 17 checks). Comments are shared with everyone who can see the candidate, or private to the author; a tagged comment can't be private; a tag notifies only people who can see the candidate; a comment can sit outside any job. It also fixed comments not saving at all since May (`tg_notify_mention` read a column that doesn't exist);
   - the Comments card above Details on both profiles (`src/components/candidates/comments/`): "@" to tag a teammate, chips, the Private switch, and the reminders row under the box. The Comments tab is gone; `?tab=comments` opens Job overview / Overview;
