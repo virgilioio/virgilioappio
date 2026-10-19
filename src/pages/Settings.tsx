@@ -5,7 +5,6 @@ import { ProfileTab } from '@/components/settings/ProfileTab'
 import OrganizationTab from '@/components/settings/OrganizationTab'
 import { MembersTab } from '@/components/settings/MembersTab'
 import { DepartmentsManager } from '@/components/settings/DepartmentsManager'
-import { PlatformDashboardV2 } from '@/components/settings/platform/PlatformDashboardV2'
 import { PlatformJobDefaults } from '@/components/settings/platform/PlatformJobDefaults'
 import { PlatformCustomers } from '@/components/settings/platform/PlatformCustomers'
 
@@ -26,7 +25,6 @@ import { BookingTab } from '@/components/settings/tabs/BookingTab'
 import { GioRecruitingSettings } from '@/components/settings/GioRecruitingSettings'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
 import { useSetupProgress } from '@/hooks/useSetupProgress'
@@ -40,7 +38,9 @@ const LEGACY_TAB_MAP: Record<string, string> = {
   // Old Platform group → new Platform group
   'platform-saas-customers': 'platform-customers',
   'platform-job-settings': 'platform-job-defaults',
-  'platform-settings': 'platform-dashboard',
+  'platform-settings': 'platform-customers',
+  // The platform dashboard was removed (Allan, 2026-10-19).
+  'platform-dashboard': 'platform-customers',
 }
 
 // Brand-new tabs that don't have content yet — render a small placeholder card.
@@ -61,7 +61,6 @@ export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { isPlatformAdmin } = usePermissions()
   const { organizationId, userType } = useAuth()
   const { tenant } = useTenant()
 
@@ -69,7 +68,6 @@ export default function Settings() {
 
   const isBillingRoute = location.pathname === '/billing'
   const pickDefaultTab = () => {
-    if (isPlatformAdmin) return 'platform-dashboard'
     if (essentialsRemaining > 0) return 'setup'
     if (userType === 'workspace_owner' && organizationId) return 'organization'
     return 'profile'
@@ -142,8 +140,6 @@ export default function Settings() {
         return <JobBoardsTab />
       case 'customers':
         return <CustomersTab />
-      case 'platform-dashboard':
-        return <PlatformDashboardV2 />
       case 'platform-job-defaults':
         return <PlatformJobDefaults />
       case 'platform-customers':
