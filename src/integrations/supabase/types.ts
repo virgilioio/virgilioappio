@@ -11388,6 +11388,7 @@ export type Database = {
         Returns: string
       }
       job_setup_checks: { Args: { p_job: string }; Returns: Json }
+      library_editor: { Args: never; Returns: boolean }
       linkedin_slug: { Args: { p_url: string }; Returns: string }
       log_activity: {
         Args: {

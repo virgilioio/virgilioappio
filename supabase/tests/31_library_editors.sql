@@ -1,4 +1,4 @@
--- Run after 20261019_library_editors inside a transaction that is rolled back.
+-- Run after 20261019040505_library_editors inside a transaction that is rolled back.
 -- Signs in as three real Virgilio users (a platform admin, a workspace admin and
 -- a member) and edits fake library rows; one real row of a dormant workspace is
 -- only tried, never changed. Every row's ok is true.
