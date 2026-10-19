@@ -11548,9 +11548,26 @@ export type Database = {
       offer_approval_queue_reminders: { Args: never; Returns: number }
       offer_approval_remind: { Args: { _request_id: string }; Returns: Json }
       offer_approval_sync: { Args: { _request_id: string }; Returns: undefined }
+      offer_approval_trail_complete: {
+        Args: { _request_id: string }
+        Returns: undefined
+      }
       offer_base_salary: { Args: { _fv: Json }; Returns: Json }
       offer_can_send: { Args: { _offer_id: string }; Returns: Json }
       offer_send_refusal: { Args: { _reason: string }; Returns: string }
+      offer_trail_log: {
+        Args: {
+          _candidate: string
+          _description: string
+          _job: string
+          _meta: Json
+          _title: string
+          _type: Database["public"]["Enums"]["activity_type"]
+          _user: string
+        }
+        Returns: undefined
+      }
+      offer_trail_name: { Args: { _user: string }; Returns: string }
       organization_has_active_public_posting: {
         Args: { org_id_param: string }
         Returns: boolean
@@ -12246,6 +12263,15 @@ export type Database = {
         | "client_dossier_viewed"
         | "client_dossier_decision"
         | "candidate_job_changed"
+        | "approval_completed"
+        | "agreement_sent"
+        | "agreement_opened"
+        | "agreement_signed"
+        | "agreement_completed"
+        | "agreement_declined"
+        | "agreement_voided"
+        | "agreement_expired"
+        | "agreement_reminded"
       application_field_source: "library" | "custom"
       automation_action:
         | "email"
@@ -12647,6 +12673,15 @@ export const Constants = {
         "client_dossier_viewed",
         "client_dossier_decision",
         "candidate_job_changed",
+        "approval_completed",
+        "agreement_sent",
+        "agreement_opened",
+        "agreement_signed",
+        "agreement_completed",
+        "agreement_declined",
+        "agreement_voided",
+        "agreement_expired",
+        "agreement_reminded",
       ],
       application_field_source: ["library", "custom"],
       automation_action: [

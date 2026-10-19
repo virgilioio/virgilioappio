@@ -1,4 +1,4 @@
--- Run after 20261019023525_activity_offer_types and 20261019_activity_offer_trail inside a transaction that is rolled back.
+-- Run after 20261019023525_activity_offer_types and 20261019024429_activity_offer_trail inside a transaction that is rolled back.
 -- Fake offers, approvals and a fake agreement on a real job and candidate in Virgilio's
 -- workspace: Allan writes the offer and asks, the support account and another teammate
 -- approve, the candidate signs. Every row's ok is true.
