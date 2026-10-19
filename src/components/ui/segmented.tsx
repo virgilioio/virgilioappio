@@ -17,7 +17,8 @@ import { cn } from '@/lib/utils'
  * carry `data-seg-fill="#FEF3C7"` to give the layer its own colour while it's active.
  * The layer is a fill clipped to the active option (clip-path slides at --dur-tabs on
  * --ease-in-out); its shadow is a drop-shadow on the wrapper, so it follows the clip.
- * First paint, resizes and keyboard changes jump; reduced motion never slides.
+ * First paint, resizes and keyboard changes jump (a resize during a slide retargets
+ * it); reduced motion never slides.
  */
 
 let lastInput: 'pointer' | 'key' = 'pointer'
@@ -29,6 +30,7 @@ if (typeof window !== 'undefined') {
 function attachSegmentLayer(root: HTMLElement) {
   let ready = false
   let frame = 0
+  let slidingUntil = 0
   const options = () =>
     Array.from(root.querySelectorAll<HTMLElement>('[data-seg-option]')).filter(
       (o) => o.closest('.gio-seg') === root,
@@ -41,7 +43,10 @@ function attachSegmentLayer(root: HTMLElement) {
       ready = false
       return
     }
-    const slide = ready && animate
+    // The new option turning semibold resizes it mid-slide: that retargets the
+    // slide, it never cuts it to a jump.
+    const slide = ready && (animate || performance.now() < slidingUntil)
+    if (animate && ready) slidingUntil = performance.now() + 300
     if (!slide) layer.style.setProperty('--seg-transition', 'none')
     const rb = root.getBoundingClientRect()
     const ab = active.getBoundingClientRect()
