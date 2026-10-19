@@ -43,6 +43,13 @@ Hard limits:
 
 ## Done 2026-10-19 (ATS)
 
+- **The Job wizard's screening and notification switches work** (Allan: "build them!"; his calls: country match, a pay period on the job, emails at 9:00 the next morning). Applied as `20261019055022_job_settings` (test 33, 29 checks) and `20261019055509_job_digest` (test 34, 12 checks); details in `CLAUDE.md`, Implementation map, "Job settings".
+  - `job_settings`, one row per job, edited from the wizard (Hiring plan, Hiring team) and the job's Setup page through `JobAutomationCards`. Existing jobs kept their behaviour: rejection rules off, Gio Fit and the summary on, new-application notifications on, stage moves off, digest on (it reaches only people who turn on Daily digest in Settings > Notifications; nobody has yet).
+  - Gio rejects only applications (`applied_at`, set by public-submit-application and talent-apply-webhook): outside the job's hiring countries, asking more than 25% over the top of the range (needs `jobs.salary_period`), or a first Gio Fit score under the bar while still in Application review. Gio is the author in the Activity feed and the decider in the Rejected tab; the email waits for 9:00 the next morning from the first recruiter's mailbox (an active member's), and restoring the candidate cancels it. Restoring now cancels any waiting rejection email, manual ones included.
+  - "Same candidate, last 90 days" shows Always on: `check_application_limits` already blocks it for every job.
+  - Deployed: enrich-candidate-profile, public-submit-application, talent-apply-webhook, job-daily-digest (new). The Slack row on the Summary step stays "coming soon": nothing Slack exists.
+  - The tab bars, the public job page's tabs and the toggles' demo grey went to main with this; `platform-admin-metrics` is out of the repo (the deployed copy is deleted from the dashboard by Allan).
+
 - **Tabs take the Motion & Feel demo's look and motion** (Allan, 2026-10-19: "one DNA" with Gio Sales). The shared `TabsList` pill is a noir pill with white labels on the `#ECEAE2` bar (Inter 500 13px); the labels ride inside the sliding layer, no tab changes width, tabs use the global purple focus outline, and overflowing bars scroll. Underline tabs sit exactly under their label. The segmented layer (Jobs, People, References, Sign templates list tabs) slides again instead of jumping. Left open: segmented toggles use `#F1F0EC`, one shade lighter than the demo's `#ECEAE2`; the public job page keeps its white chips.
 
 - **Candidate comments, mentions and tabs** (Allan's plan of 2026-10-18, all four parts on main; details in `CLAUDE.md`, Implementation map, "Candidate comments"):
@@ -201,7 +208,6 @@ Hard limits:
 - Still to do: a real test, where Allan sends an offer for approval to someone else and checks the email, the bell, Remind and Your queue.
 
 **Settings clean-up (Allan, 2026-10-19): done, see Done 2026-10-19.** Left:
-- Decide: the Job wizard's auto-reject and hiring-team notification switches are saved nowhere and do nothing; build them or hide them.
 - The job and posting default triggers (`handle_new_job_defaults`, `add_default_application_fields_to_posting`) don't filter by workspace; harmless with one workspace.
 - `platform-admin-metrics` is removed from the repo (2026-10-19). The deployed copy is still live (it checks for a platform admin itself): Allan deletes it in the Supabase dashboard, Edge Functions › platform-admin-metrics › Delete; the connector here can't delete functions.
 
