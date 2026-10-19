@@ -1607,9 +1607,10 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 }
 
 /* §12 Phones (app and public pages): text inputs are at least 16px so iOS doesn't zoom
- * the page on focus. (Inline font sizes on public fields lose to this on purpose.) */
+ * the page on focus. (Inline font sizes on public fields lose to this on purpose.)
+ * An input set larger than 16px (a title typed in place) marks itself data-text-large. */
 @media (max-width: 639px) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]):not([type="color"]):not([type="hidden"]),
+  input:not([data-text-large]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]):not([type="color"]):not([type="hidden"]),
   textarea,
   select,
   [contenteditable="true"] {

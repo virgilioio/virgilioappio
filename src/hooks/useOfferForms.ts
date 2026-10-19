@@ -111,7 +111,7 @@ export function useOfferForms(context: OfferFormsContext = 'organization') {
     }
   }
 
-  const updateForm = async (id: string, formData: Partial<OfferForm>) => {
+  const updateForm = async (id: string, formData: Omit<Partial<OfferForm>, 'sections'>) => {
     try {
       const { error } = await supabase
         .from('offer_forms')

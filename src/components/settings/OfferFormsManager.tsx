@@ -10,14 +10,14 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { Plus, Edit, Trash2, ClipboardList } from 'lucide-react'
 import { useOfferForms, type OfferFormsContext } from '@/hooks/useOfferForms'
-import { OfferFormSheet } from './templates/OfferFormSheet'
+import { OfferFormSheet } from './offerForms/OfferFormSheet'
 
 interface OfferFormsManagerProps {
   context?: OfferFormsContext
 }
 
 export function OfferFormsManager({ context = 'organization' }: OfferFormsManagerProps) {
-  const { forms, isLoading, deleteForm, createForm, updateForm } = useOfferForms(context)
+  const { forms, isLoading, deleteForm, createForm, refetchForms } = useOfferForms(context)
   const [formSheet, setFormSheet] = useState({ open: false, formId: undefined as string | undefined })
 
   const tenantForms = forms.filter(f => f.source === 'tenant')
@@ -141,9 +141,8 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
         open={formSheet.open}
         onOpenChange={(open) => setFormSheet({ open, formId: undefined })}
         formId={formSheet.formId}
-        forms={forms}
         createForm={createForm}
-        updateForm={updateForm}
+        onChanged={() => void refetchForms()}
       />
     </Card>
   )
