@@ -77,7 +77,7 @@ export function when(iso: string | null | undefined) {
 }
 
 /** Keeps only what the standard font can draw; anything else becomes "?". */
-function safe(font: PDFFont, text: string, keepLines = false) {
+export function safe(font: PDFFont, text: string, keepLines = false) {
   let out = "";
   const src = keepLines
     ? String(text ?? "").replace(/\r\n?/g, "\n").replace(/\t/g, " ")
@@ -101,7 +101,7 @@ function safe(font: PDFFont, text: string, keepLines = false) {
  * Writes a value inside its box: one line centred as before, or wrapped over
  * as many lines as fit, from the top (layout shared with the app's previews).
  */
-function fitText(page: PDFPage, font: PDFFont, raw: string, x: number, y: number, w: number, h: number, chosen?: number | null) {
+export function fitText(page: PDFPage, font: PDFFont, raw: string, x: number, y: number, w: number, h: number, chosen?: number | null) {
   const text = safe(font, raw, true);
   const { size, lines } = layoutText(text, w - 2, h, (s, z) => font.widthOfTextAtSize(s, z), chosen);
   if (lines.length === 1) {
@@ -114,7 +114,7 @@ function fitText(page: PDFPage, font: PDFFont, raw: string, x: number, y: number
   });
 }
 
-function drawCheck(page: PDFPage, x: number, y: number, w: number, h: number) {
+export function drawCheck(page: PDFPage, x: number, y: number, w: number, h: number) {
   const s = Math.min(w, h) * 0.8;
   const cx = x + w / 2 - s / 2;
   const cy = y + h / 2 - s / 2;
