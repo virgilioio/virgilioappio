@@ -27,10 +27,20 @@ import {
   MessageSquareQuote,
   Zap,
   ZapOff,
+  SendHorizontal,
+  CheckCircle2,
+  XCircle,
+  Undo2,
+  BadgeCheck,
+  PenLine,
+  FileSignature,
+  Ban,
+  Clock,
+  Bell,
   type LucideIcon,
 } from 'lucide-react'
 
-export type ActivityCategory = 'stage' | 'scorecards' | 'emails' | 'automations' | 'files' | 'other'
+export type ActivityCategory = 'stage' | 'offers' | 'scorecards' | 'emails' | 'automations' | 'files' | 'other'
 
 export type ActivityTone =
   | 'purple'
@@ -103,10 +113,25 @@ export const ACTIVITY_TYPES: Record<string, ActivityMeta> = {
   interview_scheduled: { category: 'other', icon: CalendarCheck, tone: 'blue' },
   interview_rescheduled: { category: 'other', icon: CalendarClock, tone: 'yellow' },
   interview_cancelled: { category: 'other', icon: CalendarX, tone: 'red' },
-  offer_created: { category: 'other', icon: FileText, tone: 'purple' },
-  offer_updated: { category: 'other', icon: FilePen, tone: 'purple' },
-  offer_sent: { category: 'other', icon: Send, tone: 'green' },
-  offer_document_generated: { category: 'other', icon: FileCheck, tone: 'neutral' },
+
+  // Offer & signing (2026-10-19): written by the database for every offer, approval and Gio Sign event.
+  offer_created: { category: 'offers', icon: FileText, tone: 'purple' },
+  offer_updated: { category: 'offers', icon: FilePen, tone: 'purple' },
+  offer_sent: { category: 'offers', icon: Send, tone: 'green' },
+  offer_document_generated: { category: 'offers', icon: FileCheck, tone: 'neutral' },
+  approval_requested: { category: 'offers', icon: SendHorizontal, tone: 'purple' },
+  approval_approved: { category: 'offers', icon: CheckCircle2, tone: 'green' },
+  approval_declined: { category: 'offers', icon: XCircle, tone: 'red' },
+  approval_recalled: { category: 'offers', icon: Undo2, tone: 'neutral' },
+  approval_completed: { category: 'offers', icon: BadgeCheck, tone: 'green' },
+  agreement_sent: { category: 'offers', icon: FileSignature, tone: 'purple' },
+  agreement_opened: { category: 'offers', icon: Eye, tone: 'blue' },
+  agreement_signed: { category: 'offers', icon: PenLine, tone: 'green' },
+  agreement_completed: { category: 'offers', icon: BadgeCheck, tone: 'green' },
+  agreement_declined: { category: 'offers', icon: XCircle, tone: 'red' },
+  agreement_voided: { category: 'offers', icon: Ban, tone: 'neutral' },
+  agreement_expired: { category: 'offers', icon: Clock, tone: 'yellow' },
+  agreement_reminded: { category: 'offers', icon: Bell, tone: 'yellow' },
 
   // Shared dossier — the client is anonymous by design; the copy never names a person.
   client_dossier_viewed: { category: 'other', icon: Eye, tone: 'yellow' },
@@ -139,6 +164,7 @@ export function isAutomated(event: {
 
 export const ACTIVITY_CATEGORIES: { id: ActivityCategory; label: string }[] = [
   { id: 'stage', label: 'Stage moves' },
+  { id: 'offers', label: 'Offer & signing' },
   { id: 'scorecards', label: 'Scorecards' },
   { id: 'emails', label: 'Emails' },
   { id: 'automations', label: 'Automations' },

@@ -23,7 +23,6 @@ import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
 import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
-import { logActivity } from '@/lib/activityLogger'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
 import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
 import { Switch } from '@/components/ui/switch'
@@ -249,19 +248,7 @@ export function OfferComposerBody({
           field_values: fieldValues,
           opening_id: openingId,
         })
-        // Log offer update activity
-        const originalValues = currentOffer?.field_values || {}
-        const changedFields = fields
-          .filter(f => JSON.stringify(originalValues[f.field_name] ?? '') !== JSON.stringify(fieldValues[f.field_name] ?? ''))
-          .map(f => f.field_label)
-        logActivity({
-          activityType: 'offer_updated',
-          title: `Offer updated for ${candidateName}`,
-          entityType: 'candidate',
-          entityId: candidateId,
-          organizationId,
-          metadata: { candidateId, jobId, changedFields },
-        })
+        // The database records "Offer updated" with the fields that changed (offer_letters_z_trail).
       } else {
         const title = `Offer - ${candidateName} - ${jobTitle || 'Position'}`
         await createOfferLetter({
@@ -275,15 +262,7 @@ export function OfferComposerBody({
           status: 'draft',
           created_by: user?.id,
         })
-        // Log offer creation activity
-        logActivity({
-          activityType: 'offer_created',
-          title: `Offer created for ${candidateName}`,
-          entityType: 'candidate',
-          entityId: candidateId,
-          organizationId,
-          metadata: { candidateId, jobId },
-        })
+        // The database records "Offer created" (offer_letters_z_trail).
       }
       // Trigger live UI update across components
       window.dispatchEvent(new CustomEvent('refetch-offer-letters'))

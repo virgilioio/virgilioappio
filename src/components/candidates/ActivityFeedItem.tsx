@@ -46,8 +46,13 @@ export function ActivityFeedItem({ activity, isLast, onEmailAction }: ActivityFe
    */
   const sharedDossier = activity.activity_type.startsWith('client_dossier_');
 
+  // A signer outside the team (the candidate signing in Gio Sign) is named by the database.
+  const externalActor = activity.metadata?.external_actor && activity.metadata?.author_name
+
   const authorName = sharedDossier
     ? 'via the shared dossier'
+    : externalActor
+    ? String(activity.metadata?.author_name)
     : automated
     ? 'Gio'
     : (activity.author_first_name || activity.author_last_name)
