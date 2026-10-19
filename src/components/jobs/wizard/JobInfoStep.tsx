@@ -1,4 +1,5 @@
 import React from 'react'
+import { Seg } from '@/components/sign/templates/parts'
 import { Building2, Globe, Briefcase, MapPin, TrendingUp, Sparkles, Calendar, Hash } from 'lucide-react'
 import { OpeningsEditor } from '@/components/jobs/openings/OpeningsEditor'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
@@ -474,6 +475,21 @@ export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
               />
             </div>
           </div>
+        </div>
+        <div className="mt-5">
+          <FieldLabel>Pay period</FieldLabel>
+          <div className="mt-2">
+            <Seg<'monthly' | 'annual'>
+              label="Pay period"
+              value={(jobData.salary_period ?? '') as 'monthly' | 'annual'}
+              onChange={(v) => set('salary_period', v)}
+              options={[
+                { value: 'monthly', label: 'Per month' },
+                { value: 'annual', label: 'Per year' },
+              ]}
+            />
+          </div>
+          <FieldHint>What the range above is per. The salary screening rule needs it.</FieldHint>
         </div>
       </SectionCard>
 
