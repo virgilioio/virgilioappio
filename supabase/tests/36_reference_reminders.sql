@@ -1,4 +1,4 @@
--- Run after 20261019200000_reference_reminders inside a transaction that is
+-- Run after 20261019200052_reference_reminders inside a transaction that is
 -- rolled back. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
 
