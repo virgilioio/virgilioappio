@@ -36,6 +36,7 @@ All three are merged to `main` as of this note. Lovable syncs from GitHub.
 Hard limits:
 - Migrations and tests must not contain the whole words `delete`, `drop` or `truncate`. The connector cancels those from a cloud chat. When one is needed, write the file and give Allan a one-paragraph message to apply it from a desktop chat with a folder added.
 - Edge Function files are ASCII only.
+- `deploy_edge_function` decodes `\uXXXX` in file contents one extra time: a regex written `[\u0300-\u036f]` (`_shared/resumeFacts.ts`, `_shared/findCriteria.ts`) arrives as literal or doubled-backslash text. Send such escapes as `\\u005Cu0300` and compare the live file with git afterwards (2026-10-19: enrich-candidate-profile v330 ran 3 minutes with the doubled form; v332 is right).
 - Commits end with the attribution lines the session gives.
 - Every branch is pushed with an upstream.
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
@@ -47,7 +48,7 @@ Hard limits:
   - `job_settings`, one row per job, edited from the wizard (Hiring plan, Hiring team) and the job's Setup page through `JobAutomationCards`. Existing jobs kept their behaviour: rejection rules off, Gio Fit and the summary on, new-application notifications on, stage moves off, digest on (it reaches only people who turn on Daily digest in Settings > Notifications; nobody has yet).
   - Gio rejects only applications (`applied_at`, set by public-submit-application and talent-apply-webhook): outside the job's hiring countries, asking more than 25% over the top of the range (needs `jobs.salary_period`), or a first Gio Fit score under the bar while still in Application review. Gio is the author in the Activity feed and the decider in the Rejected tab; the email waits for 9:00 the next morning from the first recruiter's mailbox (an active member's), and restoring the candidate cancels it. Restoring now cancels any waiting rejection email, manual ones included.
   - "Same candidate, last 90 days" shows Always on: `check_application_limits` already blocks it for every job.
-  - Deployed: enrich-candidate-profile, public-submit-application, talent-apply-webhook, job-daily-digest (new). The Slack row on the Summary step stays "coming soon": nothing Slack exists.
+  - Deployed and checked against git: enrich-candidate-profile v332, public-submit-application v743, talent-apply-webhook v424, job-daily-digest v1 (new). The Slack row on the Summary step stays "coming soon": nothing Slack exists.
   - The tab bars, the public job page's tabs and the toggles' demo grey went to main with this; `platform-admin-metrics` is out of the repo (the deployed copy is deleted from the dashboard by Allan).
 
 - **Tabs take the Motion & Feel demo's look and motion** (Allan, 2026-10-19: "one DNA" with Gio Sales). The shared `TabsList` pill is a noir pill with white labels on the `#ECEAE2` bar (Inter 500 13px); the labels ride inside the sliding layer, no tab changes width, tabs use the global purple focus outline, and overflowing bars scroll. Underline tabs sit exactly under their label. The segmented layer (Jobs, People, References, Sign templates list tabs) slides again instead of jumping. Left open: segmented toggles use `#F1F0EC`, one shade lighter than the demo's `#ECEAE2`; the public job page keeps its white chips.
