@@ -145,6 +145,11 @@ Hard limits:
 
 ## Open work, in Allan's order
 
+**Gio Sales agreements: Preview and written documents (2026-10-19)**
+- **Waiting for "Apply!":** `20261019160000_sign_sales_written` (test 35, 6/6 in the rolled-back dry run). `sign_send_sales` predates written documents, so a Gio Sales template made only of written documents (the one live template, "Master Recruiting & Talent Infrastructure Agreement") would go out with no document. The migration copies written documents onto the envelope (sign-dispatch makes their PDF), checks values through `sign_template_keys` and keeps data fields' tick style and format. Only on the branch until applied; `git mv` it to the recorded version and regenerate types then.
+- **Live:** `sign-gateway` v18 (hand-deployed, checked against git) has a `preview` action: the filled template as one PDF (`_shared/sign/preview.ts`: uploaded documents with data fields written in and signer boxes, written documents from `renderWritten` with values underlined) plus the invitation email the first person gets (`inviteEmail`, link "#"). The `templates` action now lists written documents (pages null) and returns `data_keys` (needed) / `optional_keys` from `sign_template_keys`. Gio Sales reaches it through `sign-link` `render` and shows it in `AgreementPreviewSheet` (Documents | Email) from Send agreement.
+- **Template content to check:** the template prints `{{contact}}` (the contact's name) after "Client Legal Name"; `{{company}}` is probably meant.
+
 **Gio Sign × offers**
 - **Phase 3 — write documents in Gio. Built 2026-10-17** (needs a real test from Allan: write a template, send it to yourself).
   - Database: `20261017180441_sign_written_docs` (test 19, 28/28). `sign_written_docs` holds Lexical JSON for templates and frozen copies on envelopes. Node types (a contract between editor and server): `placeholder` (placeholderKey), `gio-if` (key, op yes/no/filled/empty/equals/not_equals, value; values used only inside never block a send), `gio-sign` (roleId, kind signature/initials/date/name), `gio-page-break`. `sign_template_keys()` is the one list of values a template fills in. `sign_claim_due` holds an envelope until every written copy has its PDF.
