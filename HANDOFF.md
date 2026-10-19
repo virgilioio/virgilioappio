@@ -109,7 +109,7 @@ Hard limits:
 - Part 4: an Activity tab on the standalone profile (every job and the person), its Send email opens the Gio composer, the email numbers are the Activity sidebar's Email block, and the Emails tab is gone on both profiles (old `?tab=emails` links open Activity). Built 2026-10-19 on the branch; waits for Allan's Go.
 
 **Offers, next (Allan, 2026-10-19)**
-- Done 2026-10-19: when an offer's approval chain is fully complete (request approved, no step pending or declined; skipped steps count), the person who requested approval gets one bell (`approval_complete`, approval sound) and one email ("The offer for X is approved", Gio ATS design). Nothing when they made the last approval themselves. Migration `20261019011108_offer_approval_complete` (test 28, 12 checks); the email is sent by offer-approval-notify.
+- Done 2026-10-19: when an offer's approval chain is fully complete (request approved, no step pending or declined; skipped steps count), the person who requested approval gets one bell (`approval_complete`, approval sound) and one email ("The offer for X is approved", Gio ATS design). Nothing when they made the last approval themselves. Migration `20261019011108_offer_approval_complete` (test 28, 12 checks, passed again on live, rolled back); the email is sent by offer-approval-notify (v15).
 - The approved-offer state on the profile: replace the green banner and remove "Generate Offer Letter" (the legacy template → PDF → send flow). The route is create offer → request approval (if any) → Send for signature → choose a template. Screenshots before main. (This is the start of Phase 4's "Retire the old offer letter generator".)
 
 **Gio Sign × offers**
