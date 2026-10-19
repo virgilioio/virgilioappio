@@ -1,4 +1,4 @@
--- Run after 20261019200000_job_settings inside a transaction that is rolled back.
+-- Run after 20261019055022_job_settings inside a transaction that is rolled back.
 -- Makes a fake Virgilio job and fake candidates, applies them through the rules,
 -- restores one, moves one, and signs in as real users only to read and edit the
 -- fake job's settings. Every row's ok is true.
