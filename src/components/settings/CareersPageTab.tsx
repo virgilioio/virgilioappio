@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
 import { SpecCard } from './shared/SpecCard'
 import { NOIR_BTN, SEC_BTN } from './shared/SpecRow'
+import { ApplyConfirmationCard } from './careers/ApplyConfirmationCard'
 
 export function CareersPageTab() {
   const { organizationId } = useAuth()
@@ -192,6 +193,8 @@ export function CareersPageTab() {
           </button>
         </div>
       </SpecCard>
+
+      <ApplyConfirmationCard />
     </div>
   )
 }

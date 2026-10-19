@@ -14,7 +14,6 @@ import { Billing } from '@/pages/settings/Billing'
 import { JobStagesManager } from '@/components/settings/JobStagesManager'
 import { ApplicationFieldsManager } from '@/components/settings/ApplicationFieldsManager'
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
-import { AutomationsTab } from '@/components/settings/AutomationsTab'
 import { CareersPageTab } from '@/components/settings/CareersPageTab'
 import { JobBoardsTab } from '@/pages/settings/JobBoardsTab'
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar'
@@ -41,6 +40,8 @@ const LEGACY_TAB_MAP: Record<string, string> = {
   'platform-settings': 'platform-customers',
   // The platform dashboard was removed (Allan, 2026-10-19).
   'platform-dashboard': 'platform-customers',
+  // Settings › Automations held only the confirmation email, now on Careers page (2026-10-19).
+  automations: 'careers-page',
 }
 
 // Brand-new tabs that don't have content yet — render a small placeholder card.
@@ -132,8 +133,6 @@ export default function Settings() {
         return <ApplicationFieldsManager context="organization" />
       case 'templates':
         return <OfferTemplatesManager context="organization" />
-      case 'automations':
-        return <AutomationsTab />
       case 'careers-page':
         return <CareersPageTab />
       case 'job-boards':

@@ -1,7 +1,7 @@
 import {
   Zap, User, Mail, Clock, Bell,
   Building2, Users, Folder, Plug, CreditCard,
-  GitBranch, ListChecks, FileText, Workflow, Globe, Megaphone, Sparkles,
+  GitBranch, ListChecks, FileText, Globe, Megaphone, Sparkles,
   Handshake, Building, Package, ShieldCheck,
 } from 'lucide-react'
 
@@ -90,7 +90,6 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
         { id: 'templates', label: 'Templates', icon: FileText, show: true },
         { id: 'reference-templates', label: 'Reference templates', icon: ShieldCheck, show: true },
 
-        { id: 'automations', label: 'Automations', icon: Workflow, show: true },
         { id: 'careers-page', label: 'Careers page', icon: Globe, show: true },
         { id: 'job-boards', label: 'Job boards', icon: Megaphone, show: true },
       ],

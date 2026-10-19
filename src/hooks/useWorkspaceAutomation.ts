@@ -91,7 +91,8 @@ export function useWorkspaceAutomation(automationType: string) {
       queryClient.invalidateQueries({ queryKey })
     },
     onError: (error: Error) => {
-      toast.error(`Failed to save automation: ${error.message}`)
+      console.error('Workspace automation save failed', error)
+      toast.error('Couldn’t save that change. Try again.')
     },
   })
 

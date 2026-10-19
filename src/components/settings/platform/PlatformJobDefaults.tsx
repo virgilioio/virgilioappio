@@ -7,7 +7,6 @@ import { SpecChip, type SpecChipTone } from '../shared/SpecChip'
 import { OfferTemplatesManager } from '../OfferTemplatesManager'
 import { useJobStages, type JobStage, type StageType } from '@/hooks/useJobStages'
 import { useApplicationFields, type ApplicationFieldWithRelations } from '@/hooks/useApplicationFields'
-import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
 import { JobStageForm } from '../JobStageForm'
 import { ApplicationFieldForm } from '../ApplicationFieldForm'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -17,7 +16,7 @@ import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { IconTip } from '@/components/ui/tooltip'
 import { confirmDeleteStage } from '../confirmDeleteStage'
 
-type TopTab = 'stages' | 'fields' | 'templates' | 'automations'
+type TopTab = 'stages' | 'fields' | 'templates'
 
 // ─── Main pill row ───
 function MainPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -229,165 +228,6 @@ function FieldsTab() {
   )
 }
 
-// ─── Automations ───
-const PLACEHOLDER_RE = /(\{\{[^}]+\}\})/g
-
-function PlaceholderText({ text }: { text: string }) {
-  const parts = text.split(PLACEHOLDER_RE)
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (PLACEHOLDER_RE.test(part)) {
-          PLACEHOLDER_RE.lastIndex = 0
-          return (
-            <span
-              key={i}
-              style={{
-                display: 'inline-block',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: 10.5,
-                background: '#EDE4FF',
-                color: '#5B21B6',
-                borderRadius: 999,
-                padding: '1px 8px',
-                margin: '0 2px',
-                lineHeight: 1.4,
-                verticalAlign: 'baseline',
-              }}
-            >
-              {part}
-            </span>
-          )
-        }
-        return <span key={i}>{part}</span>
-      })}
-    </>
-  )
-}
-
-const DEFAULT_SUBJECT = 'Thank you for applying to {{job.title}} at {{organization.name}}'
-const DEFAULT_BODY = `Hi {{candidate.first_name}},
-
-Thank you for applying to the {{job.title}} position at {{organization.name}}. We've received your application and our team will review it shortly.
-
-We'll be in touch if your qualifications match our requirements.
-
-Best regards,
-The {{organization.name}} Team`
-
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={() => onChange(!on)}
-      style={{
-        width: 32,
-        height: 19,
-        borderRadius: 999,
-        background: on ? '#0d0d09' : '#D2D4DC',
-        position: 'relative',
-        transition: 'background 120ms ease',
-        flexShrink: 0,
-      }}
-    >
-      <span
-        style={{
-          position: 'absolute',
-          top: 2.5,
-          left: on ? 15 : 2.5,
-          width: 14,
-          height: 14,
-          borderRadius: 999,
-          background: '#FFFFFF',
-          transition: 'left 120ms ease',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
-        }}
-      />
-    </button>
-  )
-}
-
-function AutomationsTabContent() {
-  const { automation, isLoading, isSaving, save, toggle } = useWorkspaceAutomation('application_confirmation_email')
-  const [enabled, setEnabled] = useState(false)
-  const [subject, setSubject] = useState(DEFAULT_SUBJECT)
-  const [body, setBody] = useState(DEFAULT_BODY)
-  const [dirty, setDirty] = useState(false)
-
-  useEffect(() => {
-    if (!automation) return
-    setEnabled(!!automation.is_active)
-    if (automation.subject) setSubject(automation.subject)
-    if (automation.body) setBody(automation.body)
-    setDirty(false)
-  }, [automation])
-
-  const handleToggle = async (v: boolean) => {
-    setEnabled(v)
-    try { await toggle(v) } catch { /* hook handles toast */ }
-  }
-  const handleSave = async () => {
-    try { await save({ subject, body }); setDirty(false); toast.success('Saved') } catch { /* */ }
-  }
-
-  return (
-    <SpecCard
-      title="Default application confirmation email"
-      description="The out-of-the-box confirmation new organizations start with. Organizations that customize theirs keep their own version."
-      action={<Toggle on={enabled} onChange={handleToggle} />}
-    >
-      <div style={{ padding: '14px 18px' }} className="space-y-3">
-        {isLoading ? (
-          <div className="flex justify-center" style={{ padding: 12 }}><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
-        ) : (
-          <>
-            <div className="space-y-1.5">
-              <label className="block font-inter" style={{ fontSize: 11.5, fontWeight: 600, color: '#1F2230' }}>Subject</label>
-              <div style={{ border: '1.5px solid #E7E8EE', borderRadius: 9, padding: '8px 10px', minHeight: 36, background: '#FFFFFF', fontSize: 12.5, fontFamily: 'Inter, sans-serif', color: '#1F2230', lineHeight: 1.5 }}>
-                <PlaceholderText text={subject} />
-              </div>
-              <input
-                type="text"
-                value={subject}
-                onChange={(e) => { setSubject(e.target.value); setDirty(true) }}
-                className="w-full font-inter outline-none focus:ring-2 focus:ring-virgilio-purple/30"
-                style={{ marginTop: 4, padding: '6px 10px', border: '1px solid #E7E8EE', borderRadius: 8, fontSize: 12, color: '#5A6072', background: '#FAFAF7' }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="block font-inter" style={{ fontSize: 11.5, fontWeight: 600, color: '#1F2230' }}>Body</label>
-              <div style={{ border: '1.5px solid #E7E8EE', borderRadius: 9, padding: '10px 12px', minHeight: 120, background: '#FFFFFF', fontSize: 12.5, fontFamily: 'Inter, sans-serif', color: '#1F2230', whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>
-                <PlaceholderText text={body} />
-              </div>
-              <textarea
-                value={body}
-                onChange={(e) => { setBody(e.target.value); setDirty(true) }}
-                rows={6}
-                className="w-full font-inter outline-none focus:ring-2 focus:ring-virgilio-purple/30"
-                style={{ marginTop: 4, padding: '8px 10px', border: '1px solid #E7E8EE', borderRadius: 8, fontSize: 12, color: '#5A6072', background: '#FAFAF7', resize: 'vertical' }}
-              />
-            </div>
-          </>
-        )}
-      </div>
-      <div className="flex justify-end" style={{ borderTop: '1px solid #F1F0EC', padding: '12px 18px' }}>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={!dirty || isSaving}
-          className={NOIR_BTN}
-          style={{ height: 30, padding: '0 12px', fontSize: 11.5, fontWeight: 600 }}
-        >
-          {isSaving && <Loader2 className="w-3 h-3 animate-spin" />} Save changes
-        </button>
-      </div>
-    </SpecCard>
-  )
-}
-
-// ─── Page ───
 export function PlatformJobDefaults() {
   const [tab, setTab] = useState<TopTab>('stages')
   return (
@@ -396,13 +236,11 @@ export function PlatformJobDefaults() {
         <MainPill active={tab === 'stages'} onClick={() => setTab('stages')}>Stages</MainPill>
         <MainPill active={tab === 'fields'} onClick={() => setTab('fields')}>Application fields</MainPill>
         <MainPill active={tab === 'templates'} onClick={() => setTab('templates')}>Templates</MainPill>
-        <MainPill active={tab === 'automations'} onClick={() => setTab('automations')}>Automations</MainPill>
       </div>
 
       {tab === 'stages' && <StagesTab />}
       {tab === 'fields' && <FieldsTab />}
       {tab === 'templates' && <OfferTemplatesManager context="platform-defaults" />}
-      {tab === 'automations' && <AutomationsTabContent />}
     </div>
   )
 }
