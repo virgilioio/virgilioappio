@@ -1,13 +1,9 @@
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Plus, Pencil, Trash2, Settings as SettingsIcon, Loader2, FilePlus2 } from 'lucide-react'
-import { useOfferTemplates } from '@/hooks/useOfferTemplates'
+import { Plus, Pencil, Trash2, Loader2, FilePlus2 } from 'lucide-react'
 import { useEmailTemplates } from '@/hooks/useEmailTemplates'
 import { useContractTemplates } from '@/hooks/useContractTemplates'
-import { OfferLetterSheet } from './templates/OfferLetterSheet'
 import { EmailTemplateSheet } from './templates/EmailTemplateSheet'
 import { ContractTemplateSheet } from './templates/ContractTemplateSheet'
-import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { RejectionReasonsManager } from './RejectionReasonsManager'
 import { RejectionEmailTemplatesManager } from './RejectionEmailTemplatesManager'
 import { OfferFormsManager } from './OfferFormsManager'
@@ -15,14 +11,13 @@ import { CandidateSourcesManager } from './CandidateSourcesManager'
 import { SpecCard } from './shared/SpecCard'
 import { SpecRow, SpecEmpty, NOIR_BTN } from './shared/SpecRow'
 import { SpecChip } from './shared/SpecChip'
-import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { IconTip } from '@/components/ui/tooltip'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 /** How many rows point at a template (null if the check failed). */
-async function countUses(table: 'offer_letters' | 'stage_automation_emails', column: string, id: string) {
+async function countUses(table: 'stage_automation_emails', column: string, id: string) {
   const { count, error } = await (supabase.from(table) as any).select('id', { count: 'exact', head: true }).eq(column, id)
   return error ? null : (count ?? 0)
 }
@@ -45,11 +40,10 @@ interface OfferTemplatesManagerProps {
   context?: 'platform-defaults' | 'organization'
 }
 
-type TabKey = 'offer-forms' | 'offer-letters' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates' | 'candidate-sources'
+type TabKey = 'offer-forms' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates' | 'candidate-sources'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'offer-forms', label: 'Offer forms' },
-  { key: 'offer-letters', label: 'Offer letters' },
   { key: 'email-templates', label: 'Email templates' },
   { key: 'contract-templates', label: 'Contracts' },
   { key: 'rejection-reasons', label: 'Rejection reasons' },
@@ -91,7 +85,6 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
         })}
       </div>
 
-      {tab === 'offer-letters' && <OfferLettersSection context={context} />}
       {tab === 'email-templates' && <EmailTemplatesSection context={context} />}
       {tab === 'contract-templates' && <ContractTemplatesSection context={context} />}
       {tab === 'offer-forms' && <div className="[&_.bg-white]:!shadow-none"><OfferFormsManager context={context} /></div>}
@@ -99,108 +92,6 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
       {tab === 'rejection-templates' && <div className="[&_.bg-white]:!shadow-none"><RejectionEmailTemplatesManager context={context} /></div>}
       {tab === 'candidate-sources' && <div className="[&_.bg-white]:!shadow-none"><CandidateSourcesManager context={context} /></div>}
     </div>
-  )
-}
-
-// ─── Offer Letters ───
-function OfferLettersSection({ context }: { context: 'platform-defaults' | 'organization' }) {
-  const { templates, isLoading, deleteTemplate, copyPlatformTemplate } = useOfferTemplates(context)
-  const [sheet, setSheet] = useState<{ open: boolean; id?: string }>({ open: false })
-  const [fieldsId, setFieldsId] = useState<string | null>(null)
-
-  // S11 (Block B §16): offer letters made from a template are deleted with it
-  // in the database, so a template in use is blocked; otherwise type the name.
-  const handleDelete = async (t: { id: string; name: string }) => {
-    const usedBy = await countUses('offer_letters', 'template_id', t.id)
-    if (usedBy === null) {
-      toast({ title: `Couldn\u2019t check whether offer letters use ${t.name}`, description: 'Nothing was deleted; try again.', variant: 'destructive' })
-      return
-    }
-    if (usedBy > 0) {
-      await confirmDestructive({
-        variant: 'blocked',
-        title: `${t.name} is in use`,
-        description: `${plural(usedBy, 'offer letter')} ${usedBy === 1 ? 'was' : 'were'} made from this template. Deleting it would delete ${usedBy === 1 ? 'that offer letter' : 'those offer letters'} too, so it stays.`,
-        confirmLabel: '',
-      })
-      return
-    }
-    await confirmDestructive({
-      title: `Delete ${t.name}?`,
-      description: `No offer letter uses it. Its template fields are deleted with it. ${libraryLine(context)} This can\u2019t be undone.`.replace('  ', ' '),
-      confirmLabel: 'Delete template',
-      typeToConfirm: t.name,
-      onConfirm: async () => {
-        try {
-          await deleteTemplate(t.id, { quiet: true })
-        } catch {
-          throw new Error(`Couldn\u2019t delete ${t.name}. Nothing was removed; try again.`)
-        }
-      },
-    })
-  }
-
-  const platformItems = (templates || []).filter(t => t.source === 'platform')
-  const tenantItems = (templates || []).filter(t => t.source === 'tenant')
-  const list = context === 'organization' ? tenantItems : templates || []
-
-  return (
-    <>
-      {context === 'organization' && platformItems.length > 0 && (
-        <SpecCard title="Platform offer letters" description="Defaults provided by Gio. Copy to your library to customize.">
-          {platformItems.map((t, i) => (
-            <SpecRow key={t.id} last={i === platformItems.length - 1}>
-              <div className="flex-1 min-w-0">
-                <div className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 600 }}>{t.name}</div>
-                <div className="font-inter text-[#8B8F9E] truncate" style={{ fontSize: 11 }}>
-                  {t.description || `Added ${new Date(t.created_at).toLocaleDateString()}`}
-                </div>
-              </div>
-              <SpecChip tone="gray">Platform</SpecChip>
-              <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => copyPlatformTemplate(t.id)} aria-label="Copy">
-                <Plus size={13} />
-              </button>
-            </SpecRow>
-          ))}
-        </SpecCard>
-      )}
-
-      <SpecCard
-        title="Offer letters"
-        description="Manage offer letters for your organization."
-        action={<button type="button" className={NOIR_BTN} style={{ height: 30, padding: '0 12px', fontSize: 12 }} onClick={() => setSheet({ open: true })}><Plus size={13} /> Create</button>}
-      >
-        {isLoading ? (
-          <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
-        ) : list.length === 0 ? (
-          <SpecEmpty icon={FilePlus2} title="No offer letters yet" body="Create your first to get started." />
-        ) : (
-          list.map((t, i) => (
-            <SpecRow key={t.id} last={i === list.length - 1}>
-              <div className="flex-1 min-w-0">
-                <div className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 600 }}>{t.name}</div>
-                <div className="font-inter text-[#8B8F9E] truncate" style={{ fontSize: 11 }}>
-                  {t.description || `Updated ${new Date(t.created_at).toLocaleDateString()}`}
-                </div>
-              </div>
-              <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => setFieldsId(t.id)} aria-label="Fields"><SettingsIcon size={13} /></button>
-              <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => setSheet({ open: true, id: t.id })} aria-label="Edit"><Pencil size={13} /></button>
-              <DeleteIcon label={`Delete ${t.name}`} onClick={() => void handleDelete({ id: t.id, name: t.name })} />
-            </SpecRow>
-          ))
-        )}
-      </SpecCard>
-
-      <OfferLetterSheet open={sheet.open} onOpenChange={(o) => setSheet({ open: o, id: undefined })} templateId={sheet.id} context={context} onFieldsClick={(id) => setFieldsId(id)} />
-
-      <Dialog open={!!fieldsId} onOpenChange={() => setFieldsId(null)}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Manage template fields</DialogTitle></DialogHeader>
-          {fieldsId && <OfferTemplateFieldsManager templateId={fieldsId} />}
-        </DialogContent>
-      </Dialog>
-
-    </>
   )
 }
 

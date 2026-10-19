@@ -52,6 +52,7 @@ Hard limits:
   - once the whole chain is done (request approved, no step pending or declined; skipped steps count), the requester gets one bell (`approval_complete`, with the approval sound) and one email, "The offer for X is approved", in the Gio ATS design. Nothing if they made the last approval themselves;
   - `offer_approval_announce` fires from triggers on requests and steps, so the order the browser writes them in doesn't matter; the email waits in `offer_approval_outcomes` and goes out through `offer-approval-notify` (v15).
 - **The approved offer on the profile** (`CandidateOfferDetails`): the green "This offer has been approved" box is now `OfferApproved` (who approved, when, "Nothing has gone to the candidate yet"). Send for signature lives only in the dark stage banner (Allan). "Generate Offer Letter" (`GenerateOfferDialog`, `offerLetterUtils`), the old "Send Offer" email and the "Offer document generated" box are gone; PDFs made with the old generator stay in the candidate's files. The route is create offer → request approval (if any) → Send for signature → choose a template.
+- **The old offer letter templates are gone from Settings** (Allan: "all that is legacy"): the Offer letters tab under Settings › Templates (and the job and platform defaults) and its editor. Offer forms, Email templates, Contracts, Rejection reasons, Rejection templates and Candidate sources stay. The saved templates stay in the database.
 - **Stage banners wrap on phones** (`StatusBanner`: offer, hired, rejected). One row from lg up; below that the buttons move to their own row and wrap as whole buttons.
 - **Waiting on Allan:** a real test of the approval emails end to end (send an offer for approval to a teammate: their email, bell and Remind; then your "approved" bell, sound and email once they approve).
 
@@ -125,7 +126,7 @@ Hard limits:
 - **Phase 4.**
   - Void & resend for out-of-date offers (parked by Allan, 2026-10-18). This needs `'offer_changed'` added to the `sign_events_kind_check` constraint, which takes a `drop`, so it is a desktop-applied migration.
   - Polish "Other agreement".
-  - Retire the old offer letter generator. The profile side is done (2026-10-19: no Generate Offer Letter, no "Send Offer" email). Still there: the legacy offer letter templates screens in Settings (`OfferTemplatesManager`, `OfferLetterSheet`, `OfferTemplateFieldsManager`, `PlaceholderHelper`; mounted from `Settings.tsx`, `JobSettingsManager`, `PlatformJobDefaults`, `PlatformOfferTemplatesManager`). Nothing uses those templates any more; ask Allan before removing the screens (their table and rows stay).
+  - Retire the old offer letter generator. Done 2026-10-19: no Generate Offer Letter on the profile, and Settings › Templates has no Offer letters tab (removed `OfferLetterSheet`, `OfferTemplateFieldsManager`, `useOfferTemplates`, `useOfferTemplateFields`, `PlatformOfferTemplatesManager`; `PlaceholderHelper` lost its legacy-template path). The old template rows stay in the database, unused.
   - Wrap long text on uploaded PDFs in `_shared/sign/stamp.ts`.
 - Allan's choice: build with the existing ATS design; he'll say if he wants changes.
 - Fixed 2026-10-17: renaming an offer form field's label no longer renames its stored name (`OfferFormFieldsManager.handleUpdateField`).

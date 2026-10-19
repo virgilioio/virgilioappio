@@ -5,33 +5,26 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CornerDownLeft, Code, User, Building, Briefcase, CalendarClock, FileText, type LucideIcon } from 'lucide-react'
-import { useOfferTemplateFields } from '@/hooks/useOfferTemplateFields'
 import { useOfferForms } from '@/hooks/useOfferForms'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
 import { useToast } from '@/hooks/use-toast'
 
 interface PlaceholderHelperProps {
-  templateId?: string
   onInsert?: (placeholder: string) => void
-  /** When provided, show offer form field placeholders instead of legacy template fields */
+  /** When provided, show these offer form fields' placeholders */
   offerFormFields?: OfferFormField[]
   /** Show an offer form selector to pick which form's fields to display */
   showFormSelector?: boolean
 }
 
-export function PlaceholderHelper({ templateId, onInsert, offerFormFields, showFormSelector }: PlaceholderHelperProps) {
-  const { fields: legacyFields } = useOfferTemplateFields(templateId)
+export function PlaceholderHelper({ onInsert, offerFormFields, showFormSelector }: PlaceholderHelperProps) {
   const { forms } = useOfferForms()
   const [selectedFormId, setSelectedFormId] = useState<string>('')
   const { fields: selectedFormFields } = useOfferFormFields(selectedFormId || undefined)
   const { toast } = useToast()
 
-  // Determine which dynamic fields to show:
-  // 1. Explicit offerFormFields prop (highest priority)
-  // 2. Fields from selected form via selector
-  // 3. Legacy template fields (fallback)
+  // Which offer form fields to show: the ones passed in, else the selected form's.
   const dynamicFields = offerFormFields || (selectedFormId ? selectedFormFields : [])
-  const useLegacyFields = !offerFormFields && !selectedFormId
 
   // Static placeholders for job and organization data
   const jobPlaceholders = [
@@ -86,15 +79,7 @@ export function PlaceholderHelper({ templateId, onInsert, offerFormFields, showF
       description: `${field.field_label}${field.field_type === 'salary' ? ' (formatted salary)' : field.field_type === 'location' ? ' (formatted location)' : field.field_type === 'recruiter' ? ' (recruiter name)' : field.field_type === 'employment_type' ? ' (employment type label)' : field.field_type === 'work_location' ? ' (work location label)' : ''}`
     }))
 
-  // Legacy template field placeholders (fallback)
-  const legacyPlaceholders = useLegacyFields
-    ? legacyFields.map(field => ({
-        key: `{{field.${field.field_name}}}`,
-        description: field.field_label
-      }))
-    : []
-
-  const dynamicPlaceholders = formFieldPlaceholders.length > 0 ? formFieldPlaceholders : legacyPlaceholders
+  const dynamicPlaceholders = formFieldPlaceholders
 
   const handleAction = async (text: string) => {
     if (onInsert) {
@@ -237,7 +222,7 @@ export function PlaceholderHelper({ templateId, onInsert, offerFormFields, showF
               />
             )}
 
-            {dynamicPlaceholders.length === 0 && (showFormSelector || templateId) && (
+            {dynamicPlaceholders.length === 0 && showFormSelector && (
               <div className="text-center py-6">
                 <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">
