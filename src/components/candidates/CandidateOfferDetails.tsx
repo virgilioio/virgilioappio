@@ -1,5 +1,5 @@
 import { formatOfferValue } from '@/lib/offerValues'
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
@@ -9,12 +9,12 @@ import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
-import { Loader2, Send, Pencil, Undo2, Check, X, FileText, DollarSign, MapPin, Calendar, Briefcase, User, BadgeCheck, Building2 } from 'lucide-react'
+import { Send, Pencil, Undo2, Check, X, FileText, DollarSign, MapPin, Calendar, Briefcase, User, BadgeCheck, Building2, PenLine, Lock } from 'lucide-react'
 import { InlineEmpty } from '@/components/ui/empty-state'
-import { GenerateOfferDialog } from './GenerateOfferDialog'
-import { MinimizableEmailComposer } from './MinimizableEmailComposer'
-import { supabase } from '@/lib/supabaseClient'
-import { logActivity } from '@/lib/activityLogger'
+import { IconTip } from '@/components/ui/tooltip'
+import { useOfferApprovalSummary } from '@/hooks/useOfferApprovalSummary'
+import { offerSendRefusal } from '@/lib/sign/send'
+import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
 
@@ -46,6 +46,8 @@ interface CandidateOfferDetailsProps {
   organization?: any
   onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any>; opening_id?: string | null }) => void
   associationStatus?: string | null
+  /** Opens the Send for signature sheet for this offer (Gio Sign); only while the candidate is at the offer stage. */
+  onSendForSignature?: () => void
 }
 
 function getStatusTone(status: string): BadgeTone {
@@ -68,7 +70,7 @@ function getStatusLabel(status: string) {
 }
 
 
-export function CandidateOfferDetails({ candidateId, jobId, organizationId, candidate, job, organization, onEdit, associationStatus }: CandidateOfferDetailsProps) {
+export function CandidateOfferDetails({ candidateId, jobId, organizationId, job, onEdit, associationStatus, onSendForSignature }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
   const { openings } = useJobOpenings(jobId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId || null)
@@ -83,31 +85,8 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
   const [declineComment, setDeclineComment] = useState('')
   const [showApproveForm, setShowApproveForm] = useState(false)
   const [showDeclineForm, setShowDeclineForm] = useState(false)
-  const [showGenerateDialog, setShowGenerateDialog] = useState(false)
-  const [offerDocument, setOfferDocument] = useState<{ id: string; file_name: string; file_path: string } | null>(null)
-  const [showEmailComposer, setShowEmailComposer] = useState(false)
-
-  const checkOfferDocument = useCallback(async () => {
-    if (!candidateId) return
-    const { data } = await supabase
-      .from('candidate_attachments')
-      .select('id, file_name, file_url')
-      .eq('candidate_id', candidateId)
-      .ilike('file_name', 'Offer Letter%')
-      .limit(1)
-    if (data && data.length > 0) {
-      setOfferDocument({ id: data[0].id, file_name: data[0].file_name, file_path: data[0].file_url })
-    } else {
-      setOfferDocument(null)
-    }
-  }, [candidateId])
-
-  useEffect(() => {
-    checkOfferDocument()
-    const handler = () => checkOfferDocument()
-    window.addEventListener('refetch-attachments', handler)
-    return () => window.removeEventListener('refetch-attachments', handler)
-  }, [checkOfferDocument])
+  // The database's send rule (offer_can_send): approved and not already out.
+  const summary = useOfferApprovalSummary(candidateId, jobId)
 
   if (isLoading) {
     return (
@@ -193,24 +172,6 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                 </Button>
               </>
             )}
-            {offerLetter.status === 'approved' && approvalRequest?.status === 'approved' && (
-              <Button
-                variant="primary"
-                icon={FileText}
-                onClick={() => setShowGenerateDialog(true)}
-              >
-                Generate Offer Letter
-              </Button>
-            )}
-            {offerLetter.status === 'approved' && !!offerDocument && (
-              <Button
-                variant="primary"
-                icon={Send}
-                onClick={() => setShowEmailComposer(true)}
-              >
-                Send Offer
-              </Button>
-            )}
             {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest && (
               <Button
                 variant="purple"
@@ -256,31 +217,14 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
 
       <CardContent className="space-y-4">
         {/* Status banners */}
-        {approvalRequest?.status === 'approved' && (
-          <Alert variant="success">
-            <Check className="h-4 w-4" />
-            <span className="text-body-sm font-medium pl-7 block">This offer has been approved</span>
-          </Alert>
-        )}
-        {offerDocument && (
-          <Alert
-            variant="info"
-            role="button"
-            tabIndex={0}
-            onClick={async () => {
-              const { data } = await supabase.storage
-                .from('candidate-attachments')
-                .createSignedUrl(offerDocument.file_path, 300)
-              if (data?.signedUrl) window.open(data.signedUrl, '_blank')
-            }}
-            className="cursor-pointer hover:bg-info/30 transition-colors"
-          >
-            <FileText className="h-4 w-4" />
-            <div className="pl-7">
-              <span className="text-body-sm font-medium block">Offer document generated</span>
-              <p className="text-body-sm text-text-secondary">{offerDocument.file_name}</p>
-            </div>
-          </Alert>
+        {approvalRequest?.status === 'approved' && offerLetter.status === 'approved' && (
+          <OfferApproved
+            approvers={approvalRequest.steps.filter(s => s.status === 'approved').map(s => s.approver_name)}
+            decidedAt={approvalRequest.steps.map(s => s.decided_at).filter(Boolean).sort().pop() ?? null}
+            canSend={summary.canSend}
+            refusal={summary.canSend ? null : offerSendRefusal(summary.gate?.reason)}
+            onSend={onSendForSignature}
+          />
         )}
         {approvalRequest?.status === 'declined' && offerLetter.status === 'draft' && (
           <Alert variant="destructive">
@@ -440,63 +384,65 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
             </div>
           )
         })()}
-
-
-
       </CardContent>
-
-      {offerLetter && candidate && (
-        <GenerateOfferDialog
-          open={showGenerateDialog}
-          onOpenChange={setShowGenerateDialog}
-          offerLetterData={{
-            candidate,
-            job: job || {},
-            organization: organization || {},
-            fieldValues: fieldValues,
-            fieldTypes: Object.fromEntries(fields.map(f => [f.field_name, f.field_type])),
-            recruiterLookup: Object.fromEntries(recruiterOptions.map(r => [r.value, r.label])),
-          }}
-          offerLetterId={offerLetter.id}
-          candidateId={candidateId}
-          candidateName={candidate.candidate_name || 'Candidate'}
-          onSuccess={() => {
-            window.dispatchEvent(new CustomEvent('refetch-attachments'))
-            logActivity({
-              activityType: 'offer_document_generated',
-              title: 'Offer document generated',
-              description: `Offer letter document generated for ${candidate?.candidate_name || 'candidate'}`,
-              entityType: 'candidate',
-              entityId: candidateId,
-              organizationId: organizationId || undefined,
-              metadata: { jobId, offerLetterId: offerLetter.id },
-            })
-          }}
-        />
-      )}
     </Card>
-
-    <MinimizableEmailComposer
-      isOpen={showEmailComposer}
-      onOpenChange={setShowEmailComposer}
-      candidateId={candidateId}
-      jobId={jobId}
-      defaultTo={candidate?.email || candidate?.contact_email || ''}
-      candidateName={candidate?.candidate_name || 'Candidate'}
-      defaultSubject={`Offer Letter - ${job?.title || 'Position'}`}
-      onSuccess={() => {
-        setShowEmailComposer(false)
-        logActivity({
-          activityType: 'offer_sent',
-          title: 'Offer sent',
-          description: `Offer letter sent to ${candidate?.candidate_name || 'candidate'}`,
-          entityType: 'candidate',
-          entityId: candidateId,
-          organizationId: organizationId || undefined,
-          metadata: { jobId, offerLetterId: offerLetter?.id },
-        })
-      }}
-    />
     </>
+  )
+}
+
+/** "Ana", "Ana and Ben", "Ana, Ben and Cy". */
+function joinNames(names: string[]) {
+  if (names.length <= 1) return names[0] ?? ''
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/**
+ * The approved offer (2026-10-19, replacing the green "This offer has been
+ * approved" box and the old Generate Offer Letter flow): who approved it,
+ * when, and the one next step, Send for signature (Gio Sign). Nothing has
+ * gone to the candidate yet.
+ */
+function OfferApproved({
+  approvers,
+  decidedAt,
+  canSend,
+  refusal,
+  onSend,
+}: {
+  approvers: string[]
+  decidedAt: string | null
+  canSend: boolean
+  refusal: string | null
+  onSend?: () => void
+}) {
+  const who = approvers.length > 0 ? `Approved by ${joinNames(approvers)}` : 'Approved'
+  const when = decidedAt ? format(new Date(decidedAt), 'MMM d') : null
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-3 rounded-[12px] border border-[#E7E8EE] bg-[#FAFAF7] px-4 py-3">
+      <span aria-hidden className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E3F5EC] text-[#12805C]">
+        <Check className="h-4 w-4" strokeWidth={2.4} />
+      </span>
+      <div className="min-w-0 flex-1 basis-[220px]">
+        <p className="font-poppins text-[13.5px] font-semibold leading-snug text-[#0d0d09]">{who}</p>
+        <p className="mt-0.5 font-inter text-[12px] leading-[1.45] text-[#6B7080]">
+          {when ? `${when} · ` : ''}Nothing has gone to the candidate yet. Send it for signature when you’re ready.
+        </p>
+      </div>
+      {onSend && (
+        canSend ? (
+          <Button variant="primary" icon={PenLine} onClick={onSend} className="max-sm:w-full">
+            Send for signature
+          </Button>
+        ) : (
+          <IconTip label={refusal || 'This offer can’t be sent right now.'}>
+            <span className="max-sm:w-full" tabIndex={0}>
+              <Button variant="primary" icon={Lock} disabled className="max-sm:w-full">
+                Send for signature
+              </Button>
+            </span>
+          </IconTip>
+        )
+      )}
+    </div>
   )
 }

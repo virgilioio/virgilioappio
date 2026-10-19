@@ -253,9 +253,9 @@ export function OfferBannerSmart({
     return (
       <StatusBanner
         tone="offer"
-        icon={Hourglass}
+        icon={noApprovalChain ? Hourglass : CheckCircle2}
         eyebrow={noApprovalChain ? 'Offer · ready' : 'Offer · approved'}
-        meta={noApprovalChain ? 'No approval needed on this job' : `All ${totalSteps} approvals in`}
+        meta={noApprovalChain ? 'No approval needed on this job' : totalSteps === 1 ? 'Approved' : `All ${totalSteps} approvals in`}
         title="Offer is ready — send it for signature"
         sub={compSub}
         actions={
