@@ -69,6 +69,13 @@ const tones: Record<StatusBannerTone, {
   },
 };
 
+/**
+ * The stage banner on a candidate's profile (offer, hired, rejected). From
+ * lg up it's one row: icon, text, actions. Below that (2026-10-19) the icon
+ * and text share the first row, the title may wrap, and the actions move to
+ * a row of their own underneath, wrapping as whole buttons and filling the
+ * width, so nothing is cut off on a phone.
+ */
 export function StatusBanner({
   tone,
   icon: Icon,
@@ -82,9 +89,9 @@ export function StatusBanner({
   const t = tones[tone];
   return (
     <div
-      style={{ borderRadius: 14, padding: '14px 20px', ...t.containerStyle }}
+      style={{ borderRadius: 14, ...t.containerStyle }}
       className={cn(
-        'flex items-center gap-4 w-full',
+        'grid w-full grid-cols-[40px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-3.5 sm:gap-x-4 sm:px-5 lg:flex lg:gap-4',
         t.container,
         t.shadow,
         t.border,
@@ -98,7 +105,7 @@ export function StatusBanner({
         <Icon className={cn('h-[18px] w-[18px]', t.iconColor)} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="flex items-center gap-1.5 leading-none">
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 leading-none">
           <span
             className={cn(
               'font-inter font-semibold uppercase',
@@ -124,7 +131,7 @@ export function StatusBanner({
           )}
         </p>
         <p
-          className={cn('font-poppins font-semibold mt-1.5 truncate', t.titleColor)}
+          className={cn('font-poppins font-semibold mt-1.5 lg:truncate', t.titleColor)}
           style={{ fontSize: 16, letterSpacing: '-0.02em', lineHeight: 1.25 }}
         >
           {title}
@@ -140,7 +147,7 @@ export function StatusBanner({
         )}
       </div>
       {actions && (
-        <div className="flex items-center gap-2 shrink-0">{actions}</div>
+        <div className="col-span-2 flex flex-wrap items-center gap-2 [&>*]:flex-1 lg:shrink-0 lg:flex-nowrap lg:[&>*]:flex-none">{actions}</div>
       )}
     </div>
   );
