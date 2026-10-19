@@ -371,3 +371,6 @@ verify_jwt = false
 
 [functions.offer-approval-notify]
 verify_jwt = false
+
+[functions.job-daily-digest]
+verify_jwt = false
