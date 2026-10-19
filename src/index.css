@@ -2115,6 +2115,14 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 .gio-slash-preview { width: 190px; padding: 8px; border-radius: 10px; background: #0d0d09; box-shadow: 0 10px 28px rgba(13, 13, 9, .22); }
 .gio-slash-preview-page { min-height: 64px; padding: 10px 12px; border-radius: 6px; background: #fff; font-family: Inter, sans-serif; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .gio-slash-docs { animation-name: gio-fade-only; } }
+/* Candidate comments (2026-10-19): a tagged "@Name" is tinted in the comment box
+   (a layer over the field, text transparent) and becomes a chip once posted. */
+.gio-mention-tint { border-radius: 4px; background: rgba(111, 63, 245, .14); box-shadow: 0 0 0 1px rgba(111, 63, 245, .14); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.gio-mention {
+  display: inline; padding: 1px 5px; border-radius: 5px; background: #EDE4FF; color: #5B2FD6;
+  font-weight: 500; white-space: nowrap; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.gio-mention[data-me] { background: #6F3FF5; color: #fff; }
 
 /* Gio Sign › template fields editor. Fields sit on the page in % of its size.
    A new field grows in (scale .9 + opacity, --dur-press); a dragged one lifts

@@ -1,165 +1,137 @@
-
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 
+/**
+ * A candidate's comments (2026-10-19): one shared query per candidate, so the
+ * Comments card in the sidebar and its phone copy show the same list. The
+ * database decides who reads what (shared with everyone who can see the
+ * candidate, or private to the author) and notifies the people tagged.
+ */
 export interface CandidateComment {
   id: string
   candidate_id: string
-  job_id: string
-  organization_id: string
+  job_id: string | null
+  organization_id: string | null
   author_id: string
   author_email: string
   content: string
+  is_private: boolean
   created_at: string
   updated_at: string
+  job: { id: string; title: string | null } | null
 }
 
 export interface CreateCommentData {
   candidate_id: string
-  job_id: string
-  organization_id: string
+  /** Null on the standalone profile: the comment belongs to the person, not a job. */
+  job_id: string | null
+  /** Filled by the database from the job or the author's workspace when null. */
+  organization_id?: string | null
   content: string
+  is_private: boolean
 }
 
-export function useCandidateComments(candidateId?: string) {
-  const [comments, setComments] = useState<CandidateComment[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export interface CommentPerson {
+  user_id: string
+  name: string
+  email: string
+  avatar_url: string | null
+}
+
+export const commentsKey = (candidateId: string | null | undefined) => ['candidate-comments', candidateId] as const
+
+export function useCandidateComments(candidateId?: string | null) {
   const { user } = useAuth()
+  const qc = useQueryClient()
+  const key = commentsKey(candidateId)
 
-  const getComments = async (targetCandidateId?: string) => {
-    const queryCandidate = targetCandidateId || candidateId
-    if (!user || !queryCandidate) return
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      console.log('Fetching comments for candidate:', queryCandidate)
-      const { data, error: fetchError } = await supabase
+  const query = useQuery({
+    queryKey: key,
+    enabled: !!user && !!candidateId,
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from('candidate_comments')
-        .select('id, candidate_id, job_id, organization_id, author_id, author_email, content, created_at, updated_at')
-        .eq('candidate_id', queryCandidate)
+        .select('id, candidate_id, job_id, organization_id, author_id, author_email, content, is_private, created_at, updated_at, job:jobs(id, title)')
+        .eq('candidate_id', candidateId!)
         .order('created_at', { ascending: false })
         .limit(200)
+      if (error) throw error
+      return (data ?? []) as unknown as CandidateComment[]
+    },
+  })
 
-      if (fetchError) {
-        console.error('Error fetching comments:', fetchError)
-        throw fetchError
-      }
-
-      console.log('Fetched comments:', data)
-      setComments((data || []).reverse())
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch comments'
-      console.error('Comments fetch error:', err)
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const addComment = async (data: CreateCommentData) => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      console.log('Adding comment:', data)
-      const commentData = {
-        ...data,
-        author_id: user?.id,
-        author_email: user?.email || 'unknown@example.com'
-      }
-
-      const { data: newComment, error: createError } = await supabase
+  const add = useMutation({
+    mutationFn: async (input: CreateCommentData) => {
+      if (!user) throw new Error('Not signed in')
+      const { data, error } = await supabase
         .from('candidate_comments')
-        .insert([commentData])
-        .select()
+        .insert({
+          candidate_id: input.candidate_id,
+          job_id: input.job_id,
+          organization_id: input.organization_id ?? null,
+          content: input.content,
+          is_private: input.is_private,
+          author_id: user.id,
+          author_email: user.email ?? '',
+        } as never)
+        .select('id')
         .single()
-
-      if (createError) {
-        console.error('Error creating comment:', createError)
-        throw createError
-      }
-
-      console.log('Created comment:', newComment)
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    onError: () => {
+      // Never a raw server error (Block B §16); the draft stays in the box.
       toast({
-        title: 'Success',
-        description: 'Comment added successfully'
+        title: 'Couldn’t post the comment',
+        description: 'Your text is still in the box; try again.',
+        variant: 'destructive',
       })
+    },
+  })
 
-      await getComments(data.candidate_id)
-      return newComment
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to add comment'
-      console.error('Comment creation error:', err)
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const deleteComment = async (commentId: string) => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      console.log('Deleting comment:', commentId)
-      const { error: deleteError } = await supabase
-        .from('candidate_comments')
-        .delete()
-        .eq('id', commentId)
-
-      if (deleteError) {
-        console.error('Error deleting comment:', deleteError)
-        throw deleteError
-      }
-
-      console.log('Deleted comment:', commentId)
+  const remove = useMutation({
+    mutationFn: async (commentId: string) => {
+      const { error } = await supabase.from('candidate_comments').delete().eq('id', commentId)
+      if (error) throw error
+    },
+    onSuccess: () => {
       toast({ title: 'Comment deleted' })
-
-      await getComments()
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete comment'
-      console.error('Comment deletion error:', err)
-      setError(errorMessage)
-      // Never a raw server error (Block B §16).
+      return qc.invalidateQueries({ queryKey: key })
+    },
+    onError: () => {
       toast({
-        title: 'Couldn\u2019t delete the comment',
+        title: 'Couldn’t delete the comment',
         description: 'Nothing was removed; try again.',
-        variant: 'destructive'
+        variant: 'destructive',
       })
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (user && candidateId) {
-      getComments()
-    }
-  }, [user, candidateId])
+    },
+  })
 
   return {
-    comments,
-    isLoading,
-    error,
-    getComments,
-    addComment,
-    deleteComment
+    comments: query.data ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+    addComment: add.mutateAsync,
+    isAdding: add.isPending,
+    deleteComment: remove.mutateAsync,
   }
+}
+
+/** Teammates who can see the candidate (the "@" menu), without you. */
+export function useCommentPeople(candidateId?: string | null) {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: ['comment-people', candidateId],
+    enabled: !!user && !!candidateId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('comment_people', { _candidate_id: candidateId! })
+      if (error) throw error
+      return (data ?? []) as CommentPerson[]
+    },
+  })
 }

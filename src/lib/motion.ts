@@ -228,3 +228,24 @@ export function restoreRows(els: Array<Element | null | undefined>) {
 /** Rows by `data-row-id` (put it on the row element to collapse or restore). */
 export const rowsById = (ids: string[], scope: ParentNode = document) =>
   ids.map((id) => scope.querySelector(`[data-row-id="${CSS.escape(id)}"]`))
+
+/**
+ * A floating menu leaving (§2: faster than it came in): a copy of it shrinks
+ * out where it was (scale .96 + fade, --dur-menu-out) while the real one goes.
+ * Shared by the "/" menu, the selection bar and the comments "@" menu.
+ */
+export function leave(el: HTMLElement) {
+  const rect = el.getBoundingClientRect()
+  const ghost = el.cloneNode(true) as HTMLElement
+  ghost.style.cssText += `;position:fixed;left:${rect.left}px;top:${rect.top}px;bottom:auto;right:auto;margin:0;pointer-events:none;animation:none`
+  ghost.removeAttribute('role')
+  ghost.setAttribute('aria-hidden', 'true')
+  ghost.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'))
+  document.body.appendChild(ghost)
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const a = ghost.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: still ? 'none' : 'scale(.96)' }], {
+    duration: 120,
+    easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+  })
+  a.onfinish = a.oncancel = () => ghost.remove()
+}

@@ -6,7 +6,7 @@ import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon,
   Heart, Briefcase, MapPin, Mail, Phone, DollarSign, Calendar, Sparkles,
-  FileText, File as FileIcon, GraduationCap, Info, MessageSquare, UserPlus,
+  FileText, File as FileIcon, GraduationCap, Info, UserPlus,
   Upload, Globe, Download, Clock, User as UserIcon, Plus, PenLine,
 } from 'lucide-react'
 import { ProfileActionMenu } from '@/components/candidates/profile/ProfileActionMenu'
@@ -43,7 +43,7 @@ import { ResumeTabCard, NoResumeFileSlot } from '@/components/candidates/profile
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useQueryClient } from '@tanstack/react-query'
 
-import { CandidateComments } from '@/components/candidates/CandidateComments'
+import { CommentsCard } from '@/components/candidates/comments/CommentsCard'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
 import { EmailsTabContent } from '@/components/candidates/profile/tabs/EmailsTabContent'
@@ -94,7 +94,7 @@ function looksLikeHtml(s?: string | null) {
 
 // ───────────────────────────── page ─────────────────────────────
 
-type TabKey = 'overview' | 'resume' | 'experience' | 'education' | 'details' | 'emails' | 'comments'
+type TabKey = 'overview' | 'resume' | 'experience' | 'education' | 'details' | 'emails'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
@@ -117,7 +117,9 @@ export default function IndependentCandidateProfile() {
   const total = candidates.length
 
 
-  const tabFromUrl = (searchParams.get('tab') as TabKey) || 'overview'
+  // The Comments tab became the Comments card in the sidebar (2026-10-19).
+  const tabParam = searchParams.get('tab')
+  const tabFromUrl = (tabParam === 'comments' ? 'overview' : (tabParam as TabKey)) || 'overview'
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
   useEffect(() => { setActiveTab(tabFromUrl) }, [tabFromUrl])
   const setTab = (t: TabKey) => {
@@ -293,7 +295,6 @@ export default function IndependentCandidateProfile() {
     { value: 'education', label: 'Education', Icon: GraduationCap, count: education.length || null },
     { value: 'details', label: 'Details', Icon: Info },
     { value: 'emails', label: 'Emails', Icon: Mail },
-    { value: 'comments', label: 'Comments', Icon: MessageSquare },
   ]
 
   const goPrev = () => hasPrev && navigate(`/candidates/${candidates[idx - 1].id}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
@@ -719,19 +720,11 @@ export default function IndependentCandidateProfile() {
                   />
                 )}
 
-                {activeTab === 'comments' && (
-                  <ProfileCard title="Comments" subtitle="Person-level — visible across all jobs">
-                    <CandidateComments
-                      candidateId={candidate.id}
-                      jobId={null as any}
-                      organizationId={null as any}
-                    />
-                  </ProfileCard>
-                )}
               </div>
 
               {/* Sidebar — sticky on tall screens */}
-              <div className="lg:sticky lg:top-6">
+              <div className="space-y-4 lg:sticky lg:top-6">
+                <CommentsCard candidateId={candidate.id} jobId={null} />
                 {sidebar}
               </div>
             </div>

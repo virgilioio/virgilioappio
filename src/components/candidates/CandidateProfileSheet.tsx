@@ -11,14 +11,14 @@ import { Badge } from '@/components/ui/badge'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
-import { CandidateComments } from '@/components/candidates/CandidateComments'
+import { CommentsCard } from '@/components/candidates/comments/CommentsCard'
 import { CandidateApplicationResponses } from '@/components/candidates/CandidateApplicationResponses'
 import { ResumeTabCard } from '@/components/candidates/profile/ResumeTabCard'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, RotateCw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus, ArrowRight, ArrowRightLeft,
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, RotateCw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus, ArrowRight, ArrowRightLeft,
   ListChecks,
 
 } from 'lucide-react'
@@ -93,7 +93,6 @@ import { HireSummaryCard, TimeToHireCard } from './status/HireSummaryCard'
 import { OfferTimelineCard } from './status/OfferTimelineCard'
 import { formatMovedHere } from './statusBannerUtils'
 import { MinimizableOfferComposer } from './MinimizableOfferComposer'
-import { CandidateReminders } from './CandidateReminders'
 import { CandidateInsightsTab } from './insights/CandidateInsightsTab'
 import { CandidateDetailsCollapsible } from './CandidateDetailsCollapsible'
 import { CandidateOfferDetails } from './CandidateOfferDetails'
@@ -127,7 +126,6 @@ import {
   ScorecardsSidebar,
   ActivitySidebar,
   EmailsSidebar,
-  CommentsSidebar,
 } from '@/components/candidates/profile/tabs/SidebarRouter'
 import { CandidateTagsBlock } from '@/components/candidates/profile/CandidateTagsBlock'
 import { Upload } from 'lucide-react'
@@ -212,7 +210,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { name: createdByName } = useUserDisplayName(createdByUserId)
 
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'fit' | 'scorecards' | 'activity' | 'emails' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
+  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'fit' | 'scorecards' | 'activity' | 'emails' | 'offer' | 'rejection-details' | 'onboarding'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
   
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
@@ -736,7 +734,8 @@ const stageHasAutomation = useMemo(() => {
         else if (tabParam === 'fit') initialTab = 'fit'
         // The Overview tab was removed — its old link resolves to Job overview.
         else if (tabParam === 'overview') initialTab = 'job'
-        else if (tabParam === 'comments') initialTab = 'comments'
+        // The Comments tab became the Comments card on Job overview (2026-10-19).
+        else if (tabParam === 'comments') initialTab = 'job'
         else if (tabParam === 'offer') initialTab = 'offer'
         focusMine = params.get('focus') === 'my-scorecard'
       }
@@ -1549,7 +1548,6 @@ const stageHasAutomation = useMemo(() => {
                             { value: 'scorecards', label: 'Scorecards', Icon: Star },
                             { value: 'activity', label: 'Activity', Icon: Activity, count: activityDerived.events.length },
                             { value: 'emails', label: 'Emails', Icon: Mail },
-                            { value: 'comments', label: 'Comments', Icon: MessageSquare },
                           ]}
                         />
                       }
@@ -1841,6 +1839,11 @@ const stageHasAutomation = useMemo(() => {
                               </CardContent>
                             </Card>
                           )}
+
+                          {/* Below lg the sidebar is hidden, so the Comments card sits here. */}
+                          {candidateId && (
+                            <CommentsCard className="lg:hidden" candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                          )}
                         </>
                       )
                     })()}
@@ -2006,29 +2009,6 @@ const stageHasAutomation = useMemo(() => {
                       />
                     )}
 
-                    {/* Comments Tab */}
-                    {activeTab === 'comments' && (
-                      <>
-                        {organizationId && candidateId ? (
-                          <CandidateComments candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
-                        ) : (
-                          <Card className="bg-surface-primary border-border">
-                            <CardHeader>
-                              <CardTitle>Comments</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <InlineEmpty text="No candidate data available." />
-                            </CardContent>
-                          </Card>
-                        )}
-                        {candidateId && (
-                          <div className="mt-6">
-                            <CandidateReminders candidateId={candidateId} jobId={jobId} />
-                          </div>
-                        )}
-                      </>
-                    )}
-
                     {/* Rejection details Tab */}
                     {activeTab === 'rejection-details' && rejectionDetails && (
                       <RejectionDetailsTab
@@ -2094,6 +2074,11 @@ const stageHasAutomation = useMemo(() => {
                   {/* Right column — per-tab sidebar */}
                   <div className={cn('hidden lg:block', activeTab === 'fit' && 'lg:hidden')}>
                     <div className={cn("sticky space-y-4", asPage ? "top-0" : "top-4")}>
+                      {/* Comments sit above Details on Job overview; a closed application's
+                          sidebar is the same on every tab, so they stay there too. */}
+                      {candidateId && (activeTab === 'job' || associationStatus === 'offer' || associationStatus === 'hired' || associationStatus === 'rejected') && (
+                        <CommentsCard candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                      )}
                       {(() => {
                         const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
                         const currentIdx = currentStageId ? sortedStages.findIndex(s => s.jhsId === currentStageId) : -1
@@ -2246,10 +2231,6 @@ const stageHasAutomation = useMemo(() => {
                             return candidate ? (
                               <EmailsSidebarContainer candidateId={candidate.id} jobId={jobId} />
                             ) : null
-                          case 'comments':
-                            return (
-                              <CommentsSidebar mentions={[]} hiringTeamCount={0} />
-                            )
                           case 'job':
                           default:
                             return (

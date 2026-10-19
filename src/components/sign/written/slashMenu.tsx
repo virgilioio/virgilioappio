@@ -2,6 +2,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { MenuOption } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import { leave } from '@/lib/motion'
 
 /**
  * The offer editor's "/" menu, ported from Gio Docs (2026-10-18, Allan: "the
@@ -288,22 +289,9 @@ export function slashRows(items: SlashItem[], query: string): SlashItem[] {
 const W = 324
 const PREVIEW_W = 190
 
-/** On close the panel leaves as a copy that shrinks and fades (--dur-menu-out), since the menu itself is gone at once. */
-export function leave(el: HTMLElement) {
-  const rect = el.getBoundingClientRect()
-  const ghost = el.cloneNode(true) as HTMLElement
-  ghost.style.cssText += `;position:fixed;left:${rect.left}px;top:${rect.top}px;bottom:auto;right:auto;margin:0;pointer-events:none;animation:none`
-  ghost.removeAttribute('role')
-  ghost.setAttribute('aria-hidden', 'true')
-  ghost.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'))
-  document.body.appendChild(ghost)
-  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const a = ghost.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: still ? 'none' : 'scale(.96)' }], {
-    duration: 120,
-    easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-  })
-  a.onfinish = a.oncancel = () => ghost.remove()
-}
+/** On close the panel leaves as a copy that shrinks and fades (--dur-menu-out), since the menu itself is gone at once.
+ *  The copy is made in src/lib/motion.ts and re-exported here for the editor's imports. */
+export { leave }
 
 export function SlashPanel({
   anchor,

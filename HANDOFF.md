@@ -1,4 +1,4 @@
-# Handoff — where the work stands (2026-10-18, evening)
+# Handoff — where the work stands (2026-10-19)
 
 Read this first in a new Claude session. It covers the three Gio projects, how Allan works, and what is open. `CLAUDE.md` in each repo holds the standing rules and wins where the two differ.
 
@@ -101,6 +101,16 @@ Hard limits:
   - New offer form field names always fit agreements (`offerFieldName`).
 
 ## Open work, in Allan's order
+
+**Candidate comments, mentions and tabs (Allan, 2026-10-18; in this order)**
+- Part 1, database: applied (`20261018234855_candidate_comments_job_optional`, `20261018235003_candidate_comments_v2`, test 27). Comments are shared with everyone who can see the candidate or private to the author; a tagged comment can't be private; tags notify only people who can see the candidate; a comment can sit outside any job.
+- Part 2, the Comments card above Details on both profiles, with "@" tags, Private and the reminders row; the Comments tab is gone (old `?tab=comments` links land on Job overview / Overview). Built 2026-10-19 on the branch, screenshots sent; waits for Allan's Go.
+- Part 3: Reply and Forward on the Activity tab's emails; remove the duplicate Email History card there.
+- Part 4: an Activity tab on the standalone profile, its Send email opens the Gio composer, the email stats move into the Activity sidebar, and the Emails tab goes on both profiles.
+
+**Offers, next (Allan, 2026-10-19)**
+- When an offer's approval chain is fully complete (every approver, not each approval), the person who requested approval gets a bell notification with the approval sound and an email in the Gio ATS design saying the offer is approved. Once per completed chain. Database change: stop for Apply.
+- The approved-offer state on the profile: replace the green banner and remove "Generate Offer Letter" (the legacy template → PDF → send flow). The route is create offer → request approval (if any) → Send for signature → choose a template. Screenshots before main. (This is the start of Phase 4's "Retire the old offer letter generator".)
 
 **Gio Sign × offers**
 - **Phase 3 — write documents in Gio. Built 2026-10-17** (needs a real test from Allan: write a template, send it to yourself).

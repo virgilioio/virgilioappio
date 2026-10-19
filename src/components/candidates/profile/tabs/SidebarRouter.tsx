@@ -551,51 +551,6 @@ export function EmailsSidebar(p: EmailsSidebarProps) {
   )
 }
 
-export interface CommentsSidebarProps {
-  mentions: { id: string; name: string; count: number }[]
-  hiringTeamCount: number
-}
-export function CommentsSidebar(p: CommentsSidebarProps) {
-  return (
-    <ProfileSidebar>
-      <SidebarBlock label="Mentions">
-        {p.mentions.length ? (
-          <div className="space-y-1.5">
-            {p.mentions.map((m) => (
-              <div key={m.id} className="flex items-center gap-2 py-1">
-                <div className="h-7 w-7 rounded-full bg-[#EDE4FF] text-virgilio-purple inline-flex items-center justify-center font-poppins font-semibold text-[11px] shrink-0">
-                  {m.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="font-inter text-[12px] text-[#1F2230] flex-1 truncate">
-                  {m.name}
-                </div>
-                <div className="font-inter text-[11px] text-[#8B8F9E] tabular-nums">
-                  {m.count} mention{m.count === 1 ? '' : 's'}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="font-inter text-[12px] text-[#8B8F9E]">No mentions yet</div>
-        )}
-      </SidebarBlock>
-      <SidebarBlock label="Visible to">
-        <div className="bg-[#FAF8FF] border border-[#EDE4FF] rounded-md p-2.5 flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-md bg-[#EDE4FF] text-virgilio-purple inline-flex items-center justify-center shrink-0">
-            <Users className="h-3.5 w-3.5" />
-          </div>
-          <div className="min-w-0">
-            <div className="font-inter text-[12px] font-medium text-[#1F2230]">Hiring team</div>
-            <div className="font-inter text-[10.5px] text-[#8B8F9E]">
-              {p.hiringTeamCount} {p.hiringTeamCount === 1 ? 'person' : 'people'}
-            </div>
-          </div>
-        </div>
-      </SidebarBlock>
-    </ProfileSidebar>
-  )
-}
-
 /* ------------------------------------------------------------------ */
 
 function fmtDate(iso?: string | null) {
