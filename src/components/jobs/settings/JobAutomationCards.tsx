@@ -87,7 +87,7 @@ export function ScreeningRulesCard({
 }) {
   const state = useSettingsState(jobId)
   const { templates } = useRejectionEmailTemplates('organization')
-  const activeTemplates = templates.filter((t: any) => t.is_active !== false)
+  const activeTemplates = templates.filter((t) => t.is_active !== false)
   const salaryReady = job?.salary_max != null && !!job?.salary_period
 
   return (
@@ -168,7 +168,7 @@ export function ScreeningRulesCard({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__default__">Workspace default</SelectItem>
-                    {activeTemplates.map((t: any) => (
+                    {activeTemplates.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
                       </SelectItem>
@@ -242,7 +242,7 @@ export function AiScreenCard({ jobId, readOnly }: { jobId: string | null; readOn
                 disabled={readOnly}
               />
             </div>
-            <div className="py-3 flex items-start justify-between gap-4">
+            <div className="py-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div className="min-w-0 flex-1">
                 <label
                   htmlFor={`bar-${jobId}`}
@@ -305,7 +305,7 @@ export function TeamNotificationsCard({ jobId, readOnly }: { jobId: string | nul
             <div className="py-1">
               <ToggleRow
                 label="Daily digest at 9:00"
-                hint="Yesterday’s applications, moves and Gio’s rejections, by email, to the same people."
+                hint="The last day’s applications, moves and Gio’s rejections, for the same people, to everyone who turns on Daily digest in Settings › Notifications."
                 checked={s.daily_digest}
                 onChange={(v) => state.update({ daily_digest: v })}
                 disabled={readOnly}

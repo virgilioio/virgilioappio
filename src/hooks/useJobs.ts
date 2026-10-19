@@ -92,6 +92,10 @@ export interface CreateJobData {
   max_years_experience?: number
   target_fill_date?: string | null
   priority?: JobPriority
+  /** The period salary_min / salary_max are in (job_settings' salary rule needs it). */
+  salary_period?: 'monthly' | 'annual' | null
+  reports_to_user_id?: string | null
+  coordinator_user_id?: string | null
 }
 
 export interface UpdateJobData {
@@ -121,6 +125,9 @@ export interface UpdateJobData {
   max_years_experience?: number | null
   target_fill_date?: string | null
   priority?: JobPriority
+  salary_period?: 'monthly' | 'annual' | null
+  reports_to_user_id?: string | null
+  coordinator_user_id?: string | null
 }
 
 // Cached tenant_id per organization to avoid repeated lookups

@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import type React from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
@@ -39,9 +40,10 @@ export function useJobSettings(jobId: string | null | undefined) {
     queryKey: key(jobId),
     enabled: !!jobId,
     queryFn: async (): Promise<JobSettings | null> => {
-      const { data, error } = await (supabase.from('job_settings' as any) as any)
+      const { data, error } = await supabase
+        .from('job_settings')
         .select('*')
-        .eq('job_id', jobId)
+        .eq('job_id', jobId as string)
         .maybeSingle()
       if (error) throw error
       return (data as JobSettings | null) ?? null
@@ -50,9 +52,10 @@ export function useJobSettings(jobId: string | null | undefined) {
 
   const mutation = useMutation({
     mutationFn: async (patch: JobSettingsPatch) => {
-      const { data, error } = await (supabase.from('job_settings' as any) as any)
+      const { data, error } = await supabase
+        .from('job_settings')
         .update(patch)
-        .eq('job_id', jobId)
+        .eq('job_id', jobId as string)
         .select('*')
         .single()
       if (error) throw error
@@ -70,7 +73,7 @@ export function useJobSettings(jobId: string | null | undefined) {
         title: 'Couldn’t save that setting',
         description: 'It’s back as it was; try again.',
         variant: 'destructive',
-        action: { label: 'Retry', onClick: () => mutation.mutate(patch) } as any,
+        action: { label: 'Retry', onClick: () => mutation.mutate(patch) } as unknown as React.ReactElement,
       })
     },
     onSuccess: (data) => qc.setQueryData(key(jobId), data),

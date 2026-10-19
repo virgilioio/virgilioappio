@@ -15,14 +15,10 @@ import { Input } from '@/components/ui/input'
 
 import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
-import { SectionCard, FieldLabel, FieldHint, ToggleRow, MemberAvatar, RoleCard, InfoLink } from './_parts'
+import { SectionCard, FieldLabel, FieldHint, MemberAvatar, RoleCard, InfoLink } from './_parts'
+import { TeamNotificationsCard } from '@/components/jobs/settings/JobAutomationCards'
 
 interface HiringTeamUi {
-  reportsToId: string
-  coordinatorId: string
-  notifyOnApplications: boolean
-  dailyDigest: boolean
-  notifyStageMoves: boolean
   memberSearch: string
 }
 
@@ -32,6 +28,11 @@ interface HiringTeamStepProps {
   onBack: () => void
   ui: HiringTeamUi
   onUiChange: (patch: Partial<HiringTeamUi>) => void
+  /** Job columns (jobs.reports_to_user_id / coordinator_user_id), saved with the draft. */
+  reportsToId: string
+  coordinatorId: string
+  onReportsToChange: (v: string) => void
+  onCoordinatorChange: (v: string) => void
 }
 
 const DB_ROLE_LABEL: Record<JobAssignmentRole, string> = {
@@ -48,7 +49,17 @@ const SCOPE_BY_ROLE: Record<JobAssignmentRole, string> = {
   interviewer: 'Interviewer · scorecards',
 }
 
-export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: HiringTeamStepProps) {
+export function HiringTeamStep({
+  jobId,
+  onNext,
+  onBack,
+  ui,
+  onUiChange,
+  reportsToId,
+  coordinatorId,
+  onReportsToChange,
+  onCoordinatorChange,
+}: HiringTeamStepProps) {
   const { members, isLoading: membersLoading } = useMembers(true)
   const {
     assignments,
@@ -58,14 +69,9 @@ export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: Hiring
     isLoading: assignmentsLoading,
   } = useJobAssignments(jobId || undefined)
 
-  // Local-only fields (no backend column yet) — lifted to wizard state so they
-  // survive remount when the user re-enters this step via "Edit step 3".
-  const { reportsToId, coordinatorId, notifyOnApplications, dailyDigest, notifyStageMoves, memberSearch } = ui
-  const setReportsToId = (v: string) => onUiChange({ reportsToId: v })
-  const setCoordinatorId = (v: string) => onUiChange({ coordinatorId: v })
-  const setNotifyOnApplications = (v: boolean) => onUiChange({ notifyOnApplications: v })
-  const setDailyDigest = (v: boolean) => onUiChange({ dailyDigest: v })
-  const setNotifyStageMoves = (v: boolean) => onUiChange({ notifyStageMoves: v })
+  const { memberSearch } = ui
+  const setReportsToId = onReportsToChange
+  const setCoordinatorId = onCoordinatorChange
   const setMemberSearch = (v: string) => onUiChange({ memberSearch: v })
 
 
@@ -440,35 +446,8 @@ export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: Hiring
         </div>
       </SectionCard>
 
-      {/* ── NOTIFICATIONS ───────────────────────────────────── */}
-      <SectionCard title="Notifications">
-        <div className="divide-y divide-virgilio-border/60">
-          <div className="py-1">
-            <ToggleRow
-              label="Notify owners on new applications"
-              hint="Slack DM + email to recruiter + HM"
-              checked={notifyOnApplications}
-              onChange={setNotifyOnApplications}
-            />
-          </div>
-          <div className="py-1">
-            <ToggleRow
-              label="Daily digest at 9:00 AM"
-              hint="Activity summary to recruiter only"
-              checked={dailyDigest}
-              onChange={setDailyDigest}
-            />
-          </div>
-          <div className="py-1">
-            <ToggleRow
-              label="Notify hiring team when stage moves"
-              hint="Slack channel #hiring-design"
-              checked={notifyStageMoves}
-              onChange={setNotifyStageMoves}
-            />
-          </div>
-        </div>
-      </SectionCard>
+      {/* ── NOTIFICATIONS (job_settings) ───────────────────── */}
+      <TeamNotificationsCard jobId={jobId} />
     </div>
   )
 }

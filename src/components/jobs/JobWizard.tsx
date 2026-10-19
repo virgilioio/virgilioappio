@@ -29,46 +29,24 @@ const JOB_DATA_KEYS = [
   'skills', 'skill_priorities', 'auto_generated_skills', 'last_skills_generation', 'hiring_team', 'organization_id',
   'department_id', 'internal_title', 'job_level', 'work_mode', 'employment_type', 'additional_locations',
   'show_salary_public', 'include_equity', 'include_signing_bonus', 'min_years_experience',
-  'max_years_experience', 'priority',
+  'max_years_experience', 'priority', 'salary_period', 'reports_to_user_id', 'coordinator_user_id',
 ] as const
 
+// Screening rules and team notifications live in job_settings (useJobSettings),
+// saved as they change; Reports to and Coordinator are job columns in jobData.
 export interface HiringPlanUiState {
   selectedTemplate: 'workspace_default' | 'lean_tech' | 'exec_leadership' | null
-  rejectOutsideLocations: boolean
-  rejectSalaryAbove: boolean
-  rejectRepeatApplicant: boolean
-  autoScore: boolean
-  autoRejectBelow: boolean
-  autoRejectThreshold: number
-  generateSummary: boolean
 }
 
 export interface HiringTeamUiState {
-  reportsToId: string
-  coordinatorId: string
-  notifyOnApplications: boolean
-  dailyDigest: boolean
-  notifyStageMoves: boolean
   memberSearch: string
 }
 
 const DEFAULT_HIRING_PLAN_UI: HiringPlanUiState = {
   selectedTemplate: null,
-  rejectOutsideLocations: true,
-  rejectSalaryAbove: true,
-  rejectRepeatApplicant: false,
-  autoScore: true,
-  autoRejectBelow: true,
-  autoRejectThreshold: 35,
-  generateSummary: true,
 }
 
 const DEFAULT_HIRING_TEAM_UI: HiringTeamUiState = {
-  reportsToId: '',
-  coordinatorId: '__same__',
-  notifyOnApplications: true,
-  dailyDigest: true,
-  notifyStageMoves: false,
   memberSearch: '',
 }
 
@@ -495,6 +473,7 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
         return (
           <HiringPlanStep
             jobId={wizardState.createdJobId}
+            job={wizardState.jobData}
             onNext={handleNextStep}
             onBack={handlePrevStep}
             ui={wizardState.hiringPlanUi}
@@ -509,6 +488,10 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
             onBack={handlePrevStep}
             ui={wizardState.hiringTeamUi}
             onUiChange={updateHiringTeamUi}
+            reportsToId={wizardState.jobData.reports_to_user_id ?? ''}
+            coordinatorId={wizardState.jobData.coordinator_user_id ?? '__same__'}
+            onReportsToChange={(v) => updateJobData({ reports_to_user_id: v || null })}
+            onCoordinatorChange={(v) => updateJobData({ coordinator_user_id: !v || v === '__same__' ? null : v })}
           />
         )
       case 4:

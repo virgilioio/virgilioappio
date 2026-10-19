@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ScreeningRulesCard, AiScreenCard, TeamNotificationsCard } from '@/components/jobs/settings/JobAutomationCards'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import {
   Pencil,
@@ -8,7 +9,6 @@ import {
   GitBranch,
   Users,
   Bell,
-  Sparkles,
   ShieldAlert,
   Archive,
   XCircle,
@@ -41,7 +41,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { archiveJob, closeJob } from './jobStatusActions'
 import { confirmRemoveMember } from './confirmRemoveMember'
 import { useToast } from '@/hooks/use-toast'
-import { SectionCard, ToggleRow } from './wizard/_parts'
+import { SectionCard } from './wizard/_parts'
 import { HiringPlanTab } from './HiringPlanTab'
 import { usePermissions } from '@/hooks/usePermissions'
 import { OfferApprovalChainConfig } from './OfferApprovalChainConfig'
@@ -169,28 +169,6 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
       toast({ title: `Couldn’t remove ${m.name}. Nothing changed; try again.`, variant: 'destructive' })
     }
   }
-
-  // Local-only state for settings without dedicated columns yet.
-  // TODO: persist into jobs.settings JSONB once column lands.
-  const [rules, setRules] = useState({
-    outsideLocations: true,
-    salaryAbove25: true,
-    sameCandidate90: false,
-  })
-  const [aiScreen, setAiScreen] = useState({
-    autoScore: true,
-    autoReject: true,
-    autoRejectThreshold: 35,
-    generateSummary: true,
-  })
-  const [notifications, setNotifications] = useState({
-    notifyOwners: true,
-    dailyDigest: true,
-    notifyOnStageMove: false,
-  })
-
-  const stubSave = (label: string) =>
-    toast({ title: 'Saved', description: `${label} updated.` })
 
   // Scroll spy
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -461,112 +439,13 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
             </div>
 
 
-            {/* Auto-rejection */}
+            {/* Screening rules and AI auto-screen (job_settings) */}
             <div data-section="auto-rejection">
-              <SectionCard title="Auto-rejection rules">
-                <ToggleRow
-                  label="Outside listed locations"
-                  hint="Reject candidates not in the job's open regions."
-                  checked={rules.outsideLocations}
-                  onChange={(v) => {
-                    setRules((r) => ({ ...r, outsideLocations: v }))
-                    stubSave('Outside listed locations')
-                  }}
-                  disabled={isReadOnly}
-                />
-                <ToggleRow
-                  label="Salary expectation >25% above range"
-                  hint="Reject and keep on file."
-                  checked={rules.salaryAbove25}
-                  onChange={(v) => {
-                    setRules((r) => ({ ...r, salaryAbove25: v }))
-                    stubSave('Salary rule')
-                  }}
-                  disabled={isReadOnly}
-                />
-                <ToggleRow
-                  label="Same candidate, last 90 days"
-                  hint="Auto-reject re-applicants for the same role."
-                  checked={rules.sameCandidate90}
-                  onChange={(v) => {
-                    setRules((r) => ({ ...r, sameCandidate90: v }))
-                    stubSave('Same-candidate rule')
-                  }}
-                  disabled={isReadOnly}
-                />
-              </SectionCard>
+              <ScreeningRulesCard jobId={jobId} job={job} readOnly={isReadOnly} />
             </div>
 
-            {/* AI auto-screen */}
             <div data-section="ai-screen">
-              <SectionCard
-                title="AI auto-screen"
-                trailing={
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EDE4FF] px-2.5 py-1 text-[11.5px] font-poppins font-medium text-virgilio-purple">
-                    <Sparkles className="h-3 w-3" />
-                    Gio
-                  </span>
-                }
-              >
-                <ToggleRow
-                  label="Auto-score every application"
-                  hint="Scores 0–100 based on required skills and experience."
-                  checked={aiScreen.autoScore}
-                  onChange={(v) => {
-                    setAiScreen((s) => ({ ...s, autoScore: v }))
-                    stubSave('Auto-score')
-                  }}
-                  disabled={isReadOnly}
-                />
-                <div className="flex items-start justify-between gap-4 py-1">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-poppins font-medium text-text-primary">
-                      Auto-reject scores below
-                    </div>
-                    <p className="text-[12px] text-text-tertiary mt-0.5">
-                      Sends a polite rejection email. Reviewable in the Rejected tab.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 items-center rounded-lg border border-virgilio-border bg-white pl-2.5 pr-1.5">
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={aiScreen.autoRejectThreshold}
-                        onChange={(e) =>
-                          setAiScreen((s) => ({
-                            ...s,
-                            autoRejectThreshold: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
-                          }))
-                        }
-                        onBlur={() => stubSave('Auto-reject threshold')}
-                        className="w-12 bg-transparent text-[13px] tabular-nums outline-none text-text-primary"
-                        disabled={isReadOnly || !aiScreen.autoReject}
-                      />
-                      <span className="text-[12px] text-text-tertiary pl-0.5 pr-1.5">/100</span>
-                    </div>
-                    <ToggleSwitch
-                      checked={aiScreen.autoReject}
-                      onChange={(v) => {
-                        setAiScreen((s) => ({ ...s, autoReject: v }))
-                        stubSave('Auto-reject')
-                      }}
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                </div>
-                <ToggleRow
-                  label="Generate AI candidate summary"
-                  hint="3-paragraph summary attached to each candidate profile."
-                  checked={aiScreen.generateSummary}
-                  onChange={(v) => {
-                    setAiScreen((s) => ({ ...s, generateSummary: v }))
-                    stubSave('AI summary')
-                  }}
-                  disabled={isReadOnly}
-                />
-              </SectionCard>
+              <AiScreenCard jobId={jobId} readOnly={isReadOnly} />
             </div>
 
             {/* Hiring team */}
@@ -779,46 +658,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
             {/* Notifications */}
             <div data-section="notifications">
-              <SectionCard
-                title="Notifications"
-                trailing={
-                  <span className="inline-flex items-center gap-1.5 text-[11.5px] text-text-tertiary">
-                    <Bell className="h-3 w-3" />
-                    Workspace + Slack
-                  </span>
-                }
-              >
-                <ToggleRow
-                  label="Notify owners on new applications"
-                  hint="Slack DM + email to recruiter + HM"
-                  checked={notifications.notifyOwners}
-                  onChange={(v) => {
-                    setNotifications((n) => ({ ...n, notifyOwners: v }))
-                    stubSave('New-application notifications')
-                  }}
-                  disabled={isReadOnly}
-                />
-                <ToggleRow
-                  label="Daily digest at 9:00 AM"
-                  hint="Activity summary to recruiter only"
-                  checked={notifications.dailyDigest}
-                  onChange={(v) => {
-                    setNotifications((n) => ({ ...n, dailyDigest: v }))
-                    stubSave('Daily digest')
-                  }}
-                  disabled={isReadOnly}
-                />
-                <ToggleRow
-                  label="Notify hiring team when stage moves"
-                  hint="Slack channel #hiring-design"
-                  checked={notifications.notifyOnStageMove}
-                  onChange={(v) => {
-                    setNotifications((n) => ({ ...n, notifyOnStageMove: v }))
-                    stubSave('Stage-move notifications')
-                  }}
-                  disabled={isReadOnly}
-                />
-              </SectionCard>
+              <TeamNotificationsCard jobId={jobId} readOnly={isReadOnly} />
             </div>
 
             {/* Danger */}
@@ -1336,38 +1176,6 @@ function CompactOwnerPicker({
 
 
 
-function ToggleSwitch({
-  checked,
-  onChange,
-  disabled,
-}: {
-  checked: boolean
-  onChange: (v: boolean) => void
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        'relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
-        checked ? 'bg-pastel-green-foreground' : 'bg-virgilio-border',
-        disabled && 'opacity-50 cursor-not-allowed'
-      )}
-    >
-      <span
-        className={cn(
-          'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform',
-          checked ? 'translate-x-[18px]' : 'translate-x-0.5'
-        )}
-      />
-    </button>
-  )
-}
 
 interface TeamMemberRowProps {
   member: {

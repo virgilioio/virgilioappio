@@ -3,24 +3,20 @@ import { GitBranch, Sparkles, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { HiringPlanTab } from '../HiringPlanTab'
-import { SectionCard, ToggleRow } from './_parts'
+import { SectionCard } from './_parts'
+import { ScreeningRulesCard, AiScreenCard } from '@/components/jobs/settings/JobAutomationCards'
 import { useJobStages, type JobStage } from '@/hooks/useJobStages'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 
 
 interface HiringPlanUi {
   selectedTemplate: TemplateId | null
-  rejectOutsideLocations: boolean
-  rejectSalaryAbove: boolean
-  rejectRepeatApplicant: boolean
-  autoScore: boolean
-  autoRejectBelow: boolean
-  autoRejectThreshold: number
-  generateSummary: boolean
 }
 
 interface HiringPlanStepProps {
   jobId: string | null
+  /** The job's salary range and period (the salary rule needs both). */
+  job?: { salary_max?: number | null; salary_period?: string | null } | null
   onNext: () => void
   onBack: () => void
   ui: HiringPlanUi
@@ -127,25 +123,9 @@ function GioRecommendsChip({ label = 'Gio recommends' }: { label?: string }) {
   )
 }
 
-export function HiringPlanStep({ jobId, ui, onUiChange }: HiringPlanStepProps) {
-  const {
-    selectedTemplate,
-    rejectOutsideLocations,
-    rejectSalaryAbove,
-    rejectRepeatApplicant,
-    autoScore,
-    autoRejectBelow,
-    autoRejectThreshold,
-    generateSummary,
-  } = ui
+export function HiringPlanStep({ jobId, job, ui, onUiChange }: HiringPlanStepProps) {
+  const { selectedTemplate } = ui
   const setSelectedTemplate = (v: TemplateId | null) => onUiChange({ selectedTemplate: v })
-  const setRejectOutsideLocations = (v: boolean) => onUiChange({ rejectOutsideLocations: v })
-  const setRejectSalaryAbove = (v: boolean) => onUiChange({ rejectSalaryAbove: v })
-  const setRejectRepeatApplicant = (v: boolean) => onUiChange({ rejectRepeatApplicant: v })
-  const setAutoScore = (v: boolean) => onUiChange({ autoScore: v })
-  const setAutoRejectBelow = (v: boolean) => onUiChange({ autoRejectBelow: v })
-  const setAutoRejectThreshold = (v: number) => onUiChange({ autoRejectThreshold: v })
-  const setGenerateSummary = (v: boolean) => onUiChange({ generateSummary: v })
 
   const [applyingTemplate, setApplyingTemplate] = useState<TemplateId | null>(null)
   const [planVersion, setPlanVersion] = useState(0) // bump → remount HiringPlanTab
@@ -249,97 +229,9 @@ export function HiringPlanStep({ jobId, ui, onUiChange }: HiringPlanStepProps) {
       </section>
 
 
-      {/* AUTO-REJECTION RULES */}
-      <SectionCard title="Auto-rejection rules">
-        <div className="divide-y divide-virgilio-border/60">
-          <div className="pb-3">
-            <ToggleRow
-              label="Outside listed locations"
-              hint="Reject candidates not in the job's open regions."
-              checked={rejectOutsideLocations}
-              onChange={setRejectOutsideLocations}
-            />
-          </div>
-          <div className="py-3">
-            <ToggleRow
-              label="Salary expectation >25% above range"
-              hint="Reject and keep on file."
-              checked={rejectSalaryAbove}
-              onChange={setRejectSalaryAbove}
-            />
-          </div>
-          <div className="pt-3">
-            <ToggleRow
-              label="Same candidate, last 90 days"
-              hint="Auto-reject re-applicants for the same role."
-              checked={rejectRepeatApplicant}
-              onChange={setRejectRepeatApplicant}
-            />
-          </div>
-        </div>
-      </SectionCard>
-
-      {/* AI AUTO-SCREEN */}
-      <SectionCard title="AI auto-screen" trailing={<GioRecommendsChip label="Gio" />}>
-        <div className="divide-y divide-virgilio-border/60">
-          <div className="pb-3">
-            <ToggleRow
-              label="Auto-score every application"
-              hint="Scores 0–100 based on required skills and experience."
-              checked={autoScore}
-              onChange={setAutoScore}
-            />
-          </div>
-          <div className="py-3 flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-poppins font-medium text-text-primary">
-                Auto-reject scores below
-              </p>
-              <p className="text-[12px] text-text-tertiary mt-0.5">
-                Sends a polite rejection email. Reviewable in the Rejected tab.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 items-center rounded-lg border border-virgilio-border bg-white px-2">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={autoRejectThreshold}
-                  onChange={(e) => setAutoRejectThreshold(Number(e.target.value || 0))}
-                  className="w-10 bg-transparent text-[13px] tabular-nums text-text-primary outline-none text-right"
-                />
-                <span className="text-[12px] text-text-tertiary pl-1">/100</span>
-              </div>
-              <button
-                role="switch"
-                aria-checked={autoRejectBelow}
-                onClick={() => setAutoRejectBelow(!autoRejectBelow)}
-                className={cn(
-                  'relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
-                  autoRejectBelow ? 'bg-pastel-green-foreground' : 'bg-virgilio-border'
-                )}
-              >
-                <span
-                  className={cn(
-                    'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform',
-                    autoRejectBelow ? 'translate-x-[18px]' : 'translate-x-0.5'
-                  )}
-                />
-              </button>
-            </div>
-          </div>
-          <div className="pt-3">
-            <ToggleRow
-              label="Generate AI candidate summary"
-              hint="3-paragraph summary attached to each candidate profile."
-              checked={generateSummary}
-              onChange={setGenerateSummary}
-            />
-          </div>
-        </div>
-      </SectionCard>
+      {/* SCREENING (job_settings) */}
+      <ScreeningRulesCard jobId={jobId} job={job} />
+      <AiScreenCard jobId={jobId} />
     </div>
   )
 }

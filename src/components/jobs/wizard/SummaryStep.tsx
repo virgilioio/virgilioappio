@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useJobSettings } from '@/hooks/useJobSettings'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -193,6 +194,10 @@ export function SummaryStep({
   onNotifySlackChange,
   openings,
 }: SummaryStepProps) {
+  const { settings } = useJobSettings(jobId)
+  const rulesOn = settings
+    ? [settings.reject_outside_countries, settings.reject_salary_above, settings.auto_score && settings.auto_reject_below].filter(Boolean).length
+    : 0
   const { organizations } = useOrganizations()
   const { departments } = useDepartments()
   const organization = organizations.find((o) => o.id === jobData.organization_id)
@@ -421,17 +426,18 @@ export function SummaryStep({
             </ul>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-virgilio-border px-4 py-2.5 text-[11.5px] text-text-secondary">
+            {/* What the job's settings say (job_settings), not a promise. */}
             <span className="inline-flex items-center gap-1.5">
               <Sparkles className="h-3 w-3 text-virgilio-purple" />
-              AI auto-screen enabled
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Clock className="h-3 w-3" />
-              Est. time-to-hire 28d
+              {settings ? (settings.auto_score ? 'Gio Fit scores every application' : 'Gio Fit scoring off') : '…'}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Ban className="h-3 w-3" />
-              Auto-reject rules active
+              {settings
+                ? rulesOn === 0
+                  ? 'No auto-reject rules'
+                  : `${rulesOn} auto-reject ${rulesOn === 1 ? 'rule' : 'rules'} on`
+                : '…'}
             </span>
           </div>
         </div>
