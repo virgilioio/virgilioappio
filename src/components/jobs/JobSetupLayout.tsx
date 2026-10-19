@@ -50,6 +50,7 @@ import { Eye } from 'lucide-react'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { cn } from '@/lib/utils'
+import { menuItem, menuPanel, menuSeparator } from '@/lib/menu-classes'
 import {
   Select,
   SelectContent,
@@ -1321,42 +1322,20 @@ function TeamMemberRow({
           />
           <div
             role="menu"
-            style={{
-              position: 'absolute',
-              top: 'calc(100% - 2px)',
-              right: 12,
-              zIndex: 50,
-              width: 226,
-              background: '#fff',
-              border: '1px solid #EDECE6',
-              borderRadius: 12,
-              boxShadow:
-                '0 16px 40px -8px rgba(13,13,9,0.24), 0 0 0 1px rgba(13,13,9,0.03)',
-              padding: 5,
-            }}
+            data-state="open"
+            className={cn('absolute right-3 top-[calc(100%-2px)] z-50 w-[240px] origin-top-right', menuPanel)}
           >
-            <div
-              style={{
-                padding: '7px 10px 8px',
-                borderBottom: '1px solid #F1F0EC',
-                marginBottom: 4,
-              }}
-            >
-              <div
-                className="font-poppins truncate"
-                style={{ fontSize: 12.5, fontWeight: 600, color: '#0d0d09' }}
-              >
+            <div className="px-2 pb-1 pt-1.5">
+              <div className="truncate font-inter text-[14px] font-medium leading-5 text-foreground">
                 {m.name}
               </div>
               {m.email && (
-                <div
-                  className="font-inter truncate"
-                  style={{ fontSize: 10.5, color: '#8B8F9E', marginTop: 1 }}
-                >
+                <div className="truncate font-inter text-[12px] leading-4 [color:hsl(var(--menu-group-color))]">
                   {m.email}
                 </div>
               )}
             </div>
+            <div className={menuSeparator} />
 
             <MenuItem
               icon={UserIcon}
@@ -1395,7 +1374,7 @@ function TeamMemberRow({
                 )
               }}
             />
-            <div style={{ height: 1, background: '#F1F0EC', margin: '4px 0' }} />
+            <div className={menuSeparator} />
             <MenuItem
               icon={Trash2}
               label="Remove from job"
@@ -1425,44 +1404,27 @@ function MenuItem({
   danger?: boolean
   onClick: () => void
 }) {
-  const color = danger ? '#B91C1C' : '#1F2230'
-  const glyph = danger ? '#B91C1C' : '#5A6072'
-  const hoverBg = danger ? '#FEF2F2' : '#FAFAF7'
   return (
     <button
       type="button"
+      role="menuitem"
       onClick={onClick}
-      className="w-full text-left flex items-center"
-      style={{
-        gap: 10,
-        padding: '8px 10px',
-        borderRadius: 8,
-        background: 'transparent',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = hoverBg
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent'
-      }}
+      className={cn(
+        menuItem,
+        'hover:bg-[hsl(var(--menu-hover))]',
+        meta && 'items-start',
+        danger && 'text-destructive'
+      )}
     >
-      <Icon style={{ height: 14, width: 14, color: glyph, flexShrink: 0 }} strokeWidth={2} />
-      <div className="min-w-0 flex-1">
-        <div
-          className="font-inter truncate"
-          style={{ fontSize: 12.5, fontWeight: 500, color }}
-        >
-          {label}
-        </div>
+      <Icon aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{label}</span>
         {meta && (
-          <div
-            className="font-inter truncate"
-            style={{ fontSize: 10.5, color: '#8B8F9E', marginTop: 1 }}
-          >
+          <span className="block truncate text-[12px] leading-4 [color:hsl(var(--menu-group-color))]">
             {meta}
-          </div>
+          </span>
         )}
-      </div>
+      </span>
     </button>
   )
 }
