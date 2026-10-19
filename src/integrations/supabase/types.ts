@@ -4148,6 +4148,8 @@ export type Database = {
           ai_fit_output_language: string | null
           ai_fit_score: number | null
           ai_fit_version: number | null
+          applied_at: string | null
+          auto_rejected_rule: string | null
           booking_link_sent_at: string | null
           candidate_id: string
           client_verdict_resolved_at: string | null
@@ -4188,6 +4190,8 @@ export type Database = {
           ai_fit_output_language?: string | null
           ai_fit_score?: number | null
           ai_fit_version?: number | null
+          applied_at?: string | null
+          auto_rejected_rule?: string | null
           booking_link_sent_at?: string | null
           candidate_id: string
           client_verdict_resolved_at?: string | null
@@ -4228,6 +4232,8 @@ export type Database = {
           ai_fit_output_language?: string | null
           ai_fit_score?: number | null
           ai_fit_version?: number | null
+          applied_at?: string | null
+          auto_rejected_rule?: string | null
           booking_link_sent_at?: string | null
           candidate_id?: string
           client_verdict_resolved_at?: string | null
@@ -4355,6 +4361,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      job_digests: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          content: Json
+          created_at: string
+          day: string
+          emailed_at: string | null
+          error: string | null
+          user_id: string
+          wants_email: boolean
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          content: Json
+          created_at?: string
+          day: string
+          emailed_at?: string | null
+          error?: string | null
+          user_id: string
+          wants_email?: boolean
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          content?: Json
+          created_at?: string
+          day?: string
+          emailed_at?: string | null
+          error?: string | null
+          user_id?: string
+          wants_email?: boolean
+        }
+        Relationships: []
       }
       job_hiring_stages: {
         Row: {
@@ -4795,6 +4837,60 @@ export type Database = {
           },
         ]
       }
+      job_settings: {
+        Row: {
+          ai_summary: boolean
+          auto_reject_below: boolean
+          auto_reject_threshold: number
+          auto_score: boolean
+          daily_digest: boolean
+          hiring_countries: string[]
+          job_id: string
+          notify_applications: boolean
+          notify_stage_moves: boolean
+          reject_outside_countries: boolean
+          reject_salary_above: boolean
+          reject_template_id: string | null
+          salary_margin_pct: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ai_summary?: boolean
+          auto_reject_below?: boolean
+          auto_reject_threshold?: number
+          auto_score?: boolean
+          daily_digest?: boolean
+          hiring_countries?: string[]
+          job_id: string
+          notify_applications?: boolean
+          notify_stage_moves?: boolean
+          reject_outside_countries?: boolean
+          reject_salary_above?: boolean
+          reject_template_id?: string | null
+          salary_margin_pct?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ai_summary?: boolean
+          auto_reject_below?: boolean
+          auto_reject_threshold?: number
+          auto_score?: boolean
+          daily_digest?: boolean
+          hiring_countries?: string[]
+          job_id?: string
+          notify_applications?: boolean
+          notify_stage_moves?: boolean
+          reject_outside_countries?: boolean
+          reject_salary_above?: boolean
+          reject_template_id?: string | null
+          salary_margin_pct?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       job_stage_scorecards: {
         Row: {
           ai_suggested_rating: string | null
@@ -5070,6 +5166,7 @@ export type Database = {
           reports_to_user_id: string | null
           salary_max: number | null
           salary_min: number | null
+          salary_period: string | null
           sales_deal_id: string | null
           sales_deal_owner: string | null
           sales_deal_title: string | null
@@ -5130,6 +5227,7 @@ export type Database = {
           reports_to_user_id?: string | null
           salary_max?: number | null
           salary_min?: number | null
+          salary_period?: string | null
           sales_deal_id?: string | null
           sales_deal_owner?: string | null
           sales_deal_title?: string | null
@@ -5190,6 +5288,7 @@ export type Database = {
           reports_to_user_id?: string | null
           salary_max?: number | null
           salary_min?: number | null
+          salary_period?: string | null
           sales_deal_id?: string | null
           sales_deal_owner?: string | null
           sales_deal_title?: string | null
@@ -10755,6 +10854,7 @@ export type Database = {
       }
       can_access_job_pipeline: { Args: { p_job_id: string }; Returns: boolean }
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
+      can_edit_job: { Args: { _job_id: string }; Returns: boolean }
       can_manage_job_team: {
         Args: {
           _job_id: string
@@ -11028,6 +11128,7 @@ export type Database = {
         }
         Returns: string
       }
+      country_name: { Args: { _text: string }; Returns: string }
       create_candidate_list_with_reviewers: {
         Args: {
           p_block_screenshots: boolean
@@ -11378,6 +11479,25 @@ export type Database = {
         Returns: boolean
       }
       job_access_enforced: { Args: { _tenant_id: string }; Returns: boolean }
+      job_auto_reject: {
+        Args: { _association_id: string; _detail: string; _rule: string }
+        Returns: undefined
+      }
+      job_digest_claim: {
+        Args: { _limit?: number }
+        Returns: {
+          content: Json
+          day: string
+          email: string
+          name: string
+          user_id: string
+        }[]
+      }
+      job_digest_finish: {
+        Args: { _day: string; _error?: string; _ok: boolean; _user_id: string }
+        Returns: undefined
+      }
+      job_digest_prepare: { Args: never; Returns: number }
       job_entry_stage: { Args: { p_job: string }; Returns: string }
       job_has_active_posting: {
         Args: { job_id_param: string }
@@ -11387,9 +11507,19 @@ export type Database = {
         Args: { _opening_id: string }
         Returns: string
       }
+      job_rejection_sender: { Args: { _job_id: string }; Returns: string }
+      job_screening_verdict: {
+        Args: { _association_id: string }
+        Returns: {
+          detail: string
+          rule: string
+        }[]
+      }
       job_setup_checks: { Args: { p_job: string }; Returns: Json }
+      job_team_recipients: { Args: { _job_id: string }; Returns: string[] }
       library_editor: { Args: never; Returns: boolean }
       linkedin_slug: { Args: { p_url: string }; Returns: string }
+      location_countries: { Args: { _locations: string[] }; Returns: string[] }
       log_activity: {
         Args: {
           p_activity_type: Database["public"]["Enums"]["activity_type"]
@@ -11485,6 +11615,7 @@ export type Database = {
         Returns: number
       }
       my_job_ids: { Args: never; Returns: string[] }
+      next_morning_nine: { Args: { _email: string }; Returns: string }
       next_req_ids: {
         Args: { _count: number; _tenant_id: string }
         Returns: string[]
