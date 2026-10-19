@@ -5826,6 +5826,7 @@ export type Database = {
           max_file_size_mb: number | null
           organization_id: string | null
           placeholder_text: string | null
+          section_key: string | null
           triggers_approval_restart: boolean
           updated_at: string
         }
@@ -5845,6 +5846,7 @@ export type Database = {
           max_file_size_mb?: number | null
           organization_id?: string | null
           placeholder_text?: string | null
+          section_key?: string | null
           triggers_approval_restart?: boolean
           updated_at?: string
         }
@@ -5864,6 +5866,7 @@ export type Database = {
           max_file_size_mb?: number | null
           organization_id?: string | null
           placeholder_text?: string | null
+          section_key?: string | null
           triggers_approval_restart?: boolean
           updated_at?: string
         }
@@ -5893,6 +5896,7 @@ export type Database = {
           is_active: boolean
           name: string
           organization_id: string | null
+          sections: Json
           source: string
           tenant_id: string | null
           updated_at: string
@@ -5905,6 +5909,7 @@ export type Database = {
           is_active?: boolean
           name: string
           organization_id?: string | null
+          sections?: Json
           source?: string
           tenant_id?: string | null
           updated_at?: string
@@ -5917,6 +5922,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           organization_id?: string | null
+          sections?: Json
           source?: string
           tenant_id?: string | null
           updated_at?: string
@@ -11554,6 +11560,7 @@ export type Database = {
       }
       offer_base_salary: { Args: { _fv: Json }; Returns: Json }
       offer_can_send: { Args: { _offer_id: string }; Returns: Json }
+      offer_form_last_section: { Args: { _form_id: string }; Returns: string }
       offer_send_refusal: { Args: { _reason: string }; Returns: string }
       offer_trail_log: {
         Args: {

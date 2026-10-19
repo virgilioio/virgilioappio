@@ -1,4 +1,4 @@
--- Run after 20261019_offer_form_sections inside a transaction that is rolled back.
+-- Run after 20261019031231_offer_form_sections inside a transaction that is rolled back.
 -- Fake offer forms and fields; the real forms are only read. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
 create temp table t_ids (k text primary key, v uuid);
