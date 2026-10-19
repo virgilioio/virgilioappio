@@ -254,6 +254,17 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
 
   await supabase.from('candidates').update({ enrichment_status: 'processing' }).eq('id', candidateId);
 
+  // The job's settings (job_settings, 2026-10-19): Gio Fit and the AI summary can
+  // be switched off per job. No row (or no job) keeps both on.
+  let scoreForJob = true;
+  let keepSummary = true;
+  if (jobId) {
+    const { data: settings } = await supabase.from('job_settings')
+      .select('auto_score, ai_summary').eq('job_id', jobId).maybeSingle();
+    scoreForJob = settings?.auto_score !== false;
+    keepSummary = settings?.ai_summary !== false;
+  }
+
   try {
     if (!OPENAI_API_KEY) {
       console.log('[enrich] No OpenAI API key, skipping');
@@ -351,7 +362,6 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
     const candidateUpdate: Record<string, unknown> = {
       enrichment_status: 'complete',
       enriched_at: new Date().toISOString(),
-      profile_summary: extracted.profile_summary,
       skills: rawSkillNames,
       standardized_skills: standardizedSkills,
       standardized_title: finalStandardizedTitle,
@@ -364,6 +374,8 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
       company_count: companyCount || null,
       avg_tenure_months: avgTenureMonths || null,
     };
+    // A job with the AI summary off keeps the profile's summary as it is.
+    if (keepSummary) candidateUpdate.profile_summary = extracted.profile_summary;
     // Title, company and location are profile facts: they go through the one
     // path for outside data below (Find Phase 3), so a résumé never blanks
     // them or replaces a recruiter's edit.
@@ -481,7 +493,14 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
           console.error('[enrich] Resume-replace re-score failed:', e);
         }
       }
-    } else if (jobId) {
+    } else if (jobId && scoreForJob) {
+      // Gio may already have rejected the application (a screening rule): no score then.
+      const { data: assoc } = await supabase.from('job_candidate_associations')
+        .select('status').eq('candidate_id', candidateId).eq('job_id', jobId).maybeSingle();
+      if (String(assoc?.status ?? '').toLowerCase() === 'rejected') {
+        console.log(`[enrich] Skipping fit for ${candidateId} / job ${jobId}: application already rejected`);
+        return;
+      }
       try {
         const fitUrl = `${SUPABASE_URL}/functions/v1/analyze-candidate-fit`;
         fetch(fitUrl, {

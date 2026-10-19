@@ -432,6 +432,8 @@ serve(withRequestCors(async (req) => {
           status: "active",
           current_stage_id: applicationReviewStageId,
           entered_stage_at: new Date().toISOString(),
+          // An application: job_settings screens it and tells the team (jca_z_application).
+          applied_at: new Date().toISOString(),
         });
 
       if (assocErr) {

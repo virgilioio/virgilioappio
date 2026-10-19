@@ -201,7 +201,9 @@ Deno.serve(async (req) => {
         candidate_id: candidateId,
         current_stage_id: firstStage?.id || null,
         status: 'new',
-        entered_stage_at: new Date().toISOString()
+        entered_stage_at: new Date().toISOString(),
+        // An application: job_settings screens it and tells the team (jca_z_application).
+        applied_at: new Date().toISOString()
       })
       .select()
       .single()
