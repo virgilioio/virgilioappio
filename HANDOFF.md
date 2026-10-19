@@ -203,7 +203,7 @@ Hard limits:
 **Settings clean-up (Allan, 2026-10-19): done, see Done 2026-10-19.** Left:
 - Decide: the Job wizard's auto-reject and hiring-team notification switches are saved nowhere and do nothing; build them or hide them.
 - The job and posting default triggers (`handle_new_job_defaults`, `add_default_application_fields_to_posting`) don't filter by workspace; harmless with one workspace.
-- The `platform-admin-metrics` Edge Function is no longer called; Allan may remove it from the Supabase dashboard.
+- `platform-admin-metrics` is removed from the repo (2026-10-19). The deployed copy is still live (it checks for a platform admin itself): Allan deletes it in the Supabase dashboard, Edge Functions › platform-admin-metrics › Delete; the connector here can't delete functions.
 
 **Speed and robustness plan (steps 1–3 done)**
 - **Step 4 — database cleanup.**
