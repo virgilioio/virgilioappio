@@ -1367,7 +1367,7 @@ export function ScorecardSheet({
               <div className="w-full lg:w-[53%] border-r border-[#E7E8EE] bg-[#FAFAF7] flex flex-col">
                 <Tabs defaultValue="resume" className="flex flex-col h-full">
                   <div className="p-4 shrink-0">
-                    <TabsList className="bg-[#F1F0EC] rounded-full p-1 h-auto gap-1">
+                    <TabsList className="bg-[#ECEAE2] rounded-full p-1 h-auto gap-1">
                       <TabsTrigger
                         value="resume"
                         className="rounded-full px-3 py-1.5 text-[12.5px] data-[state=active]:bg-white data-[state=active]:shadow-sm"

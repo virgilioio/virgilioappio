@@ -124,7 +124,7 @@ export function DocumentStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
           </label>
         )}
         {tab === 'written' && doc && (
-          <div ref={segRef} role="radiogroup" aria-label="Edit or preview" className="gio-seg inline-flex gap-1 rounded-[10px] bg-[#F1F0EC] p-1">
+          <div ref={segRef} role="radiogroup" aria-label="Edit or preview" className="gio-seg inline-flex gap-1 rounded-[10px] bg-[#ECEAE2] p-1">
             {(['edit', 'preview'] as const).map((v) => (
               <button
                 key={v}
@@ -140,7 +140,7 @@ export function DocumentStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
                 {v === 'edit' ? 'Edit' : previewLabel}
               </button>
             ))}
-            <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.08)" />
+            <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
           </div>
         )}
       </div>

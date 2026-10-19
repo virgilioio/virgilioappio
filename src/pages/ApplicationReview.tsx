@@ -129,7 +129,7 @@ function Segmented<T extends string>({
 }) {
   const segRef = useSegmentLayer<HTMLDivElement>()
   return (
-    <div ref={segRef} className="gio-seg inline-flex items-center gap-1 rounded-[10px] bg-[#F1F0EC] p-1">
+    <div ref={segRef} className="gio-seg inline-flex items-center gap-1 rounded-[10px] bg-[#ECEAE2] p-1">
       {options.map((o) => {
         const active = o.value === value
         return (
@@ -151,7 +151,7 @@ function Segmented<T extends string>({
           </button>
         )
       })}
-      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
+      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
     </div>
   )
 }

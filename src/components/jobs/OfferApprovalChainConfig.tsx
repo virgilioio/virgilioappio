@@ -636,7 +636,7 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
             <div
               ref={modeSegRef}
               className="gio-seg inline-flex shrink-0 items-center gap-1"
-              style={{ backgroundColor: '#F1F0EC', borderRadius: 9, padding: 3 }}
+              style={{ backgroundColor: '#ECEAE2', borderRadius: 9, padding: 3 }}
             >
               {([
                 { value: 'sequential' as ApprovalMode, label: 'In order', icon: ArrowDownNarrowWide },

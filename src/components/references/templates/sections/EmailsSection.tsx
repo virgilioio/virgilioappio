@@ -50,7 +50,7 @@ function AudienceSwitcher({
     <div
       ref={segRef}
       className="gio-seg inline-flex"
-      style={{ gap: 4, padding: 4, background: '#F1F0EC', borderRadius: 10, marginBottom: 14 }}
+      style={{ gap: 4, padding: 4, background: '#ECEAE2', borderRadius: 10, marginBottom: 14 }}
     >
       {options.map((o) => {
         const active = o.id === value
@@ -82,7 +82,7 @@ function AudienceSwitcher({
           </button>
         )
       })}
-      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
+      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
     </div>
   )
 }

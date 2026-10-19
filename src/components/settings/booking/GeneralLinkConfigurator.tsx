@@ -54,7 +54,7 @@ function SegmentedTabs({
     <div
       ref={segRef}
       className="gio-seg inline-flex items-center gap-1 rounded-[10px] p-[3px]"
-      style={{ background: '#F1F0EC' }}
+      style={{ background: '#ECEAE2' }}
       role="tablist"
     >
       {items.map((item) => {

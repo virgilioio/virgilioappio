@@ -1414,7 +1414,7 @@ export function ScheduleInterviewSheet({
                       <Label className="text-form-label text-virgilio-muted">Duration</Label>
                       <div
                         ref={durationSegRef}
-                        className="gio-seg flex items-center rounded-lg bg-[#F1F0EC]"
+                        className="gio-seg flex items-center rounded-lg bg-[#ECEAE2]"
                         style={{ gap: 2, padding: 2 }}
                       >
                         {[15, 30, 45, 60, 90].map((d) => {
@@ -1438,7 +1438,7 @@ export function ScheduleInterviewSheet({
                             </button>
                           );
                         })}
-                        <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
+                        <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
                       </div>
                     </div>
                     <div className="space-y-1.5">

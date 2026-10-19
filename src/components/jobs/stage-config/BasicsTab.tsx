@@ -42,7 +42,7 @@ function Segmented<T extends string | number>({
     <div
       ref={segRef}
       className="gio-seg flex w-full"
-      style={{ background: '#F1F0EC', borderRadius: 8, padding: 2 }}
+      style={{ background: '#ECEAE2', borderRadius: 8, padding: 2 }}
     >
       {options.map((opt) => {
         const active = opt === value
@@ -68,7 +68,7 @@ function Segmented<T extends string | number>({
           </button>
         )
       })}
-      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
+      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
     </div>
   )
 }

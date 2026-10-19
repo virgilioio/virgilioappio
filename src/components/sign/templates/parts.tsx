@@ -23,7 +23,7 @@ export function Seg<T extends string>({
       ref={ref}
       role="radiogroup"
       aria-label={label}
-      className="gio-seg relative inline-flex w-fit self-start rounded-[10px] bg-[#F1F0EC] p-[3px]"
+      className="gio-seg relative inline-flex w-fit self-start rounded-[10px] bg-[#ECEAE2] p-[3px]"
       onKeyDown={(e) => {
         const i = options.findIndex((o) => o.value === value)
         const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
@@ -60,7 +60,7 @@ export function Seg<T extends string>({
           </button>
         )
       })}
-      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.08)" />
+      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
     </div>
   )
 }

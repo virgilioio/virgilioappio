@@ -373,7 +373,7 @@ export function JobsTable({
               />
             )}
             {statusFilter === 'drafts' && (
-              <div ref={draftSegRef} className="gio-seg inline-flex h-8 items-center rounded-lg bg-[#F1F0EC] p-0.5" role="tablist" aria-label="Draft source">
+              <div ref={draftSegRef} className="gio-seg inline-flex h-8 items-center rounded-lg bg-[#ECEAE2] p-0.5" role="tablist" aria-label="Draft source">
                 {([['all', 'All sources'], ['wizard', 'Started here'], ['sales', 'From Gio Sales']] as const).map(([v, l]) => (
                   <button
                     key={v}
@@ -391,7 +391,7 @@ export function JobsTable({
                     {l}
                   </button>
                 ))}
-                <SegmentLayer fill="#fff" shadow="0 1px 3px rgba(0,0,0,0.1)" />
+                <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
               </div>
             )}
             <JobPriorityFilterChip selected={selectedPriorities} onChange={setSelectedPriorities} />

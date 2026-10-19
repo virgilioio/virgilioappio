@@ -97,7 +97,7 @@ function Segmented<T extends string>({
     <div
       ref={segRef}
       className="gio-seg inline-flex"
-      style={{ gap: 3, padding: 3, background: '#F1F0EC', borderRadius: 8 }}
+      style={{ gap: 3, padding: 3, background: '#ECEAE2', borderRadius: 8 }}
     >
       {options.map((o) => {
         const active = o.value === value
@@ -125,7 +125,7 @@ function Segmented<T extends string>({
           </button>
         )
       })}
-      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
+      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
     </div>
   )
 }

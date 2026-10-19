@@ -258,7 +258,7 @@ export function AddOrTransferCandidateDialog({
               ref={segRef}
               className="gio-seg flex"
               style={{
-                background: '#F1F0EC',
+                background: '#ECEAE2',
                 borderRadius: 12,
                 padding: 4,
                 gap: 4,

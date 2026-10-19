@@ -129,7 +129,7 @@ export function ShortlistTab({ projectId, jobId, onCollected }: ShortlistTabProp
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
-        <div ref={segRef} className="gio-seg inline-flex items-center gap-0.5 rounded-lg bg-[#F1F0EC] p-0.5">
+        <div ref={segRef} className="gio-seg inline-flex items-center gap-0.5 rounded-lg bg-[#ECEAE2] p-0.5">
           {([
             { id: 'shortlisted', label: 'Shortlisted', count: shortlisted.length },
             { id: 'not_a_fit', label: 'Not a fit', count: notAFit.length },
@@ -149,7 +149,7 @@ export function ShortlistTab({ projectId, jobId, onCollected }: ShortlistTabProp
               <span className="text-[11px] tabular-nums text-text-tertiary">{seg.count}</span>
             </button>
           ))}
-          <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(0,0,0,0.06)" />
+          <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
         </div>
 
         {view === 'shortlisted' && shortlisted.length > 0 && (

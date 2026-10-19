@@ -865,7 +865,7 @@ export function SourcingCandidateTable({
           </div>
 
           {/* Center: fit segments */}
-          <div ref={fitSegRef} className="gio-seg inline-flex items-center gap-0.5 rounded-lg bg-[#F1F0EC] p-0.5">
+          <div ref={fitSegRef} className="gio-seg inline-flex items-center gap-0.5 rounded-lg bg-[#ECEAE2] p-0.5">
             {([
               { id: 'all', label: 'All', count: segmentCounts.all },
               { id: 'strong', label: 'Strong fit', count: segmentCounts.strong },
@@ -896,7 +896,7 @@ export function SourcingCandidateTable({
                 </span>
               </button>
             ))}
-            <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(0,0,0,0.06)" />
+            <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
           </div>
 
           {/* Right: sort + select all */}

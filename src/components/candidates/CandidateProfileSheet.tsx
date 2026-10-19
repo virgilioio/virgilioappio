@@ -1932,7 +1932,7 @@ const stageHasAutomation = useMemo(() => {
                       <Tabs defaultValue="offer-details" className="w-full">
                         <TabsList
                           className="inline-flex w-auto p-1 rounded-[10px] h-auto bg-transparent gap-1"
-                          style={{ backgroundColor: '#F1F0EC' }}
+                          style={{ backgroundColor: '#ECEAE2' }}
                         >
                           <TabsTrigger
                             value="offer-details"

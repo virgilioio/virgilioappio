@@ -467,14 +467,14 @@ export function AutomationBuilderSheet({ open, onOpenChange, jobId, jhsId, stage
             {/* TIMING */}
             <section>
               <div style={SECTION} className="font-inter mb-2">When to run</div>
-              <div ref={timingSegRef} className="gio-seg inline-flex rounded-lg p-1 gap-1" style={{ background: '#F1F0EC' }}>
+              <div ref={timingSegRef} className="gio-seg inline-flex rounded-lg p-1 gap-1" style={{ background: '#ECEAE2' }}>
                 {([['immediate', 'Right away'], ['delay', 'After a delay'], ['at_time', 'At a time of day']] as const).map(([k, l]) => (
                   <button key={k} type="button" aria-pressed={timing === k} data-seg-option data-active={timing === k || undefined} onClick={() => setTiming(k)}
                     className={cn('h-7 px-3 rounded-md font-poppins transition-colors', timing !== k && 'hover:bg-white/60')} style={{ fontSize: 12, fontWeight: 500, color: '#0d0d09' }}>
                     {l}
                   </button>
                 ))}
-                <SegmentLayer fill="#fff" shadow="0 1px 3px rgba(0,0,0,0.1)" />
+                <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
               </div>
               {timing === 'delay' && (
                 <div className="mt-3 flex items-center gap-2 font-inter" style={{ fontSize: 12.5, color: '#5A6072' }}>
