@@ -1,4 +1,5 @@
 import * as React from "react"
+import { keepOpenForToasts } from "@/lib/toastClicks"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
@@ -34,7 +35,7 @@ const DialogContent = React.forwardRef<
     overlayClassName?: string
     closeClassName?: string
   }
->(({ className, overlayClassName, closeClassName, children, ...props }, ref) => {
+>(({ className, overlayClassName, closeClassName, children, onInteractOutside, ...props }, ref) => {
   // §13: when the content changes, the dialog resizes over --dur-resize (content swaps instantly).
   const resizeRef = useHeightTransition<HTMLDivElement>()
   const contentRef = React.useMemo(() => mergeRefs(ref, resizeRef), [ref, resizeRef])
@@ -47,6 +48,7 @@ const DialogContent = React.forwardRef<
         "fixed left-[50%] top-[50%] z-[70] grid w-full max-w-lg [translate:-50%_-50%] gap-4 border bg-background p-6 shadow-lg gio-dialog sm:rounded-lg",
         className
       )}
+      onInteractOutside={(e) => keepOpenForToasts(e, onInteractOutside)}
       {...props}
     >
       {children}

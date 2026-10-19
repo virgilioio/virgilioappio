@@ -2,6 +2,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 import * as React from "react"
+import { keepOpenForToasts } from "@/lib/toastClicks"
 
 import { cn } from "@/lib/utils"
 
@@ -176,7 +177,7 @@ type SheetSide = "top" | "bottom" | "left" | "right"
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, showOverlay = true, ...props }, ref) => {
+>(({ side = "right", className, children, showOverlay = true, onInteractOutside, ...props }, ref) => {
   const closeRef = React.useRef<HTMLButtonElement>(null)
   const close = React.useCallback(() => closeRef.current?.click(), [])
   const swipe = useSheetSwipe((side ?? "right") as SheetSide, close)
@@ -218,6 +219,7 @@ const SheetContent = React.forwardRef<
       data-stack-depth={depth > 0 ? Math.min(depth, 2) : undefined}
       data-side={side ?? "right"}
       className={cn(sheetVariants({ side }), className)}
+      onInteractOutside={(e) => keepOpenForToasts(e, onInteractOutside)}
       {...props}
     >
       {children}

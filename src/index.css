@@ -1110,6 +1110,11 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
     bottom: calc(56px + 24px + env(safe-area-inset-bottom)) !important;
   }
 }
+/* An open sheet or dialog turns pointer events off on the page; toasts (and their
+ * Undo) take them back. Sheet and Dialog don't count a toast click as "outside". */
+.gio-toaster [data-sonner-toast] {
+  pointer-events: auto;
+}
 .gio-toaster [data-sonner-toast][data-styled="true"] {
   background: #0d0d09;
   color: #fffcf9;
