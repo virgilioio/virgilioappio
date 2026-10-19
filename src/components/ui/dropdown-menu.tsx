@@ -1,7 +1,7 @@
 
 import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-import { Check, ChevronRight, Circle } from "lucide-react"
+import { Check, ChevronRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import {
@@ -30,13 +30,13 @@ const DropdownMenuSubTrigger = React.forwardRef<
     className={cn(
       menuItem,
       "data-[state=open]:bg-[hsl(var(--menu-hover))]",
-      inset && "pl-7",
+      inset && "pl-9",
       className
     )}
     {...props}
   >
     {children}
-    <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-60" />
+    <ChevronRight className="gio-mrow-chev" aria-hidden />
   </DropdownMenuPrimitive.SubTrigger>
 ))
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName
@@ -69,7 +69,8 @@ const DropdownMenuContent = React.forwardRef<
       sideOffset={sideOffset}
       collisionPadding={collisionPadding}
       className={cn(
-        "z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto overscroll-contain",
+        // Gio Docs' proportions: a menu is at least 220px wide.
+        "z-50 min-w-[220px] overflow-x-hidden overflow-y-auto overscroll-contain",
         "max-h-[var(--radix-dropdown-menu-content-available-height)]",
         menuPanel,
         className
@@ -88,7 +89,7 @@ const DropdownMenuItem = React.forwardRef<
 >(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
-    className={cn(menuItem, inset && "pl-7", className)}
+    className={cn(menuItem, inset && "pl-9", className)}
     {...props}
   />
 ))
@@ -100,16 +101,17 @@ const DropdownMenuCheckboxItem = React.forwardRef<
 >(({ className, children, checked, ...props }, ref) => (
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
-    className={cn(menuItem, "pl-7 pr-2", className)}
+    className={cn(menuItem, className)}
     checked={checked}
     {...props}
   >
-    <span className="absolute left-1.5 flex h-3.5 w-3.5 items-center justify-center text-virgilio-purple">
+    {children}
+    {/* The tick at the row's end (Gio Docs' menus). */}
+    <span className="gio-mrow-check" aria-hidden>
       <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="h-3.5 w-3.5" />
+        <Check className="h-4 w-4" strokeWidth={2} />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
-    {children}
   </DropdownMenuPrimitive.CheckboxItem>
 ))
 DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName
@@ -120,15 +122,15 @@ const DropdownMenuRadioItem = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
-    className={cn(menuItem, "pl-7 pr-2", className)}
+    className={cn(menuItem, className)}
     {...props}
   >
-    <span className="absolute left-1.5 flex h-3.5 w-3.5 items-center justify-center text-virgilio-purple">
+    {children}
+    <span className="gio-mrow-check" aria-hidden>
       <DropdownMenuPrimitive.ItemIndicator>
-        <Circle className="h-2 w-2 fill-current" />
+        <Check className="h-4 w-4" strokeWidth={2} />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
-    {children}
   </DropdownMenuPrimitive.RadioItem>
 ))
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
@@ -141,7 +143,7 @@ const DropdownMenuLabel = React.forwardRef<
 >(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitive.Label
     ref={ref}
-    className={cn(menuGroupLabel, inset && "pl-7", className)}
+    className={cn(menuGroupLabel, inset && "pl-9", className)}
     {...props}
   />
 ))

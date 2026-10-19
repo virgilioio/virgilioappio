@@ -112,15 +112,18 @@ const SelectItem = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Item
     ref={ref}
-    className={cn(menuItem, "pl-7 pr-2", className)}
+    className={cn(menuItem, className)}
     {...props}
   >
-    <span className="absolute left-1.5 flex h-3.5 w-3.5 items-center justify-center text-virgilio-purple">
+    <span className="min-w-0 flex-1 truncate">
+      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+    </span>
+    {/* The tick at the row's end (Gio Docs' menus). */}
+    <span className="gio-mrow-check" aria-hidden>
       <SelectPrimitive.ItemIndicator>
-        <Check className="h-3.5 w-3.5" />
+        <Check className="h-4 w-4" strokeWidth={2} />
       </SelectPrimitive.ItemIndicator>
     </span>
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ))
 SelectItem.displayName = SelectPrimitive.Item.displayName

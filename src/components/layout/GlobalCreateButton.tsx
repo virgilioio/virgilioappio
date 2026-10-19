@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import {
+import { DropdownMenuShortcut,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -192,9 +192,7 @@ export function GlobalCreateButton() {
               >
                 <Icon className="h-3.5 w-3.5 text-[hsl(var(--menu-group-color))]" />
                 <span className="flex-1 truncate">{option.label}</span>
-                <span className="ml-auto font-mono text-menu-kbd text-[hsl(var(--menu-group-color))]">
-                  {option.shortcut}
-                </span>
+                <DropdownMenuShortcut>{option.shortcut}</DropdownMenuShortcut>
               </DropdownMenuItem>
             )
           })}
