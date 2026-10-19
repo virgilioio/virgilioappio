@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { Switch } from '@/components/ui/switch'
 import { useChipMotion } from '@/lib/chipMotion'
 import { cn } from '@/lib/utils'
 import { Sparkles, X, Info } from 'lucide-react'
@@ -300,27 +301,8 @@ export function ToggleRow({
           <p className="text-[12px] text-text-tertiary mt-0.5">{hint}</p>
         )}
       </div>
-      {/* Native-feeling switch with project tokens */}
-      <button
-        id={id}
-        role="switch"
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={cn(
-          'relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
-          checked ? 'bg-pastel-green-foreground' : 'bg-virgilio-border',
-          disabled && 'opacity-50 cursor-not-allowed'
-        )}
-      >
-        <span
-          className={cn(
-            'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform',
-            checked ? 'translate-x-[18px]' : 'translate-x-0.5'
-          )}
-        />
-      </button>
+      {/* The shared switch (Motion & Feel §2: thumb slides, press scale). */}
+      <Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onChange} />
     </div>
   )
 }
