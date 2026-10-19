@@ -1,4 +1,4 @@
--- Run after 20261019_activity_offer_types and 20261019_activity_offer_trail inside a transaction that is rolled back.
+-- Run after 20261019023525_activity_offer_types and 20261019_activity_offer_trail inside a transaction that is rolled back.
 -- Fake offers, approvals and a fake agreement on a real job and candidate in Virgilio's
 -- workspace: Allan writes the offer and asks, the support account and another teammate
 -- approve, the candidate signs. Every row's ok is true.
@@ -37,8 +37,9 @@ insert into t_results select 'offer: edits right after creating it are part of c
 select set_config('request.jwt.claims', '{"sub":"e9bfab1d-5e9a-49d0-af89-5f97ef89b6fe","role":"authenticated"}', true);
 update public.offer_letters set field_values = '{"base":4}' where id = (select v from t_ids where k = 'o1');
 update public.offer_letters set field_values = '{"base":5}' where id = (select v from t_ids where k = 'o1');
-insert into t_results select 'offer: someone else''s burst of edits is one "Offer updated"',
-  (select count(*) = 1 from t_feed where activity_type = 'offer_updated' and user_id = (select v from t_ids where k = 'support'));
+insert into t_results select 'offer: someone else''s burst of edits is one "Offer updated", naming what changed',
+  (select count(*) = 1 from t_feed where activity_type = 'offer_updated' and user_id = (select v from t_ids where k = 'support')
+     and description = 'Changed: base'));
 update public.offer_letters set title = 'Renamed' where id = (select v from t_ids where k = 'o1');
 insert into t_results select 'offer: a change that isn''t the offer''s values writes nothing',
   (select count(*) = 1 from t_feed where activity_type = 'offer_updated');
@@ -93,9 +94,9 @@ select (i->>'env')::uuid, (i->>'org')::uuid, 'Fake offer letter', 'candidate', (
        'The start date changed'
 from t_i;
 insert into public.sign_recipients (id, tenant_id, envelope_id, position, role, name, email, color)
-select (i->>'rc1')::uuid, (i->>'org')::uuid, (i->>'env')::uuid, 1, 'signer', 'Fake Candidate', 'fake.candidate@example.com', '#6F3FF5' from t_i
+select (i->>'rc1')::uuid, (i->>'org')::uuid, (i->>'env')::uuid, 1, 'signer'::public.sign_recipient_role, 'Fake Candidate', 'fake.candidate@example.com', '#6F3FF5' from t_i
 union all
-select (i->>'rc2')::uuid, (i->>'org')::uuid, (i->>'env')::uuid, 2, 'signer', 'Allan Bravo', 'allan@virgilio.tech', '#0EA5E9' from t_i;
+select (i->>'rc2')::uuid, (i->>'org')::uuid, (i->>'env')::uuid, 2, 'signer'::public.sign_recipient_role, 'Allan Bravo', 'allan@virgilio.tech', '#0EA5E9' from t_i;
 insert into public.sign_events (tenant_id, envelope_id, recipient_id, kind, label, actor_name, actor_user_id, detail)
 select (i->>'org')::uuid, (i->>'env')::uuid, (i->>r)::uuid, kind, kind, actor, case when uid then (i->>'allan')::uuid end, '{}'::jsonb
 from t_i, (values ('rc1', 'sent', 'Allan', true), ('rc2', 'sent', 'Allan', true), ('rc1', 'consented', null, false),

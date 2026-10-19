@@ -12,8 +12,8 @@
 --    in-job feed never matched; a BEFORE INSERT trigger copies it to job_id,
 --    and the rows already written get it too.
 -- 2. offer_trail_log() / offer_trail_name(): one way to write an entry.
--- 3. Offers: created, and updated (one entry per person per 15 minutes, and
---    none right after their own "created").
+-- 3. Offers: created, and updated with the fields that changed (one entry per
+--    person per 15 minutes, and none right after their own "created").
 -- 4. Approvals: sent for approval (with the approvers, skipped ones left
 --    out), each approver's approval or decline (with their note), recalled,
 --    and fully approved (once, when no step is pending or declined).
@@ -94,6 +94,7 @@ set search_path = public
 as $$
 declare
   v_me uuid := coalesce(auth.uid(), new.created_by);
+  v_changed text;
 begin
   if tg_op = 'INSERT' then
     perform public.offer_trail_log('offer_created', v_me, new.candidate_id, new.job_id,
@@ -106,8 +107,17 @@ begin
         and a.metadata->>'offer_id' = new.id::text
         and a.user_id = coalesce(v_me, '00000000-0000-0000-0000-000000000000')
         and a.created_at > now() - interval '15 minutes') then
+      -- Which fields changed, by their labels on the offer form.
+      select string_agg(coalesce(nullif(btrim(f.field_label), ''), k.key), ', ' order by coalesce(f.display_order, 9999), k.key)
+        into v_changed
+        from (select jsonb_object_keys(coalesce(new.field_values, '{}'::jsonb)) as key
+              union
+              select jsonb_object_keys(coalesce(old.field_values, '{}'::jsonb))) k
+        left join public.offer_form_fields f on f.form_id = new.form_id and f.field_name = k.key
+       where (new.field_values -> k.key) is distinct from (old.field_values -> k.key);
       perform public.offer_trail_log('offer_updated', v_me, new.candidate_id, new.job_id,
-        'Offer updated', null, jsonb_build_object('offer_id', new.id));
+        'Offer updated', case when v_changed is null then null else 'Changed: ' || v_changed end,
+        jsonb_build_object('offer_id', new.id));
     end if;
   end if;
   return null;
