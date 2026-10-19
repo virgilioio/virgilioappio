@@ -225,7 +225,9 @@ export async function sendRefereeEmail(
   supabase: SupabaseClient,
   ctx: RequestContext,
   referee: { id: string; name: string; email: string | null; on_hold?: boolean | null },
-  opts: { isReminder?: boolean } = {},
+  // resend: a recruiter sent it again by hand. actor: who did (null for the
+  // daily reminders and for the candidate's own submission).
+  opts: { isReminder?: boolean; resend?: boolean; actor?: string | null } = {},
 ): Promise<void> {
   const tpl = refereeTemplate(ctx.snapshot);
   if (!tpl) throw new Error("This template has no referee email");
@@ -235,7 +237,7 @@ export async function sendRefereeEmail(
   // referee is usually the current employer and must never be contacted.
   const { data: row } = await supabase
     .from("reference_referees")
-    .select("name, email, relationship, period, on_hold")
+    .select("name, email, relationship, period, on_hold, status")
     .eq("id", referee.id)
     .maybeSingle();
 
@@ -284,22 +286,28 @@ export async function sendRefereeEmail(
     rendered,
   });
 
+  // invited_at is always the latest email. A first send or a resend puts the
+  // referee back to Invited; a reminder leaves someone who already opened the
+  // link (or started answering) where they are.
+  const keepStatus = opts.isReminder && (row?.status === "opened" || row?.status === "in_progress");
   await supabase
     .from("reference_referees")
     .update({
       token_hash: issued.tokenHash,
       link_expires_at: issued.expiresAt,
       invited_at: new Date().toISOString(),
-      status: "invited",
+      ...(keepStatus ? {} : { status: "invited" }),
     })
     .eq("id", referee.id);
 
+  const verb = opts.isReminder ? "Reminder sent to" : opts.resend ? "Questionnaire re-sent to" : "Questionnaire sent to";
   await logReferenceActivity(
     supabase,
     ctx.request.id,
     opts.isReminder ? "referee_reminder_sent" : "referee_email_sent",
-    `${opts.isReminder ? "Reminder sent to" : "Questionnaire sent to"} ${name}`,
-    null,
+    `${verb} ${name}`,
+    opts.actor ?? null,
+    referee.id,
   );
 }
 

@@ -232,7 +232,11 @@ Deno.serve(async (req) => {
           supabase,
           ctx,
           { id: r.id, name: r.name, email: r.email },
-          { isReminder: action === "remind_referees" },
+          {
+            isReminder: action === "remind_referees",
+            resend: action === "resend_referee",
+            actor: userData.user.id,
+          },
         );
         sent += 1;
       } catch (e) {

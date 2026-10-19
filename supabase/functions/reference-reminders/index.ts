@@ -92,16 +92,19 @@ Deno.serve(async (req) => {
       const rem = ctx.snapshot.reminders;
       if (!rem?.enabled) continue;
 
-      const { data: sends } = await supabase
-        .from("reference_activity")
-        .select("created_at, type, label")
-        .eq("request_id", referee.request_id)
-        .in("type", ["referee_email_sent", "referee_reminder_sent"])
-        .order("created_at", { ascending: false });
-      const mine = (sends ?? []).filter((s) => (s.label ?? "").includes(referee.name));
-      const last = mine[0]?.created_at ? new Date(mine[0].created_at).getTime() : null;
+      // invited_at moves with every email (first send, resend or reminder).
+      const last = referee.invited_at ? new Date(referee.invited_at).getTime() : null;
       if (!last) continue;
-      const reminderCount = mine.filter((s) => s.type === "referee_reminder_sent").length;
+      // Reminders already sent to this referee: rows that name them, plus older
+      // rows from before referee_id existed, matched on the exact label.
+      const { data: reminders } = await supabase
+        .from("reference_activity")
+        .select("referee_id, label")
+        .eq("request_id", referee.request_id)
+        .eq("type", "referee_reminder_sent");
+      const reminderCount = (reminders ?? []).filter((s) =>
+        s.referee_id ? s.referee_id === referee.id : s.label === `Reminder sent to ${referee.name}`
+      ).length;
       if (reminderCount >= (Number(rem.referee_max) || 3)) continue;
       const waitDays = Number(rem.referee_first_after_days) || 2;
       if (now - last < waitDays * DAY) continue;

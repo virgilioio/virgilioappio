@@ -190,14 +190,18 @@ export async function logReferenceActivity(
   type: string,
   label: string,
   actor: string | null = null,
+  refereeId: string | null = null,
 ): Promise<void> {
   try {
-    await supabase.from("reference_activity").insert({
+    // supabase-js reports a failed insert in `error` rather than throwing.
+    const { error } = await supabase.from("reference_activity").insert({
       request_id: requestId,
       type,
       label,
       actor,
+      ...(refereeId ? { referee_id: refereeId } : {}),
     });
+    if (error) console.warn("[referenceTokens] activity log skipped", error.message);
   } catch (e) {
     console.warn("[referenceTokens] activity log skipped", e);
   }
