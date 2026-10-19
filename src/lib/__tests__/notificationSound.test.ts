@@ -20,6 +20,7 @@ describe('soundFor', () => {
   it('an offer waiting for your approval, or a reminder, plays the approval sound', () => {
     expect(soundFor(row({ category: 'offer_event', metadata: { event: 'approval_requested' } }), 'me')).toBe('approval')
     expect(soundFor(row({ category: 'offer_event', metadata: { event: 'approval_reminder' } }), 'me')).toBe('approval')
+    expect(soundFor(row({ category: 'offer_event', metadata: { event: 'approval_complete' } }), 'me')).toBe('approval')
   })
   it('other offer news, other categories, read rows and your own actions stay quiet', () => {
     expect(soundFor(row({ category: 'offer_event', metadata: { event: 'approved' } }), 'me')).toBeNull()

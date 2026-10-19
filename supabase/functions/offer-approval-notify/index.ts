@@ -4,12 +4,14 @@
 // or a reminder someone sent with Remind, 2026-10-18),
 // emails it unless the approver turned offer emails off, and marks it sent.
 // A failure is released and retried, up to five times. The bell was already
-// rung by the database when the turn began. The emails use the Gio ATS design
-// (_shared/atsEmail.ts, 2026-10-18). ASCII only.
+// rung by the database when the turn began. Since 2026-10-19 it also sends the
+// person who asked for approval the news once the whole chain has approved
+// (offer_approval_claim_outcomes; the bell rang in the database). The emails
+// use the Gio ATS design (_shared/atsEmail.ts, 2026-10-18). ASCII only.
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { adminClient } from "../_shared/referenceTokens.ts";
-import { message, type Notice } from "./emails.ts";
+import { approvedMessage, message, type Notice, type Outcome } from "./emails.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -52,6 +54,29 @@ Deno.serve(async (req) => {
         const msg = err instanceof Error ? err.message : String(err);
         console.error("offer-approval-notify", n.notice_id, msg);
         await supabase.rpc("offer_approval_finish_notice", { _id: n.notice_id, _ok: false, _error: msg });
+      }
+    }
+    // The chain is complete: tell the person who asked. A failure here never stops the approvers' mail above.
+    const done = await supabase.rpc("offer_approval_claim_outcomes", { _limit: 50 });
+    if (done.error) {
+      console.error("offer-approval-notify outcomes", done.error.message);
+    } else {
+      for (const o of (done.data ?? []) as Outcome[]) {
+        try {
+          if (!o.wants_email || !o.requester_email) {
+            skipped++;
+          } else {
+            const m = approvedMessage(o);
+            await sendEmail(o.requester_email, m.subject, m.html, m.text);
+            sent++;
+          }
+          await supabase.rpc("offer_approval_finish_outcome", { _id: o.outcome_id, _ok: true });
+        } catch (err) {
+          failed++;
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error("offer-approval-notify outcome", o.outcome_id, msg);
+          await supabase.rpc("offer_approval_finish_outcome", { _id: o.outcome_id, _ok: false, _error: msg });
+        }
       }
     }
     return json(200, { sent, skipped, failed });

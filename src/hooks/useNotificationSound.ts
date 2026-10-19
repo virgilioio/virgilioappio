@@ -11,8 +11,10 @@ import {
   type NotificationSoundKind,
 } from '@/lib/notificationSound'
 
-/** Offer events that ask *you* to decide (the database's offer_approval_sync). */
-const APPROVAL_EVENTS = new Set(['approval_requested', 'approval_reminder'])
+/** Offer events that play the approval sound: ones that ask *you* to decide
+ *  (offer_approval_sync, Remind) and, since 2026-10-19, the news that an offer
+ *  you sent for approval is fully approved (offer_approval_announce). */
+const APPROVAL_EVENTS = new Set(['approval_requested', 'approval_reminder', 'approval_complete'])
 
 /** Which sound a notification earns, if any: someone mentioned you, or an offer waits for your approval. */
 export function soundFor(n: NotificationRow, me: string | undefined): NotificationSoundKind | null {
