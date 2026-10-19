@@ -354,6 +354,18 @@ export function usePipelineSectionRows({
       // rejected
       const reason = a.rejection_reason_id ? reasonById.get(a.rejection_reason_id) : undefined
       const owner = a.rejected_by ? ownerById.get(a.rejected_by) : undefined
+      // Gio's own rejections (job_settings screening): Gio decided, and the
+      // email waits for 9:00 the next morning unless they're restored first.
+      const byGio = !!a.auto_rejected_rule
+      const emailAt = a.rejection_email_scheduled_for ? new Date(a.rejection_email_scheduled_for) : null
+      const gioNote = byGio
+        ? [
+            String(a.rejection_notes || '').replace(/^Gio:\s*/, '') || null,
+            emailAt && emailAt.getTime() > Date.now()
+              ? `Email ${emailAt.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`
+              : null,
+          ].filter(Boolean).join(' · ') || null
+        : null
       const withdrew = reason?.category === 'candidate_declined'
       const autoScreened = !reason && typeof base.score === 'number' && base.score < 50
       const status: PSRowData['status'] = reason
@@ -361,7 +373,9 @@ export function usePipelineSectionRows({
             label: reason.name,
             icon: withdrew ? PS_STATUS_ICONS.userX : PS_STATUS_ICONS.slash,
             color: withdrew ? PS_TERTIARY : PS_RUST,
-            note: a.rejection_notes || (reachedByAssoc.get(a.id) ? `Rejected after ${reachedByAssoc.get(a.id)}` : null),
+            note: byGio
+              ? gioNote
+              : a.rejection_notes || (reachedByAssoc.get(a.id) ? `Rejected after ${reachedByAssoc.get(a.id)}` : null),
           }
         : autoScreened
           ? {
@@ -382,8 +396,8 @@ export function usePipelineSectionRows({
         rejectedLabel: shortDate(a.rejected_at || a.updated_at),
         rejectedAt: a.rejected_at || a.updated_at || null,
         status,
-        ownerName: owner?.name ?? null,
-        ownerAvatar: owner?.avatar ?? null,
+        ownerName: byGio ? 'Gio' : owner?.name ?? null,
+        ownerAvatar: byGio ? null : owner?.avatar ?? null,
       }
     })
   }, [

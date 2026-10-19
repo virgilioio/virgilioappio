@@ -53,7 +53,7 @@ export function usePipelineActions() {
       associations = await fetchAll(() =>
         supabase
           .from('job_candidate_associations')
-          .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at, ai_fit_score, is_favorite, added_by, rejection_reason_id, rejected_by, rejected_at, rejection_notes, updated_at, offered_at, hired_at')
+          .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at, ai_fit_score, is_favorite, added_by, rejection_reason_id, rejected_by, rejected_at, rejection_notes, auto_rejected_rule, rejection_email_scheduled_for, updated_at, offered_at, hired_at')
           .eq('job_id', jobId)
           .order('pipeline_position', { ascending: true, nullsFirst: false })
           .order('created_at', { ascending: false }),
