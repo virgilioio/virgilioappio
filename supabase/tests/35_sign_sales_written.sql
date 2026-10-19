@@ -1,4 +1,4 @@
--- Run after 20261019160000_sign_sales_written inside a transaction that is rolled back.
+-- Run after 20261019154719_sign_sales_written inside a transaction that is rolled back.
 -- The Gio Sales template made of one written document is sent to a fake client:
 -- the envelope gets its written copy, waits for its PDF, and a deal without the
 -- contact's email is refused. Every row's ok is true.
