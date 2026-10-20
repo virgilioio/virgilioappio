@@ -52,7 +52,15 @@ interface JobInfoStepProps {
   openings?: JobInfoOpeningsProp
   /** The saved job, once it exists: its source documents feed Gio. */
   jobId?: string | null
+  /** Only these cards (the CRM setup splits the form over two steps); all by default. */
+  sections?: JobInfoSection[]
+  /** A job from a Gio Sales deal: its client is the deal's, shown read-only. */
+  clientLocked?: string | null
+  /** The job opens from elsewhere (the CRM setup's Review step), not from a status here. */
+  hideStatus?: boolean
 }
+
+export type JobInfoSection = 'basics' | 'location' | 'compensation' | 'description' | 'skills'
 
 /** A Gio function's error as one specific line (never the raw server text). */
 async function gioErrorMessage(err: any, fallback: string): Promise<string> {
@@ -126,7 +134,8 @@ const JOB_LEVEL_OPTIONS: SearchableSelectOption[] = [
   { value: 'L8 — Executive', label: 'L8 — Executive' },
 ]
 
-export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepProps) {
+export function JobInfoStep({ jobData, onUpdate, openings, jobId, sections, clientLocked, hideStatus }: JobInfoStepProps) {
+  const show = (k: JobInfoSection) => !sections || sections.includes(k)
   const [isDeptFormOpen, setIsDeptFormOpen] = React.useState(false)
   const { data: childOrgs = [], isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation(jobData.organization_id)
   const { userType, organizationId } = useAuth()
@@ -268,6 +277,7 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepP
   return (
     <div className="space-y-8">
       {/* ------------------------------------------------ BASICS */}
+      {show('basics') && (
       <SectionCard title="Basics">
         <div>
           <FieldLabel htmlFor="title" required>
@@ -298,6 +308,7 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepP
             <FieldHint>Used in CRM &amp; analytics only.</FieldHint>
           </div>
 
+          {!hideStatus && (
           <div>
             <FieldLabel required>Status</FieldLabel>
             <div className="mt-2">
@@ -309,10 +320,23 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepP
               />
             </div>
           </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {canSelectOrganization && (
+          {clientLocked != null ? (
+            <div>
+              <FieldLabel>Client</FieldLabel>
+              <div
+                className="mt-2 flex items-center gap-2 font-inter"
+                style={{ height: 36, background: '#FAFAF7', border: '1px solid #EDEBE5', borderRadius: 8, padding: '0 12px', fontSize: 12.5, color: '#1F2230' }}
+              >
+                <Building2 className="h-3.5 w-3.5 text-[#8B8F9E]" />
+                <span className="truncate">{clientLocked || 'The deal\u2019s client'}</span>
+              </div>
+              <FieldHint>From the deal in Gio Sales.</FieldHint>
+            </div>
+          ) : canSelectOrganization && (
             <div>
               <FieldLabel required>Client</FieldLabel>
               <div className="mt-2">
@@ -405,8 +429,10 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepP
         )}
 
       </SectionCard>
+      )}
 
       {/* ----------------------------------- LOCATION & EMPLOYMENT */}
+      {show('location') && (
       <SectionCard title="Location & Employment">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
@@ -487,8 +513,10 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepP
           </div>
         </div>
       </SectionCard>
+      )}
 
       {/* ----------------------------------------- COMPENSATION (job-level) */}
+      {show('compensation') && (
       <SectionCard title="Compensation">
         <p className="-mt-1 mb-4 text-[12.5px] text-text-tertiary">
           Stored on the job. Visibility, equity, signing bonus, and commission live on the job post (Step 4).
@@ -542,6 +570,7 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepP
           <FieldHint>What the range above is per. The salary screening rule needs it.</FieldHint>
         </div>
       </SectionCard>
+      )}
 
 
 
@@ -550,6 +579,7 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepP
 
 
       {/* ----------------------------------------- JOB DESCRIPTION */}
+      {show('description') && (
       <SectionCard
         title="Job description"
         trailing={
@@ -598,8 +628,10 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepP
           )}
         </div>
       </SectionCard>
+      )}
 
       {/* ------------------------------------------ REQUIRED SKILLS */}
+      {show('skills') && (
       <SectionCard
         title="Required skills"
         trailing={
@@ -681,6 +713,7 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepP
           </div>
         </div>
       </SectionCard>
+      )}
 
       {/* Department Creation Dialog */}
       <DepartmentFormDialog

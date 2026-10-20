@@ -244,6 +244,8 @@ export function JobFormSheet({
                 jobData={jobData}
                 onUpdate={updateJobData}
                 jobId={job?.id ?? null}
+                // A job from a Gio Sales deal keeps the deal's client.
+                clientLocked={(job as { sales_deal_id?: string | null } | null)?.sales_deal_id ? ((job as { organizations?: { name?: string | null } | null }).organizations?.name ?? '') : undefined}
                 openings={job?.id ? {
                   mode: 'edit',
                   jobId: job.id,
@@ -375,11 +377,13 @@ function AnchoredJobInfo({
   onUpdate,
   openings,
   jobId,
+  clientLocked,
 }: {
   jobData: Partial<CreateJobData>
   onUpdate: (d: Partial<CreateJobData>) => void
   openings?: JobInfoOpeningsProp
   jobId?: string | null
+  clientLocked?: string | null
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -398,7 +402,7 @@ function AnchoredJobInfo({
 
   return (
     <div ref={wrapRef}>
-      <JobInfoStep jobData={jobData} onUpdate={onUpdate} openings={openings} jobId={jobId} />
+      <JobInfoStep jobData={jobData} onUpdate={onUpdate} openings={openings} jobId={jobId} clientLocked={clientLocked} />
     </div>
   )
 }

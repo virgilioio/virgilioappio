@@ -9,6 +9,7 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { JobWizard } from '@/components/jobs/JobWizard'
+import { CrmJobSetup } from '@/components/jobs/CrmJobSetup'
 import { useJobs, Job } from '@/hooks/useJobs'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { toast } from '@/hooks/use-toast'
@@ -51,7 +52,9 @@ export default function Jobs() {
   const [resumeJobId, setResumeJobId] = useState<string | null>(null)
   const handleCreateNew = () => { setSelectedJob(null); setResumeJobId(null); setIsWizardOpen(true) }
   const handleResumeDraft = (job: Job) => { setResumeJobId(job.id); setIsWizardOpen(true) }
-  const handleSetupDraft = (job: Job) => navigate(`/jobs/${job.id}/setup`)
+  // A draft from a Gio Sales deal is set up step by step (CrmJobSetup).
+  const [setupJobId, setSetupJobId] = useState<string | null>(null)
+  const handleSetupDraft = (job: Job) => setSetupJobId(job.id)
   const handleAssignOwner = (job: Job) => navigate(`/jobs/${job.id}/setup#hiring-team`)
   // J3 (Block B §16, Pattern 1): a draft is a real job row, so discarding it
   // deletes what was set up on it so far. The row collapses while it goes.
@@ -182,6 +185,13 @@ export default function Jobs() {
           </div>
 
           <JobWizard isOpen={isWizardOpen} resumeJobId={resumeJobId} onClose={() => { setIsWizardOpen(false); setResumeJobId(null) }} />
+
+          <CrmJobSetup
+            jobId={setupJobId}
+            open={!!setupJobId}
+            onClose={() => { setSetupJobId(null); getJobs() }}
+            onPublished={(id) => navigate(`/jobs/${id}`)}
+          />
 
           <JobFormSheet
             isOpen={isFormOpen}

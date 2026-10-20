@@ -11,6 +11,7 @@ import { HiringPlanStep } from './wizard/HiringPlanStep'
 import { HiringTeamStep } from './wizard/HiringTeamStep'
 import { SummaryStep } from './wizard/SummaryStep'
 import { JobPostingStep, type JobPostingStepHandle } from './wizard/JobPostingStep'
+import { JOB_DATA_KEYS } from '@/lib/jobDraft'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 import { supabase } from '@/integrations/supabase/client'
 import { insertOpenings } from '@/hooks/useJobOpenings'
@@ -23,14 +24,6 @@ interface JobWizardProps {
   /** Reopen an existing wizard draft at its saved step. */
   resumeJobId?: string | null
 }
-
-const JOB_DATA_KEYS = [
-  'title', 'description', 'location', 'department', 'salary_min', 'salary_max', 'currency', 'status',
-  'skills', 'skill_priorities', 'auto_generated_skills', 'last_skills_generation', 'hiring_team', 'organization_id',
-  'department_id', 'internal_title', 'job_level', 'work_mode', 'employment_type', 'additional_locations',
-  'show_salary_public', 'include_equity', 'include_signing_bonus', 'min_years_experience',
-  'max_years_experience', 'priority', 'salary_period', 'reports_to_user_id', 'coordinator_user_id',
-] as const
 
 // Screening rules and team notifications live in job_settings (useJobSettings),
 // saved as they change; Reports to and Coordinator are job columns in jobData.

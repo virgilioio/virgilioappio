@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ScreeningRulesCard, AiScreenCard, TeamNotificationsCard } from '@/components/jobs/settings/JobAutomationCards'
 import { InlineEmpty } from '@/components/ui/empty-state'
+import { CrmJobSetup } from '@/components/jobs/CrmJobSetup'
 import {
   Pencil,
   Globe,
@@ -347,6 +348,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     window.dispatchEvent(new CustomEvent('job-detail:refresh'))
   }
   const salesTeam = (job?.sales_team ?? null) as SalesTeam
+  const [crmSetupOpen, setCrmSetupOpen] = useState(false)
 
   // J10/J11 (Block B §16, Pattern 1 + Undo): close and archive are status
   // changes; each asks once and the toast offers Undo.
@@ -364,6 +366,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
       ref={scrollRef}
       className="h-full overflow-auto bg-[#F6F5F1]"
     >
+      <CrmJobSetup jobId={job?.sales_deal_id ? jobId : null} open={crmSetupOpen} onClose={() => { setCrmSetupOpen(false); window.dispatchEvent(new CustomEvent('job-detail:refresh')) }} />
       <div className="mx-auto max-w-[1280px] px-6 sm:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-[224px_minmax(0,1fr)] items-start gap-[26px]">
           {/* Sidebar — flat rail */}
@@ -504,9 +507,16 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                       </p>
                     </div>
                     {!isReadOnly && (
-                      <Button size="sm" onClick={doPublish} loading={publishing} disabled={missingRoles.length > 0}>
-                        Publish job
-                      </Button>
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                        {job?.sales_deal_id && (
+                          <Button size="sm" variant="outline" onClick={() => setCrmSetupOpen(true)}>
+                            Set up step by step
+                          </Button>
+                        )}
+                        <Button size="sm" onClick={doPublish} loading={publishing} disabled={missingRoles.length > 0}>
+                          Publish job
+                        </Button>
+                      </div>
                     )}
                   </div>
                 )}

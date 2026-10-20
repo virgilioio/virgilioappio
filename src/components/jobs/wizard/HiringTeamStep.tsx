@@ -201,35 +201,35 @@ export function HiringTeamStep({
       <SectionCard title="Owners">
         <div className="space-y-5">
           <div>
-            <FieldLabel required>Primary recruiter</FieldLabel>
+            <FieldLabel required>TA Partner</FieldLabel>
             <div className="mt-2">
               <SearchableSelect
                 options={memberOptions}
                 value={recruiterAssignment?.user_id ?? ''}
                 onValueChange={(v) => setOwner('recruiter', v)}
-                placeholder="Select a recruiter…"
+                placeholder="Select a TA Partner…"
                 searchPlaceholder="Search members…"
                 emptyMessage="No members found."
                 disabled={loading}
               />
             </div>
-            <FieldHint>Owns the job — receives all candidate notifications.</FieldHint>
+            <FieldHint>The primary recruiter: owns the job and gets its candidate notifications. Needed to publish.</FieldHint>
           </div>
 
           <div>
-            <FieldLabel required>Sourcer</FieldLabel>
+            <FieldLabel required>Sourcing Partner</FieldLabel>
             <div className="mt-2">
               <SearchableSelect
                 options={memberOptions}
                 value={sourcerAssignment?.user_id ?? ''}
                 onValueChange={(v) => setOwner('sourcer', v)}
-                placeholder="Select a sourcer…"
+                placeholder="Select a Sourcing Partner…"
                 searchPlaceholder="Search members…"
                 emptyMessage="No members found."
                 disabled={loading}
               />
             </div>
-            <FieldHint>Needed before the job can be published. Add more Sourcers below.</FieldHint>
+            <FieldHint>Finds the candidates. Needed to publish; add more sourcers below.</FieldHint>
           </div>
 
           <div>
