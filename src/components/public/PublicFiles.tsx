@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import {
-  AudioLines, ChevronLeft, ChevronRight, Clapperboard, Download, ExternalLink, File, FileSpreadsheet,
+  AudioLines, ChevronLeft, ChevronRight, Clapperboard, Download, ExternalLink, File, FileArchive, FileSpreadsheet,
   FileText, FileType2, Image as ImageIcon, Loader2, Maximize, Minus, Paperclip, Pause, Play, Plus,
   RotateCcw, RotateCw, X, type LucideIcon,
 } from 'lucide-react'
@@ -29,9 +29,10 @@ const TYPES: Record<string, TypeDef> = {
   pdf: { key: 'pdf', name: 'PDF document', Icon: FileText, fg: '#C4320A', bg: '#FEF0E7', verb: 'View', verbIcon: ExternalLink, viewer: 'document' },
   word: { key: 'word', name: 'Word document', Icon: FileType2, fg: '#1D4ED8', bg: '#EAF1FE', verb: 'View', verbIcon: ExternalLink, viewer: 'document' },
   audio: { key: 'audio', name: 'Audio', Icon: AudioLines, fg: '#6F3FF5', bg: '#F1ECFE', verb: 'Listen', verbIcon: Play, viewer: 'audio' },
-  video: { key: 'video', name: 'Video', Icon: Clapperboard, fg: '#0d0d09', bg: '#F1F0EC', verb: 'Watch', verbIcon: Play, viewer: 'video' },
+  video: { key: 'video', name: 'Video', Icon: Clapperboard, fg: '#BE185D', bg: '#FCE7F3', verb: 'Watch', verbIcon: Play, viewer: 'video' },
   image: { key: 'image', name: 'Image', Icon: ImageIcon, fg: '#0E8A65', bg: '#E7F7F1', verb: 'View', verbIcon: ExternalLink, viewer: 'image' },
   sheet: { key: 'sheet', name: 'Spreadsheet', Icon: FileSpreadsheet, fg: '#15803D', bg: '#EAF6EE', verb: '', verbIcon: null, viewer: null },
+  archive: { key: 'archive', name: 'Archive', Icon: FileArchive, fg: '#B45309', bg: '#FEF3C7', verb: '', verbIcon: null, viewer: null },
   other: { key: 'other', name: 'File', Icon: File, fg: '#5A6072', bg: '#F1F0EC', verb: '', verbIcon: null, viewer: null },
 }
 
@@ -41,6 +42,7 @@ const EXT: Record<string, string> = {
   mp4: 'video', mov: 'video', webm: 'video', m4v: 'video',
   png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image',
   xls: 'sheet', xlsx: 'sheet', csv: 'sheet',
+  zip: 'archive', rar: 'archive', '7z': 'archive',
 }
 
 const extOf = (n: string) => (n.split('.').pop() || '').toLowerCase()
@@ -52,6 +54,8 @@ export function typeOf(f: PublicFile): TypeDef {
   if (t.startsWith('audio/')) return TYPES.audio
   if (t.startsWith('video/')) return TYPES.video
   if (t.startsWith('image/')) return TYPES.image
+  if (/word|officedocument\.wordprocessing/.test(t)) return TYPES.word
+  if (/zip|compressed/.test(t)) return TYPES.archive
   return TYPES.other
 }
 export const fmtSize = (b: number | null) => (!b ? '' : b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`)

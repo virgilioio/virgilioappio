@@ -23,6 +23,11 @@ export function canView(a: CandidateAttachment) {
   return !!typeOf(toPublic(a, null)).viewer
 }
 
+/** The file's coloured type tile, the same one the client dossier shows. */
+export function FileTypeTile({ file, size = 28 }: { file: Pick<CandidateAttachment, 'id' | 'file_name' | 'file_type' | 'file_size_bytes' | 'created_at'>; size?: number }) {
+  return <Tile t={typeOf(toPublic(file as CandidateAttachment, null))} size={size} />
+}
+
 export function CandidateFileViewer({
   files,
   index,

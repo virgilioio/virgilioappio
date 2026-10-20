@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
-import { Upload, File, Download, Trash2, AlertCircle } from 'lucide-react'
+import { Upload, Download, Trash2, AlertCircle } from 'lucide-react'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { usePermissions } from '@/hooks/usePermissions'
 import { toast } from '@/hooks/use-toast'
 import { formatDistanceToNow } from 'date-fns'
-import { CandidateFileViewer, canView } from '@/components/candidates/profile/CandidateFileViewer'
+import { CandidateFileViewer, FileTypeTile, canView } from '@/components/candidates/profile/CandidateFileViewer'
 import { uploadLimit } from '@/lib/candidateFiles'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { IconTip } from '@/components/ui/tooltip'
@@ -33,13 +33,6 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
-
-  const getFileIcon = (fileType: string | null) => {
-    if (!fileType) return File
-    if (fileType.includes('pdf')) return File
-    if (fileType.includes('image')) return File
-    return File
   }
 
   const handleFileSelect = async (files: FileList | null) => {
@@ -191,7 +184,6 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                 ) : (
                   <div className="space-y-sm">
                     {attachments.map((attachment) => {
-                      const FileIcon = getFileIcon(attachment.file_type)
                       
                       return (
                         <div
@@ -203,7 +195,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                             className="flex items-center gap-md flex-1 min-w-0 cursor-pointer"
                             onClick={() => handleAttachmentClick(attachment)}
                           >
-                            <FileIcon className="h-5 w-5 text-text-secondary flex-shrink-0" />
+                            <FileTypeTile file={attachment} size={32} />
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium text-text-primary truncate">
                                 {attachment.file_name}

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { FileText, FileAudio, FileVideo, FileImage, FileArchive, File as FileIcon, MoreHorizontal, Eye, Download, Trash2, Loader2 } from 'lucide-react'
+import { MoreHorizontal, Eye, Download, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -9,20 +9,8 @@ import {
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { IconTip } from '@/components/ui/tooltip'
 import { collapseRows, rowsById } from '@/lib/motion'
-import { CandidateFileViewer, canView } from '@/components/candidates/profile/CandidateFileViewer'
-import { fileKind } from '@/lib/candidateFiles'
+import { CandidateFileViewer, FileTypeTile, canView } from '@/components/candidates/profile/CandidateFileViewer'
 import type { CandidateAttachment } from '@/hooks/useCandidateAttachments'
-
-function iconFor(type?: string | null, name?: string) {
-  const t = type || ''
-  const kind = fileKind(name, type)
-  if (kind === 'audio') return FileAudio
-  if (kind === 'video') return FileVideo
-  if (kind === 'image') return FileImage
-  if (/zip|compressed/.test(t)) return FileArchive
-  if (/pdf|word|text/.test(t)) return FileText
-  return FileIcon
-}
 
 function size(bytes?: number | null) {
   if (!bytes) return null
@@ -78,14 +66,11 @@ export function SidebarFileList({ attachments, uploading, canDelete, onDownload,
         </div>
       ))}
       {sorted.map((a) => {
-        const Icon = iconFor(a.file_type, a.file_name)
         const canPreview = canView(a)
         const meta = [size(a.file_size_bytes), new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })].filter(Boolean).join(' · ')
         return (
           <div key={a.id} data-row-id={a.id} className="group flex items-center gap-[9px] rounded-[9px] border border-[#E7E5DF] px-2.5 py-2 hover:bg-[#FAFAF7]">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F1F0EC] text-[#5A6072]">
-              <Icon className="h-3.5 w-3.5" />
-            </div>
+            <FileTypeTile file={a} />
             <button
               type="button"
               className="min-w-0 flex-1 text-left"
