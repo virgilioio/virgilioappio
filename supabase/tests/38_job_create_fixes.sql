@@ -1,4 +1,4 @@
--- Run after 20261020190000_job_create_fixes inside a transaction that is rolled back.
+-- Run after 20261020182518_job_create_fixes inside a transaction that is rolled back.
 -- Signs in as Allan (an active member) to create a fake draft job the way the app
 -- does, then checks its setup list and the publish gate. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);

@@ -7175,6 +7175,7 @@ export type Database = {
           created_at: string
           id: string
           label: string | null
+          referee_id: string | null
           request_id: string
           type: string
         }
@@ -7183,6 +7184,7 @@ export type Database = {
           created_at?: string
           id?: string
           label?: string | null
+          referee_id?: string | null
           request_id: string
           type: string
         }
@@ -7191,6 +7193,7 @@ export type Database = {
           created_at?: string
           id?: string
           label?: string | null
+          referee_id?: string | null
           request_id?: string
           type?: string
         }
