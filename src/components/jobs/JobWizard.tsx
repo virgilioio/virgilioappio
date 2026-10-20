@@ -466,6 +466,7 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
                   ? { mode: 'edit', jobId: wizardState.createdJobId, onManage: () => {} }
                   : { mode: 'create', value: openings, onChange: setOpenings, onValidityChange: setOpeningsValid }
               }
+              jobId={wizardState.createdJobId && wizardState.createdJobId !== 'created' ? wizardState.createdJobId : null}
             />
           </>
         )

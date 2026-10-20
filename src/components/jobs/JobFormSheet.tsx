@@ -243,6 +243,7 @@ export function JobFormSheet({
               <AnchoredJobInfo
                 jobData={jobData}
                 onUpdate={updateJobData}
+                jobId={job?.id ?? null}
                 openings={job?.id ? {
                   mode: 'edit',
                   jobId: job.id,
@@ -373,10 +374,12 @@ function AnchoredJobInfo({
   jobData,
   onUpdate,
   openings,
+  jobId,
 }: {
   jobData: Partial<CreateJobData>
   onUpdate: (d: Partial<CreateJobData>) => void
   openings?: JobInfoOpeningsProp
+  jobId?: string | null
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -395,7 +398,7 @@ function AnchoredJobInfo({
 
   return (
     <div ref={wrapRef}>
-      <JobInfoStep jobData={jobData} onUpdate={onUpdate} openings={openings} />
+      <JobInfoStep jobData={jobData} onUpdate={onUpdate} openings={openings} jobId={jobId} />
     </div>
   )
 }
