@@ -44,7 +44,7 @@ const EXT: Record<string, string> = {
 }
 
 const extOf = (n: string) => (n.split('.').pop() || '').toLowerCase()
-function typeOf(f: PublicFile): TypeDef {
+export function typeOf(f: PublicFile): TypeDef {
   const byExt = EXT[extOf(f.name)]
   if (byExt) return TYPES[byExt]
   const t = f.type || ''
@@ -54,15 +54,15 @@ function typeOf(f: PublicFile): TypeDef {
   if (t.startsWith('image/')) return TYPES.image
   return TYPES.other
 }
-const fmtSize = (b: number | null) => (!b ? '' : b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`)
+export const fmtSize = (b: number | null) => (!b ? '' : b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`)
 const fmtTime = (s: number) => {
   if (!isFinite(s) || s < 0) s = 0
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60)
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`
 }
-const downloadUrl = (f: PublicFile) => (f.url ? `${f.url}${f.url.includes('?') ? '&' : '?'}download=${encodeURIComponent(f.name)}` : '#')
+export const downloadUrl = (f: PublicFile) => (f.url ? `${f.url}${f.url.includes('?') ? '&' : '?'}download=${encodeURIComponent(f.name)}` : '#')
 
-function Tile({ t, size = 36, ext }: { t: TypeDef; size?: number; ext?: string }) {
+export function Tile({ t, size = 36, ext }: { t: TypeDef; size?: number; ext?: string }) {
   return (
     <span style={{ position: 'relative', width: size, height: size, borderRadius: size / 4, background: t.bg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <t.Icon size={Math.round(size * 0.44)} color={t.fg} />
@@ -178,18 +178,27 @@ function FileModal({ files, index, onIndex, onClose, onInfo }: { files: PublicFi
           </a>
           <button style={iconBtn} onClick={onClose} aria-label="Close"><X size={16} /></button>
         </header>
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {!f.url ? <NoPreview f={f} /> :
-            t.viewer === 'document' ? <DocViewer key={f.id} f={f} word={t.key === 'word'} onPages={(n) => onInfo(f.id, `${n} ${n === 1 ? 'page' : 'pages'}`)} /> :
-            t.viewer === 'audio' ? <AudioViewer key={f.id} url={f.url} onDuration={(d) => onInfo(f.id, fmtTime(d))} /> :
-            t.viewer === 'video' ? <VideoViewer key={f.id} url={f.url} onDuration={(d) => onInfo(f.id, fmtTime(d))} /> :
-            t.viewer === 'image' ? (
-              <div style={{ background: '#EDEBE5', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, minHeight: 360 }}>
-                <img src={f.url} alt={f.name} draggable={false} style={{ maxWidth: '100%', maxHeight: '74vh', objectFit: 'contain' }} />
-              </div>
-            ) : <NoPreview f={f} />}
-        </div>
+        <FileStage f={f} onInfo={onInfo} />
       </div>
+    </div>
+  )
+}
+
+/** The viewer itself: PDF and Word pages, the audio waveform player, the video
+ *  player or the image. Shared by the client dossier and the candidate profile. */
+export function FileStage({ f, onInfo }: { f: PublicFile; onInfo: (id: string, v: string) => void }) {
+  const t = typeOf(f)
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {!f.url ? <NoPreview f={f} /> :
+        t.viewer === 'document' ? <DocViewer key={f.id} f={f} word={t.key === 'word'} onPages={(n) => onInfo(f.id, `${n} ${n === 1 ? 'page' : 'pages'}`)} /> :
+        t.viewer === 'audio' ? <AudioViewer key={f.id} url={f.url} onDuration={(d) => onInfo(f.id, fmtTime(d))} /> :
+        t.viewer === 'video' ? <VideoViewer key={f.id} url={f.url} onDuration={(d) => onInfo(f.id, fmtTime(d))} /> :
+        t.viewer === 'image' ? (
+          <div style={{ background: '#EDEBE5', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, minHeight: 360 }}>
+            <img src={f.url} alt={f.name} draggable={false} style={{ maxWidth: '100%', maxHeight: '74vh', objectFit: 'contain' }} />
+          </div>
+        ) : <NoPreview f={f} />}
     </div>
   )
 }
