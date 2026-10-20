@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { removeOldResumes, currentResumeIds } from '@/lib/removeOldResumes'
+import { contentTypeFor } from '@/lib/candidateFiles'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 
 export interface CandidateAttachment {
@@ -97,7 +98,7 @@ export function useCandidateAttachments(candidateId: string) {
       // Upload file to storage
       const { error: storageError } = await supabase.storage
         .from('candidate-attachments')
-        .upload(fileName, file)
+        .upload(fileName, file, { contentType: contentTypeFor(file) })
 
       if (storageError) {
         console.error('Storage upload error:', storageError)
@@ -116,7 +117,7 @@ export function useCandidateAttachments(candidateId: string) {
           file_name: file.name,
           file_url: fileName, // Store the storage path
           file_size_bytes: file.size,
-          file_type: file.type,
+          file_type: contentTypeFor(file),
           uploaded_by: user.id,
           is_resume: isResume
         })
@@ -218,7 +219,24 @@ export function useCandidateAttachments(candidateId: string) {
         description: 'Preparing your file for download...'
       })
       
-      // Use edge function for direct download
+      // The function checks access and logs the download, then hands back a
+      // short-lived link, so files of any size (videos) download straight from
+      // storage with the browser's own progress.
+      const linked = await supabase.functions.invoke('download-attachment', {
+        body: { attachmentId, mode: 'link' }
+      })
+      const link = (linked.data as { url?: string } | null)?.url
+      if (!linked.error && link) {
+        const a = document.createElement('a')
+        a.href = link
+        a.rel = 'noopener'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        return
+      }
+
+      // Older function version: the bytes come back through it.
       const response = await supabase.functions.invoke('download-attachment', {
         body: { attachmentId }
       })

@@ -56,6 +56,7 @@ import { renderTemplate, buildPlaceholderData, stripHtmlToPlainText } from '@/ut
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { SidebarFileList } from '@/components/candidates/profile/tabs/SidebarFileList'
+import { uploadLimit } from '@/lib/candidateFiles'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
@@ -260,9 +261,9 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment, downloadAttachment } = useCandidateAttachments(independentCandidateId || '')
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([])
   const handleSidebarFiles = async (files: File[]) => {
-    const MAX = 25 * 1024 * 1024
     for (const f of files) {
-      if (f.size > MAX) { toast({ title: 'File too large', description: `${f.name} is over 25 MB.`, variant: 'destructive' }); continue }
+      const limit = uploadLimit(f)
+      if (f.size > limit.bytes) { toast({ title: 'File too large', description: `${f.name} is over ${limit.label}, the limit for ${limit.what}.`, variant: 'destructive' }); continue }
       setUploadingFiles((u) => [...u, f.name])
       try { await uploadResume(f, false) } catch { /* toast shown by hook */ } finally { setUploadingFiles((u) => u.filter((n) => n !== f.name)) }
     }
