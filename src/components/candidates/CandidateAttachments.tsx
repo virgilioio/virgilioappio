@@ -11,7 +11,8 @@ import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { usePermissions } from '@/hooks/usePermissions'
 import { toast } from '@/hooks/use-toast'
 import { formatDistanceToNow } from 'date-fns'
-import { AttachmentPreviewDialog } from './AttachmentPreviewDialog'
+import { CandidateFileViewer, canView } from '@/components/candidates/profile/CandidateFileViewer'
+import { uploadLimit } from '@/lib/candidateFiles'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { IconTip } from '@/components/ui/tooltip'
 import { collapseRows, rowsById } from '@/lib/motion'
@@ -25,8 +26,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
   const { canManageCandidates } = usePermissions()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
-  const [previewAttachment, setPreviewAttachment] = useState<typeof attachments[0] | null>(null)
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [viewing, setViewing] = useState<number | null>(null)
 
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return 'Unknown size'
@@ -47,11 +47,11 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
 
     const file = files[0]
     
-    // Validate file size (15MB limit)
-    if (file.size > 15 * 1024 * 1024) {
+    const limit = uploadLimit(file)
+    if (file.size > limit.bytes) {
       toast({
-        title: 'Error',
-        description: 'File size must be less than 15MB',
+        title: 'File too large',
+        description: `${file.name} is over ${limit.label}, the limit for ${limit.what}.`,
         variant: 'destructive'
       })
       return
@@ -108,14 +108,11 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
     }
   }
 
+  // Files the viewer can show open in it (the dossier's viewer); others download.
+  const viewable = attachments.filter(canView)
   const handleAttachmentClick = (attachment: typeof attachments[0]) => {
-    setPreviewAttachment(attachment)
-    setIsPreviewOpen(true)
-  }
-
-  const handlePreviewClose = () => {
-    setIsPreviewOpen(false)
-    setPreviewAttachment(null)
+    if (!canView(attachment)) return void downloadAttachment(attachment.id, attachment.file_name)
+    setViewing(Math.max(0, viewable.findIndex((v) => v.id === attachment.id)))
   }
 
   if (isLoading) {
@@ -165,7 +162,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                       type="file"
                       className="hidden"
                       onChange={handleFileInputChange}
-                      accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip"
+                      accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip,.mp4,.mov,.m4v,.webm,.mp3,.wav,.m4a"
                     />
                     
                     <Upload className="h-8 w-8 mx-auto text-text-secondary mb-2" />
@@ -173,7 +170,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                       Drag and drop files here, or click to browse
                     </p>
                     <p className="text-xs text-text-secondary mb-4">
-                      PDF, DOC, DOCX, TXT, ZIP, images up to 15MB
+                      Documents and images up to 25 MB · audio up to 100 MB · video (MP4, MOV) up to 500 MB
                     </p>
                     
                     <Button
@@ -287,11 +284,12 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
         </AccordionItem>
       </Accordion>
 
-      <AttachmentPreviewDialog
-        attachment={previewAttachment}
-        isOpen={isPreviewOpen}
-        onClose={handlePreviewClose}
-        onDownload={downloadAttachment}
+      <CandidateFileViewer
+        files={viewable}
+        index={viewing}
+        onIndex={setViewing}
+        onClose={() => setViewing(null)}
+        onDownload={(a) => downloadAttachment(a.id, a.file_name)}
       />
     </>
   )

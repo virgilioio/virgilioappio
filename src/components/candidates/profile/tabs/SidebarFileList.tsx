@@ -9,16 +9,16 @@ import {
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { IconTip } from '@/components/ui/tooltip'
 import { collapseRows, rowsById } from '@/lib/motion'
-import { AttachmentPreviewDialog } from '@/components/candidates/AttachmentPreviewDialog'
+import { CandidateFileViewer, canView } from '@/components/candidates/profile/CandidateFileViewer'
+import { fileKind } from '@/lib/candidateFiles'
 import type { CandidateAttachment } from '@/hooks/useCandidateAttachments'
-
-const PREVIEWABLE = /pdf|image\/|word|officedocument|text\/plain/
 
 function iconFor(type?: string | null, name?: string) {
   const t = type || ''
-  if (t.startsWith('audio/') || /\.(mp3|wav|m4a|ogg)$/i.test(name || '')) return FileAudio
-  if (t.startsWith('video/')) return FileVideo
-  if (t.startsWith('image/')) return FileImage
+  const kind = fileKind(name, type)
+  if (kind === 'audio') return FileAudio
+  if (kind === 'video') return FileVideo
+  if (kind === 'image') return FileImage
   if (/zip|compressed/.test(t)) return FileArchive
   if (/pdf|word|text/.test(t)) return FileText
   return FileIcon
@@ -41,10 +41,13 @@ interface Props {
 }
 
 export function SidebarFileList({ attachments, uploading, canDelete, onDownload, onDelete, resumeStatus }: Props) {
-  const [preview, setPreview] = useState<CandidateAttachment | null>(null)
   const sorted = [...attachments].sort((a, b) =>
     a.is_resume === b.is_resume ? b.created_at.localeCompare(a.created_at) : a.is_resume ? -1 : 1,
   )
+  // The viewer steps through the files it can show, in the list's order.
+  const viewable = sorted.filter(canView)
+  const [viewing, setViewing] = useState<number | null>(null)
+  const setPreview = (a: CandidateAttachment) => setViewing(Math.max(0, viewable.findIndex((v) => v.id === a.id)))
   // C18 (Block B §16, Pattern 1): name the file; the row collapses once confirmed.
   const confirmDelete = async (a: CandidateAttachment) => {
     const ok = await confirmDestructive({
@@ -76,7 +79,7 @@ export function SidebarFileList({ attachments, uploading, canDelete, onDownload,
       ))}
       {sorted.map((a) => {
         const Icon = iconFor(a.file_type, a.file_name)
-        const canPreview = PREVIEWABLE.test(a.file_type || '')
+        const canPreview = canView(a)
         const meta = [size(a.file_size_bytes), new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })].filter(Boolean).join(' · ')
         return (
           <div key={a.id} data-row-id={a.id} className="group flex items-center gap-[9px] rounded-[9px] border border-[#E7E5DF] px-2.5 py-2 hover:bg-[#FAFAF7]">
@@ -123,11 +126,12 @@ export function SidebarFileList({ attachments, uploading, canDelete, onDownload,
         )
       })}
 
-      <AttachmentPreviewDialog
-        attachment={preview}
-        isOpen={!!preview}
-        onClose={() => setPreview(null)}
-        onDownload={() => preview && onDownload(preview.id, preview.file_name)}
+      <CandidateFileViewer
+        files={viewable}
+        index={viewing}
+        onIndex={setViewing}
+        onClose={() => setViewing(null)}
+        onDownload={(a) => onDownload(a.id, a.file_name)}
       />
     </>
   )
