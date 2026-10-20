@@ -35,7 +35,7 @@ import { DEFAULT_JOB_PRIORITY } from '@/lib/job-priority'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { JobFilesField } from './JobFilesField'
 import { SkillSuggestions } from './SkillSuggestions'
-import { toJobSkills, type SuggestedSkills } from '@/lib/skillPriority'
+import { toJobSkills, yearsToFill, type SuggestedSkills } from '@/lib/skillPriority'
 
 export type JobInfoOpeningsProp =
   | {
@@ -260,7 +260,7 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId, sections, clie
       })
       if (error) throw error
       if (!data?.skills) throw new Error('Empty response')
-      setSuggested(data.skills as SuggestedSkills)
+      setSuggested({ ...(data.skills as SuggestedSkills), experience: data.experience ?? null, leftOut: data.left_out ?? [] })
     } catch (err: any) {
       toast.error(await gioErrorMessage(err, "Gio couldn't suggest skills. Try again."))
     } finally {
@@ -269,7 +269,9 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId, sections, clie
   }
   const applySuggested = () => {
     if (!suggested) return
-    onUpdate(toJobSkills(suggested))
+    // Years fill only empty fields; a range the recruiter typed stays.
+    const years = yearsToFill(suggested, jobData)
+    onUpdate({ ...toJobSkills(suggested), ...years })
     setSuggested(null)
     toast.success('Skills updated')
   }
@@ -655,6 +657,7 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId, sections, clie
             onApply={applySuggested}
             onCancel={() => setSuggested(null)}
             replacing={(jobData.skills || []).length > 0}
+            years={yearsToFill(suggested, jobData)}
           />
         )}
         <div>

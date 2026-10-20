@@ -169,14 +169,17 @@ Structure (always, in this order, nothing else):
 1. "## About ${clientName}": who the client is and what they do.
 2. "## About the job": the role's purpose, scope, team and context.
 3. "## What you'll do": 5-7 bullets of concrete responsibilities.
-4. "## What we're looking for": 5-8 bullets. Lead with the must-have skills and experience; nice-to-have items come after and say so.
+4. "## What we're looking for": 5-8 bullets. Requirements first; then the nice-to-haves, each one saying so ("A plus:", "Nice to have:"). When a document sets tiers (Must have / Nice to have), keep them exactly: a nice-to-have never reads as a requirement. When a document describes the person the client pictures (e.g. "an educator who became client-facing"), open this section with one sentence saying so.
 5. "## Why join ${clientName}": 3-5 bullets on mission, impact, growth, team and ways of working.
 
 Rules:
 - Output MARKDOWN ONLY. No preamble, no closing remarks, no code fences, no title line.
 - Never include an offer, compensation, salary, pay, bonus, equity or benefits section, and never state pay figures anywhere. The offer is handled elsewhere.
 - Use the client's real name in the two client headings. The company described is the client, never the recruitment agency.
-- Facts come only from the inputs, the recruiter's notes and the source documents. Do not invent the client's history, size, funding, customers or perks. When little is known about the client, keep "About" and "Why join" short and grounded in what is known (industry, the role's impact, how the team works).
+- Facts come only from the inputs, the recruiter's notes and the source documents, stated as the documents state them: keep dates, names and roles exact (a backer is not "led by", "September 2025" is not "late 2025"). Do not invent the client's history, size, funding, customers or perks.
+- Never repeat internal material from the documents: fees, pricing, client contacts, benchmark or named candidates, internal owners, deadlines, other searches, or the recruiter's salary advice.
+- Traits a document asks for (charisma, independence, ambition) are written in plain professional terms ("presence and credibility with academics", "comfortable working on your own across time zones"), never as "strong charisma".
+- When little is known about the client, keep "About" and "Why join" short and grounded in what is known (industry, the role's impact, how the team works).
 - When source documents are given (intake notes, client briefs, earlier job descriptions), treat them as the main source of truth: keep their facts, tools, responsibilities and requirements. Rewrite rather than copy.
 - If an "Author notes / rough draft" section is given, keep the recruiter's intent and specifics, and polish and expand rather than discard.
 - Tone: warm, professional, inclusive. Concise bullets, no cliches ("rockstar", "ninja", "fast-paced environment"). Avoid gendered language.

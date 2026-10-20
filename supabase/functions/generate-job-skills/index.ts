@@ -2,16 +2,21 @@
 // Gio Fit scores candidates against, in three tiers, from the job details, its
 // description and its uploaded files.
 //
-// Tiers and balance: about 5 must-have, 5 nice-to-have and 3 extra-points skills
-// (ranges 4-6, 4-6 and 2-4; fewer musts for junior roles, more for senior ones).
-// Each unmet must-have caps a candidate's score (analyze-candidate-fit), so the
-// must list stays short and holds only real requirements. The model proposes;
-// balance() (_shared/skillBalance.ts) enforces the ranges whatever it returns.
+// A skill is a CV signal: the work the role does, its domain, tools and
+// certifications, worded the way CVs word them. Traits (charisma, independence),
+// location, years and contract type are never skills: a CV can't prove a trait,
+// and the others are scored in their own Gio Fit dimensions. They come back in
+// left_out so the recruiter sees what was set aside, and the years in experience.
+//
+// Tiers: about 3-4 must-have, 5 nice-to-have and 3 extra-points skills (ranges
+// 2-5, 4-6 and 2-4). Each unmet must-have caps a candidate's score
+// (analyze-candidate-fit), so the must list holds only what a CV has to show.
+// The model proposes; balance() (_shared/skillBalance.ts) enforces the rest.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeadersFor, handlePreflight } from "../_shared/mod.ts";
 import { jobFileSources, sourcesBlock } from "../_shared/jobSources.ts";
-import { balance, type Tier } from "../_shared/skillBalance.ts";
+import { balance, type Tier, yearsRange } from "../_shared/skillBalance.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
@@ -74,27 +79,36 @@ serve(async (req) => {
         ? `- Experience: ${job.min_years_experience ?? "?"}-${job.max_years_experience ?? "?"} years`
         : "",
       current.length
-        ? `- Skills the recruiter already listed (keep the relevant ones, with their tier unless clearly wrong): ${current
+        ? `- Skills already listed: ${current
           .map((s) => `${s} [${pr[s] === "must" ? "must" : pr[s] === "bonus" ? "extra" : "nice"}]`)
           .join(", ")}`
         : "",
     ].filter(Boolean).join("\n");
 
-    const systemPrompt = `You define the skills a recruiter's AI scores candidates against for one job.
+    const systemPrompt = `You define the skills a recruiter's AI scores candidates' CVs against for one job. A recruiter reads the score as the signal to talk to someone or not, so every skill must be something a CV or LinkedIn profile can show.
 
-Return JSON only: {"must": [...], "nice": [...], "extra": [...]}
+Return JSON only:
+{"must": [...], "nice": [...], "extra": [...], "min_years": n|null, "max_years": n|null, "left_out": [...]}
+
+What a skill is:
+- Start from what the role truly does day to day, for its title, seniority and industry. A Customer Success Manager runs client onboarding, adoption, renewals, account management and client-facing work; an SDR does outbound prospecting and cold calling; a payroll lead runs payroll and compliance. Then add the domain, industry, tools, certifications and languages the description and documents ask for.
+- Word each one the way people write it on a CV ("Client Onboarding", "Account Management", "Renewals", "Higher Education", "Salesforce", "English (C1)"). 1-4 words, Title Case unless a product name. One idea per skill: put alternatives in one skill with "or" ("Canvas or Moodle") rather than splitting them.
+
+Never a skill, even when a document lists it:
+- Soft skills and traits: charisma, credibility, communication, independence, self-starter, proactive, ambition, leadership as a trait, problem solving. A CV can't prove them; they belong in the interview.
+- Location, time zone, years of experience, contract type, availability, salary. Gio scores those separately.
+Put every requirement you leave out for these reasons in "left_out" as a short label (e.g. "Charisma with academics", "Works independently", "Based in Toronto", "Freelance contract").
 
 Tiers:
-- "must": the real requirements. A candidate missing one is a weak fit; each missing must-have caps the score. Aim for 5 (4 for entry or junior roles, 6 for senior, lead or highly technical roles). Never more than 6.
-- "nice": skills that clearly help and are scored in the skills match. Aim for 5 (4-6).
+- "must": only what a CV has to show for the person to be worth a call. Usually 3-4 (2 for junior roles, 5 at most). Each missing must-have caps the score, so when in doubt it is "nice". The role's core function belongs here even when a document says the job title itself is only nice-to-have: the title is a label, the function is the work (e.g. "Client-facing Account Management" is a must for a CSM even if "a CSM title" is nice).
+- "nice": skills that clearly help and count in the skills match. Aim for 5 (4-6).
 - "extra": differentiators that lift a score when present and are never held against anyone. Aim for 3 (2-4).
+- When a document sets its own tiers (a Must have / Nice to have table), keep them: a nice-to-have never becomes a must-have. Its red flags ("no client contact", "no teaching exposure") point to what the must-haves should prove.
 
-Rules:
-- Each skill is something a CV or LinkedIn profile can show: a tool, technology, method, domain, industry, certification, language or a concrete kind of experience (e.g. "B2B SaaS sales", "Salesforce", "Cold calling", "English (C1)", "Python", "Payroll in Mexico").
-- No generic soft skills ("communication", "teamwork", "proactive", "self-starter") unless the job makes one a hard requirement, and then phrase it concretely.
-- 1-4 words each, Title Case unless it is a product name. Use the names people write on CVs, in English unless the job is written in another language.
+Also:
+- "min_years" / "max_years": the years of experience the description or documents state, as whole numbers, else null.
 - No duplicates or near-duplicates across tiers. Prefer the job's own wording.
-- Base everything on the job description and the source documents when given; do not invent requirements they contradict.`;
+- Base everything on the description and the documents when given; never invent requirements they contradict. If skills are already listed, keep the relevant ones in their tier unless clearly wrong.`;
 
     const userPrompt = `Job:
 ${lines}${description ? `\n\n## Job description\n${description}` : ""}${sourcesBlock(sources)}`;
@@ -122,11 +136,16 @@ ${lines}${description ? `\n\n## Job description\n${description}` : ""}${sourcesB
     const data = await aiRes.json();
     const parsed = parseJson(String(data?.choices?.[0]?.message?.content ?? ""));
     if (!parsed) return json({ error: "empty_response", message: "Gio couldn't suggest skills. Try again." }, 502);
-    const skills = balance(parsed as Partial<Record<Tier, unknown>>);
+    const { leftOut, ...skills } = balance(parsed as Partial<Record<Tier | "left_out", unknown>>);
     if (!skills.must.length && !skills.nice.length) {
       return json({ error: "empty_response", message: "Gio couldn't suggest skills. Try again." }, 502);
     }
-    return json({ skills, sources_used: sources.map((s) => s.name) });
+    return json({
+      skills,
+      experience: yearsRange(parsed.min_years, parsed.max_years),
+      left_out: leftOut,
+      sources_used: sources.map((s) => s.name),
+    });
   } catch (err) {
     console.error("generate-job-skills error", err);
     return json({ error: "internal_error", message: "Gio couldn't suggest skills. Try again." }, 500);

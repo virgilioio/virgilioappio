@@ -78,6 +78,10 @@ export interface SuggestedSkills {
   must: string[]
   nice: string[]
   extra: string[]
+  /** Years of experience read from the description and documents. */
+  experience?: { min: number | null; max: number | null } | null
+  /** Requirements that aren't CV skills (traits, location, years, contract), left for the interview. */
+  leftOut?: string[]
 }
 
 /** The skills and priorities to store on a job for Gio's proposal. */
@@ -87,4 +91,15 @@ export function toJobSkills(s: SuggestedSkills): { skills: string[]; skill_prior
   for (const skill of s.nice) skill_priorities[skill] = 'nice'
   for (const skill of s.extra) skill_priorities[skill] = 'bonus'
   return { skills: [...s.must, ...s.nice, ...s.extra], skill_priorities }
+}
+
+/** The years Gio read, for whichever of the job's Min/Max years fields are still empty. */
+export function yearsToFill(
+  s: SuggestedSkills,
+  job: { min_years_experience?: number | null; max_years_experience?: number | null },
+): { min_years_experience?: number; max_years_experience?: number } {
+  const out: { min_years_experience?: number; max_years_experience?: number } = {}
+  if (s.experience?.min != null && job.min_years_experience == null) out.min_years_experience = s.experience.min
+  if (s.experience?.max != null && job.max_years_experience == null) out.max_years_experience = s.experience.max
+  return out
 }
