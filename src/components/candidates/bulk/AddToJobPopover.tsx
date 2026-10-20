@@ -22,6 +22,10 @@ interface AddToJobPopoverProps {
   candidateNames?: string[]
   trigger: ReactNode
   onCompleted?: () => void
+  /** Leaves this job out of the list (adding from inside a job). */
+  excludeJobId?: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 function readRecentIds(): string[] {
@@ -41,8 +45,13 @@ function stageLabel(s: Stage) {
   return s.customStageName?.trim() || s.stage.stage_name
 }
 
-export function AddToJobPopover({ candidateIds, candidateNames, trigger, onCompleted }: AddToJobPopoverProps) {
-  const [open, setOpen] = useState(false)
+export function AddToJobPopover({ candidateIds, candidateNames, trigger, onCompleted, excludeJobId, open: controlledOpen, onOpenChange }: AddToJobPopoverProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = (o: boolean) => {
+    if (controlledOpen === undefined) setUncontrolledOpen(o)
+    onOpenChange?.(o)
+  }
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [search, setSearch] = useState('')
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
@@ -70,7 +79,7 @@ export function AddToJobPopover({ candidateIds, candidateNames, trigger, onCompl
     }
   }, [open, getJobs])
 
-  const openJobs = useMemo(() => jobs.filter(j => j.status === 'open'), [jobs])
+  const openJobs = useMemo(() => jobs.filter(j => j.status === 'open' && j.id !== excludeJobId), [jobs, excludeJobId])
   const recentJobs = useMemo(() => {
     const map = new Map(openJobs.map(j => [j.id, j]))
     return recentIdsRef.current.map(id => map.get(id)).filter(Boolean) as Job[]

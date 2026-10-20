@@ -55,7 +55,8 @@ import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
 import { JobBriefingTab } from '@/components/jobs/JobBriefingTab'
 import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
 import { JobSourcingTab } from '@/components/jobs/JobSourcingTab'
-import { PipelineOverview } from '@/components/jobs/PipelineOverview'
+import { PipelineOverview, type PipelineBulkHandle } from '@/components/jobs/PipelineOverview'
+import { jobBulkMenu } from '@/components/jobs/jobBulkMenu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -143,6 +144,8 @@ export default function JobDetail() {
   }, [pipelineView])
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
+  // The board's bulk handle: the selection bar's "Move to stage" moves cards like a drag.
+  const pipelineBulkRef = useRef<PipelineBulkHandle | null>(null)
   const [pipelineSearch, setPipelineSearch] = useState('')
   const [pipelineRefreshing, setPipelineRefreshing] = useState(false)
   const [pipelineFilters, setPipelineFilters] = useState<PipelineFilter[]>([])
@@ -578,24 +581,41 @@ export default function JobDetail() {
     setPipelineRefresh((v) => v + 1)
   }
 
+  // Moves the selected candidates of a flat section (no board on screen) to a stage.
+  const moveSelectedToStage = async (stageId: string, ids: string[] = selectedCandidateIds) => {
+    const stageName = stageMap[stageId]?.name ?? 'the stage'
+    const targets = associations.filter(
+      (a) => ids.includes(a.candidate_id) && a.current_stage_id !== stageId,
+    )
+    setSelectedCandidateIds([])
+    if (!targets.length) return
+    const results = await Promise.allSettled(
+      targets.map((a) => moveAssociationToStage(a.id, stageId, { silent: true })),
+    )
+    const ok = results.filter((r) => r.status === 'fulfilled').length
+    const failed = results.length - ok
+    if (ok) toast({ title: `${ok} candidate${ok === 1 ? '' : 's'} moved to ${stageName}` })
+    if (failed) {
+      const retryIds = targets.filter((_, i) => results[i].status === 'rejected').map((a) => a.candidate_id)
+      toast({
+        title: `Couldn't move ${failed} candidate${failed === 1 ? '' : 's'}`,
+        variant: 'destructive',
+        action: (
+          <button onClick={() => void moveSelectedToStage(stageId, retryIds)}>Retry</button>
+        ),
+      })
+    }
+    setPipelineRefresh((v) => v + 1)
+  }
+
   const sectionHandlers = useMemo(
     () => ({
       onOpenRow: (row: any) =>
         openProfileInPlace(row.id, sectionProfileContext as any, sectionCandidateList),
       onAdvance: (row: any) => advanceToScreening(row.id),
       nextStageName,
-      onBulkMoveStage: async () => {
-        if (!screeningStageId) return
-        const targets = associations.filter((a) => selectedCandidateIds.includes(a.candidate_id))
-        const results = await Promise.allSettled(
-          targets.map((a) => moveAssociationToStage(a.id, screeningStageId)),
-        )
-        const ok = results.filter((r) => r.status === 'fulfilled').length
-        const failed = results.length - ok
-        if (ok) toast({ title: `${ok} candidate${ok === 1 ? '' : 's'} moved to ${nextStageName}` })
-        if (failed) toast({ title: `${failed} candidate${failed === 1 ? '' : 's'} could not be moved`, variant: 'destructive' })
-        setSelectedCandidateIds([])
-        setPipelineRefresh((v) => v + 1)
+      onBulkMoveStage: () => {
+        if (screeningStageId) void moveSelectedToStage(screeningStageId)
       },
       onReject: (row: any) => {
         setSelectedCandidateIds([row.id])
@@ -1338,6 +1358,7 @@ export default function JobDetail() {
                           selectionMode={selectionMode}
                           onSelectionModeChange={setSelectionMode}
                           onSelectedIdsChange={setSelectedCandidateIds}
+                          bulkRef={pipelineBulkRef}
                           refreshToken={pipelineRefresh}
                           onStageChanged={() => setPipelineRefresh((v) => v + 1)}
                           onCandidateClick={openPipelineProfile}
@@ -1377,13 +1398,17 @@ export default function JobDetail() {
                             slot: 'secondary',
                             onClick: () => setShowBulkEmailDialog(true),
                           },
-                          {
-                            id: 'reject',
-                            label: 'Reject',
-                            slot: 'overflow',
-                            destructive: true,
-                            onClick: () => setShowBulkRejectionDialog(true),
-                          },
+                          ...jobBulkMenu({
+                            jobId: id!,
+                            jobTitle: job?.title,
+                            candidateIds: selectedCandidateIds,
+                            associations,
+                            stageMap,
+                            onEmail: () => setShowBulkEmailDialog(true),
+                            onMoveToStage: (stageId) => pipelineBulkRef.current?.moveSelected(stageId),
+                            onReject: () => setShowBulkRejectionDialog(true),
+                            onChanged: () => setPipelineRefresh((v) => v + 1),
+                          }),
                         ]}
                       />
                     </div>
@@ -1424,7 +1449,21 @@ export default function JobDetail() {
                     onSearchChange={setPipelineSearch}
                     selectedIds={selectedCandidateIds}
                     onSelectedIdsChange={setSelectedCandidateIds}
-                    handlers={sectionHandlers}
+                    handlers={{
+                      ...sectionHandlers,
+                      bulkMenu: jobBulkMenu({
+                        jobId: id!,
+                        jobTitle: job?.title,
+                        candidateIds: selectedCandidateIds,
+                        associations,
+                        stageMap,
+                        onEmail: () => setShowBulkEmailDialog(true),
+                        // Offers and hires keep their own flows; rejected candidates come back through Restore.
+                        onMoveToStage: pipelineSectionTab === 'application' ? (stageId) => void moveSelectedToStage(stageId) : undefined,
+                        onReject: pipelineSectionTab === 'application' ? () => setShowBulkRejectionDialog(true) : undefined,
+                        onChanged: () => setPipelineRefresh((v) => v + 1),
+                      }),
+                    }}
                   />
                 )}
 

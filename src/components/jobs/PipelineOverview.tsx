@@ -38,6 +38,7 @@ import { matchesPipelineFilters, type PipelineFilter } from './pipelineFilters'
 import { stageColor, daysInStage } from './pipelineVisuals'
 import { PipelineListView, type PipelineListGroup } from './PipelineListView'
 import { Loadable } from '@/components/ui/loadable'
+import { floatingLayerOpen } from '@/lib/floatingLayer'
 import { CandidatesEmpty } from '@/components/empty/CandidatesEmpty'
 import { EmptyAction } from '@/components/ui/empty-state'
 import { UserPlus, Link as LinkIcon, X as XIcon, RotateCcw } from 'lucide-react'
@@ -72,6 +73,16 @@ interface PipelineOverviewProps {
   postingAction?: { kind: 'share' | 'create'; onClick: () => void }
   /** A background refresh is running (the host's toolbar shows its small spinner). */
   onRefreshingChange?: (refreshing: boolean) => void
+  /**
+   * Filled with the board's bulk actions, so the host's selection bar can move the
+   * selected cards the same way a drag does (optimistic, FLIP, revert with Retry).
+   */
+  bulkRef?: React.MutableRefObject<PipelineBulkHandle | null>
+}
+
+export interface PipelineBulkHandle {
+  /** Moves every selected card to the stage and clears the selection. */
+  moveSelected: (toStageJhsId: string) => void
 }
 
 /** §16: a first load that hasn't answered by then shows the error state, never an endless skeleton. */
@@ -236,7 +247,7 @@ function PipelineSkeleton({ view }: { view: 'board' | 'list' }) {
 }
 
 
-export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, filters: pipelineFilters, onAddCandidateClick, onOpenStageSettings, onClearFilters, postingAction, onRefreshingChange }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, filters: pipelineFilters, onAddCandidateClick, onOpenStageSettings, onClearFilters, postingAction, onRefreshingChange, bulkRef }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
 
@@ -666,6 +677,31 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const runMoveRef = useRef(runMove)
   runMoveRef.current = runMove
 
+  // The host's selection bar moves the selection the same way a drag does.
+  const selectedIdsRef = useRef(selectedIds)
+  selectedIdsRef.current = selectedIds
+  const assocMapRef = useRef(assocMap)
+  assocMapRef.current = assocMap
+  useEffect(() => {
+    if (!bulkRef) return
+    bulkRef.current = {
+      moveSelected: (toStageId) => {
+        const ids = Array.from(selectedIdsRef.current).filter(
+          (id) => assocMapRef.current.get(id)?.stageJhsId !== toStageId,
+        )
+        setSelectedIds(new Set())
+        emitSelectedCandidateIds(new Set())
+        if (!ids.length) return
+        // §4: a move from a menu FLIPs the cards across the columns (a drag skips them).
+        captureBoard()
+        void runMoveRef.current(ids, toStageId)
+      },
+    }
+    return () => {
+      bulkRef.current = null
+    }
+  }, [bulkRef, emitSelectedCandidateIds, captureBoard])
+
   // Get all associations for status-based sorting
   const allAssociations = useMemo(() => {
     const all: PipelineAssociation[] = []
@@ -954,7 +990,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Esc during a drag only cancels the drag (dnd-kit); the selection stays.
-      if (e.key === 'Escape' && !document.querySelector('.gio-board-slot')) {
+      // Esc in an open menu, popover or dialog closes that, not the selection.
+      if (e.key === 'Escape' && !document.querySelector('.gio-board-slot') && !floatingLayerOpen()) {
         setSelectedIds(new Set())
         emitSelectedCandidateIds(new Set())
       }

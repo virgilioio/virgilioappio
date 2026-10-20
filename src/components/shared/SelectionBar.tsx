@@ -1,15 +1,23 @@
 import * as React from 'react'
 import { IconTip } from '@/components/ui/tooltip'
-import { MoreHorizontal, X } from 'lucide-react'
+import { Check, MoreHorizontal, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { confirmDestructive, type DestructiveOptions } from '@/components/ui/confirm-dialog'
+import { floatingLayerOpen } from '@/lib/floatingLayer'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 const inter = "'Inter', system-ui, sans-serif"
 const poppins = "'Poppins', system-ui, sans-serif"
@@ -33,6 +41,20 @@ export interface SelectionAction {
    * its own trigger. Receives the styled pill.
    */
   render?: (pill: React.ReactNode) => React.ReactNode
+  /**
+   * Overflow only: a popover the row opens once the menu has closed, anchored to
+   * the ⋯ button (the menu row itself is gone by then). Pass `anchor` as the
+   * popover's trigger and drive it with `open` / `onOpenChange`.
+   */
+  panel?: (p: { open: boolean; onOpenChange: (open: boolean) => void; anchor: React.ReactElement }) => React.ReactNode
+  /** Overflow only: a submenu of these rows (ends in the §19 chevron). */
+  children?: SelectionAction[]
+  /** Leading colour dot instead of an icon (stages). */
+  dot?: string
+  /** The chosen option: a tick at the row's end. */
+  checked?: boolean
+  /** Faint hint or count at the row's end. */
+  hint?: string
 }
 
 export interface SelectionBarProps {
@@ -49,6 +71,7 @@ export interface SelectionBarProps {
 
 const pillBase: React.CSSProperties = {
   display: 'inline-flex',
+  minWidth: 0,
   alignItems: 'center',
   gap: 6,
   padding: '6px 11px',
@@ -75,6 +98,11 @@ export function SelectionBar({
 }: SelectionBarProps) {
   const [mounted, setMounted] = React.useState(false)
   const confirming = React.useRef(false)
+  // The overflow row whose popover is open (see SelectionAction.panel).
+  const [openPanel, setOpenPanel] = React.useState<string | null>(null)
+  const panelPending = React.useRef<string | null>(null)
+  // Phones have no room for a submenu beside the menu: its rows list inline.
+  const isPhone = useIsMobile()
   // Keep rendering through the exit, with the count it had when it started leaving.
   const [present, setPresent] = React.useState(count > 0)
   const lastCount = React.useRef(count)
@@ -95,7 +123,7 @@ export function SelectionBar({
     if (count === 0) return
     const onKey = (e: KeyboardEvent) => {
       // Esc in the confirm dialog closes the dialog, not the selection.
-      if (e.key === 'Escape' && !confirming.current) onClear()
+      if (e.key === 'Escape' && !confirming.current && !floatingLayerOpen()) onClear()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -121,6 +149,8 @@ export function SelectionBar({
 
   const renderPill = (action: SelectionAction, kind: 'primary' | 'secondary') => {
     const Icon = action.icon
+    // Phones keep the bar on screen: a secondary action with an icon shows just the icon.
+    const iconOnly = isPhone && kind === 'secondary' && !!Icon
     const pill = (
       <button
         type="button"
@@ -139,19 +169,21 @@ export function SelectionBar({
         }}
         className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
       >
-        {Icon && <Icon size={12} strokeWidth={kind === 'primary' ? 2.4 : 2} />}
-        <span>{action.label}</span>
+        {Icon && <Icon size={12} strokeWidth={kind === 'primary' ? 2.4 : 2} style={{ flex: 'none' }} />}
+        {!iconOnly && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.label}</span>}
       </button>
     )
+    const tipped = iconOnly && !action.render ? <IconTip label={action.label} side="top">{pill}</IconTip> : pill
     return (
       <React.Fragment key={action.id}>
-        {action.render ? action.render(pill) : pill}
+        {action.render ? action.render(pill) : tipped}
       </React.Fragment>
     )
   }
 
   const roundBtn: React.CSSProperties = {
     width: 26,
+    flex: 'none',
     height: 26,
     borderRadius: 999,
     display: 'inline-flex',
@@ -162,6 +194,74 @@ export function SelectionBar({
     color: 'rgba(255,252,249,0.7)',
     cursor: 'pointer',
     padding: 0,
+  }
+
+  // §19 rows: leading icon (or colour dot), truncating label, hint / tick / chevron
+  // at the end; danger rows sit last after a divider.
+  const menuRow = (a: SelectionAction): React.ReactNode => {
+    const lead = a.dot ? (
+      <span data-menu-lead>
+        <span style={{ width: 8, height: 8, borderRadius: 999, background: a.dot }} />
+      </span>
+    ) : a.icon ? (
+      <a.icon />
+    ) : null
+    if (a.children?.length && isPhone) {
+      return (
+        <React.Fragment key={a.id}>
+          <DropdownMenuLabel>{a.label}</DropdownMenuLabel>
+          {a.children.map(menuRow)}
+          <DropdownMenuSeparator />
+        </React.Fragment>
+      )
+    }
+    if (a.children?.length) {
+      return (
+        <DropdownMenuSub key={a.id}>
+          <DropdownMenuSubTrigger disabled={busy || a.disabled}>
+            {lead}
+            <span className="truncate">{a.label}</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="min-w-[220px]">{menuRows(a.children)}</DropdownMenuSubContent>
+        </DropdownMenuSub>
+      )
+    }
+    const item = (
+      <DropdownMenuItem
+        key={a.id}
+        disabled={busy || a.disabled}
+        className={a.destructive ? 'text-destructive' : undefined}
+        onSelect={(e) => {
+          if (a.render) e.preventDefault()
+          if (a.panel) {
+            panelPending.current = a.id
+            return
+          }
+          void run(a)
+        }}
+      >
+        {lead}
+        <span className="truncate">{a.label}</span>
+        {a.hint && <DropdownMenuShortcut>{a.hint}</DropdownMenuShortcut>}
+        {a.checked && (
+          <span className="gio-mrow-check" aria-hidden>
+            <Check className="h-4 w-4" strokeWidth={2} />
+          </span>
+        )}
+      </DropdownMenuItem>
+    )
+    return a.render ? <React.Fragment key={a.id}>{a.render(item)}</React.Fragment> : item
+  }
+  const menuRows = (rows: SelectionAction[]) => {
+    const calm = rows.filter((a) => !a.destructive)
+    const danger = rows.filter((a) => a.destructive)
+    return (
+      <>
+        {calm.map(menuRow)}
+        {calm.length > 0 && danger.length > 0 && <DropdownMenuSeparator />}
+        {danger.map(menuRow)}
+      </>
+    )
   }
 
   return (
@@ -179,6 +279,7 @@ export function SelectionBar({
         display: 'flex',
         alignItems: 'center',
         gap: 10,
+        maxWidth: 'calc(100vw - 16px)',
         padding: '9px 10px 9px 16px',
         borderRadius: 999,
         background: '#0d0d09',
@@ -192,7 +293,7 @@ export function SelectionBar({
           : 'opacity var(--dur-dialog-out) var(--ease-out), transform var(--dur-dialog-out) var(--ease-out)',
       }}
     >
-      <span style={{ fontFamily: inter, fontSize: 12.5, color: '#fffcf9' }}>
+      <span style={{ fontFamily: inter, fontSize: 12.5, color: '#fffcf9', whiteSpace: 'nowrap', flex: 'none' }}>
         <span style={{ fontWeight: 600 }}>{shownCount}</span> selected
       </span>
 
@@ -223,6 +324,7 @@ export function SelectionBar({
       {secondary.map((a) => renderPill(a, 'secondary'))}
 
       {overflow.length > 0 && (
+        <span style={{ position: 'relative', display: 'inline-flex' }}>
         <DropdownMenu>
           <IconTip label="More bulk actions" side="top">
           <DropdownMenuTrigger asChild>
@@ -231,30 +333,34 @@ export function SelectionBar({
             </button>
           </DropdownMenuTrigger>
           </IconTip>
-          <DropdownMenuContent align="end" side="top" sideOffset={8}>
-            {overflow.map((a) => {
-              const item = (
-                <DropdownMenuItem
-                  key={a.id}
-                  disabled={busy || a.disabled}
-                  onSelect={(e) => {
-                    if (a.render) e.preventDefault()
-                    void run(a)
-                  }}
-                  style={a.destructive ? { color: 'var(--color-danger)' } : undefined}
-                >
-                  {a.icon && <a.icon size={13} strokeWidth={2} />}
-                  {a.label}
-                </DropdownMenuItem>
-              )
-              return a.render ? (
-                <React.Fragment key={a.id}>{a.render(item)}</React.Fragment>
-              ) : (
-                item
-              )
-            })}
+          <DropdownMenuContent
+            align="end"
+            side="top"
+            sideOffset={8}
+            className="min-w-[272px]"
+            // A row's popover opens once the menu has fully closed, and focus doesn't
+            // return to the ⋯ button, or the popover would read it as a click outside.
+            onCloseAutoFocus={(e) => {
+              const id = panelPending.current
+              if (!id) return
+              e.preventDefault()
+              panelPending.current = null
+              requestAnimationFrame(() => setOpenPanel(id))
+            }}
+          >
+            {menuRows(overflow)}
           </DropdownMenuContent>
         </DropdownMenu>
+        {overflow.filter((a) => a.panel).map((a) => (
+          <React.Fragment key={a.id}>
+            {a.panel!({
+              open: openPanel === a.id,
+              onOpenChange: (o) => setOpenPanel(o ? a.id : null),
+              anchor: <span aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />,
+            })}
+          </React.Fragment>
+        ))}
+        </span>
       )}
 
       <IconTip label="Clear selection" side="top">

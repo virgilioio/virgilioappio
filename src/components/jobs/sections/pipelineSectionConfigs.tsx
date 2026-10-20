@@ -77,6 +77,8 @@ export interface PSHandlers {
   onBulkTalentPool?: () => void
   onBulkAssignApprover?: () => void
   onBulkDelete?: () => void
+  /** The ⋯ rows of the selection bar (jobBulkMenu), per section. */
+  bulkMenu?: SelectionAction[]
   onStartReview?: () => void
   onSharePosting?: () => void
   onDraftOffer?: () => void
@@ -165,9 +167,7 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
             onClick: h.onBulkMoveStage,
           },
           email,
-          { id: 'assign-reviewer', label: 'Assign reviewer', slot: 'overflow', onClick: h.onBulkAssignReviewer },
-          { id: 'add-tag', label: 'Add tag', slot: 'overflow', onClick: h.onBulkAddTag },
-          { id: 'reject', label: 'Reject', slot: 'overflow', destructive: true, onClick: h.onBulkReject },
+          ...(h.bulkMenu ?? []),
         ],
       },
       empty: {
@@ -204,9 +204,8 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
       ],
       bulk: {
         actions: [
-          { id: 'send-offer', label: 'Send offer', icon: FileText, slot: 'primary', onClick: h.onBulkSendOffer },
           email,
-          { id: 'assign-approver', label: 'Assign approver', slot: 'overflow', onClick: h.onBulkAssignApprover },
+          ...(h.bulkMenu ?? []),
         ],
       },
       empty: {
@@ -246,16 +245,8 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
       ],
       bulk: {
         actions: [
-          {
-            id: 'start-onboarding',
-            label: 'Start onboarding',
-            icon: UserCheck,
-            slot: 'primary',
-            onClick: h.onBulkStartOnboarding,
-          },
           email,
-          { id: 'add-tag', label: 'Add tag', slot: 'overflow', onClick: h.onBulkAddTag },
-          { id: 'export', label: 'Export', slot: 'overflow', onClick: h.onBulkExport },
+          ...(h.bulkMenu ?? []),
         ],
       },
       empty: {
@@ -292,16 +283,8 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
     ],
     bulk: {
       actions: [
-        {
-          id: 'move-job',
-          label: 'Move to another job',
-          icon: GitBranch,
-          slot: 'primary',
-          onClick: h.onBulkMoveToJob,
-        },
         email,
-        { id: 'talent-pool', label: 'Add to talent pool', slot: 'overflow', onClick: h.onBulkTalentPool },
-        { id: 'export', label: 'Export', slot: 'overflow', onClick: h.onBulkExport },
+        ...(h.bulkMenu ?? []),
       ],
     },
     empty: {
