@@ -1,4 +1,4 @@
--- Run after 20261020200000_job_files inside a transaction that is rolled back.
+-- Run after 20261020200003_job_files inside a transaction that is rolled back.
 -- Allan (an active member) creates a fake job, adds a file row and its storage
 -- object, then an outsider (no active membership) tries the same. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);

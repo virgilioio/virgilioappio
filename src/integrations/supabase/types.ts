@@ -4398,6 +4398,48 @@ export type Database = {
         }
         Relationships: []
       }
+      job_files: {
+        Row: {
+          created_at: string
+          extracted_text: string | null
+          file_name: string
+          id: string
+          job_id: string
+          mime_type: string | null
+          removed_at: string | null
+          removed_by: string | null
+          size_bytes: number | null
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          extracted_text?: string | null
+          file_name: string
+          id?: string
+          job_id: string
+          mime_type?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          extracted_text?: string | null
+          file_name?: string
+          id?: string
+          job_id?: string
+          mime_type?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       job_hiring_stages: {
         Row: {
           created_at: string
@@ -11502,6 +11544,7 @@ export type Database = {
       }
       job_digest_prepare: { Args: never; Returns: number }
       job_entry_stage: { Args: { p_job: string }; Returns: string }
+      job_file_job: { Args: { p_name: string }; Returns: string }
       job_has_active_posting: {
         Args: { job_id_param: string }
         Returns: boolean
