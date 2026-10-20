@@ -3,6 +3,9 @@ import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } f
 
 interface DownloadRequest {
   attachmentId: string
+  /** 'link': log the download and return a short-lived signed link instead of
+   *  the bytes, so large files (videos) never pass through this function. */
+  mode?: 'link'
 }
 
 const corsHeaders = createSecureCorsHeaders();
@@ -31,7 +34,7 @@ Deno.serve(withRequestCors(async (req) => {
     }
 
     // Get request body
-    const { attachmentId }: DownloadRequest = await req.json()
+    const { attachmentId, mode }: DownloadRequest = await req.json()
 
     if (!attachmentId) {
       return new Response('Attachment ID is required', { 
@@ -87,16 +90,29 @@ Deno.serve(withRequestCors(async (req) => {
       }
     })
 
-    const { data: fileData, error: downloadError } = await serviceClient.storage
-      .from('candidate-attachments')
-      .download(filePath)
-
-    if (downloadError || !fileData) {
-      console.error('Failed to download file:', downloadError, 'Path:', filePath)
-      return new Response('Failed to download file', { 
-        status: 500, 
-        headers: corsHeaders 
-      })
+    let fileData: Blob | null = null
+    let link: string | null = null
+    if (mode === 'link') {
+      const { data: signed, error: signError } = await serviceClient.storage
+        .from('candidate-attachments')
+        .createSignedUrl(filePath, 300, { download: attachment.file_name })
+      if (signError || !signed?.signedUrl) {
+        console.error('Failed to sign download link:', signError, 'Path:', filePath)
+        return new Response('Failed to download file', { status: 500, headers: corsHeaders })
+      }
+      link = signed.signedUrl
+    } else {
+      const { data, error: downloadError } = await serviceClient.storage
+        .from('candidate-attachments')
+        .download(filePath)
+      if (downloadError || !data) {
+        console.error('Failed to download file:', downloadError, 'Path:', filePath)
+        return new Response('Failed to download file', {
+          status: 500,
+          headers: corsHeaders
+        })
+      }
+      fileData = data
     }
 
     console.log(`Successfully downloaded file: ${attachment.file_name}`)
@@ -129,6 +145,12 @@ Deno.serve(withRequestCors(async (req) => {
     } catch (auditError) {
       // Don't fail the download if audit logging fails
       console.error('Failed to log download audit:', auditError);
+    }
+
+    if (link) {
+      return new Response(JSON.stringify({ url: link }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      })
     }
 
     // Create response with proper download headers
