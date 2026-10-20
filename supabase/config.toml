@@ -54,6 +54,9 @@ verify_jwt = true
 [functions.generate-comprehensive-skills]
 verify_jwt = true
 
+[functions.generate-job-skills]
+verify_jwt = true
+
 [functions.generate-scorecard-questions]
 verify_jwt = true
 

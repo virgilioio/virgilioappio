@@ -72,3 +72,19 @@ export function sortByPriority<T>(items: T[], priority: (item: T) => SkillPriori
   const rank: Record<SkillPriority, number> = { must: 0, nice: 1, bonus: 2 }
   return items.map((item, index) => ({ item, index })).sort((a, b) => rank[priority(a.item)] - rank[priority(b.item)] || a.index - b.index).map((x) => x.item)
 }
+
+/** Gio's skills by tier, as generate-job-skills returns them (extra = bonus). */
+export interface SuggestedSkills {
+  must: string[]
+  nice: string[]
+  extra: string[]
+}
+
+/** The skills and priorities to store on a job for Gio's proposal. */
+export function toJobSkills(s: SuggestedSkills): { skills: string[]; skill_priorities: SkillPriorities } {
+  const skill_priorities: SkillPriorities = {}
+  for (const skill of s.must) skill_priorities[skill] = 'must'
+  for (const skill of s.nice) skill_priorities[skill] = 'nice'
+  for (const skill of s.extra) skill_priorities[skill] = 'bonus'
+  return { skills: [...s.must, ...s.nice, ...s.extra], skill_priorities }
+}

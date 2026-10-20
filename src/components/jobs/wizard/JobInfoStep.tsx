@@ -32,6 +32,10 @@ import { DepartmentFormDialog } from '@/components/settings/DepartmentFormDialog
 import { JobPriorityPicker } from '@/components/jobs/JobPriorityPicker'
 import { SkillPriorityLegend } from '@/components/jobs/SkillPill'
 import { DEFAULT_JOB_PRIORITY } from '@/lib/job-priority'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { JobFilesField } from './JobFilesField'
+import { SkillSuggestions } from './SkillSuggestions'
+import { toJobSkills, type SuggestedSkills } from '@/lib/skillPriority'
 
 export type JobInfoOpeningsProp =
   | {
@@ -46,6 +50,21 @@ interface JobInfoStepProps {
   jobData: Partial<CreateJobData>
   onUpdate: (data: Partial<CreateJobData>) => void
   openings?: JobInfoOpeningsProp
+  /** The saved job, once it exists: its source documents feed Gio. */
+  jobId?: string | null
+}
+
+/** A Gio function's error as one specific line (never the raw server text). */
+async function gioErrorMessage(err: any, fallback: string): Promise<string> {
+  const ctx = err?.context
+  const status = ctx?.status as number | undefined
+  if (status === 429) return 'Too many requests. Try again in a moment.'
+  if (status === 402) return 'AI credits exhausted. Add credits in Settings → Workspace → Usage.'
+  try {
+    const parsed = ctx ? await ctx.json?.() : null
+    if (parsed?.message && parsed?.error !== 'internal_error') return parsed.message
+  } catch { /* keep the fallback */ }
+  return fallback
 }
 
 function OpeningsReadOnlyField({ jobId, onManage }: { jobId: string; onManage: () => void }) {
@@ -107,7 +126,7 @@ const JOB_LEVEL_OPTIONS: SearchableSelectOption[] = [
   { value: 'L8 — Executive', label: 'L8 — Executive' },
 ]
 
-export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
+export function JobInfoStep({ jobData, onUpdate, openings, jobId }: JobInfoStepProps) {
   const [isDeptFormOpen, setIsDeptFormOpen] = React.useState(false)
   const { data: childOrgs = [], isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation(jobData.organization_id)
   const { userType, organizationId } = useAuth()
@@ -130,7 +149,8 @@ export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
     [departments]
   )
 
-  const canSelectOrganization = permissions.isPlatformAdmin || permissions.isWorkspaceOwner
+  // TA Ops pick the client: platform admins, workspace owners and admins (Allan, 2026-10-20).
+  const canSelectOrganization = permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin
 
   React.useEffect(() => {
     if (!jobData.organization_id && userType !== 'platform_admin' && organizationId) {
@@ -190,29 +210,59 @@ export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
       return
     }
     setGenValidationMsg(null)
+    if (
+      (jobData.description || '').trim() &&
+      !(await confirmDialog({
+        title: 'Replace the current description?',
+        description: 'Gio drafts a new one from the job details, your text and the source documents.',
+        confirmLabel: 'Replace description',
+      }))
+    )
+      return
     setIsGenerating(true)
     try {
       const { data, error } = await supabase.functions.invoke('generate-job-description', {
-        body: { jobData },
+        body: { jobData, jobId: jobId ?? null },
       })
       if (error) throw error
       if (!data?.description) throw new Error('Empty response')
       set('description', data.description as string)
-      toast.success('Description generated')
+      const used = (data.sources_used as string[] | undefined)?.length ?? 0
+      toast.success(used ? `Description drafted from ${used} document${used === 1 ? '' : 's'}` : 'Description drafted')
     } catch (err: any) {
-      const ctx = err?.context
-      const status = ctx?.status as number | undefined
-      let msg = 'Could not generate description. Please try again.'
-      try {
-        const parsed = ctx ? await ctx.json?.() : null
-        if (parsed?.message) msg = parsed.message
-      } catch { /* ignore */ }
-      if (status === 429) msg = 'Too many requests. Try again in a moment.'
-      else if (status === 402) msg = 'AI credits exhausted. Add credits in Settings → Workspace → Usage.'
-      toast.error(msg)
+      toast.error(await gioErrorMessage(err, "Gio couldn't draft the description. Try again."))
     } finally {
       setIsGenerating(false)
     }
+  }
+
+  // Skills by tier from Gio: a preview first, applied only on "Use these skills".
+  const [isSuggesting, setIsSuggesting] = React.useState(false)
+  const [suggested, setSuggested] = React.useState<SuggestedSkills | null>(null)
+  const handleSuggestSkills = async () => {
+    if (!(jobData.title || '').trim()) {
+      toast.error('Add a job title so Gio can suggest skills.')
+      return
+    }
+    setIsSuggesting(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-job-skills', {
+        body: { jobData, jobId: jobId ?? null },
+      })
+      if (error) throw error
+      if (!data?.skills) throw new Error('Empty response')
+      setSuggested(data.skills as SuggestedSkills)
+    } catch (err: any) {
+      toast.error(await gioErrorMessage(err, "Gio couldn't suggest skills. Try again."))
+    } finally {
+      setIsSuggesting(false)
+    }
+  }
+  const applySuggested = () => {
+    if (!suggested) return
+    onUpdate(toJobSkills(suggested))
+    setSuggested(null)
+    toast.success('Skills updated')
   }
 
   return (
@@ -512,10 +562,11 @@ export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
             loading={isGenerating}
             disabled={isGenerating}
           >
-            {isGenerating ? 'Generating…' : 'Generate with Gio'}
+            Draft with Gio
           </Button>
         }
       >
+        <JobFilesField jobId={jobId} />
         <div>
           <FieldLabel htmlFor="description" required>
             Description
@@ -524,26 +575,56 @@ export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
             id="description"
             value={jobData.description || ''}
             onChange={(e) => set('description', e.target.value)}
-            placeholder="## About the role
-We're hiring a…
+            placeholder="## About the client
+…
+
+## About the job
+…
 
 ## What you'll do
 - …
 
 ## What we're looking for
+- …
+
+## Why join the client
 - …"
             className="mt-2 min-h-[220px] font-inter text-[13px] leading-relaxed"
           />
           {genValidationMsg ? (
             <p className="mt-2 text-[12px] text-destructive font-inter">{genValidationMsg}</p>
           ) : (
-            <FieldHint>Markdown supported. Includes overview, responsibilities, requirements.</FieldHint>
+            <FieldHint>Markdown. Draft with Gio writes About the client, About the job, What you'll do, What we're looking for and Why join; the offer stays out of it.</FieldHint>
           )}
         </div>
       </SectionCard>
 
       {/* ------------------------------------------ REQUIRED SKILLS */}
-      <SectionCard title="Required skills">
+      <SectionCard
+        title="Required skills"
+        trailing={
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={Sparkles}
+            className="text-virgilio-purple"
+            onClick={handleSuggestSkills}
+            loading={isSuggesting}
+            disabled={isSuggesting}
+          >
+            Generate with Gio
+          </Button>
+        }
+      >
+        {suggested && (
+          <SkillSuggestions
+            value={suggested}
+            onChange={setSuggested}
+            onApply={applySuggested}
+            onCancel={() => setSuggested(null)}
+            replacing={(jobData.skills || []).length > 0}
+          />
+        )}
         <div>
           <FieldLabel required>Skills</FieldLabel>
           <div className="mt-2">
