@@ -31,8 +31,6 @@ const EXT_TYPES: Record<string, string> = {
 }
 const MAX_TEXT = 200000
 
-// job_files arrives in the generated types once its migration is applied.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const jobFiles = () => supabase.from('job_files')
 
 export const jobFilesKey = (jobId: string | null | undefined) => ['job-files', jobId ?? null] as const
