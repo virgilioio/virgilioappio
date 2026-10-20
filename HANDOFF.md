@@ -42,6 +42,14 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-20 (ATS)
+
+- **Candidate files take videos** (Allan: MP4 uploads that show with a video icon and play in the dossier). Applied as `20261020003013_candidate_video_files` (test 37, 4 checks): the `candidate-attachments` bucket takes 500 MB. Limits by kind in `src/lib/candidateFiles.ts`: video (MP4, MOV, M4V, WebM) 500 MB, audio 100 MB, everything else 25 MB; the type is taken from the extension when the browser gives none.
+  - Files in the profile (`SidebarFileList`, and `CandidateAttachments` in the older sheet) open in `CandidateFileViewer`, the client dossier's viewer (`FileStage` from `PublicFiles.tsx`: PDF, Word, image, audio waveform, video player) on a 1-hour signed link; arrows move between files. The old `AttachmentPreviewDialog` never loaded a file and is gone.
+  - Downloads: `download-attachment` v681 takes `mode: 'link'`, logs the download as before and returns a 5-minute signed link, so big files never pass through the function.
+  - **Allan:** set Storage › Settings › Global file size limit to at least 500 MB, or bigger videos are refused there.
+  - Not built: an upload progress bar and resumable uploads for very large files (asked whether to add).
+
 ## Done 2026-10-19 (ATS)
 
 - **Reference checks: resends show at once, and automatic reminders run** (Allan: a resend wasn't in Activity, the status didn't follow; were reminders working?). Applied as `20261019200052_reference_reminders` (test 36, 7 checks, passed on live, rolled back).
