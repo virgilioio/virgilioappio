@@ -1,4 +1,4 @@
--- Run after 20261020120000_candidate_video_files inside a transaction that is
+-- Run after 20261020003013_candidate_video_files inside a transaction that is
 -- rolled back. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
 insert into t_results values ('candidate files take up to 500 MB',
