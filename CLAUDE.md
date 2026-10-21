@@ -13,6 +13,7 @@ Gio ATS is Virgilio's applicant tracking system (Vite, React 18, React Router 6,
 - **No new animation libraries.** CSS transitions, the Web Animations API, `tailwindcss-animate` and Radix data-state hooks. The one existing `motion` import (`ai-elements/shimmer.tsx`) stays; don't add more.
 
 ## Decisions (Allan, 2026-10-09)
+- **"Go!" and "Apply!" (Allan, 2026-10-21):** after planning, Claude stops and waits for Allan's "Go!" before implementing. The work is tested and pushed to the working branch, then Claude reports what changed and waits for "Apply!" before pushing to `main` (which Lovable syncs from). Each "Go!" or "Apply!" covers the plan or change it answers, not the next one.
 - **Built directly in the repo** by Claude, tested against intercepted fake data, merged to `main`; Lovable syncs from GitHub. One component or pattern per commit.
 - **One toast system:** Sonner, bottom-left. The old Radix `use-toast` API keeps working through an adapter, so call sites don't change. One toast at a time; Undo lives in the toast's action.
 - **Deletes:** records keep a confirmation dialog (and `confirm()` boxes become that dialog); missing confirmations get added; Undo only where the action is genuinely reversible (archive, status changes, dismissals, delayed commits) — never a re-insert faked after a hard delete. Jobs, candidates and team assignments stay hard-deleted for now — no schema change.
