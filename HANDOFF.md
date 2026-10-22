@@ -42,13 +42,13 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Done 2026-10-22 (ATS) — on the branch, waiting for Apply!
+## Done 2026-10-22 (ATS) — applied
 
 - **Find rebuilt** (Allan: "precision over what's searched and found, an easy way to add candidates into a pipeline or the pool"; proposal page https://claude.ai/artifact/7nTGzrXGC1gwybYA2adkjo, all recommendations approved). Usage then: 155 searches (58 with a job), 3,438 people collected, 72% with no job, Shortlist and its AI fit never used.
   - Results: 52px rows in lanes, `FindMatch` (search match for profiles, checks for Apollo previews; PDL's fixed 100 is gone), one `FindAddButton` for a row or a selection (talent pool by default with no job, else the linked job; another job and stage from its menu), Gio Fit queued for anyone added to an open job (`queueGioFit`, honours `job_settings.auto_score`), Gio Fit shown on the Added tab's job chips.
   - Search: skills in must / nice / extra, in one field with the job wizard's chevron on each chip (a new skill is nice; seeded from the job by `create-sourcing-project-from-job`, or "Use the job's skills"); must-haves rank our own people (work history included) and cap like Gio Fit; "Require must-haves on Apollo" sends them as `q_keywords`. "Remote" is no longer sent to Apollo as a place, "LATAM" goes as its countries, company names match without legal suffixes. PDL and Apollo run side by side; the already-in-Gio lookup is chunked; `last_search_at` is recorded.
   - Removed: Shortlist tab and `shortlist-ai-fit` calls, the second saved-search picker, "Auto-refreshing", Industry and Experience filters, fixed suggestions, dead buttons (New search, Examples, starting points, Attach JD, Paste LinkedIn URL, Use an open job, Why these results?), 12 unused files. Phones: criteria behind "Edit search", stacked rows.
-  - Functions to deploy on Apply!: `sourcing-search`, `search-apollo-candidates`, `create-sourcing-project-from-job`, `refine-sourcing-project` (`_shared/findCriteria.ts` has `\u0300-\u036f`: send it as `\\u005Cu0300` and compare the live file). `pool-builder` keeps the unchanged `fitScore`.
+  - Applied 2026-10-22: main at 24452defe; deployed `sourcing-search` v290, `search-apollo-candidates` v400 (verify_jwt on), `create-sourcing-project-from-job` v140, `refine-sourcing-project` v451 (verify_jwt off, as before; they check the caller themselves). Live files compared with git, `findCriteria.ts`'s `\u0300-\u036f` included. `pool-builder` keeps the unchanged `fitScore` and was not redeployed.
   - Open question for Allan: `/find/:projectId` has no `TalentPoolOnly` guard while `/find` does (the job's Sourcing tab opens it); left as is.
 
 ## Done 2026-10-20 (ATS)
