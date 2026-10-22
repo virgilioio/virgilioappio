@@ -42,7 +42,7 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Done 2026-10-22 (ATS) — on the branch, waiting for Apply!
+## Done 2026-10-22 (ATS) — applied (main at 0b9d3cb96)
 
 - **One formatted text box** (Allan: "the one we like is the one in the scorecards"; job posts and every text box with formatting controls). The scorecard's Key takeaways editor is now `FormattedTextBox` (`src/components/ui/formatted-text.tsx`), with Heading / Subheading (`headings`, or type `##` / `###`) for job posts. It is the Public description in Create and Edit job post, the wizard's Posting copy (Markdown is converted on open with `markdownToHtml`, stored as HTML from then on) and Find's job assistant description. The old `RichTextEditor` and the unused `IndependentCandidateForm` are gone.
   - Email bodies keep `BodyTemplateEditor` (Lexical, merge-tag chips) but wear the same box: toolbar, colours, border, focus, `*` / `1.` lists, Tab nesting, ⌘K link, ⌘⇧X/8/7. A composer's own controls ride on its toolbar (`toolbarExtra`): Variables and Rewrite in the email composer (its Bold/Italic/List/Link buttons did nothing), Insert variable and Preview in stage automations (Quote and its own link box went).
