@@ -1,4 +1,4 @@
--- Run after 20261022230000_talent_pool_rule inside a transaction that is rolled back.
+-- Run after 20261022061928_talent_pool_rule inside a transaction that is rolled back.
 -- Reads as real people (no rows are added): a sourcer and an admin get the whole
 -- talent pool; a hiring manager and an interviewer get only their own jobs;
 -- deactivated people and a member whose seats are taken away get nothing.
