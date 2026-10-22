@@ -47,6 +47,8 @@ interface ProfileHeroCardProps {
   backLabel?: string
   /** Last breadcrumb segment. Defaults to "Candidates". */
   breadcrumbLast?: string
+  /** Replaces the "Jobs › {job} › {last}" trail (Find: "Find › {search}"). */
+  breadcrumb?: ReactNode
   /** Replaces the application switcher on row 3 — used by match-scoped records. */
   contextLine?: ReactNode
   /** Extra status badges after the name (suggested-by-Gio, rank, added-to-stage). */
@@ -63,7 +65,7 @@ export function ProfileHeroCard({
   fitScore, fitPillState = 'ready', onFitClick, clientVerdictState = 'none',
   onClose, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
   tabs, actionMenu,
-  backLabel = 'Back to job', breadcrumbLast = 'Candidates', contextLine,
+  backLabel = 'Back to job', breadcrumbLast = 'Candidates', breadcrumb, contextLine,
   identityBadges, favoriteMuted, prevLabel = 'Previous candidate', nextLabel = 'Next candidate',
 }: ProfileHeroCardProps) {
 
@@ -85,19 +87,23 @@ export function ProfileHeroCard({
           )}
           <span className="text-[#D1D5DB]">·</span>
           <nav aria-label="breadcrumb" className="hidden md:flex items-center gap-1.5 font-inter text-[11.5px] text-[#8B8F9E] min-w-0">
-            <Link to="/jobs" className="hover:text-[#5A6072] transition-colors">Jobs</Link>
-            {jobTitle && (
+            {breadcrumb ?? (
               <>
+                <Link to="/jobs" className="hover:text-[#5A6072] transition-colors">Jobs</Link>
+                {jobTitle && (
+                  <>
+                    <span className="text-[#D1D5DB]">›</span>
+                    <JobPreview jobId={jobId}>
+                      <Link to={`/jobs/${jobId}`} className="hover:text-[#5A6072] transition-colors truncate max-w-[260px]">
+                        {jobTitle}
+                      </Link>
+                    </JobPreview>
+                  </>
+                )}
                 <span className="text-[#D1D5DB]">›</span>
-                <JobPreview jobId={jobId}>
-                  <Link to={`/jobs/${jobId}`} className="hover:text-[#5A6072] transition-colors truncate max-w-[260px]">
-                    {jobTitle}
-                  </Link>
-                </JobPreview>
+                <span className="text-[#1F2230] font-medium">{breadcrumbLast}</span>
               </>
             )}
-            <span className="text-[#D1D5DB]">›</span>
-            <span className="text-[#1F2230] font-medium">{breadcrumbLast}</span>
           </nav>
         </div>
 

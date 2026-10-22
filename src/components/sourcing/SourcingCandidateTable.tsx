@@ -17,6 +17,7 @@ import { CandidateTableSkeleton } from './CandidateTableSkeleton'
 import { JobSelectionDialog } from './JobSelectionDialog'
 import { FindMatch, type FindMatchRow } from './FindMatch'
 import { FindAddButton } from './FindAddButton'
+import { FindGioProfileSheet } from './FindGioProfileSheet'
 import { SelectionBar, type SelectionAction } from '@/components/shared/SelectionBar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -105,6 +106,8 @@ interface SourcingCandidateTableProps {
   onRetry?: () => void
   /** The project's organization, for "Find people like this" searches. */
   organizationId?: string | null
+  /** The search's name, for the profile's breadcrumb. */
+  searchName?: string | null
 }
 
 export function SourcingCandidateTable({
@@ -121,6 +124,7 @@ export function SourcingCandidateTable({
   loadFailed = false,
   onRetry,
   organizationId,
+  searchName,
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -624,8 +628,40 @@ export function SourcingCandidateTable({
         />
       )}
 
+      <FindGioProfileSheet
+        open={sheetOpen && sheetLane === 'internal'}
+        onOpenChange={(open) => { setSheetOpen(open); if (!open) setSheetKey(null) }}
+        candidateId={sheetRow && sheetLane === 'internal' ? candidateIdOf(sheetRow) : null}
+        row={sheetRow && sheetLane === 'internal' ? {
+          name: getDisplayName(sheetRow),
+          matchScore: typeof sheetRow.match_score === 'number' ? sheetRow.match_score : null,
+          reasons: sheetRow.fit_reasons ?? [],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- search rows carry the match fields
+          matchedSkills: (sheetRow as any).matched_skills ?? [],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          missingMust: (sheetRow as any).missing_must ?? [],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          mustTotal: (sheetRow as any).must_total ?? 0,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          pipeline: (sheetRow.pipeline ?? []) as any,
+        } : null}
+        linkedJob={linkedJob}
+        searchName={searchName ?? null}
+        rank={sheetIndex >= 0 ? sheetIndex + 1 : null}
+        total={sortedData.length}
+        hasPrev={sheetIndex > 0}
+        hasNext={sheetIndex >= 0 && sheetIndex < sortedData.length - 1}
+        onNavigatePrev={() => { if (sheetIndex > 0) openSheet(sortedData[sheetIndex - 1]) }}
+        onNavigateNext={() => { if (sheetIndex >= 0 && sheetIndex < sortedData.length - 1) openSheet(sortedData[sheetIndex + 1]) }}
+        addedLabel={sheetRow ? addedTo.get(rowKey(sheetRow)) ?? null : null}
+        adding={sheetRow ? adding.has(rowKey(sheetRow)) : false}
+        onAdd={(target) => { if (sheetRow) void runAdd([sheetRow], target) }}
+        onChooseJob={() => { if (sheetRow) chooseJobFor([sheetRow]) }}
+        onNotAFit={sheetRow && projectId && canKeep(sheetRow) ? () => void peopleActions.notAFit([changeFor(sheetRow)]) : undefined}
+      />
+
       <UniversalCandidateProfileSheet
-        open={sheetOpen}
+        open={sheetOpen && sheetLane !== 'internal'}
         onOpenChange={(open) => { setSheetOpen(open); if (!open) setSheetKey(null) }}
         candidateId={sheetProps.candidateId}
         apolloId={sheetProps.apolloId}

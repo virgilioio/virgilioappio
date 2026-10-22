@@ -116,6 +116,7 @@ export function CandidatesTab({
           loadFailed={loadFailed}
           onRetry={onRetry}
           organizationId={project.organization_id}
+          searchName={project.name}
         />
       </div>
     </div>

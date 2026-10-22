@@ -24,7 +24,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
+import { FindGioProfileSheet } from './FindGioProfileSheet'
+import { JobSelectionDialog } from './JobSelectionDialog'
+import { addFromFind, addSummary, type FindAddTarget } from '@/lib/findAdd'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { 
   Mail, 
@@ -45,9 +47,12 @@ import { IconTip } from '@/components/ui/tooltip'
 interface SavedCandidatesTabProps {
   projectId: string
   jobId?: string | null
+  /** The linked job's title and the search's name, for the profile sheet. */
+  jobTitle?: string | null
+  searchName?: string | null
 }
 
-export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps) {
+export function SavedCandidatesTab({ projectId, jobId, jobTitle, searchName }: SavedCandidatesTabProps) {
   const { data: savedCandidates = [], isLoading, refetch } = useSavedCandidates({ 
     projectId, 
     enabled: !!projectId 
@@ -69,6 +74,23 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
   const [isMovingToPipeline, setIsMovingToPipeline] = useState(false)
 
   const selectedCandidate = selectedIndex !== null ? savedCandidates[selectedIndex] : null
+
+  // The profile sheet's Add: the same addFromFind as the results.
+  const [adding, setAdding] = useState(false)
+  const [chooseOpen, setChooseOpen] = useState(false)
+  const addSelected = async (target: FindAddTarget) => {
+    const c = selectedCandidate
+    if (!c) return
+    setAdding(true)
+    try {
+      const res = await addFromFind([{ key: c.id, kind: 'internal', candidateId: c.id, apolloId: null, name: c.candidate_name }], target, projectId)
+      if (res.ok.size === 0) toast.error(`Couldn't add ${c.candidate_name}. Try again.`)
+      else toast.success(addSummary(res, target))
+      void refetch()
+    } finally {
+      setAdding(false)
+    }
+  }
 
   const handleEnterSelectionMode = async () => {
     if (!jobId) {
@@ -353,25 +375,39 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
         </Card>
       </div>
 
-      <UniversalCandidateProfileSheet
+      <FindGioProfileSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         candidateId={selectedCandidate?.id || null}
-        apolloId={selectedCandidate?.apollo_id || null}
-        apolloData={selectedCandidate ? {
-          candidate_name: selectedCandidate.candidate_name,
-          current_company: selectedCandidate.company_current || undefined,
-          current_role: selectedCandidate.role_current || undefined,
-          linkedin_url: selectedCandidate.linkedin_url || undefined,
-          email: selectedCandidate.email || undefined,
-          phone: selectedCandidate.phone || undefined,
-          location: [selectedCandidate.location_city, selectedCandidate.location_state, selectedCandidate.location_country].filter(Boolean).join(', ') || undefined,
-        } : undefined}
-        context="sourcing"
+        row={selectedCandidate ? {
+          name: selectedCandidate.candidate_name,
+          matchScore: null,
+          reasons: [],
+          matchedSkills: [],
+          missingMust: [],
+          mustTotal: 0,
+          pipeline: selectedCandidate.job_associations,
+        } : null}
+        linkedJob={jobId ? { id: jobId, title: jobTitle?.trim() || 'the linked job' } : null}
+        searchName={searchName ?? null}
         hasPrev={selectedIndex !== null && selectedIndex > 0}
         hasNext={selectedIndex !== null && selectedIndex < savedCandidates.length - 1}
-        onNavigatePrev={() => selectedIndex !== null && selectedIndex > 0 && setSelectedIndex(selectedIndex - 1)}
-        onNavigateNext={() => selectedIndex !== null && selectedIndex < savedCandidates.length - 1 && setSelectedIndex(selectedIndex + 1)}
+        onNavigatePrev={() => { if (selectedIndex !== null && selectedIndex > 0) setSelectedIndex(selectedIndex - 1) }}
+        onNavigateNext={() => { if (selectedIndex !== null && selectedIndex < savedCandidates.length - 1) setSelectedIndex(selectedIndex + 1) }}
+        adding={adding}
+        onAdd={(target) => void addSelected(target)}
+        onChooseJob={() => setChooseOpen(true)}
+      />
+
+      <JobSelectionDialog
+        open={chooseOpen}
+        onOpenChange={setChooseOpen}
+        onJobSelected={(id, name, stageId, stageName) => {
+          setChooseOpen(false)
+          void addSelected({ kind: 'job', jobId: id, jobTitle: name, stageId: stageId ?? null, stageName: stageName ?? null })
+        }}
+        onSkip={() => setChooseOpen(false)}
+        initialJobId={jobId ?? null}
       />
     </>
   )

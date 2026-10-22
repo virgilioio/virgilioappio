@@ -374,7 +374,7 @@ export function SourcingProjectView({
         </TabsContent>
 
         <TabsContent value="collected" className="mt-0 flex-1 min-h-0 overflow-hidden">
-          <SavedCandidatesTab projectId={project.id} jobId={project.job_id} />
+          <SavedCandidatesTab projectId={project.id} jobId={project.job_id} jobTitle={project.jobs?.title ?? null} searchName={project.name} />
         </TabsContent>
       </Tabs>
 
