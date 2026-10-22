@@ -81,9 +81,11 @@ export function HiringTeamManageDialog({
     }
   }, [open])
 
+  // One seat per person per job: anyone already on the team changes role in
+  // the Assigned list, they're never offered again here.
   const assignedIds = useMemo(
-    () => new Set(assignments.filter((a) => a.role === role).map((a) => a.user_id)),
-    [assignments, role]
+    () => new Set(assignments.map((a) => a.user_id)),
+    [assignments]
   )
   const availableMembers = useMemo(
     () => members.filter((m) => m.user_id && !assignedIds.has(m.user_id!)),

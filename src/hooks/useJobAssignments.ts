@@ -10,12 +10,18 @@ async function assertCanManage(jobId: string, role: JobAssignmentRole) {
   if (!error && data === false) throw { code: '42501' }
 }
 
-/** Job-team writes refused by the database (42501) get a message that says why. */
-function jobTeamError(err: unknown, fallback: string): string {
-  const code = (err as { code?: string } | null)?.code
-  if (code === '42501') {
+/**
+ * Job-team writes refused by the database get a message that says why: 42501
+ * (not allowed), GJT01 (one seat per person: "Maya Okafor is already on this
+ * job as Hiring manager.") and 23505 (the same, lost to a race).
+ */
+export function jobTeamError(err: unknown, fallback: string): string {
+  const e = err as { code?: string; message?: string } | null
+  if (e?.code === '42501') {
     return 'Only admins can add, change or remove a job\'s TA and Sourcers. A TA on the job can add its hiring managers and interviewers.'
   }
+  if (e?.code === 'GJT01' && e.message) return e.message
+  if (e?.code === '23505') return 'That person is already on this job. Change their role instead.'
   return err instanceof Error ? err.message : fallback
 }
 
@@ -82,8 +88,18 @@ export function useJobAssignments(jobId?: string) {
     }
   }
 
+  /**
+   * One person holds one seat on a job (Allan, 2026-10-22): someone already on
+   * this job keeps their seat and takes the new role, they're never added twice.
+   */
   const assignUserToJob = async (data: CreateJobAssignmentData) => {
     if (!user) throw new Error('User not authenticated')
+
+    const seat = data.job_id === jobId ? assignments.find((a) => a.user_id === data.user_id) : undefined
+    if (seat) {
+      if (seat.role !== data.role) await updateAssignmentRole(seat.id, data.role)
+      return { ...seat, role: data.role }
+    }
 
     setIsLoading(true)
     setError(null)

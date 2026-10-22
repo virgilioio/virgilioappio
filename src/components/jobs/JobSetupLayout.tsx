@@ -61,7 +61,7 @@ import {
 } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command'
 import { supabase } from '@/integrations/supabase/client'
 
 
@@ -142,6 +142,11 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     assignments.find((a) => a.role === 'recruiter')?.user_id || ''
   const hiringManagerId =
     assignments.find((a) => a.role === 'hiring_manager')?.user_id || ''
+  /** The role someone already holds on this job, shown in the owner pickers. */
+  const seatOf = (userId: string) => {
+    const role = assignments.find((a) => a.user_id === userId)?.role
+    return role ? ROLE_LABEL[role] : undefined
+  }
 
   const teamMembers = assignments.map((a) => {
     const m = members.find((mm) => mm.user_id === a.user_id)
@@ -249,21 +254,15 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
     try {
       // Demote the current holder rather than removing their access.
-      if (existing) {
-        const hasInterviewer = assignments.some((a) => a.user_id === existing.user_id && a.role === 'interviewer')
-        if (hasInterviewer) await removeUserFromJob(existing.id)
-        else await updateAssignmentRole(existing.id, 'interviewer')
-      }
-      const alreadyInRole = assignments.find((a) => a.user_id === newUserId && a.role === role)
-      if (!alreadyInRole) {
-        await assignUserToJob({
-          job_id: jobId,
-          user_id: newUserId,
-          role,
-          organization_id: job?.organization_id,
-        })
-
-      }
+      if (existing) await updateAssignmentRole(existing.id, 'interviewer')
+      // One seat per person: someone already on the job moves into the role
+      // (assignUserToJob changes their seat), so the slot they held empties.
+      await assignUserToJob({
+        job_id: jobId,
+        user_id: newUserId,
+        role,
+        organization_id: job?.organization_id,
+      })
       await getAssignments(jobId)
     } catch {
       /* toast in hook */
@@ -561,6 +560,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                       value={primaryRecruiterId}
                       members={members}
                       roleLabel="Recruiter"
+                      seatOf={seatOf}
                       onChange={(v) => updatePrimary('recruiter', v)}
                       disabled={isReadOnly}
                     />
@@ -571,6 +571,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                       value={hiringManagerId}
                       members={members}
                       roleLabel="Hiring manager"
+                      seatOf={seatOf}
                       onChange={(v) => updatePrimary('hiring_manager', v)}
                       disabled={isReadOnly}
                     />
@@ -849,6 +850,7 @@ function OwnerPickerRow({
   value,
   members,
   roleLabel,
+  seatOf,
   onChange,
   disabled,
 }: {
@@ -858,6 +860,8 @@ function OwnerPickerRow({
   value: string
   members: any[]
   roleLabel: string
+  /** The role someone already holds on the job; picking them moves that seat. */
+  seatOf?: (userId: string) => string | undefined
   onChange: (v: string) => void
   disabled?: boolean
 }) {
@@ -999,6 +1003,9 @@ function OwnerPickerRow({
                           </div>
                         )}
                       </div>
+                      {m.user_id !== value && seatOf?.(m.user_id) && (
+                        <CommandShortcut>{seatOf(m.user_id)}</CommandShortcut>
+                      )}
                       {m.user_id === value && <Check size={14} className="text-virgilio-purple" />}
                     </CommandItem>
                   )

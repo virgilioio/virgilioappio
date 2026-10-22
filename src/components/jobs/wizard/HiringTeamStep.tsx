@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Sliders, UserPlus, User as UserIcon, Calendar as CalendarIcon, Search } from 'lucide-react'
+import { UserPlus, User as UserIcon, Calendar as CalendarIcon, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 
 import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignments'
@@ -75,6 +75,8 @@ export function HiringTeamStep({
   const setMemberSearch = (v: string) => onUiChange({ memberSearch: v })
 
 
+  const searchRef = useRef<HTMLInputElement>(null)
+
   const memberOptions = useMemo(
     () =>
       members
@@ -88,6 +90,14 @@ export function HiringTeamStep({
         }),
     [members]
   )
+
+  // Owner pickers show the role each person already holds here: picking them
+  // moves that seat, it never adds a second one.
+  const ownerOptions = (currentUserId?: string) =>
+    memberOptions.map((o) => {
+      const seat = o.value !== currentUserId ? assignments.find((a) => a.user_id === o.value) : undefined
+      return seat ? { ...o, hint: DB_ROLE_LABEL[seat.role] } : o
+    })
 
   const findMember = (uid?: string) => members.find((m) => m.user_id === uid)
   const nameOf = (uid?: string) => {
@@ -105,9 +115,10 @@ export function HiringTeamStep({
   const hmAssignment = assignments.find((a) => a.role === 'hiring_manager')
   const sourcerAssignment = assignments.find((a) => a.role === 'sourcer')
 
-  // Generic owner setter — swaps the single recruiter / hiring_manager slot.
-  // Handles the case where the target user already has a different role on the job
-  // (would otherwise collide on the unique (job, user, role) constraint).
+  // Owner setter: swaps the person in the TA Partner / Sourcing Partner /
+  // hiring manager slot. One seat per person per job (Allan, 2026-10-22): someone
+  // already on the job moves into the role (assignUserToJob changes their seat),
+  // so a slot they held before shows as empty.
   const setOwner = async (role: JobAssignmentRole, newUserId: string) => {
     if (!jobId) return
     const current = assignments.find((a) => a.role === role)
@@ -117,22 +128,13 @@ export function HiringTeamStep({
     if (!m) return
 
     try {
-      // A person may hold several roles, so only the same (user, role) pair counts.
-      const existingForUser = assignments.find((a) => a.user_id === newUserId && a.role === role)
-
-      // Free the slot only if a *different* user holds it.
-      if (current && current.user_id !== newUserId) {
-        await removeUserFromJob(current.id)
-      }
-
-      if (!existingForUser) {
-        await assignUserToJob({
-          job_id: jobId,
-          user_id: newUserId,
-          organization_id: m.organization_id,
-          role,
-        })
-      }
+      if (current) await removeUserFromJob(current.id)
+      await assignUserToJob({
+        job_id: jobId,
+        user_id: newUserId,
+        organization_id: m.organization_id,
+        role,
+      })
     } catch (e) {
       console.error('setOwner failed:', e)
     }
@@ -147,10 +149,10 @@ export function HiringTeamStep({
     interviewer: assignments.filter((a) => a.role === 'interviewer').length,
   }
 
-  // Member rows for the TEAM MEMBERS section (excluding the two owner slots)
+  // Member rows for the TEAM MEMBERS section (excluding the three owner slots)
   const teamRows = useMemo(() => {
     const ownerIds = new Set(
-      [recruiterAssignment?.user_id, hmAssignment?.user_id].filter(Boolean) as string[]
+      [recruiterAssignment?.user_id, sourcerAssignment?.user_id, hmAssignment?.user_id].filter(Boolean) as string[]
     )
     const q = memberSearch.trim().toLowerCase()
     return members
@@ -164,7 +166,7 @@ export function HiringTeamStep({
         const assignment = assignments.find((a) => a.user_id === m.user_id)
         return { member: m, assignment }
       })
-  }, [members, assignments, recruiterAssignment, hmAssignment, memberSearch])
+  }, [members, assignments, recruiterAssignment, sourcerAssignment, hmAssignment, memberSearch])
 
 
   const togglePanelist = async (
@@ -173,15 +175,19 @@ export function HiringTeamStep({
     current?: { id: string }
   ) => {
     if (!jobId) return
-    if (current) {
-      await removeUserFromJob(current.id)
-    } else {
-      await assignUserToJob({
-        job_id: jobId,
-        user_id: userId,
-        organization_id: organizationId,
-        role: 'interviewer',
-      })
+    try {
+      if (current) {
+        await removeUserFromJob(current.id)
+      } else {
+        await assignUserToJob({
+          job_id: jobId,
+          user_id: userId,
+          organization_id: organizationId,
+          role: 'interviewer',
+        })
+      }
+    } catch {
+      /* toast in hook */
     }
   }
 
@@ -204,7 +210,7 @@ export function HiringTeamStep({
             <FieldLabel required>TA Partner</FieldLabel>
             <div className="mt-2">
               <SearchableSelect
-                options={memberOptions}
+                options={ownerOptions(recruiterAssignment?.user_id)}
                 value={recruiterAssignment?.user_id ?? ''}
                 onValueChange={(v) => setOwner('recruiter', v)}
                 placeholder="Select a TA Partner…"
@@ -220,7 +226,7 @@ export function HiringTeamStep({
             <FieldLabel required>Sourcing Partner</FieldLabel>
             <div className="mt-2">
               <SearchableSelect
-                options={memberOptions}
+                options={ownerOptions(sourcerAssignment?.user_id)}
                 value={sourcerAssignment?.user_id ?? ''}
                 onValueChange={(v) => setOwner('sourcer', v)}
                 placeholder="Select a Sourcing Partner…"
@@ -236,7 +242,7 @@ export function HiringTeamStep({
             <FieldLabel required>Hiring manager</FieldLabel>
             <div className="mt-2">
               <SearchableSelect
-                options={memberOptions}
+                options={ownerOptions(hmAssignment?.user_id)}
                 value={hmAssignment?.user_id ?? ''}
                 onValueChange={(v) => setOwner('hiring_manager', v)}
                 placeholder="Select a hiring manager…"
@@ -295,7 +301,13 @@ export function HiringTeamStep({
       <SectionCard
         title="Team members"
         trailing={
-          <Button variant="secondary" size="sm" icon={UserPlus} type="button">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={UserPlus}
+            type="button"
+            onClick={() => searchRef.current?.focus()}
+          >
             Add member
           </Button>
         }
@@ -303,6 +315,7 @@ export function HiringTeamStep({
         <div className="relative mb-3 max-w-[280px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
           <Input
+            ref={searchRef}
             value={memberSearch}
             onChange={(e) => setMemberSearch(e.target.value)}
             placeholder="Search team members…"
@@ -351,15 +364,14 @@ export function HiringTeamStep({
                       value={isAssigned ? role : ''}
                       onValueChange={(v) => {
                         if (!isAssigned) {
-                          // Assign first, then set role via assignment role later
                           assignUserToJob({
                             job_id: jobId!,
                             user_id: member.user_id!,
                             organization_id: member.organization_id,
                             role: v as JobAssignmentRole,
-                          })
+                          }).catch(() => { /* toast in hook */ })
                         } else if (assignment) {
-                          updateAssignmentRole(assignment.id, v as JobAssignmentRole)
+                          updateAssignmentRole(assignment.id, v as JobAssignmentRole).catch(() => { /* toast in hook */ })
                         }
                       }}
                     >
@@ -380,13 +392,6 @@ export function HiringTeamStep({
                   <span className="hidden md:inline text-[12px] text-text-tertiary w-[180px] shrink-0 truncate">
                     {isAssigned ? SCOPE_BY_ROLE[role] : '—'}
                   </span>
-                  <button
-                    type="button"
-                    aria-label="Member access settings"
-                    className="rounded-md p-1.5 text-text-tertiary hover:bg-virgilio-border/40 hover:text-text-primary transition-colors"
-                  >
-                    <Sliders className="h-4 w-4" />
-                  </button>
                 </li>
               )
             })}
@@ -430,18 +435,6 @@ export function HiringTeamStep({
             description="Schedule meetings, manage reminders."
             count={coordinatorId && coordinatorId !== '__same__' ? 1 : 0}
             tone="lilac"
-          />
-          <RoleCard
-            label="Sourcer"
-            description="Source-only — can't see entire pipeline."
-            count={0}
-            tone="green"
-          />
-          <RoleCard
-            label="Observer"
-            description="View-only, no actions."
-            count={0}
-            tone="green"
           />
         </div>
       </SectionCard>

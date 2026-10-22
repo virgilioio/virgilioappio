@@ -15,6 +15,15 @@ import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfir
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftFlag } from '@/components/ui/EmptyIllustrations'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import type { JobAssignmentRole } from '@/hooks/useJobAssignments'
+
+const ROLE_LABEL: Record<JobAssignmentRole, string> = {
+  interviewer: 'Interviewer',
+  hiring_manager: 'Hiring manager',
+  sourcer: 'Sourcer',
+  recruiter: 'Recruiter',
+}
 
 interface MemberJobAssignmentsDialogProps {
   isOpen: boolean
@@ -38,6 +47,10 @@ export function MemberJobAssignmentsDialog({
   const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
   const [jobs, setJobs] = useState<Job[]>([])
   const [assignedJobIds, setAssignedJobIds] = useState<Set<string>>(new Set())
+  // One seat per job: the role they hold where they're on the team already.
+  const [seatRoles, setSeatRoles] = useState<Map<string, JobAssignmentRole>>(new Map())
+  // The role they take on the jobs ticked here; the least access by default.
+  const [addRole, setAddRole] = useState<JobAssignmentRole>('interviewer')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [pendingChanges, setPendingChanges] = useState<{ add: string[], remove: string[] }>({ add: [], remove: [] })
@@ -69,14 +82,17 @@ export function MemberJobAssignmentsDialog({
       // Fetch current job assignments for this user
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('job_assignments')
-        .select('job_id')
+        .select('job_id, role')
         .eq('user_id', member.user_id)
+        .is('deleted_at', null)
 
       if (assignmentsError) throw assignmentsError
       
       const assignedIds = new Set(assignmentsData?.map(a => a.job_id) || [])
       setAssignedJobIds(assignedIds)
+      setSeatRoles(new Map((assignmentsData || []).map(a => [a.job_id, a.role as JobAssignmentRole])))
       setPendingChanges({ add: [], remove: [] })
+      setAddRole('interviewer')
     } catch (error) {
       console.error('Error loading jobs/assignments:', error)
       toast({
@@ -145,13 +161,11 @@ export function MemberJobAssignmentsDialog({
       if (!ok) return
     }
     
-    // Check if this save would convert a free user to paid
-    // The member currently has no recruiter assignments and is a 'member' system_role
-    // Adding job assignments defaults them as recruiter
+    // Only a recruiter seat turns a free member into a paid seat.
     const isCurrentlyFree = wouldUpgrade(member.user_id, member.system_role, member.user_type)
     const isAddingJobs = pendingChanges.add.length > 0
     
-    if (isCurrentlyFree && isAddingJobs) {
+    if (isCurrentlyFree && isAddingJobs && addRole === 'recruiter') {
       setShowSeatConfirm(true)
       return
     }
@@ -180,7 +194,8 @@ export function MemberJobAssignmentsDialog({
         const newAssignments = pendingChanges.add.map(jobId => ({
           job_id: jobId,
           user_id: member.user_id,
-          organization_id: member.organization_id
+          organization_id: member.organization_id,
+          role: addRole,
         }))
 
         const { error: addError } = await supabase
@@ -268,6 +283,9 @@ export function MemberJobAssignmentsDialog({
                       <div className="text-xs text-muted-foreground">{job.department}</div>
                     )}
                   </div>
+                  {seatRoles.get(job.id) && isJobSelected(job.id) && (
+                    <span className="shrink-0 text-xs text-muted-foreground">{ROLE_LABEL[seatRoles.get(job.id)!]}</span>
+                  )}
                   <Badge variant={job.status === 'open' ? 'default' : 'secondary'} className="text-xs">
                     {job.status}
                   </Badge>
@@ -275,6 +293,24 @@ export function MemberJobAssignmentsDialog({
               ))}
             </div>
           </ScrollArea>
+        )}
+
+        {pendingChanges.add.length > 0 && (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-muted-foreground">
+              Joins {pendingChanges.add.length === 1 ? 'the job' : `the ${pendingChanges.add.length} jobs`} you ticked as
+            </span>
+            <Select value={addRole} onValueChange={(v) => setAddRole(v as JobAssignmentRole)}>
+              <SelectTrigger className="h-9 w-[170px]" aria-label="Role on the jobs you add">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(ROLE_LABEL) as JobAssignmentRole[]).map((r) => (
+                  <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
 
         <div className="flex justify-between items-center pt-4 border-t">

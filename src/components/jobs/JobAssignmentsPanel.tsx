@@ -57,8 +57,9 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
     )
   }
 
-  const assignedUserIds = new Set(assignments.filter(a => a.role === selectedRole).map(a => a.user_id))
-  
+  // One seat per person per job: anyone already on the team changes role in the list below.
+  const assignedUserIds = new Set(assignments.map(a => a.user_id))
+
   const unassignedUsers = members.filter(member => {
     return member.user_id && !assignedUserIds.has(member.user_id)
   })

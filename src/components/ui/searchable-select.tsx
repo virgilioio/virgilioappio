@@ -12,6 +12,7 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command"
 import {
   Popover,
@@ -24,6 +25,8 @@ export interface SearchableSelectOption {
   label: string
   badge?: string
   badgeVariant?: 'default' | 'secondary' | 'outline' | 'destructive'
+  /** Faint text at the row's end (§19), e.g. the role someone already holds. */
+  hint?: string
 }
 
 interface SearchableSelectProps {
@@ -115,6 +118,7 @@ export function SearchableSelect({
                     data-state={value === option.value ? "checked" : undefined}
                   >
                     <span className="flex-1 truncate">{option.label}</span>
+                    {option.hint && <CommandShortcut>{option.hint}</CommandShortcut>}
                     {option.badge && (
                       <Badge variant={option.badgeVariant || 'secondary'} className="text-[10px]">
                         {option.badge}
