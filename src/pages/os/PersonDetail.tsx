@@ -40,6 +40,7 @@ import { LoadError } from '@/components/empty/LoadError'
 import { JobPreview } from '@/components/previews/EntityPreview'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { DangerZone } from '@/components/os/DangerZone'
+import { PersonalDetailsForm } from '@/components/os/PersonalDetailsForm'
 import { PersonJobsTable } from '@/components/os/PersonJobsTable'
 import { AgreementsCard } from '@/components/sign/AgreementsCard'
 
@@ -314,6 +315,20 @@ export default function PersonDetailPage() {
                   <dt className="text-[#6B7080]">ATS role</dt>
                   <dd className="text-[#1F2230]">{person.system_role === 'admin' ? 'Admin' : 'Member'}</dd>
                 </dl>
+              </Card>
+
+              <Card title="Personal details">
+                {joined && tenant?.id && person.user_id ? (
+                  <>
+                    <p className="mb-3 font-inter text-[11.5px] text-[#6B7080]">
+                      Only People &amp; Access admins and {isSelf ? 'you' : first} can see these.{' '}
+                      {isSelf ? '' : `${first} can also update them in Settings › Profile.`}
+                    </p>
+                    <PersonalDetailsForm tenantId={tenant.id} userId={person.user_id} self={isSelf} />
+                  </>
+                ) : (
+                  <p className="font-inter text-[12.5px] text-[#6B7080]">They can be added once they accept their invitation.</p>
+                )}
               </Card>
 
               <Card title="Jobs" aside={joined && jobList.length > 0 ? seeAll(`See all ${jobList.length}`, 'jobs') : undefined}>

@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { SettingsCard } from './shared/SettingsCard'
 import { StatusChip } from './shared/StatusChip'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useTenant } from '@/hooks/useTenant'
+import { PersonalDetailsForm } from '@/components/os/PersonalDetailsForm'
 import { useRef } from 'react'
 import { Mail, ShieldCheck, UserCircle2 } from 'lucide-react'
 
@@ -51,6 +53,7 @@ export function ProfileTab() {
   const { profile, updateProfile, uploadAvatar, isLoading } = useUserProfile()
   const queryClient = useQueryClient()
   const isMobile = useIsMobile()
+  const { tenant } = useTenant()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [data, setData] = useState<ProfileFormData>({
@@ -182,6 +185,15 @@ export function ProfileTab() {
           </div>
         </div>
       </SettingsCard>
+
+      {tenant?.id && user?.id && (
+        <SettingsCard
+          title="Personal details"
+          description="Only you and your workspace's People & Access admins can see these. Changes save as you type."
+        >
+          <PersonalDetailsForm tenantId={tenant.id} userId={user.id} self />
+        </SettingsCard>
+      )}
 
       <SettingsCard
         title="Account"
