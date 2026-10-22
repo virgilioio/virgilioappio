@@ -36,6 +36,8 @@ import { PostingChannelsCard, type ChannelsValue } from '@/components/jobs/posti
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { FormattedTextBox } from '@/components/ui/formatted-text'
 import { markdownToHtml } from '@/utils/markdown'
+import { PostingVideoField } from '@/components/jobs/postings/PostingVideoField'
+import { NO_VIDEO, brandingDetails, mediaFileProblem, uploadPostingMedia, type PostingVideo } from '@/lib/postingMedia'
 
 
 /* ---------------- helpers ---------------- */
@@ -268,52 +270,27 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     const [bannerUrl, setBannerUrl] = useState<string | null>(null)
     const [bannerUploading, setBannerUploading] = useState(false)
     const [teamPhotos, setTeamPhotos] = useState(true)
-    const [cultureVideo, setCultureVideo] = useState(false)
-
-    /* Resolve tenant_id from the parent job's organization to scope storage uploads. */
-    async function resolveTenantIdForUpload(): Promise<string | null> {
-      const orgId: string | undefined = (jobData as any)?.organization_id
-      if (orgId) {
-        const { data } = await supabase.from('organizations').select('tenant_id').eq('id', orgId).maybeSingle()
-        if (data?.tenant_id) return data.tenant_id as string
-      }
-      const { data: auth } = await supabase.auth.getUser()
-      const uid = auth?.user?.id
-      if (!uid) return null
-      const { data: mem } = await supabase.from('members').select('tenant_id').eq('user_id', uid).limit(1).maybeSingle()
-      return (mem?.tenant_id as string) || null
-    }
+    const [video, setVideo] = useState<PostingVideo>(NO_VIDEO)
 
     async function handleBannerFileChange(file: File | null) {
       if (!file) return
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please choose an image file (PNG, JPG, or WebP).')
+      const problem = mediaFileProblem(file, 'cover')
+      if (problem) {
+        toast.error(problem)
         return
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Banner must be 5 MB or smaller.')
+      if (!jobId) {
+        toast.error('Save the job first, then upload its cover.')
         return
       }
       setBannerUploading(true)
       try {
-        const tenantId = await resolveTenantIdForUpload()
-        if (!tenantId) {
-          toast.error('Could not resolve your workspace — please reload and try again.')
-          return
-        }
-        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
-        const key = `${tenantId}/job-banners/${(jobId || 'wizard')}-${Date.now()}.${ext}`
-        const { error: upErr } = await supabase.storage
-          .from('careers-logos')
-          .upload(key, file, { upsert: true, contentType: file.type, cacheControl: '3600' })
-        if (upErr) throw upErr
-        const { data: pub } = supabase.storage.from('careers-logos').getPublicUrl(key)
-        setBannerUrl(pub.publicUrl)
+        // Stored with the posting's other media, so the public job post shows it.
+        setBannerUrl(await uploadPostingMedia(jobId, file, 'cover'))
         setBannerName(file.name)
         toast.success('Hero banner uploaded.')
-      } catch (e: any) {
-        console.error('Banner upload failed:', e)
-        toast.error(e?.message || 'Banner upload failed.')
+      } catch (e) {
+        toast.error((e as Error).message)
       } finally {
         setBannerUploading(false)
       }
@@ -402,8 +379,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           slug, reference_id: refId || null, language,
           deadline: deadline ? deadline.toISOString().slice(0, 10) : null,
           show_in_search: showInSearch, show_response_badge: showResponseBadge,
-          brand_color: brandColor, banner_name: bannerName || null, banner_url: bannerUrl || null,
-          team_photos: teamPhotos, culture_video: cultureVideo,
+          ...brandingDetails({ brandColor, bannerUrl, bannerName: bannerName || null, teamPhotos, video }),
           application_fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type, required: f.required, locked: !!f.locked, hint: f.hint, isSmart: !!f.isSmart || SMART_FIELD_TYPES.has(f.type), ...(f.options ? { options: f.options } : {}) })),
           eeo_survey: eeo,
           channels: Object.entries(channelOn).filter(([, v]) => v).map(([id]) => id),
@@ -829,7 +805,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           </div>
           <div className="border-t border-virgilio-border pt-4 space-y-1">
             <ToggleRow label="Show team photos on posting" hint="3 random panel photos pulled from member profiles." checked={teamPhotos} onChange={setTeamPhotos} />
-            <ToggleRow label="Embed culture video" hint="Workspace default · 'Life at the team'" checked={cultureVideo} onChange={setCultureVideo} />
+            <PostingVideoField value={video} onChange={setVideo} jobId={jobId} />
           </div>
         </SectionCard>
 
