@@ -45,6 +45,8 @@ import { ApplicationSubmittedScreen } from '@/components/careers/public/Applicat
 import { buildReferenceId, firstNameOf } from '@/utils/applicationReference'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Clock, Shield } from 'lucide-react'
+import { JobVideoPopup } from '@/components/careers/public/job/JobVideoPopup'
+import { playableVideo, readBranding } from '@/lib/postingMedia'
 import { useCoreFields } from '@/hooks/useCoreFields'
 import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
 import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
@@ -359,8 +361,25 @@ export default function PublicJobPosting() {
     }
   }, [posting, jobSalary, jobPlace])
 
-  const brandColor = ((posting?.details as any)?.brand_color as string) || '#6F3FF5'
-  const bannerUrl = ((posting?.details as any)?.banner_url as string) || null
+  // Either editor's cover, colour and video (src/lib/postingMedia.ts).
+  const branding = useMemo(() => readBranding(posting?.details as Record<string, unknown> | null), [posting?.details])
+  const brandColor = branding.brandColor || '#6F3FF5'
+  const bannerUrl = branding.bannerUrl
+  const video = useMemo(() => playableVideo(branding.video), [branding.video])
+  const [videoOpen, setVideoOpen] = useState(false)
+  // The video opens by itself once per visit; "Watch video" opens it again.
+  useEffect(() => {
+    if (!video || !posting?.id) return
+    const key = `gio-posting-video:${posting.id}`
+    let seen = false
+    try {
+      seen = sessionStorage.getItem(key) === '1'
+      sessionStorage.setItem(key, '1')
+    } catch {
+      /* private mode: open it */
+    }
+    if (!seen) setVideoOpen(true)
+  }, [video, posting?.id])
 
 
   /** "annually" → "per year" etc.; anything else falls back to formatLabel. */
@@ -955,7 +974,11 @@ export default function PublicJobPosting() {
         saved={isSaved}
         accentColor={brandColor}
         bannerUrl={bannerUrl}
+        onWatchVideo={video ? () => setVideoOpen(true) : undefined}
       />
+      {video && (
+        <JobVideoPopup video={video} open={videoOpen} onOpenChange={setVideoOpen} title={`${titleMain} video`} />
+      )}
 
 
       <main className="flex-1 w-full">

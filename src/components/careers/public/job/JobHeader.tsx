@@ -1,4 +1,4 @@
-import { ChevronRight, Share2, Bookmark, ArrowRight, MapPin, Briefcase, DollarSign, Users, Clock, Sparkles } from 'lucide-react'
+import { ChevronRight, Share2, Bookmark, ArrowRight, MapPin, Briefcase, DollarSign, Users, Clock, Sparkles, Play } from 'lucide-react'
 import { JobMetaChip } from './JobMetaChip'
 
 interface Props {
@@ -14,6 +14,8 @@ interface Props {
   saved: boolean
   accentColor?: string
   bannerUrl?: string | null
+  /** Shown when the posting has a video: opens it again. */
+  onWatchVideo?: () => void
 }
 
 export function JobHeader({
@@ -29,6 +31,7 @@ export function JobHeader({
   saved,
   accentColor,
   bannerUrl,
+  onWatchVideo,
 }: Props) {
   const accent = accentColor || '#6F3FF5'
 
@@ -96,6 +99,15 @@ export function JobHeader({
 
           <div className="flex flex-col items-stretch sm:items-end gap-2 shrink-0">
             <div className="flex items-center gap-2">
+              {onWatchVideo && (
+                <button
+                  onClick={onWatchVideo}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white border border-black/10 text-[12.5px] font-poppins font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  Watch video
+                </button>
+              )}
               <button
                 onClick={onShare}
                 className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white border border-black/10 text-[12.5px] font-poppins font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
