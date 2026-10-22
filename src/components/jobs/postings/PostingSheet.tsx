@@ -47,6 +47,7 @@ import { ToggleRow as WizardToggleRow, SalaryInput, FieldLabel, FieldHint, ChipI
 import { CharCounterLine } from '@/components/ui/char-counter'
 import { AffixInput } from '@/components/ui/affix-input'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { brandingDetails, readBranding } from '@/lib/postingMedia'
 
 interface PostingSheetProps {
   jobId: string
@@ -116,7 +117,7 @@ export function PostingSheet({
   const [description, setDescription] = useState('')
 
   // Branding
-  const [branding, setBranding] = useState<BrandingValue>({})
+  const [branding, setBranding] = useState<BrandingValue>(() => readBranding(null))
 
   // Channels
   const [channels, setChannels] = useState<ChannelsValue>({
@@ -232,7 +233,7 @@ export function PostingSheet({
           setCommissionsCurrency(commCurrency || 'USD')
           setCommissionsAmount(commAmount != null ? String(commAmount) : '')
 
-          setBranding(d.branding || {})
+          setBranding(readBranding(d))
           const loadedChannels = d.channels || {}
           const syndication = (p as any).syndication || {}
           const googleEnabled =
@@ -280,7 +281,7 @@ export function PostingSheet({
         setHasCommissions(false)
         setCommissionsCurrency('USD')
         setCommissionsAmount('')
-        setBranding({})
+        setBranding(readBranding(null))
         setChannels({ publishToTalent: true, channels: { google_jobs: { enabled: true } } })
         setConfirmationEmail(true)
         setPromise48h(false)
@@ -326,8 +327,8 @@ export function PostingSheet({
     has_commissions: null,
     commissions_currency: null,
     commissions_amount: null,
-    // new
-    branding,
+    // Cover, colour and video in the shared shape the public post reads.
+    ...brandingDetails(branding),
     channels: channels.channels,
     apply: {
       confirmation_email: confirmationEmail,
@@ -794,6 +795,7 @@ export function PostingSheet({
               onChange={setBranding}
               workspaceColor={(tenant as any)?.brand_color}
               readOnly={readOnly}
+              jobId={jobId}
             />
             {tenant?.about && (
               <Collapsible open={aboutOpen} onOpenChange={setAboutOpen} className="mt-5 pt-4 border-t border-virgilio-border/60">
