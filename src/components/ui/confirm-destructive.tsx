@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { prefersReducedMotion, motionToken } from '@/lib/motion'
+import { useHeightTransition } from '@/lib/heightTransition'
 
 /**
  * ConfirmDestructiveDialog — Block B §16 (2026-10-13). The one dialog for every
@@ -151,6 +152,9 @@ export function ConfirmDestructiveDialog({
     }
   }
 
+  // §13: content that arrives late (a preview, an error) resizes the dialog instead of jumping.
+  const resizeRef = useHeightTransition<HTMLDivElement>()
+
   const shown = (items ?? []).slice(0, 3)
   const more = Math.max(itemsTotal ?? 0, items?.length ?? 0) - shown.length
 
@@ -162,6 +166,7 @@ export function ConfirmDestructiveDialog({
           onClick={close}
         />
         <AlertDialogPrimitive.Content
+          ref={resizeRef}
           className={cn(
             'fixed left-[50%] top-[50%] z-[90] [translate:-50%_-50%] w-[min(420px,calc(100vw-32px))]',
             'border bg-background shadow-lg gio-dialog rounded-lg',
