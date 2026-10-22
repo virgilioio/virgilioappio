@@ -1,4 +1,4 @@
--- Run after 20261023160000_os_resend_access inside a transaction that is rolled back.
+-- Run after 20261022162904_os_resend_access inside a transaction that is rolled back.
 -- As Allan (an admin). Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
 

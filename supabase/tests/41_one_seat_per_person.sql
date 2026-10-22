@@ -1,4 +1,4 @@
--- Run after 20261023120000_one_seat_per_person inside a transaction that is rolled back.
+-- Run after 20261022162840_one_seat_per_person inside a transaction that is rolled back.
 -- Takes one real seat on a live job and a teammate with no seat on it, then tries
 -- every way of doubling someone up. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);

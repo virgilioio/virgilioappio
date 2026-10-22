@@ -1,4 +1,4 @@
--- Run after 20261023130000_os_new_grants_sync inside a transaction that is rolled back.
+-- Run after 20261022162856_os_new_grants_sync inside a transaction that is rolled back.
 -- As Allan (an admin): a first grant, a role change and a removal each queue one
 -- send; the grants left waiting since 2026-10-16 are queued. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);

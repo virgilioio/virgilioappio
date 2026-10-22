@@ -11564,6 +11564,10 @@ export type Database = {
           rule: string
         }[]
       }
+      job_seat_role_label: {
+        Args: { _role: Database["public"]["Enums"]["job_assignment_role"] }
+        Returns: string
+      }
       job_setup_checks: { Args: { p_job: string }; Returns: Json }
       job_team_recipients: { Args: { _job_id: string }; Returns: string[] }
       library_editor: { Args: never; Returns: boolean }
