@@ -42,6 +42,11 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-22 (ATS) — on the branch, waiting for Apply!
+
+- **Member profile, step 1 of 5** (Allan: tidy the People & Access profile; plan: tabs, Jobs table, Danger zone; then personal details, operations profile, performance, payments). `PersonDetail` is tabs Overview · Access · Jobs · Agreements (`?tab=`), with the job role and "On N open jobs" in the header. Jobs is `PersonJobsTable`: Open · Draft · Closed with counts, search by job or client, client, seat and created date, and it scrolls inside its card (Maya-sized lists, 55 seats, no longer stretch the page). Offboarding is `DangerZone` at the bottom of Access (it was the bottom card of the right column, under the jobs list, and never shown on your own profile): the dialog is still Pattern 2 and now lets the admin give each open or draft seat to someone else (`handOverSeats`, one insert, before `os-offboard`). No database change. Offboarding has never run on live data: its database part was dry-run on live inside a rolled-back transaction (handover, 32 seats removed, removals queued, member inactive, People & Access offboarded); sign-in blocking and the Google revoke still want a real test on a throwaway account.
+- Open decisions for steps 2 to 5: who sees and edits personal details; rating by a manager, computed, or both; who sees bank details and tax IDs and whether full numbers are stored at all.
+
 ## Done 2026-10-22 (ATS) — applied (main at 0b9d3cb96)
 
 - **One formatted text box** (Allan: "the one we like is the one in the scorecards"; job posts and every text box with formatting controls). The scorecard's Key takeaways editor is now `FormattedTextBox` (`src/components/ui/formatted-text.tsx`), with Heading / Subheading (`headings`, or type `##` / `###`) for job posts. It is the Public description in Create and Edit job post, the wizard's Posting copy (Markdown is converted on open with `markdownToHtml`, stored as HTML from then on) and Find's job assistant description. The old `RichTextEditor` and the unused `IndependentCandidateForm` are gone.
