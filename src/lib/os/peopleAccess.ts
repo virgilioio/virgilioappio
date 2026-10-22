@@ -145,6 +145,7 @@ const keys = {
   bundles: (tenantId: string | undefined) => ['os-bundles', tenantId] as const,
   audit: (tenantId: string | undefined, subject?: string | null) => ['os-audit', tenantId, subject ?? 'all'] as const,
   jobs: (userId: string | null | undefined) => ['os-person-jobs', userId] as const,
+  details: (tenantId: string | undefined, userId: string | null | undefined) => ['os-person-details', tenantId, userId] as const,
 }
 
 export function usePeople(tenantId: string | undefined) {
@@ -235,6 +236,55 @@ export function usePersonJobs(userId: string | null | undefined) {
           created_at: r.jobs.created_at,
         }))
         .sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.title.localeCompare(b.title))
+    },
+  })
+}
+
+/** A person's personal details (os_person_details): admins and the person themself. */
+export interface PersonDetails {
+  personal_email: string | null
+  personal_phone: string | null
+  country_code: string | null
+  region: string | null
+  city: string | null
+}
+
+export const PERSONAL_EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+export const PERSONAL_PHONE_RE = /^\+?[0-9 ().-]{5,40}$/
+
+export function usePersonDetails(tenantId: string | undefined, userId: string | null | undefined) {
+  return useQuery({
+    queryKey: keys.details(tenantId, userId),
+    enabled: !!tenantId && !!userId,
+    queryFn: async (): Promise<PersonDetails | null> => {
+      const { data, error } = await supabase
+        .from('os_person_details')
+        .select('personal_email, personal_phone, country_code, region, city')
+        .eq('tenant_id', tenantId!)
+        .eq('user_id', userId!)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+  })
+}
+
+/** Saves the whole set (the database turns blanks into nulls and records which fields changed). */
+export function useSavePersonDetails(tenantId: string | undefined, userId: string | null | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (details: PersonDetails) => {
+      const { data, error } = await supabase
+        .from('os_person_details')
+        .upsert({ tenant_id: tenantId!, user_id: userId!, ...details }, { onConflict: 'tenant_id,user_id' })
+        .select('personal_email, personal_phone, country_code, region, city')
+        .single()
+      if (error) throw error
+      return data as PersonDetails
+    },
+    onSuccess: (saved) => {
+      qc.setQueryData(keys.details(tenantId, userId), saved)
+      void qc.invalidateQueries({ queryKey: ['os-audit', tenantId] })
     },
   })
 }
@@ -478,6 +528,20 @@ export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => 
       return `${who}'s job role changed`
     case 'person.suspended':
       return `${who} was suspended`
+    case 'person.details_updated': {
+      const names: Record<string, string> = {
+        personal_email: 'personal email',
+        personal_phone: 'personal phone',
+        country: 'country',
+        region: 'state or province',
+        city: 'city',
+      }
+      const fields = Array.isArray(d.fields) ? (d.fields as string[]).map((f) => names[f] ?? f) : []
+      const list = fields.length ? `: ${fields.join(', ')}` : ''
+      return row.actor_id && row.actor_id === row.subject_user_id
+        ? `${who} updated their personal details${list}`
+        : `${who}'s personal details were updated${list}`
+    }
     case 'person.offboarded':
       return `${who} was offboarded`
     case 'person.active':
