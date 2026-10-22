@@ -8,8 +8,9 @@ import { useAutocompleteSearch } from '@/hooks/useAutocompleteSearch'
 import { Switch } from '@/components/ui/switch'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
-import { criteriaFromTiers, dropSkill, placeSkill, tiersOf, type FindTier } from '@/lib/findSkills'
+import { addSkill, criteriaFromSkills, mustCount, removeSkill, setSkillTier, skillsOf, type FindTier } from '@/lib/findSkills'
 import { readSkillPriorities } from '@/lib/skillPriority'
+import { SkillPill, SkillPriorityLegend } from '@/components/jobs/SkillPill'
 import { LOCATION_OPTIONS } from '@/constants/locations'
 import { cn } from '@/lib/utils'
 
@@ -134,6 +135,8 @@ function TokenField({
   onRemove,
   tone,
   autocompleteTable,
+  priorities,
+  onPriorityChange,
 }: {
   placeholder: string
   tags: string[]
@@ -141,6 +144,9 @@ function TokenField({
   onRemove: (tag: string) => void
   tone: TokenTone
   autocompleteTable?: 'standard_job_titles' | 'standard_skills'
+  /** Skills: each chip is a SkillPill coloured by priority, with the job wizard's chevron. */
+  priorities?: Record<string, FindTier>
+  onPriorityChange?: (tag: string, next: FindTier) => void
 }) {
   const [value, setValue] = useState('')
   const [highlight, setHighlight] = useState(-1)
@@ -219,7 +225,19 @@ function TokenField({
           cursor: 'text',
         }}
       >
-        {tags.map(tag => (
+        {tags.map(tag => onPriorityChange ? (
+          <SkillPill
+            key={tag}
+            size="sm"
+            skill={tag}
+            priority={priorities?.[tag] ?? 'nice'}
+            onPriorityChange={(next) => onPriorityChange(tag, next)}
+            onRemove={() => onRemove(tag)}
+            className="max-w-full"
+          >
+            <span className="truncate max-w-[160px]">{tag}</span>
+          </SkillPill>
+        ) : (
           <span
             key={tag}
             className="inline-flex items-center font-inter"
@@ -592,10 +610,9 @@ export function FindFilterPanel({
     ? Math.max(0, (creditsUsage.collect_credits_limit || 0) - (creditsUsage.collect_credits_used || 0)) + (creditsUsage.bonus_credits_available || 0)
     : null
 
-  // Skills by tier, like the job's (2026-10-22).
-  const tiers = tiersOf(c)
-  const skillCount = tiers.must.length + tiers.nice.length + tiers.bonus.length
-  const setTiers = (next: typeof tiers) => onCriteriaChange(criteriaFromTiers(next))
+  // Skills with a priority each, edited like the job's (2026-10-22).
+  const skills = skillsOf(c)
+  const setSkills = (next: typeof skills) => onCriteriaChange(criteriaFromSkills(next))
   const [loadingJobSkills, setLoadingJobSkills] = useState(false)
   const applyJobSkills = async () => {
     if (!linkedJob) return
@@ -603,14 +620,10 @@ export function FindFilterPanel({
     try {
       const { data, error } = await supabase.from('jobs').select('skills, skill_priorities').eq('id', linkedJob.id).maybeSingle()
       if (error) throw error
-      const skills: string[] = Array.isArray(data?.skills) ? data!.skills.filter((x: unknown): x is string => typeof x === 'string') : []
-      if (!skills.length) { toast(`${linkedJob.title} has no skills yet`); return }
+      const jobSkills: string[] = Array.isArray(data?.skills) ? data!.skills.filter((x: unknown): x is string => typeof x === 'string') : []
+      if (!jobSkills.length) { toast(`${linkedJob.title} has no skills yet`); return }
       const pr = readSkillPriorities(data?.skill_priorities)
-      onCriteriaChange(criteriaFromTiers({
-        must: skills.filter((x) => pr[x] === 'must'),
-        nice: skills.filter((x) => !pr[x] || pr[x] === 'nice'),
-        bonus: skills.filter((x) => pr[x] === 'bonus'),
-      }))
+      onCriteriaChange(criteriaFromSkills({ skills: jobSkills, priorities: pr }))
     } catch {
       toast.error("Couldn't load the job's skills. Try again.")
     } finally {
@@ -691,29 +704,21 @@ export function FindFilterPanel({
 
         <GroupSection
           label="Skills"
-          count={skillCount}
+          count={skills.skills.length}
           defaultOpen
         >
-          <div className="space-y-2.5">
-            {([
-              { tier: 'must' as FindTier, label: 'Must-have', tone: 'green' as TokenTone },
-              { tier: 'nice' as FindTier, label: 'Nice-to-have', tone: 'blue' as TokenTone },
-              { tier: 'bonus' as FindTier, label: 'Extra points', tone: 'purple' as TokenTone },
-            ]).map((row) => (
-              <div key={row.tier}>
-                <p className="font-inter" style={{ fontSize: 11.5, fontWeight: 500, color: '#5A6072', margin: '0 0 4px' }}>{row.label}</p>
-                <TokenField
-                  placeholder="Add skill…"
-                  tags={tiers[row.tier]}
-                  onAdd={(tag) => setTiers(placeSkill(tiers, tag, row.tier))}
-                  onRemove={(tag) => setTiers(dropSkill(tiers, tag))}
-                  tone={row.tone}
-                  autocompleteTable="standard_skills"
-                />
-              </div>
-            ))}
-          </div>
-          <FieldNote>People in Gio need the must-haves to rank high; nice-to-haves and extras lift the order. Apollo shows skills only once you add someone.</FieldNote>
+          <TokenField
+            placeholder="Add skill…"
+            tags={skills.skills}
+            priorities={skills.priorities}
+            onAdd={(tag) => setSkills(addSkill(skills, tag))}
+            onRemove={(tag) => setSkills(removeSkill(skills, tag))}
+            onPriorityChange={(tag, next) => setSkills(setSkillTier(skills, tag, next))}
+            tone="blue"
+            autocompleteTable="standard_skills"
+          />
+          <SkillPriorityLegend className="mt-2" />
+          <FieldNote>New skills are nice-to-haves; open a skill's chevron to change it. People in Gio need the must-haves to rank high; nice-to-haves and extras lift the order. Apollo shows skills only once you add someone.</FieldNote>
           {linkedJob && (
             <Button size="xs" variant="ghost" icon={Briefcase} loading={loadingJobSkills} onClick={() => void applyJobSkills()} className="mt-1.5 max-w-full">
               <span className="truncate">Use {linkedJob.title}'s skills</span>
@@ -724,7 +729,7 @@ export function FindFilterPanel({
               id="find-require-must"
               checked={!!c.require_must_on_apollo}
               onCheckedChange={(v) => onCriteriaChange({ require_must_on_apollo: v })}
-              disabled={tiers.must.length === 0}
+              disabled={mustCount(skills) === 0}
             />
             <span className="font-inter" style={{ fontSize: 11.5, lineHeight: 1.45, color: '#5A6072' }}>
               <span style={{ color: '#1F2230', fontWeight: 500 }}>Require must-haves on Apollo</span>

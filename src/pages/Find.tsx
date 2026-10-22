@@ -218,7 +218,7 @@ export default function Find() {
             )}
             <div className="flex flex-col gap-6 md:min-h-[calc(100dvh-16rem)] md:flex-row">
               {mode === 'project' && (
-                <div ref={filterPanelRef} className={showCriteria ? 'max-h-[70dvh] md:contents' : 'hidden md:contents'}>
+                <div ref={filterPanelRef} className={showCriteria ? 'h-[70dvh] md:contents' : 'hidden md:contents'}>
                 <FindFilterPanel
                   linkedJob={currentProject?.job_id ? { id: currentProject.job_id, title: currentProject.jobs?.title || 'the linked job' } : null}
                   criteria={editableCriteria}
