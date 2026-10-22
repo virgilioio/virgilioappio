@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
-import type { Json } from '@/integrations/supabase/types'
+import type { Database, Json } from '@/integrations/supabase/types'
 
 /**
  * People & Access (Gio OS, Part B, 2026-10-14): who works at Virgilio and
@@ -201,6 +201,9 @@ export interface PersonJob {
   title: string
   status: string
   role: string
+  client: string | null
+  organization_id: string
+  created_at: string
 }
 
 export function usePersonJobs(userId: string | null | undefined) {
@@ -210,17 +213,65 @@ export function usePersonJobs(userId: string | null | undefined) {
     queryFn: async (): Promise<PersonJob[]> => {
       const { data, error } = await supabase
         .from('job_assignments')
-        .select('job_id, role, jobs!inner(title, status)')
+        .select('job_id, role, jobs!inner(title, status, created_at, organization_id, organizations(name))')
         .eq('user_id', userId!)
         .is('deleted_at', null)
       if (error) throw error
-      const rows = (data ?? []) as unknown as { job_id: string; role: string; jobs: { title: string; status: string } }[]
+      type Row = {
+        job_id: string
+        role: string
+        jobs: { title: string; status: string; created_at: string; organization_id: string; organizations: { name: string } | null }
+      }
+      const rows = (data ?? []) as unknown as Row[]
       const order = { open: 0, draft: 1, closed: 2, archived: 3 } as Record<string, number>
       return rows
-        .map((r) => ({ job_id: r.job_id, role: r.role, title: r.jobs.title, status: r.jobs.status }))
+        .map((r) => ({
+          job_id: r.job_id,
+          role: r.role,
+          title: r.jobs.title,
+          status: r.jobs.status,
+          client: r.jobs.organizations?.name ?? null,
+          organization_id: r.jobs.organization_id,
+          created_at: r.jobs.created_at,
+        }))
         .sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.title.localeCompare(b.title))
     },
   })
+}
+
+/** Which tab of a person's Jobs a status belongs to. */
+export type JobBucket = 'open' | 'draft' | 'closed'
+export const jobBucket = (status: string): JobBucket =>
+  status === 'open' ? 'open' : status === 'draft' ? 'draft' : 'closed'
+
+/** Seats a job role holds, in the words the ATS uses. */
+export const JOB_SEAT_LABEL: Record<string, string> = {
+  recruiter: 'TA Partner',
+  sourcer: 'Sourcing Partner',
+  hiring_manager: 'Hiring manager',
+  interviewer: 'Interviewer',
+}
+
+/**
+ * Gives someone's seats to other people before they leave (offboarding).
+ * One insert, so either every handover lands or none does; the one-seat rule
+ * (GJT01) refuses a person who is already on the job.
+ */
+export async function handOverSeats(
+  seats: { job_id: string; organization_id: string; role: string; to_user_id: string }[],
+  assignedBy: string,
+) {
+  if (seats.length === 0) return
+  const { error } = await supabase.from('job_assignments').insert(
+    seats.map((s) => ({
+      job_id: s.job_id,
+      organization_id: s.organization_id,
+      user_id: s.to_user_id,
+      role: s.role as Database['public']['Enums']['job_assignment_role'],
+      assigned_by: assignedBy,
+    })),
+  )
+  if (error) throw error
 }
 
 /** Plain words for the database's refusals (GOS0x codes and 42501). */
