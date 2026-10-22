@@ -36,6 +36,9 @@ import {
   type AppKey,
 } from '@/lib/os/peopleAccess'
 import { GoogleStatus, PersonAvatar, PersonStateBadge } from '@/components/os/PeopleBits'
+import { LoadError } from '@/components/empty/LoadError'
+import { JobPreview } from '@/components/previews/EntityPreview'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { DangerZone } from '@/components/os/DangerZone'
 import { PersonJobsTable } from '@/components/os/PersonJobsTable'
 import { AgreementsCard } from '@/components/sign/AgreementsCard'
@@ -77,6 +80,8 @@ export default function PersonDetailPage() {
   const [resendingApp, setResendingApp] = useState<AppKey | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pickedBundle, setPickedBundle] = useState<string | null>(null)
+  const [peopleRetry, setPeopleRetry] = useState(0)
+  const peopleTimedOut = useLoadTimeout(people.isLoading, peopleRetry)
   // The tab lives in the URL (?tab=jobs), so a link or Back lands on it.
   const [params, setParams] = useSearchParams()
   const tab: Tab = (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'overview'
@@ -96,10 +101,42 @@ export default function PersonDetailPage() {
     return (id: string | null) => (id ? map.get(id) ?? 'Someone' : 'Gio')
   }, [people.data])
 
-  if (people.isLoading) {
+  // §16: a failed or 15s-slow load says so with Retry; it never reads as "Not found".
+  const loadFailed = people.isError || peopleTimedOut
+  if (people.isLoading && !loadFailed) {
     return (
-      <ListPage title={<Skeleton className="inline-block h-9 w-64 align-middle" />} breadcrumb={[{ label: 'People', to: '/os/people' }]}>
-        <Skeleton className="h-48 w-full" />
+      <ListPage
+        title={<Skeleton className="inline-block h-9 w-64 align-middle" />}
+        meta={<Skeleton className="h-4 w-72" />}
+        breadcrumb={[{ label: 'People', to: '/os/people' }]}
+      >
+        <Skeleton className="h-[42px] w-[380px] max-w-full rounded-[9px]" />
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="space-y-4">
+            <Skeleton className="h-[150px] w-full rounded-[12px]" />
+            <Skeleton className="h-[220px] w-full rounded-[12px]" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-[96px] w-full rounded-[12px]" />
+            <Skeleton className="h-[120px] w-full rounded-[12px]" />
+          </div>
+        </div>
+      </ListPage>
+    )
+  }
+  if (loadFailed) {
+    return (
+      <ListPage title="Member profile" breadcrumb={[{ label: 'People', to: '/os/people' }]}>
+        <div className="rounded-2xl border border-virgilio-border bg-white" style={{ padding: '56px 24px' }}>
+          <LoadError
+            what="this profile"
+            timedOut={peopleTimedOut && !people.isError}
+            onRetry={() => {
+              setPeopleRetry((n) => n + 1)
+              void people.refetch()
+            }}
+          />
+        </div>
       </ListPage>
     )
   }
@@ -244,7 +281,7 @@ export default function PersonDetailPage() {
           <PersonStateBadge person={person} />
           {person.user_type === 'platform_admin' && <Badge tone="ink">Platform admin</Badge>}
           {currentBundle && <span>{currentBundle.name}</span>}
-          {joined && !jobs.isLoading && (
+          {joined && jobs.isSuccess && (
             <MetaDot color="#12B886">
               <span className="tabular-nums">
                 {jobCounts.open === 0 ? 'No open jobs' : `On ${jobCounts.open} open ${jobCounts.open === 1 ? 'job' : 'jobs'}`}
@@ -260,7 +297,7 @@ export default function PersonDetailPage() {
           <TabsTrigger value="access">Access</TabsTrigger>
           <TabsTrigger value="jobs">
             Jobs
-            {joined && !jobs.isLoading && <span className="ml-1.5 tabular-nums">{jobList.length}</span>}
+            {joined && jobs.isSuccess && <span className="ml-1.5 tabular-nums">{jobList.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="agreements">Agreements</TabsTrigger>
         </TabsList>
@@ -284,6 +321,8 @@ export default function PersonDetailPage() {
                   <p className="font-inter text-[12.5px] text-[#6B7080]">No jobs until they accept their invitation.</p>
                 ) : jobs.isLoading ? (
                   <Skeleton className="h-16 w-full" />
+                ) : jobs.isError ? (
+                  <LoadError what="their jobs" compact onRetry={() => void jobs.refetch()} />
                 ) : jobList.length === 0 ? (
                   <p className="font-inter text-[12.5px] text-[#6B7080]">
                     Not on any job.{' '}
@@ -298,12 +337,14 @@ export default function PersonDetailPage() {
                       <ul className="mt-2 space-y-2">
                         {openJobs.slice(0, 5).map((j) => (
                           <li key={`${j.job_id}-${j.role}`} className="flex items-center justify-between gap-2">
-                            <Link
-                              to={`/jobs/${j.job_id}`}
-                              className="min-w-0 truncate font-inter text-[12.5px] font-medium text-[#1F2230] hover:text-[#6F3FF5]"
-                            >
-                              {j.title}
-                            </Link>
+                            <JobPreview jobId={j.job_id}>
+                              <Link
+                                to={`/jobs/${j.job_id}`}
+                                className="min-w-0 truncate font-inter text-[12.5px] font-medium text-[#1F2230] hover:text-[#6F3FF5]"
+                              >
+                                {j.title}
+                              </Link>
+                            </JobPreview>
                             <span className="shrink-0 font-inter text-[11.5px] text-[#6B7080]">
                               {JOB_SEAT_LABEL[j.role] ?? j.role}
                             </span>
@@ -323,6 +364,8 @@ export default function PersonDetailPage() {
               <Card title="Recent changes" aside={(history.data ?? []).length > 5 ? seeAll('See all', 'access') : undefined}>
                 {history.isLoading ? (
                   <Skeleton className="h-20 w-full" />
+                ) : history.isError ? (
+                  <LoadError what="their history" compact onRetry={() => void history.refetch()} />
                 ) : recent.length === 0 ? (
                   <p className="font-inter text-[12.5px] text-[#6B7080]">No changes recorded yet.</p>
                 ) : (
@@ -478,6 +521,8 @@ export default function PersonDetailPage() {
             <Card title="History">
               {history.isLoading ? (
                 <Skeleton className="h-20 w-full" />
+              ) : history.isError ? (
+                <LoadError what="their history" compact onRetry={() => void history.refetch()} />
               ) : (history.data ?? []).length === 0 ? (
                 <p className="font-inter text-[12.5px] text-[#6B7080]">No changes recorded yet.</p>
               ) : (
@@ -500,6 +545,7 @@ export default function PersonDetailPage() {
               onRetry={() => void jobs.refetch()}
               firstName={first}
               isAdmin={person.system_role === 'admin'}
+              memoryKey={`os-person:${person.member_id}:jobs`}
             />
           )}
         </TabsContent>

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { RotateCcw, Search } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ArrowRight, RotateCcw, Search } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,8 @@ import { TableSkeleton } from '@/components/ui/table-states'
 import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
 import { LoadError } from '@/components/empty/LoadError'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { JobPreview } from '@/components/previews/EntityPreview'
+import { useScrollMemory } from '@/lib/scrollMemory'
 import { JOB_STATUS_TONE } from '@/lib/badge-tones'
 import { JOB_SEAT_LABEL, jobBucket, type JobBucket, type PersonJob } from '@/lib/os/peopleAccess'
 
@@ -30,6 +32,7 @@ export function PersonJobsTable({
   onRetry,
   firstName,
   isAdmin,
+  memoryKey,
 }: {
   jobs: PersonJob[] | undefined
   loading: boolean
@@ -37,6 +40,8 @@ export function PersonJobsTable({
   onRetry: () => void
   firstName: string
   isAdmin: boolean
+  /** Remembers each status tab's scroll position, per person. */
+  memoryKey: string
 }) {
   const all = useMemo(() => jobs ?? [], [jobs])
   const counts = useMemo(() => {
@@ -44,9 +49,23 @@ export function PersonJobsTable({
     for (const j of all) c[jobBucket(j.status)]++
     return c
   }, [all])
-  const [bucket, setBucket] = useState<JobBucket | null>(null)
+  // The status tab lives in the URL (?status=closed) so Back and links keep it (§9).
+  const [params, setParams] = useSearchParams()
+  const picked = params.get('status')
+  const bucket: JobBucket | null = picked === 'open' || picked === 'draft' || picked === 'closed' ? picked : null
+  const setBucket = (next: JobBucket) =>
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev)
+        p.set('status', next)
+        return p
+      },
+      { replace: true },
+    )
   // Start on the first tab that has jobs, so an all-closed list doesn't open empty.
-  const shown: JobBucket = bucket ?? (counts.open ? 'open' : counts.draft ? 'draft' : counts.closed ? 'closed' : 'open')
+  const firstWithJobs: JobBucket | null = counts.open ? 'open' : counts.draft ? 'draft' : counts.closed ? 'closed' : null
+  const shown: JobBucket = bucket ?? firstWithJobs ?? 'open'
+  const scrollRef = useRef<HTMLDivElement>(null)
   const [search, setSearch] = useState('')
   const [retry, setRetry] = useState(0)
   const timedOut = useLoadTimeout(loading, retry)
@@ -57,6 +76,8 @@ export function PersonJobsTable({
     ? inBucket.filter((j) => j.title.toLowerCase().includes(q) || (j.client ?? '').toLowerCase().includes(q))
     : inBucket
   const failed = error || timedOut
+  useScrollMemory(scrollRef, `${memoryKey}:${shown}`, !loading && !failed)
+  const elsewhere = (['open', 'draft', 'closed'] as const).find((b) => b !== shown && counts[b] > 0)
 
   return (
     <div className="space-y-4">
@@ -86,9 +107,9 @@ export function PersonJobsTable({
       </div>
 
       <div className="rounded-2xl border border-virgilio-border bg-white overflow-clip">
-        <div className="max-h-[560px] overflow-auto">
+        <div ref={scrollRef} className="max-h-[560px] overflow-auto">
           <Table density="comfortable">
-            <TableHeader className="sticky top-0 z-[1] bg-white">
+            <TableHeader>
               <TableRow>
                 <TableHead className="w-[38%]">Job</TableHead>
                 <TableHead className="hidden md:table-cell">Client</TableHead>
@@ -139,7 +160,13 @@ export function PersonJobsTable({
                         primary={
                           q
                             ? { label: 'Clear search', icon: <RotateCcw size={16} strokeWidth={2} />, onClick: () => setSearch('') }
-                            : undefined
+                            : elsewhere
+                              ? {
+                                  label: `Show ${elsewhere} jobs`,
+                                  icon: <ArrowRight size={16} strokeWidth={2} />,
+                                  onClick: () => setBucket(elsewhere),
+                                }
+                              : undefined
                         }
                       />
                     )}
@@ -149,12 +176,14 @@ export function PersonJobsTable({
                 rows.map((j) => (
                   <TableRow key={`${j.job_id}-${j.role}`}>
                     <TableCell>
-                      <Link
-                        to={`/jobs/${j.job_id}`}
-                        className="block max-w-[190px] truncate font-inter md:max-w-[360px] text-[13px] font-medium text-text-primary hover:text-virgilio-purple"
-                      >
-                        {j.title}
-                      </Link>
+                      <JobPreview jobId={j.job_id}>
+                        <Link
+                          to={`/jobs/${j.job_id}`}
+                          className="block max-w-[190px] truncate font-inter text-[13px] font-medium text-text-primary hover:text-virgilio-purple md:max-w-[360px]"
+                        >
+                          {j.title}
+                        </Link>
+                      </JobPreview>
                       {/* Phones: seat and client under the title instead of their own columns. */}
                       <span className="mt-0.5 block max-w-[190px] truncate font-inter text-[12px] text-text-tertiary md:hidden">
                         {JOB_SEAT_LABEL[j.role] ?? j.role}
