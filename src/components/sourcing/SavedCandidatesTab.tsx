@@ -36,8 +36,7 @@ import {
   ArrowRight,
   Loader2
 } from 'lucide-react'
-import { EmptyState } from '@/components/ui/empty-state'
-import { SoftPlane } from '@/components/ui/EmptyIllustrations'
+import { AnimatedEmpty, EmptyCard } from '@/components/empty/AnimatedEmpty'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -170,12 +169,15 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
 
   if (savedCandidates.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4">
-        <EmptyState
-          illustration={<SoftPlane />}
-          title="No candidates collected yet"
-          body="Browse a search and collect the profiles you like — previewing is free."
-        />
+      <div className="p-4">
+        <EmptyCard>
+          <AnimatedEmpty
+            scene="candidates"
+            onceKey="find-added"
+            title="No one added yet"
+            body="People you add from this search's results show up here, whether they went to the talent pool or a job. Browsing is free."
+          />
+        </EmptyCard>
       </div>
     )
   }
@@ -263,7 +265,7 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
                             <div className="flex-1 min-w-0 space-y-1.5">
                               {/* Badge row */}
                               <div className="flex items-center justify-between">
-                                <Badge variant="pastel-blue" className="text-[10.5px] px-1.5 py-0 h-4">Collected</Badge>
+                                <Badge tone="green" size="xs">Added</Badge>
                                 <span className="text-[10px] text-muted-foreground">
                                   {format(new Date(candidate.apollo_collected_at), 'MMM d, yyyy')}
                                 </span>
@@ -316,6 +318,7 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
                                     <Badge key={i} variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
                                       {assoc.job_title}
                                       {assoc.stage_name && <span className="ml-1 opacity-70">• {assoc.stage_name}</span>}
+                                      {typeof assoc.gio_fit === 'number' && <span className="ml-1 font-semibold tabular-nums">• Gio Fit {Math.round(assoc.gio_fit)}</span>}
                                     </Badge>
                                   ))}
                                 </div>

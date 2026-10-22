@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp, ArrowRight, MessageSquare, MessageSquareX, Paperclip, Link2 } from 'lucide-react'
+import { Loader2, Sparkles, CheckCircle2, Circle, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp, ArrowRight, MessageSquare, MessageSquareX } from 'lucide-react'
 import gioAvatar from '@/assets/gio-avatar.png'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
@@ -1229,31 +1229,7 @@ function FindComposer({
           style={{ scrollbarWidth: 'thin' }}
         />
 
-        <div className="flex items-center justify-between gap-2 border-t border-border/70 px-3 py-2">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-lg text-[12.5px] font-poppins font-medium text-text-secondary hover:text-text-primary hover:bg-[#F1F0EC] transition-colors"
-            >
-              <Paperclip className="h-3.5 w-3.5" />
-              Attach JD
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-lg text-[12.5px] font-poppins font-medium text-text-secondary hover:text-text-primary hover:bg-[#F1F0EC] transition-colors"
-            >
-              <Link2 className="h-3.5 w-3.5" />
-              Paste LinkedIn URL
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-lg text-[12.5px] font-poppins font-medium text-text-secondary hover:text-text-primary hover:bg-[#F1F0EC] transition-colors"
-            >
-              <Briefcase className="h-3.5 w-3.5" />
-              Use an open job
-            </button>
-          </div>
-
+        <div className="flex items-center justify-end gap-2 border-t border-border/70 px-3 py-2">
           <div className="flex items-center gap-2.5">
             <span className="hidden sm:inline-flex items-center gap-1 text-[10.5px] text-text-tertiary">
               <kbd className="px-1 py-0.5 rounded border border-border bg-[#FAFAF7] font-mono text-[10px]">⌘</kbd>

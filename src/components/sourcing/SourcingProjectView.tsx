@@ -1,17 +1,12 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { CandidatesTab } from './CandidatesTab'
-import { ConversationTab } from './ConversationTab'
 import { SavedCandidatesTab } from './SavedCandidatesTab'
-import { ShortlistTab } from './ShortlistTab'
-import { AddCollectedToPipelineDialog } from './AddCollectedToPipelineDialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
 import { useSourcingProject } from '@/hooks/useSourcingProject'
 import { useSourcingProjectCandidates } from '@/hooks/useSourcingProjectCandidates'
 import { useSavedCandidates } from '@/hooks/useSavedCandidates'
-import { useProjectPeople } from '@/hooks/useProjectPeople'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { SourcingProjectFilters, SearchCriteria, SourcingProject } from '@/types/sourcing'
 import { supabase } from '@/lib/supabaseClient'
@@ -25,7 +20,7 @@ export interface SourcingProjectActions {
   onArchive: () => Promise<void>
   onDelete: () => Promise<void>
   onVisibilityToggle: (isPublic: boolean) => Promise<void>
-  onLinkToJob: (jobId: string) => Promise<void>
+  onLinkToJob: (input: string | import('./LinkToJobDialog').LinkToJobPayload) => Promise<void>
 }
 
 interface SourcingProjectViewProps {
@@ -72,16 +67,10 @@ export function SourcingProjectView({
     enabled: !!projectId
   })
   
-  const { data: projectPeople = [] } = useProjectPeople(projectId)
-  const shortlistCount = projectPeople.filter((p) => p.status === 'shortlisted').length
-
-  // Results · Shortlist · Collected (Find Phase 2). Each tab stays mounted,
-  // so switching back keeps the results' scroll, selection and filters.
+  // Results · Added (2026-10-22; the Shortlist tab went, unused). Results stays
+  // mounted, so switching back keeps its scroll, selection and filters.
   const [activeTab, setActiveTab] = useState('candidates')
-  
-  const [showAddToPipelineDialog, setShowAddToPipelineDialog] = useState(false)
-  const [pendingJobId, setPendingJobId] = useState<string | null>(null)
-  
+
   const { createAssociationAndMove } = usePipelineActions()
 
   useEffect(() => {
@@ -156,12 +145,6 @@ export function SourcingProjectView({
     if (!candidates) return []
     
     return candidates.filter(candidate => {
-      if (filters.matchTiers && filters.matchTiers.length > 0) {
-        if (!filters.matchTiers.includes(candidate.match_tier as any)) {
-          return false
-        }
-      }
-      
       const totalExp = candidate.experience_years || 0
       if (totalExp < (filters.minExperience || 0) || totalExp > (filters.maxExperience || 30)) {
         return false
@@ -196,22 +179,6 @@ export function SourcingProjectView({
       return true
     })
   }, [candidates, filters])
-  
-  const handleSaveName = async (name: string) => {
-    if (!project || !name.trim()) return
-    
-    const { error } = await supabase
-      .from('sourcing_projects')
-      .update({ name })
-      .eq('id', project.id)
-    
-    if (error) {
-      toast.error('Failed to update name', { description: error.message })
-    } else {
-      toast.success('Project name updated')
-      refetchProject()
-    }
-  }
   
   const setProjectStatus = async (status: 'active' | 'archived') => {
     if (!project) return false
@@ -360,49 +327,6 @@ export function SourcingProjectView({
     
   }
 
-  const handleAddToPipelineConfirm = async (stageId: string) => {
-    if (!pendingJobId) return
-    
-    const linked = await linkProjectToJob(pendingJobId)
-    if (!linked) {
-      setShowAddToPipelineDialog(false)
-      setPendingJobId(null)
-      return
-    }
-    
-    let successCount = 0
-    let failCount = 0
-    
-    for (const candidate of savedCandidates) {
-      try {
-        await createAssociationAndMove(pendingJobId, candidate.id, stageId)
-        successCount++
-      } catch (error) {
-        console.error('Failed to add candidate to pipeline:', error)
-        failCount++
-      }
-    }
-    
-    if (successCount > 0) {
-      toast.success(`Added ${successCount} candidate${successCount !== 1 ? 's' : ''} to pipeline`)
-    }
-    if (failCount > 0) {
-      toast.error(`Failed to add ${failCount} candidate${failCount !== 1 ? 's' : ''}`)
-    }
-    
-    setShowAddToPipelineDialog(false)
-    setPendingJobId(null)
-  }
-
-  const handleAddToPipelineSkip = async () => {
-    if (!pendingJobId) return
-    
-    await linkProjectToJob(pendingJobId)
-    setShowAddToPipelineDialog(false)
-    setPendingJobId(null)
-  }
-
-  
   if (projectLoading) {
     return <div className="flex items-center justify-center h-96">
       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -421,12 +345,8 @@ export function SourcingProjectView({
         <div className="px-4 pt-3 shrink-0">
           <TabsList indicator="underline">
             <TabsTrigger value="candidates">Results</TabsTrigger>
-            <TabsTrigger value="shortlist">
-              Shortlist
-              <span className="ml-1.5 text-[11px] tabular-nums text-text-tertiary">{shortlistCount}</span>
-            </TabsTrigger>
             <TabsTrigger value="collected">
-              Collected
+              Added
               <span className="ml-1.5 text-[11px] tabular-nums text-text-tertiary">{savedCandidates.length}</span>
             </TabsTrigger>
           </TabsList>
@@ -446,7 +366,6 @@ export function SourcingProjectView({
             jobId={project.job_id}
             projectId={project.id}
             searchCriteria={project.search_criteria}
-            sourceBreakdown={matchingResult?.source_breakdown}
             onLinkToJob={handleLinkToJob}
             onUnlinkJob={handleUnlinkJob}
             savedCandidatesCount={savedCandidates?.length ?? 0}
@@ -454,25 +373,11 @@ export function SourcingProjectView({
           />
         </TabsContent>
 
-        <TabsContent value="shortlist" className="mt-0 flex-1 min-h-0 overflow-hidden px-4 pb-4 pt-4">
-          <ShortlistTab projectId={project.id} jobId={project.job_id} onCollected={() => void refetchCandidates()} />
-        </TabsContent>
-
         <TabsContent value="collected" className="mt-0 flex-1 min-h-0 overflow-hidden">
           <SavedCandidatesTab projectId={project.id} jobId={project.job_id} />
         </TabsContent>
       </Tabs>
 
-      {pendingJobId && (
-        <AddCollectedToPipelineDialog
-          open={showAddToPipelineDialog}
-          onOpenChange={setShowAddToPipelineDialog}
-          jobId={pendingJobId}
-          candidateCount={savedCandidates.length}
-          onConfirm={handleAddToPipelineConfirm}
-          onSkip={handleAddToPipelineSkip}
-        />
-      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
-import { useCallback, useRef } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import {
@@ -155,40 +155,17 @@ const LABEL: Record<ProjectCandidateStatus, (n: number) => string> = {
 }
 
 /**
- * Shortlist / not a fit / restore, applied at once with Undo (§5), and AI
- * fit scored in the background for anyone newly shortlisted.
+ * Not a fit / restore, applied at once with Undo (§5). The shortlist and its
+ * AI fit went with the Shortlist tab (2026-10-22); Gio Fit scores people once
+ * they're added to a job.
  */
 export function useProjectPeopleActions(projectId: string | null | undefined) {
   const queryClient = useQueryClient()
-  const scoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: projectPeopleKey(projectId) })
     queryClient.invalidateQueries({ queryKey: ['saved-candidates', projectId] })
   }, [queryClient, projectId])
-
-  const score = useMutation({
-    mutationFn: async (opts: { force?: boolean } = {}) => {
-      const { data, error } = await supabase.functions.invoke('shortlist-ai-fit', {
-        body: { sourcing_project_id: projectId, force: opts.force === true },
-      })
-      if (error) throw error
-      return data as { scored: number; remaining: number }
-    },
-    onSuccess: (res) => {
-      refresh()
-      // More than one call's worth: keep going in the background.
-      if (res?.remaining > 0) setTimeout(() => score.mutate({}), 200)
-    },
-    onError: () => {
-      toast.error("Couldn't score the shortlist", { description: 'Try again in a moment.' })
-    },
-  })
-
-  const scoreSoon = useCallback(() => {
-    if (scoreTimer.current) clearTimeout(scoreTimer.current)
-    scoreTimer.current = setTimeout(() => score.mutate({}), 1500)
-  }, [score])
 
   const apply = useCallback(async (changes: PersonChange[], status: ProjectCandidateStatus, opts: { undoable?: boolean } = {}) => {
     if (!projectId || changes.length === 0) return
@@ -233,7 +210,6 @@ export function useProjectPeopleActions(projectId: string | null | undefined) {
       return
     }
     refresh()
-    if (status === 'shortlisted') scoreSoon()
 
     const done = changes.filter((c) => !failed.includes(c))
     toast(LABEL[status](done.length), {
@@ -251,13 +227,10 @@ export function useProjectPeopleActions(projectId: string | null | undefined) {
         },
       },
     })
-  }, [projectId, queryClient, refresh, scoreSoon])
+  }, [projectId, queryClient, refresh])
 
   return {
-    shortlist: (changes: PersonChange[]) => apply(changes, 'shortlisted'),
     notAFit: (changes: PersonChange[]) => apply(changes, 'not_a_fit'),
     restore: (changes: PersonChange[]) => apply(changes, 'active'),
-    score: (force = false) => score.mutate({ force }),
-    isScoring: score.isPending,
   }
 }

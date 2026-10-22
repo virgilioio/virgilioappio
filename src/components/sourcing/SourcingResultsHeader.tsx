@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { RefreshCw, Share2, ChevronDown, MoreHorizontal, Sparkles, Archive, Trash2, Globe, Lock, Link2, Plus, Eye } from 'lucide-react'
+import { RefreshCw, Share2, MoreHorizontal, Sparkles, Archive, Trash2, Globe, Lock, Link2, Plus, Eye } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { IconTip } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,8 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { SavedSearchSelector } from './SavedSearchSelector'
-import { LinkToJobDialog } from './LinkToJobDialog'
+import { LinkToJobDialog, type LinkToJobPayload } from './LinkToJobDialog'
 import { CreateJobFromProjectDialog } from './CreateJobFromProjectDialog'
 import { RoleInterpretationDrawer } from './RoleInterpretationDrawer'
 import { SourcingProject } from '@/types/sourcing'
@@ -20,27 +20,19 @@ import { cn } from '@/lib/utils'
 
 interface SourcingResultsHeaderProps {
   project: SourcingProject
-  candidateCount: number
   isRefreshing: boolean
-  isAutoRefreshing?: boolean
-  onSelectProject: (id: string) => void
-  onNewSearch: () => void
   onRefresh: () => void
   onShare?: () => void
   onArchive: () => void
   onDelete: () => void
   onVisibilityToggle: (v: boolean) => Promise<void>
-  onLinkToJob: (jobId: string) => Promise<void>
+  onLinkToJob: (payload: LinkToJobPayload) => Promise<void>
   onChatWithGio?: () => void
 }
 
 export function SourcingResultsHeader({
   project,
-  candidateCount,
   isRefreshing,
-  isAutoRefreshing = true,
-  onSelectProject,
-  onNewSearch,
   onRefresh,
   onShare,
   onArchive,
@@ -53,54 +45,21 @@ export function SourcingResultsHeader({
   const [showCreateJobDialog, setShowCreateJobDialog] = useState(false)
   const [showInterpretationDrawer, setShowInterpretationDrawer] = useState(false)
 
-  const refreshedAt = project.updated_at
-    ? formatDistanceToNow(new Date(project.updated_at), { addSuffix: false })
-    : null
+  // When the search last ran; older projects fall back to their last edit.
+  const ranAt = project.last_search_at || project.updated_at
+  const refreshedAt = ranAt ? formatDistanceToNow(new Date(ranAt), { addSuffix: true }) : null
 
   return (
     <>
       <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border shrink-0">
-        {/* Left: saved-search selector with project meta */}
+        {/* Left: the search's name (pick another under My searches) */}
         <div className="min-w-0 flex-1">
-          <SavedSearchSelector
-            selectedProjectId={project.id}
-            currentProject={project}
-            onSelectProject={onSelectProject}
-            onNewSearch={onNewSearch}
-            trigger={
-              <button
-                type="button"
-                className="group flex items-center gap-2 max-w-full text-left rounded-lg px-2 py-1.5 -mx-2 hover:bg-[#FAFAF7] transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-poppins text-[14px] font-semibold tracking-[-0.01em] text-text-primary truncate">
-                      {project.name}
-                    </span>
-                    <ChevronDown className="h-3.5 w-3.5 text-text-tertiary shrink-0 group-hover:text-text-secondary transition-colors" />
-                  </div>
-                  <div className="font-inter text-[11.5px] text-text-tertiary truncate leading-tight">
-                    {candidateCount} candidates
-                    {refreshedAt && <> · refreshed {refreshedAt} ago</>}
-                  </div>
-                </div>
-              </button>
-            }
-          />
+          <div className="truncate font-poppins text-[14px] font-semibold tracking-[-0.01em] text-text-primary">{project.name}</div>
+          {refreshedAt && <div className="truncate font-inter text-[11.5px] leading-tight text-text-tertiary">Searched {refreshedAt}</div>}
         </div>
 
         {/* Right: status + actions */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {isAutoRefreshing && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60 px-2.5 h-7 font-poppins text-[11.5px] font-medium">
-              <span className="relative inline-flex h-1.5 w-1.5">
-                <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
-                <span className="relative rounded-full bg-emerald-500 h-1.5 w-1.5" />
-              </span>
-              Auto-refreshing
-            </span>
-          )}
-
           <Button
             size="sm"
             variant="ghost"
@@ -131,10 +90,12 @@ export function SourcingResultsHeader({
           )}
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" iconOnly icon={MoreHorizontal} aria-label="More actions" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={8} className="w-64">
+            <IconTip label="More actions">
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" iconOnly icon={MoreHorizontal} aria-label="More actions" />
+              </DropdownMenuTrigger>
+            </IconTip>
+            <DropdownMenuContent align="end" sideOffset={8} className="min-w-[272px]">
               <div className="p-3 border-b border-border">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -163,8 +124,8 @@ export function SourcingResultsHeader({
               {project.job_spec_data && (
                 <>
                   <DropdownMenuItem onClick={() => setShowInterpretationDrawer(true)}>
-                    <Eye className="h-4 w-4 mr-2" />
-                    View Gio's interpretation
+                    <Eye />
+                    <span className="truncate">View Gio's interpretation</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                 </>
@@ -172,23 +133,23 @@ export function SourcingResultsHeader({
 
               {!project.job_id && project.job_spec_data && (
                 <DropdownMenuItem onClick={() => setShowCreateJobDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Job from Spec
+                  <Plus />
+                  <span className="truncate">Create a job from this search</span>
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => setShowLinkJobDialog(true)}>
-                <Link2 className="h-4 w-4 mr-2" />
-                {project.job_id ? 'Change Linked Job' : 'Link to Existing Job'}
+                <Link2 />
+                <span className="truncate">{project.job_id ? 'Change the linked job' : 'Link to a job'}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onArchive}>
-                <Archive className="h-4 w-4 mr-2" />
-                {project.status === 'active' ? 'Archive' : 'Unarchive'} project
+                <Archive />
+                <span className="truncate">{project.status === 'active' ? 'Archive search' : 'Unarchive search'}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDelete} className="text-destructive">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete project
+                <Trash2 />
+                <span className="truncate">Delete search</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -198,7 +159,7 @@ export function SourcingResultsHeader({
       <LinkToJobDialog
         open={showLinkJobDialog}
         onOpenChange={setShowLinkJobDialog}
-        onConfirm={async (payload) => { await onLinkToJob(payload.jobId) }}
+        onConfirm={async (payload) => { await onLinkToJob(payload) }}
         currentJobId={project.job_id}
         project={project as any}
       />

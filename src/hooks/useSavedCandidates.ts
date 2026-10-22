@@ -18,6 +18,8 @@ export interface SavedCandidate {
     job_id: string
     job_title: string
     stage_name?: string
+    /** Gio Fit for this job, once scored. */
+    gio_fit?: number | null
   }>
 }
 
@@ -86,6 +88,7 @@ export function useSavedCandidates({ projectId, enabled = true, status = 'active
         .select(`
           candidate_id,
           job_id,
+          ai_fit_score,
           jobs:job_id (
             id,
             title
@@ -121,7 +124,8 @@ export function useSavedCandidates({ projectId, enabled = true, status = 'active
             associationMap.get(candidateId)!.push({
               job_id: job.id,
               job_title: job.title,
-              stage_name: stage?.job_stages?.stage_name
+              stage_name: stage?.job_stages?.stage_name,
+              gio_fit: typeof (assoc as { ai_fit_score?: unknown }).ai_fit_score === 'number' ? (assoc as { ai_fit_score: number }).ai_fit_score : null,
             })
           }
         }

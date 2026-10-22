@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Bookmark, SlidersHorizontal } from 'lucide-react'
-import { format, formatDistanceToNow } from 'date-fns'
+import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,19 +15,13 @@ import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 import { FirstRunOrientationDialog } from '@/components/onboarding/FirstRunOrientationDialog'
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { SourcingProjectFilters, SearchCriteria, SourcingProject } from '@/types/sourcing'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/integrations/supabase/client'
-import { toast } from '@/hooks/use-toast'
 import { SavedSearchSelector } from '@/components/sourcing/SavedSearchSelector'
-import { SourcingProjectActions } from '@/components/sourcing/SourcingProjectActions'
 import { SourcingResultsHeader } from '@/components/sourcing/SourcingResultsHeader'
 
 export default function Find() {
   const { projectId } = useParams<{ projectId?: string }>()
   const navigate = useNavigate()
-  const { user, organizationId } = useAuth()
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isAutoCreating, setIsAutoCreating] = useState(false)
   const [showFirstRunDialog, setShowFirstRunDialog] = useState(false)
   
   const [filters, setFilters] = useState<SourcingProjectFilters>({
@@ -37,6 +31,7 @@ export default function Find() {
     source: 'all'
   })
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showCriteria, setShowCriteria] = useState(false)
   const [currentProject, setCurrentProject] = useState<SourcingProject | null>(null)
   
   const [editableCriteria, setEditableCriteria] = useState<SearchCriteria | null>(null)
@@ -93,72 +88,6 @@ export default function Find() {
     }
   }, [rolesLoading, isPrivileged, hasRecruiterRole, navigate])
 
-  // Auto-create sourcing project when user adds title_keywords in new mode
-  const autoCreateTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const autoCreateTriggeredRef = useRef(false)
-  const lastAttemptedFingerprintRef = useRef<string>('')
-  
-  useEffect(() => {
-    if (!projectId) {
-      autoCreateTriggeredRef.current = false
-      lastAttemptedFingerprintRef.current = ''
-    }
-  }, [projectId])
-  
-  useEffect(() => {
-    if (mode !== 'new') return
-    if (autoCreateTriggeredRef.current) return
-    if (!editableCriteria?.title_keywords?.length) return
-    if (!user || !organizationId) return
-    if (isAutoCreating) return
-    
-    // Build fingerprint to avoid retrying same failed payload
-    const fingerprint = JSON.stringify({
-      t: editableCriteria.title_keywords,
-      k: editableCriteria.keywords,
-      l: editableCriteria.locations,
-    })
-    if (fingerprint === lastAttemptedFingerprintRef.current) return
-    
-    if (autoCreateTimerRef.current) clearTimeout(autoCreateTimerRef.current)
-    autoCreateTimerRef.current = setTimeout(async () => {
-      autoCreateTriggeredRef.current = true
-      lastAttemptedFingerprintRef.current = fingerprint
-      setIsAutoCreating(true)
-      setIsGenerating(true)
-      
-      try {
-        const name = editableCriteria.title_keywords![0]
-        const { data: project, error } = await supabase.functions.invoke('create-sourcing-project', {
-          body: {
-            name,
-            description: `Search for ${name}`,
-            job_id: null,
-            organization_id: organizationId,
-            search_criteria: editableCriteria,
-          }
-        })
-        
-        if (error) throw error
-        if (project?.id) {
-          navigate(`/find/${project.id}`, { replace: true })
-          toast({ title: 'Search started', description: 'Finding candidates...' })
-        }
-      } catch (err) {
-        console.error('Auto-create sourcing project failed:', err)
-        toast({ title: 'Search failed', description: 'Could not start search. Please try again.', variant: 'destructive' })
-        // Do NOT reset autoCreateTriggeredRef — fingerprint check prevents same-payload retry
-        // User must change criteria to trigger a new attempt
-      } finally {
-        setIsAutoCreating(false)
-        setIsGenerating(false)
-      }
-    }, 1200)
-    
-    return () => { if (autoCreateTimerRef.current) clearTimeout(autoCreateTimerRef.current) }
-  }, [mode, editableCriteria, user, organizationId, isAutoCreating, navigate])
-
-  const handleSelectProject = (id: string) => navigate(`/find/${id}`)
   const handleNewSearch = () => navigate('/find')
 
   useEffect(() => {
@@ -182,6 +111,7 @@ export default function Find() {
   // "Edit search" in an empty result: bring the criteria panel into view and focus its first field.
   const filterPanelRef = useRef<HTMLDivElement>(null)
   const handleEditSearch = useCallback(() => {
+    setShowCriteria(true)
     const panel = filterPanelRef.current
     const field = panel?.querySelector<HTMLElement>('input:not([type=hidden]), textarea') ?? panel?.querySelector<HTMLElement>('button')
     field?.scrollIntoView({ block: 'nearest' })
@@ -234,18 +164,6 @@ export default function Find() {
                   <Badge tone="lilac" size="sm" dot>
                     {sourcingProjects?.length ?? 0} saved {(sourcingProjects?.length ?? 0) === 1 ? 'search' : 'searches'}
                   </Badge>
-                  {currentProject && (
-                    <>
-                      <span className="text-text-tertiary/60">·</span>
-                      <span className="truncate max-w-[260px] text-text-secondary">{currentProject.name}</span>
-                    </>
-                  )}
-                  {currentProject?.updated_at && (
-                    <>
-                      <span className="text-text-tertiary/60">·</span>
-                      <span>Last refreshed {formatDistanceToNow(new Date(currentProject.updated_at), { addSuffix: true })}</span>
-                    </>
-                  )}
                   {collectRemaining != null && (
                     <>
                       <span className="text-text-tertiary/60">·</span>
@@ -285,10 +203,24 @@ export default function Find() {
             </header>
 
             {/* Two-column workspace */}
-            <div className="flex gap-6 min-h-[calc(100dvh-16rem)]">
+            {/* Phones: the criteria sit behind "Edit search", above the results. */}
+            {mode === 'project' && (
+              <Button
+                variant="secondary"
+                size="md"
+                icon={SlidersHorizontal}
+                className="md:hidden"
+                aria-expanded={showCriteria}
+                onClick={() => setShowCriteria((v) => !v)}
+              >
+                {showCriteria ? 'Hide search criteria' : 'Edit search'}
+              </Button>
+            )}
+            <div className="flex flex-col gap-6 md:min-h-[calc(100dvh-16rem)] md:flex-row">
               {mode === 'project' && (
-                <div ref={filterPanelRef} className="contents">
+                <div ref={filterPanelRef} className={showCriteria ? 'max-h-[70dvh] md:contents' : 'hidden md:contents'}>
                 <FindFilterPanel
+                  linkedJob={currentProject?.job_id ? { id: currentProject.job_id, title: currentProject.jobs?.title || 'the linked job' } : null}
                   criteria={editableCriteria}
                   onCriteriaChange={handleCriteriaChange}
                   resultFilters={filters}
@@ -297,19 +229,16 @@ export default function Find() {
                 </div>
               )}
 
-              <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <Card className="flex-1 flex flex-col min-h-[75dvh] md:min-h-0 overflow-hidden">
                 {mode === 'project' && currentProject && (
                   <SourcingResultsHeader
                     project={currentProject}
-                    candidateCount={currentProject.total_candidates ?? 0}
                     isRefreshing={isRefreshing}
-                    onSelectProject={(id) => navigate(`/find/${id}`)}
-                    onNewSearch={handleNewSearch}
                     onRefresh={() => projectActionsRef.current?.onRefresh()}
                     onArchive={() => projectActionsRef.current?.onArchive()}
                     onDelete={() => projectActionsRef.current?.onDelete()}
                     onVisibilityToggle={(v) => projectActionsRef.current?.onVisibilityToggle(v) ?? Promise.resolve()}
-                    onLinkToJob={(id) => projectActionsRef.current?.onLinkToJob(id) ?? Promise.resolve()}
+                    onLinkToJob={(payload) => projectActionsRef.current?.onLinkToJob(payload) ?? Promise.resolve()}
                   />
                 )}
 

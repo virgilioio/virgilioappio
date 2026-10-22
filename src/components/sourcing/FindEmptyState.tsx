@@ -1,5 +1,4 @@
-import { Sparkles, Lightbulb, Info, Code2, TrendingUp, Users, ArrowUpRight, Bookmark, Link as LinkIcon, ChevronDown } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { Info, Bookmark, Link as LinkIcon } from 'lucide-react'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { GioThinkingHeader } from '@/components/sourcing/GioThinkingHeader'
 import { Badge } from '@/components/ui/badge'
@@ -15,13 +14,6 @@ interface FindEmptyStateProps {
   onSelectProject: (id: string) => void
 }
 
-const STARTING_POINTS = [
-  { icon: Code2, title: 'Sr. Backend Engineer (Go)', meta: '5+ yr · Stripe / Plaid alumni' },
-  { icon: TrendingUp, title: 'Growth PM, B2B SaaS', meta: 'PLG · self-serve · NY or remote' },
-  { icon: Users, title: 'Account Exec, US East', meta: 'Enterprise · $50k+ ACV' },
-  { icon: Sparkles, title: 'Applied ML engineer', meta: 'LLM eval · agents · 4+ yr' },
-]
-
 export function FindEmptyState({
   isGenerating,
   onGeneratingChange,
@@ -31,39 +23,10 @@ export function FindEmptyState({
 }: FindEmptyStateProps) {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
-      {/* Top bar — saved-search trigger + Examples */}
-      <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
-        <button
-          type="button"
-          className="inline-flex items-center gap-2.5 group"
-        >
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[#0d0d09] text-white shrink-0">
-            <Sparkles className="h-3.5 w-3.5" />
-          </span>
-          <span className="flex flex-col items-start leading-tight">
-            <span className="font-poppins font-semibold text-[13.5px] text-text-primary tracking-[-0.01em]">
-              New search
-            </span>
-            <span className="text-[11.5px] text-text-tertiary">
-              0 candidates · refreshed —
-            </span>
-          </span>
-          <ChevronDown className="h-3.5 w-3.5 text-text-tertiary opacity-60 group-hover:opacity-100" />
-        </button>
-
-        <button
-          type="button"
-          className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[12.5px] font-poppins font-medium text-text-secondary hover:text-text-primary hover:bg-[#F1F0EC] transition-colors"
-        >
-          <Lightbulb className="h-3.5 w-3.5" />
-          Examples
-        </button>
-      </div>
-
       <div className="px-5 py-8 sm:py-10">
         <div className="mx-auto w-full max-w-[820px] space-y-8">
           {/* Hero */}
-          <div className="text-center space-y-4 animate-fade-in">
+          <div className="text-center space-y-4">
             <div className="mx-auto w-[200px] h-[160px] flex items-center justify-center">
               <SoftFind />
             </div>
@@ -83,10 +46,7 @@ export function FindEmptyState({
           </div>
 
           {/* Prompt composer */}
-          <div className={cn(
-            'transition-all duration-500 ease-out',
-            isGenerating ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none' : 'opacity-100 scale-100 max-h-[1200px]'
-          )}>
+          <div className={cn(isGenerating && 'hidden')}>
             <AIJobAssistant
               variant="find"
               onProjectCreated={onProjectCreated}
@@ -99,43 +59,9 @@ export function FindEmptyState({
             <div className="flex items-start gap-2.5 rounded-xl border border-virgilio-purple/15 bg-virgilio-lilac/25 px-3.5 py-3 text-[12.5px] text-text-secondary">
               <Info className="h-4 w-4 text-virgilio-purple shrink-0 mt-0.5" />
               <p className="leading-relaxed">
-                Gio returns ~80–120 preview candidates. <span className="font-semibold text-text-primary">Browsing is free.</span> Spend <span className="font-semibold text-text-primary">1 credit</span> per candidate to reveal email, phone, full work history and resume.
+                <span className="font-semibold text-text-primary">Browsing is free.</span> People already in Gio come first. Adding someone new from Apollo uses <span className="font-semibold text-text-primary">1 credit</span> and brings in their email, work history and LinkedIn.
               </p>
             </div>
-          )}
-
-          {/* Try a starting point */}
-          {!isGenerating && (
-            <section className="space-y-3">
-              <p className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-text-tertiary">
-                Try a starting point
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {STARTING_POINTS.map((p) => {
-                  const Icon = p.icon
-                  return (
-                    <button
-                      key={p.title}
-                      type="button"
-                      className="group flex items-start gap-3 rounded-xl border border-border bg-white px-3.5 py-3 text-left transition-colors hover:bg-[#FAFAF7]"
-                    >
-                      <span className="h-9 w-9 rounded-lg bg-virgilio-lilac/40 flex items-center justify-center shrink-0">
-                        <Icon className="h-4 w-4 text-virgilio-purple" />
-                      </span>
-                      <span className="flex-1 min-w-0">
-                        <span className="block font-poppins font-semibold text-[13.5px] text-text-primary tracking-[-0.01em] truncate">
-                          {p.title}
-                        </span>
-                        <span className="block text-body-sm text-text-tertiary truncate">
-                          {p.meta}
-                        </span>
-                      </span>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-text-tertiary group-hover:text-virgilio-purple shrink-0 mt-0.5" />
-                    </button>
-                  )
-                })}
-              </div>
-            </section>
           )}
 
           {/* Continue a saved search */}
@@ -150,7 +76,6 @@ export function FindEmptyState({
                     key={proj.id}
                     type="button"
                     onClick={() => onSelectProject(proj.id)}
-                    title={`Updated ${formatDistanceToNow(new Date(proj.updated_at), { addSuffix: false })} ago`}
                     className="group inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-full border border-border bg-white hover:bg-[#FAFAF7] transition-colors"
                   >
                     <Bookmark className="h-3.5 w-3.5 text-virgilio-purple" />
