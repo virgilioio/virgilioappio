@@ -206,7 +206,7 @@ function AppContent() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/find" element={<TalentPoolOnly what="Find"><Find /></TalentPoolOnly>} />
-            <Route path="/find/:projectId" element={<Find />} />
+            <Route path="/find/:projectId" element={<TalentPoolOnly what="Find"><Find /></TalentPoolOnly>} />
             <Route path="/jobs" element={<PhoneSwitch phone={<PhoneJobs />}><Jobs /></PhoneSwitch>} />
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/calendar" element={<PhoneSwitch phone={<PhoneCalendar />}><Calendar /></PhoneSwitch>} />

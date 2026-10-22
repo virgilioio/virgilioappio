@@ -57,16 +57,22 @@ export function SkillPill({
               <ChevronDown className="h-3 w-3" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" sideOffset={6} className="w-56" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wider text-text-tertiary">Priority</DropdownMenuLabel>
+          <DropdownMenuContent align="start" sideOffset={6} className="w-[272px]" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuLabel>Priority</DropdownMenuLabel>
             {SKILL_PRIORITIES.map((option) => (
-              <DropdownMenuItem key={option} onSelect={() => onPriorityChange(option)} className="h-auto items-start gap-2.5 py-2">
-                <span className={cn('mt-[5px] h-2 w-2 shrink-0 rounded-full', SKILL_PRIORITY[option].dot)} />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-medium text-text-primary">{SKILL_PRIORITY[option].label}</span>
-                  <span className="block text-[11.5px] leading-[1.4] text-text-tertiary">{SKILL_PRIORITY[option].hint}</span>
+              <DropdownMenuItem key={option} onSelect={() => onPriorityChange(option)} className="items-start">
+                <span data-menu-lead>
+                  <span className={cn('h-2 w-2 rounded-full', SKILL_PRIORITY[option].dot)} />
                 </span>
-                {option === priority && <Check className="mt-1 h-3.5 w-3.5 shrink-0 text-virgilio-purple" />}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{SKILL_PRIORITY[option].label}</span>
+                  <span className="block text-[12px] leading-4 [color:hsl(var(--menu-group-color))]">{SKILL_PRIORITY[option].hint}</span>
+                </span>
+                {option === priority && (
+                  <span className="gio-mrow-check mt-0.5" aria-hidden>
+                    <Check className="h-4 w-4" strokeWidth={2} />
+                  </span>
+                )}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
