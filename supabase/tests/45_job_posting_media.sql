@@ -1,4 +1,4 @@
--- Run after 20261022232047_job_posting_media inside a transaction that is rolled back.
+-- Run after 20261022234223_job_posting_media inside a transaction that is rolled back.
 -- Allan (who can edit jobs) creates a fake job and uploads its cover and video;
 -- a member who can't edit it, and a path that isn't a job's folder, are refused.
 -- Every row's ok is true.
