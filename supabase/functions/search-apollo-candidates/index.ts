@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
+import { regionFor, skillTiers } from "../_shared/findCriteria.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 // CORRECT Apollo endpoint for searching (api_search, not search)
@@ -23,6 +24,10 @@ interface SearchCriteria {
   company_domains?: string[];  // Target company domains
   company_names?: string[];  // Target company names (q_organization_name)
   industries?: string[];  // Industry filter → organization_industry_tag_ids[]
+  skills?: string[];
+  skill_priorities?: Record<string, string>;
+  // Find, 2026-10-22: send the must-have skills as q_keywords (narrows results).
+  require_must_on_apollo?: boolean;
   // Note: skills are NOT supported by Apollo search - only titles and locations
 }
 
@@ -156,35 +161,6 @@ function formatLocationForApollo(locationValue: string): string | null {
 }
 
 /**
- * Deduplicate keywords by removing terms that already appear in title_keywords
- * This prevents redundant AND conditions in Apollo's search
- */
-function deduplicateKeywords(keywords: string[], titleKeywords: string[]): string[] {
-  if (!keywords?.length || !titleKeywords?.length) return keywords || [];
-  
-  // Build a set of words from all title keywords (lowercase for comparison)
-  const titleWords = new Set<string>();
-  titleKeywords.forEach(title => {
-    title.toLowerCase().split(/[\s,]+/).forEach(word => {
-      if (word.length > 2) titleWords.add(word); // Skip very short words like "of", "in"
-    });
-  });
-  
-  // Filter out keywords that are redundant with titles
-  return keywords.filter(keyword => {
-    const keywordLower = keyword.toLowerCase();
-    // Check if all words in this keyword appear in titles (fully redundant)
-    const keywordWords = keywordLower.split(/\s+/);
-    const isRedundant = keywordWords.every(word => word.length <= 2 || titleWords.has(word));
-    
-    if (isRedundant) {
-      console.log(`⚠️ Skipping redundant keyword "${keyword}" (already covered by titles)`);
-    }
-    return !isRedundant;
-  });
-}
-
-/**
  * Build Apollo API request URL with query parameters
  * Apollo uses URL query params, not JSON body for api_search
  */
@@ -215,22 +191,32 @@ function buildApolloSearchUrl(
   if (effectiveCompany) {
     params.append('q_organization_name', effectiveCompany);
     console.log(`🏢 Apollo target company name: ${effectiveCompany}`);
-  } else if (criteria.keywords && criteria.keywords.length > 0) {
-    // TRANSPARENT KEYWORD APPROACH: Do NOT send keywords to Apollo
-    // Keywords create restrictive AND conditions that severely limit results
-    // Instead, keywords are used for LOCAL scoring/ranking after Apollo returns broad results
-    console.log(`📊 Keywords will be used for LOCAL scoring (not sent to Apollo): ${criteria.keywords.join(', ')}`);
   }
 
-  // Locations → person_locations[]
+  // Skills are checked by us after people are added, except the must-haves when
+  // the search asks Apollo to require them (Find, 2026-10-22). q_keywords is
+  // free text with AND semantics, so it narrows results sharply.
+  if (criteria.require_must_on_apollo) {
+    const must = skillTiers(criteria).must;
+    if (must.length) {
+      params.append('q_keywords', must.join(' '));
+      console.log(`Apollo must-have keywords: ${must.join(', ')}`);
+    }
+  }
+
+  // Locations → person_locations[]. "Remote" is no place filter; "LATAM" is its countries.
   if (criteria.locations && criteria.locations.length > 0) {
+    const sent = new Set<string>();
     for (const loc of criteria.locations) {
-      const apolloLocation = formatLocationForApollo(loc);
-      if (apolloLocation) {
-        params.append('person_locations[]', apolloLocation);
+      for (const region of regionFor(loc) ?? []) {
+        const apolloLocation = formatLocationForApollo(region);
+        if (apolloLocation && !sent.has(apolloLocation)) {
+          sent.add(apolloLocation);
+          params.append('person_locations[]', apolloLocation);
+        }
       }
     }
-    console.log(`📍 Apollo locations: ${criteria.locations.join(', ')}`);
+    console.log(`Apollo locations: ${[...sent].join(', ') || 'none'}`);
   }
 
   // Seniority filter → person_seniorities[]
