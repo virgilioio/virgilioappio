@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { undoToast } from '@/lib/undoToast'
 
@@ -14,17 +15,20 @@ import { JOB_STATUS_TONE } from '@/lib/badge-tones'
 import {
   APPS,
   SYNCED_APPS,
+  UNDELIVERED_AFTER_MS,
   accessErrorMessage,
   appName,
   describeAudit,
   effectiveGrants,
   personName,
   personState,
+  resendMessage,
   roleLabel,
   useApplyBundle,
   useAudit,
   useBundles,
   usePeople,
+  useResendAccess,
   usePersonJobs,
   useSetAppRole,
   type AppKey,
@@ -69,7 +73,9 @@ export default function PersonDetailPage() {
   const history = useAudit(tenant?.id, person?.user_id ?? null)
   const setRole = useSetAppRole(tenant?.id)
   const applyBundle = useApplyBundle(tenant?.id)
+  const resend = useResendAccess(tenant?.id)
   const [savingApp, setSavingApp] = useState<AppKey | null>(null)
+  const [resendingApp, setResendingApp] = useState<AppKey | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pickedBundle, setPickedBundle] = useState<string | null>(null)
 
@@ -140,6 +146,21 @@ export default function PersonDetailPage() {
       setError(accessErrorMessage(err))
     } finally {
       setSavingApp(null)
+    }
+  }
+
+  // Sends the app's invitation again (a fresh link), for anyone who hasn't joined it yet.
+  const resendApp = async (app: AppKey) => {
+    if (!person.user_id) return
+    setResendingApp(app)
+    setError(null)
+    try {
+      const result = await resend.mutateAsync({ userId: person.user_id, app })
+      toast(resendMessage(app, person.email ?? personName(person), result))
+    } catch (err) {
+      setError(accessErrorMessage(err, "Couldn't resend the invitation."))
+    } finally {
+      setResendingApp(null)
     }
   }
 
@@ -244,7 +265,10 @@ export default function PersonDetailPage() {
                             : 'Sees the jobs they are on.'
                           : grant?.status === 'pending'
                             ? SYNCED_APPS.has(app.key)
-                              ? grant.sync_error ?? `Sending to ${app.name}.`
+                              ? grant.sync_error ??
+                                (Date.now() - new Date(grant.granted_at).getTime() > UNDELIVERED_AFTER_MS
+                                  ? `Not delivered to ${app.name} yet. It keeps trying; you can resend now.`
+                                  : `Sending to ${app.name}.`)
                               : `Saved. It reaches ${app.name} once ${app.name} is connected to People & Access.`
                             : grant?.status === 'error'
                               ? `Couldn't apply: ${grant.sync_error ?? `${app.name} refused this change.`}`
@@ -261,6 +285,19 @@ export default function PersonDetailPage() {
                         >
                           Retry
                         </button>
+                      )}
+                      {grant && grant.status !== 'error' && SYNCED_APPS.has(app.key) && editable && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          icon={Send}
+                          className="-ml-2 mt-1"
+                          loading={resendingApp === app.key}
+                          disabled={savingApp !== null || (resendingApp !== null && resendingApp !== app.key)}
+                          onClick={() => void resendApp(app.key)}
+                        >
+                          Resend invitation
+                        </Button>
                       )}
                     </div>
                     <div className="w-[190px]">

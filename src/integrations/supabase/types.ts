@@ -6853,6 +6853,7 @@ export type Database = {
           id: string
           last_error: string | null
           outcome: string | null
+          resend: boolean
           role: string | null
           sent_at: string | null
           status: string
@@ -6868,6 +6869,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           outcome?: string | null
+          resend?: boolean
           role?: string | null
           sent_at?: string | null
           status?: string
@@ -6883,6 +6885,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           outcome?: string | null
+          resend?: boolean
           role?: string | null
           sent_at?: string | null
           status?: string
@@ -11794,6 +11797,10 @@ export type Database = {
       os_reactivate_ats: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: Json
+      }
+      os_resend_access: {
+        Args: { _app: string; _tenant_id: string; _user_id: string }
+        Returns: string
       }
       os_set_app_role: {
         Args: {

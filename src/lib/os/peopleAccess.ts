@@ -256,6 +256,58 @@ export async function syncNow(tenantId: string | undefined) {
   }
 }
 
+export type ResendResult = { outcome: string; detail: string | null }
+
+/** A Gio Docs or Gio Sales grant waiting this long reads "Not delivered yet". */
+export const UNDELIVERED_AFTER_MS = 10 * 60_000
+
+/**
+ * Sends someone's invitation to an app again (os_resend_access), then pushes it
+ * out right away. The answer is the app's own: 'invited' (a fresh link went
+ * out), 'unchanged' (already in the app; detail says so), 'refused', or
+ * 'queued' when the app couldn't be reached and the cron will send it.
+ */
+export function useResendAccess(tenantId: string | undefined) {
+  const invalidate = useInvalidateAll(tenantId)
+  return useMutation({
+    mutationFn: async ({ userId, app }: { userId: string; app: AppKey }): Promise<ResendResult> => {
+      const { data: id, error } = await supabase.rpc('os_resend_access', {
+        _tenant_id: tenantId!,
+        _user_id: userId,
+        _app: app,
+      })
+      if (error) throw error
+      try {
+        const { data } = await supabase.functions.invoke('os-sync', { body: { tenant_id: tenantId } })
+        const hit = (data?.results as Array<{ id: string; result: string; detail?: string | null }> | undefined)?.find(
+          (r) => r.id === id,
+        )
+        if (hit && hit.result !== 'retry') return { outcome: hit.result, detail: hit.detail ?? null }
+      } catch {
+        /* the cron sends it */
+      }
+      return { outcome: 'queued', detail: null }
+    },
+    onSettled: invalidate,
+  })
+}
+
+/** The toast after a resend, in plain words. */
+export function resendMessage(app: AppKey, who: string, r: ResendResult): string {
+  const name = appName(app)
+  switch (r.outcome) {
+    case 'invited':
+    case 'invite_updated':
+      return `${name} invitation sent to ${who}.`
+    case 'unchanged':
+      return r.detail ?? `${who} is already in ${name}.`
+    case 'refused':
+      return r.detail ?? `${name} refused to send the invitation.`
+    default:
+      return `${name} can't be reached right now. The invitation goes out automatically within a few minutes.`
+  }
+}
+
 export function useSetAppRole(tenantId: string | undefined) {
   const invalidate = useInvalidateAll(tenantId)
   return useMutation({
@@ -363,6 +415,8 @@ export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => 
       return `${who} lost ${app}${prev ? ` (${prev})` : role ? ` (${role})` : ''}`
     case 'grant.role_changed':
       return `${who}'s ${app} role changed from ${prev} to ${role}`
+    case 'grant.resent':
+      return `${who}'s ${app} invitation was sent again`
     case 'grant.active':
       return `${app} confirmed ${who}'s access`
     case 'grant.error':
