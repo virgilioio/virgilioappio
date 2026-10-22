@@ -5,6 +5,8 @@
  * signed over `${timestamp}.${body}` with that app's own secret, and records
  * each answer with os_sync_record(), which moves the grant to active or error.
  * The queue item id is the request id, so a retry is never applied twice.
+ * An item marked resend (os_resend_access) asks the app to send its
+ * invitation again; the app's own message comes back as detail.
  *   Gio Sales: GIO_SALES_URL + OS_PROVISION_SECRET_SALES
  *   Gio Docs:  GIO_DOCS_URL (defaults to its Supabase URL) + OS_PROVISION_SECRET_DOCS
  * An app whose URL or secret isn't set yet is skipped; its items wait.
@@ -33,7 +35,7 @@ async function hmac(secret: string, message: string): Promise<string> {
   return hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message)))
 }
 
-type Item = { id: string; tenant_id: string; user_id: string; app_key: string; role: string | null; actor_user_id: string; attempts: number }
+type Item = { id: string; tenant_id: string; user_id: string; app_key: string; role: string | null; actor_user_id: string; attempts: number; resend: boolean }
 
 const APP_NAME: Record<string, string> = { sales: 'Gio Sales', docs: 'Gio Docs' }
 
@@ -85,7 +87,7 @@ Deno.serve(async (req) => {
 
   let q = admin
     .from('os_sync_queue')
-    .select('id, tenant_id, user_id, app_key, role, actor_user_id, attempts')
+    .select('id, tenant_id, user_id, app_key, role, actor_user_id, attempts, resend')
     .eq('status', 'pending')
     .in('app_key', apps)
     .order('created_at')
@@ -103,19 +105,19 @@ Deno.serve(async (req) => {
     return email
   }
 
-  const results: Array<{ id: string; result: string }> = []
+  const results: Array<{ id: string; result: string; detail?: string | null }> = []
   for (const item of (items ?? []) as Item[]) {
     // Back off: after 3 failed attempts, only the cron retries (every few minutes).
     if (!isCron && item.attempts >= 3) continue
     const [email, actorEmail] = await Promise.all([emailOf(item.user_id), emailOf(item.actor_user_id)])
     if (!email || !actorEmail) {
       await admin.rpc('os_sync_record', { _id: item.id, _ok: false, _outcome: 'refused', _detail: 'This person has no email address.', _retry: false })
-      results.push({ id: item.id, result: 'refused' })
+      results.push({ id: item.id, result: 'refused', detail: 'This person has no email address.' })
       continue
     }
 
     const dest = target(item.app_key)!
-    const body = JSON.stringify({ request_id: item.id, email, role: item.role, actor_email: actorEmail })
+    const body = JSON.stringify({ request_id: item.id, email, role: item.role, actor_email: actorEmail, ...(item.resend ? { resend: true } : {}) })
     const ts = String(Math.floor(Date.now() / 1000))
     let res: Response
     try {
@@ -137,11 +139,11 @@ Deno.serve(async (req) => {
 
     if (res.ok && parsed.ok === true) {
       await admin.rpc('os_sync_record', { _id: item.id, _ok: true, _outcome: String(parsed.outcome ?? ''), _detail: null, _retry: false })
-      results.push({ id: item.id, result: String(parsed.outcome ?? 'done') })
+      results.push({ id: item.id, result: String(parsed.outcome ?? 'done'), detail: typeof parsed.detail === 'string' ? parsed.detail : null })
     } else if (res.ok || res.status === 400) {
       // The app answered and said no (its own rules, or a bad request).
       await admin.rpc('os_sync_record', { _id: item.id, _ok: false, _outcome: 'refused', _detail: refusalText(item.app_key, parsed), _retry: false })
-      results.push({ id: item.id, result: 'refused' })
+      results.push({ id: item.id, result: 'refused', detail: refusalText(item.app_key, parsed) })
     } else {
       // Unreachable, not configured, or a signature/clock problem: keep it queued.
       await admin.rpc('os_sync_record', { _id: item.id, _ok: false, _outcome: null, _detail: `HTTP ${res.status}: ${refusalText(item.app_key, parsed)}`.slice(0, 480), _retry: true })
