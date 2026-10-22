@@ -1,10 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Plus, X, ChevronDown, ChevronRight, RotateCcw, Sparkles, Check, Search, Loader2 } from 'lucide-react'
+import { X, ChevronDown, ChevronRight, RotateCcw, Sparkles, Check, Search, Loader2, Briefcase } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SearchCriteria, SourcingProjectFilters } from '@/types/sourcing'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { useAutocompleteSearch } from '@/hooks/useAutocompleteSearch'
+import { Switch } from '@/components/ui/switch'
+import { supabase } from '@/lib/supabaseClient'
+import { toast } from 'sonner'
+import { criteriaFromTiers, dropSkill, placeSkill, tiersOf, type FindTier } from '@/lib/findSkills'
+import { readSkillPriorities } from '@/lib/skillPriority'
 import { LOCATION_OPTIONS } from '@/constants/locations'
 import { cn } from '@/lib/utils'
 
@@ -33,36 +38,10 @@ const COMPANY_SIZE_OPTIONS = [
   { value: '10001,', label: '10K+' },
 ]
 
-const INDUSTRY_OPTIONS = [
-  { value: 'information technology & services', label: 'IT & Services' },
-  { value: 'computer software', label: 'Software' },
-  { value: 'internet', label: 'Internet' },
-  { value: 'financial services', label: 'Financial Services' },
-  { value: 'banking', label: 'Banking' },
-  { value: 'marketing and advertising', label: 'Marketing & Ads' },
-  { value: 'management consulting', label: 'Consulting' },
-  { value: 'hospital & health care', label: 'Healthcare' },
-  { value: 'pharmaceuticals', label: 'Pharma' },
-  { value: 'real estate', label: 'Real Estate' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'e-commerce', label: 'E-commerce' },
-  { value: 'education management', label: 'Education' },
-  { value: 'telecommunications', label: 'Telecom' },
-  { value: 'automotive', label: 'Automotive' },
-  { value: 'food & beverages', label: 'Food & Bev' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'entertainment', label: 'Entertainment' },
-  { value: 'staffing and recruiting', label: 'Staffing' },
-  { value: 'logistics and supply chain', label: 'Logistics' },
-  { value: 'nonprofit organization management', label: 'Non-Profit' },
-  { value: 'insurance', label: 'Insurance' },
-  { value: 'legal services', label: 'Legal' },
-  { value: 'oil & energy', label: 'Oil & Energy' },
-  { value: 'consumer goods', label: 'Consumer Goods' },
-  { value: 'media', label: 'Media' },
-]
 
 interface FindFilterPanelProps {
+  /** The job this search is linked to, for "Use the job's skills". */
+  linkedJob?: { id: string; title: string } | null
   criteria: SearchCriteria | null
   onCriteriaChange: (updates: Partial<SearchCriteria>) => void
   resultFilters: SourcingProjectFilters
@@ -70,6 +49,10 @@ interface FindFilterPanelProps {
 }
 
 /* ---------- Group section ---------- */
+function FieldNote({ children }: { children: React.ReactNode }) {
+  return <p className="font-inter" style={{ fontSize: 11, lineHeight: 1.45, color: '#8B8F9E', margin: '6px 0 0' }}>{children}</p>
+}
+
 function GroupSection({
   label,
   defaultOpen = false,
@@ -436,101 +419,6 @@ function CheckboxGroup({
 }
 
 /* ---------- Dual-thumb slider (Experience) ---------- */
-function DualRange({
-  min = 0, max = 30,
-  minValue, maxValue,
-  onChange,
-}: {
-  min?: number; max?: number
-  minValue: number | undefined
-  maxValue: number | undefined
-  onChange: (v: { min?: number; max?: number }) => void
-}) {
-  const lo = minValue ?? min
-  const hi = maxValue ?? max
-  const pctLo = ((lo - min) / (max - min)) * 100
-  const pctHi = ((hi - min) / (max - min)) * 100
-
-  return (
-    <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
-        <span className="font-inter" style={{ fontSize: 11, color: '#5A6072' }}>Years</span>
-        <span className="font-inter" style={{ fontSize: 11, fontWeight: 500, color: '#1F2230' }}>
-          {lo}y – {hi}y
-        </span>
-      </div>
-      <div className="relative" style={{ height: 20 }}>
-        {/* Track */}
-        <div
-          className="absolute left-0 right-0"
-          style={{ top: '50%', transform: 'translateY(-50%)', height: 4, background: '#F1F0EC', borderRadius: 999 }}
-        />
-        {/* Fill */}
-        <div
-          className="absolute"
-          style={{
-            top: '50%', transform: 'translateY(-50%)',
-            left: `${pctLo}%`, width: `${Math.max(0, pctHi - pctLo)}%`,
-            height: 4, background: '#6F3FF5', borderRadius: 999,
-          }}
-        />
-        {/* Min input */}
-        <input
-          type="range"
-          min={min}
-          max={max}
-          value={lo}
-          onChange={e => {
-            const v = Math.min(parseInt(e.target.value), hi)
-            onChange({ min: v === min ? undefined : v, max: maxValue })
-          }}
-          className="dual-range absolute inset-0 w-full appearance-none bg-transparent pointer-events-none"
-          style={{ zIndex: 3 }}
-        />
-        {/* Max input */}
-        <input
-          type="range"
-          min={min}
-          max={max}
-          value={hi}
-          onChange={e => {
-            const v = Math.max(parseInt(e.target.value), lo)
-            onChange({ min: minValue, max: v === max ? undefined : v })
-          }}
-          className="dual-range absolute inset-0 w-full appearance-none bg-transparent pointer-events-none"
-          style={{ zIndex: 4 }}
-        />
-      </div>
-      <style>{`
-        .dual-range::-webkit-slider-thumb {
-          pointer-events: auto;
-          -webkit-appearance: none;
-          appearance: none;
-          width: 12px; height: 12px;
-          border-radius: 50%;
-          background: #fff;
-          border: 2px solid #6F3FF5;
-          box-shadow: 0 1px 3px rgba(13,13,9,.18);
-          cursor: pointer;
-        }
-        .dual-range::-moz-range-thumb {
-          pointer-events: auto;
-          width: 12px; height: 12px;
-          border-radius: 50%;
-          background: #fff;
-          border: 2px solid #6F3FF5;
-          box-shadow: 0 1px 3px rgba(13,13,9,.18);
-          cursor: pointer;
-        }
-        .dual-range::-webkit-slider-runnable-track { background: transparent; }
-        .dual-range::-moz-range-track { background: transparent; }
-        .dual-range:focus { outline: none; }
-      `}</style>
-    </div>
-  )
-}
-
-/* ---------- Location field with 296px popover ---------- */
 function LocationField({
   selected,
   onChange,
@@ -580,7 +468,7 @@ function LocationField({
         }}
       >
         {selected.map(v => {
-          const t = TONE_MAP.green
+          const t = TONE_MAP.neutral
           return (
             <span
               key={v}
@@ -683,6 +571,7 @@ const EMPTY_CRITERIA: SearchCriteria = {
 }
 
 export function FindFilterPanel({
+  linkedJob,
   criteria,
   onCriteriaChange,
   resultFilters,
@@ -703,8 +592,31 @@ export function FindFilterPanel({
     ? Math.max(0, (creditsUsage.collect_credits_limit || 0) - (creditsUsage.collect_credits_used || 0)) + (creditsUsage.bonus_credits_available || 0)
     : null
 
-  const SUGGESTED_KEYWORDS = ['Prototyping', 'User research', 'UI engineering', 'Accessibility']
-  const visibleSuggestions = SUGGESTED_KEYWORDS.filter(s => !(c.keywords || []).map(k => k.toLowerCase()).includes(s.toLowerCase()))
+  // Skills by tier, like the job's (2026-10-22).
+  const tiers = tiersOf(c)
+  const skillCount = tiers.must.length + tiers.nice.length + tiers.bonus.length
+  const setTiers = (next: typeof tiers) => onCriteriaChange(criteriaFromTiers(next))
+  const [loadingJobSkills, setLoadingJobSkills] = useState(false)
+  const applyJobSkills = async () => {
+    if (!linkedJob) return
+    setLoadingJobSkills(true)
+    try {
+      const { data, error } = await supabase.from('jobs').select('skills, skill_priorities').eq('id', linkedJob.id).maybeSingle()
+      if (error) throw error
+      const skills: string[] = Array.isArray(data?.skills) ? data!.skills.filter((x: unknown): x is string => typeof x === 'string') : []
+      if (!skills.length) { toast(`${linkedJob.title} has no skills yet`); return }
+      const pr = readSkillPriorities(data?.skill_priorities)
+      onCriteriaChange(criteriaFromTiers({
+        must: skills.filter((x) => pr[x] === 'must'),
+        nice: skills.filter((x) => !pr[x] || pr[x] === 'nice'),
+        bonus: skills.filter((x) => pr[x] === 'bonus'),
+      }))
+    } catch {
+      toast.error("Couldn't load the job's skills. Try again.")
+    } finally {
+      setLoadingJobSkills(false)
+    }
+  }
 
   const handleSearch = () => {
     onCriteriaChange({ title_keywords: [...(c.title_keywords || [])] })
@@ -712,7 +624,7 @@ export function FindFilterPanel({
 
   const handleReset = () => {
     onCriteriaChange({
-      skills: [], title_keywords: [], keywords: [], locations: [],
+      skills: [], skill_priorities: {}, require_must_on_apollo: false, title_keywords: [], keywords: [], locations: [],
       seniorities: [], company_sizes: [], industries: [], company_names: [],
       experience_years: {},
     })
@@ -724,13 +636,11 @@ export function FindFilterPanel({
 
   const contactCount = (resultFilters.hasEmail ? 1 : 0) + (resultFilters.hasPhone ? 1 : 0)
   const sourceCount = (resultFilters.candidateSource?.length) ?? 0
-  const expCount = (c.experience_years?.min != null || c.experience_years?.max != null) ? 1 : 0
 
   return (
     <aside
-      className="flex flex-col self-stretch bg-white overflow-hidden"
+      className="flex w-full shrink-0 flex-col self-stretch overflow-hidden bg-white md:w-[296px]"
       style={{
-        width: 296, flexShrink: 0,
         border: '1px solid #E7E8EE', borderRadius: 14,
         height: '100%',
       }}
@@ -773,57 +683,55 @@ export function FindFilterPanel({
             tags={c.title_keywords || []}
             onAdd={(tag) => onCriteriaChange({ title_keywords: [...(c.title_keywords || []), tag] })}
             onRemove={(tag) => onCriteriaChange({ title_keywords: (c.title_keywords || []).filter(t => t !== tag) })}
-            tone="purple"
+            tone="neutral"
             autocompleteTable="standard_job_titles"
           />
+          <FieldNote>Apollo filters on these.</FieldNote>
         </GroupSection>
 
         <GroupSection
-          label="Skills & keywords"
-          count={c.keywords?.length ?? 0}
-          defaultOpen={(c.keywords?.length ?? 0) > 0 || visibleSuggestions.length > 0}
+          label="Skills"
+          count={skillCount}
+          defaultOpen
         >
-          <TokenField
-            placeholder="Add skills…"
-            tags={c.keywords || []}
-            onAdd={(tag) => onCriteriaChange({ keywords: [...(c.keywords || []), tag] })}
-            onRemove={(tag) => onCriteriaChange({ keywords: (c.keywords || []).filter(t => t !== tag) })}
-            tone="blue"
-            autocompleteTable="standard_skills"
-          />
-          {visibleSuggestions.length > 0 && (
-            <div>
-              <p
-                className="font-inter uppercase"
-                style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: '0.06em', color: '#8B8F9E', margin: '10px 0 6px' }}
-              >
-                Suggested by Gio
-              </p>
-              <div className="flex flex-wrap" style={{ gap: 4 }}>
-                {visibleSuggestions.map(s => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => onCriteriaChange({ keywords: [...(c.keywords || []), s] })}
-                    className="inline-flex items-center font-inter transition-colors hover:brightness-95 focus:outline-none"
-                    style={{
-                      gap: 4,
-                      padding: '3px 8px',
-                      background: '#FAF8FF',
-                      color: '#5B21B6',
-                      border: '1px dashed #D7C5FB',
-                      borderRadius: 999,
-                      fontSize: 10.5,
-                      fontWeight: 500,
-                    }}
-                  >
-                    <Plus style={{ width: 9, height: 9 }} />
-                    {s}
-                  </button>
-                ))}
+          <div className="space-y-2.5">
+            {([
+              { tier: 'must' as FindTier, label: 'Must-have', tone: 'green' as TokenTone },
+              { tier: 'nice' as FindTier, label: 'Nice-to-have', tone: 'blue' as TokenTone },
+              { tier: 'bonus' as FindTier, label: 'Extra points', tone: 'purple' as TokenTone },
+            ]).map((row) => (
+              <div key={row.tier}>
+                <p className="font-inter" style={{ fontSize: 11.5, fontWeight: 500, color: '#5A6072', margin: '0 0 4px' }}>{row.label}</p>
+                <TokenField
+                  placeholder="Add skill…"
+                  tags={tiers[row.tier]}
+                  onAdd={(tag) => setTiers(placeSkill(tiers, tag, row.tier))}
+                  onRemove={(tag) => setTiers(dropSkill(tiers, tag))}
+                  tone={row.tone}
+                  autocompleteTable="standard_skills"
+                />
               </div>
-            </div>
+            ))}
+          </div>
+          <FieldNote>People in Gio need the must-haves to rank high; nice-to-haves and extras lift the order. Apollo shows skills only once you add someone.</FieldNote>
+          {linkedJob && (
+            <Button size="xs" variant="ghost" icon={Briefcase} loading={loadingJobSkills} onClick={() => void applyJobSkills()} className="mt-1.5 max-w-full">
+              <span className="truncate">Use {linkedJob.title}'s skills</span>
+            </Button>
           )}
+          <label className="mt-2.5 flex cursor-pointer items-start gap-2 rounded-lg bg-[#FAFAF7] p-2.5" htmlFor="find-require-must">
+            <Switch
+              id="find-require-must"
+              checked={!!c.require_must_on_apollo}
+              onCheckedChange={(v) => onCriteriaChange({ require_must_on_apollo: v })}
+              disabled={tiers.must.length === 0}
+            />
+            <span className="font-inter" style={{ fontSize: 11.5, lineHeight: 1.45, color: '#5A6072' }}>
+              <span style={{ color: '#1F2230', fontWeight: 500 }}>Require must-haves on Apollo</span>
+              <br />
+              Off: Apollo searches by title, place and seniority. On: fewer, narrower results.
+            </span>
+          </label>
         </GroupSection>
 
         <GroupSection
@@ -835,6 +743,7 @@ export function FindFilterPanel({
             selected={c.locations || []}
             onChange={(locations) => onCriteriaChange({ locations })}
           />
+          <FieldNote>Apollo filters on these. "Remote" means anywhere.</FieldNote>
         </GroupSection>
 
         <GroupSection
@@ -864,21 +773,6 @@ export function FindFilterPanel({
         </GroupSection>
 
         <GroupSection
-          label="Industry"
-          count={c.industries?.length ?? 0}
-          defaultOpen={(c.industries?.length ?? 0) > 0}
-        >
-          <CheckboxGroup
-            options={INDUSTRY_OPTIONS}
-            selected={c.industries || []}
-            onToggle={(v) => toggleArrayValue('industries', v)}
-            searchable
-            searchThreshold={6}
-            maxVisible={6}
-          />
-        </GroupSection>
-
-        <GroupSection
           label="Target Companies"
           count={c.company_names?.length ?? 0}
           defaultOpen={(c.company_names?.length ?? 0) > 0}
@@ -889,20 +783,6 @@ export function FindFilterPanel({
             onAdd={(tag) => onCriteriaChange({ company_names: [...(c.company_names || []), tag] })}
             onRemove={(tag) => onCriteriaChange({ company_names: (c.company_names || []).filter(t => t !== tag) })}
             tone="neutral"
-          />
-        </GroupSection>
-
-        <GroupSection
-          label="Experience (years)"
-          count={expCount}
-          defaultOpen={expCount > 0}
-        >
-          <DualRange
-            min={0}
-            max={30}
-            minValue={c.experience_years?.min}
-            maxValue={c.experience_years?.max}
-            onChange={(v) => onCriteriaChange({ experience_years: { ...c.experience_years, min: v.min, max: v.max } })}
           />
         </GroupSection>
 
@@ -977,7 +857,7 @@ export function FindFilterPanel({
           className="font-inter text-center"
           style={{ fontSize: 10.5, color: '#8B8F9E' }}
         >
-          Preview is free · Collect uses 1 credit each{collectRemaining != null && ` · ${collectRemaining} remaining`}
+          Browsing is free · adding someone new from Apollo uses 1 credit{collectRemaining != null && ` · ${collectRemaining} left`}
         </p>
       </div>
     </aside>

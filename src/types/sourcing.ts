@@ -73,7 +73,11 @@ export interface SearchCriteria {
   education_level?: string
   // Apollo-specific filters
   seniorities?: string[]  // 'entry', 'senior', 'manager', 'director', 'vp', 'c_suite', 'owner', 'founder', 'partner', 'head', 'intern'
-  keywords?: string[]  // General keyword search (q_keywords) - joined with spaces for Apollo
+  keywords?: string[]  // Older searches' skills; read as nice-to-haves (2026-10-22)
+  /** Skill tiers like a job's (must / nice / bonus); Find ranks people in Gio by them. */
+  skill_priorities?: Record<string, 'must' | 'nice' | 'bonus'>
+  /** Send the must-have skills to Apollo too (narrows its results). */
+  require_must_on_apollo?: boolean
   company_sizes?: string[]  // '1-10', '11-50', '51-200', '201-500', '501-1000', '1001-5000', '5001-10000', '10001+'
   company_domains?: string[]  // Target company domains for filtering
   // Separated company fields for constraint budgeting
