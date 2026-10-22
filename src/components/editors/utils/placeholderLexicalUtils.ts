@@ -11,6 +11,7 @@ import {
   $createTextNode,
   $getRoot,
   $insertNodes,
+  ElementNode,
   LexicalEditor,
   LexicalNode,
   ParagraphNode,
@@ -24,6 +25,8 @@ import { normalizePlaceholderKey, collapseDoubleBraces } from '@/utils/templateU
  * Pattern to match {{placeholder}} tokens in text
  */
 const PLACEHOLDER_REGEX = /\{\{([^}]+)\}\}/g;
+/** For .test(): a global regex keeps lastIndex between calls and skips matches. */
+const HAS_PLACEHOLDER = /\{\{([^}]+)\}\}/;
 
 /**
  * Parse a template string and create Lexical nodes
@@ -190,7 +193,7 @@ export function loadHtmlIntoEditor(editor: LexicalEditor, html: string): void {
     const textNodes: Text[] = [];
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
-      if (PLACEHOLDER_REGEX.test(node.textContent || '')) {
+      if (HAS_PLACEHOLDER.test(node.textContent || '')) {
         textNodes.push(node);
       }
     }
@@ -200,7 +203,7 @@ export function loadHtmlIntoEditor(editor: LexicalEditor, html: string): void {
     
     // For each paragraph, process and convert {{placeholder}} to PlaceholderNodes
     nodes.forEach(node => {
-      if (node instanceof ParagraphNode) {
+      if (node instanceof ElementNode) {
         processAndReplacePlaceholders(node);
       }
       root.append(node);
@@ -214,16 +217,19 @@ export function loadHtmlIntoEditor(editor: LexicalEditor, html: string): void {
 }
 
 /**
- * Process a paragraph node and convert any text containing {{placeholder}} 
+ * Process a block (paragraph, list, quote) and convert any text containing {{placeholder}} 
  * into proper PlaceholderNodes
  */
-function processAndReplacePlaceholders(paragraph: ParagraphNode): void {
+function processAndReplacePlaceholders(paragraph: ElementNode): void {
   const children = paragraph.getChildren();
   
   children.forEach(child => {
-    if (child instanceof TextNode) {
+    // Lists, quotes and links hold their text a level or two down.
+    if (child instanceof ElementNode) {
+      processAndReplacePlaceholders(child);
+    } else if (child instanceof TextNode) {
       const text = child.getTextContent();
-      if (PLACEHOLDER_REGEX.test(text)) {
+      if (HAS_PLACEHOLDER.test(text)) {
         // This text node contains placeholder patterns
         const nodes = parseTemplateToNodes(text);
         if (nodes.length > 0) {
