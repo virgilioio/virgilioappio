@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { FormattedTextBox } from '@/components/ui/formatted-text'
+import { markdownToHtml } from '@/utils/markdown'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
@@ -305,7 +306,8 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
 
       if (data?.jobSpec) {
         setJobSpec(data.jobSpec)
-        setEditableJobSpec(data.jobSpec)
+        // Gio writes Markdown; the formatted box edits HTML.
+        setEditableJobSpec({ ...data.jobSpec, job_description: markdownToHtml(data.jobSpec.job_description || '') })
         setCandidateMatching(data.candidateMatching || null)
         setSelectedTitle(sanitizeJobTitle(data.jobSpec.job_title, chatMessages.map(m => m.content).join(' ')))
         setEditableSkills(data.jobSpec.skills || [])
@@ -1098,9 +1100,11 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
                     {/* Job Description */}
                     <div className="space-y-2">
                       <Label>Job Description</Label>
-                      <RichTextEditor
+                      <FormattedTextBox
                         value={editableJobSpec.job_description}
                         onChange={(value) => handleFieldUpdate('job_description', value)}
+                        headings
+                        ariaLabel="Job description"
                         placeholder="Job description will appear here..."
                       />
                     </div>

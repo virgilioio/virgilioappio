@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { FormField } from '@/components/ui/form-field'
-import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { FormattedTextBox } from '@/components/ui/formatted-text'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -77,7 +77,6 @@ export function PostingSheet({
 
   const isEdit = !!postingId
   const [localId, setLocalId] = useState<string | undefined>(postingId)
-  const [isExternalUpdate, setIsExternalUpdate] = useState(false)
   const [saving, setSaving] = useState(false)
   const [generatingDesc, setGeneratingDesc] = useState(false)
 
@@ -253,7 +252,6 @@ export function PostingSheet({
           setMetaTitle(s.meta_title || '')
           setMetaDescription(s.meta_description || '')
           setEeoEnabled(!!d.eeo_enabled)
-          setIsExternalUpdate(true)
         }
       } else {
         setTitle(defaultTitle || '')
@@ -291,7 +289,6 @@ export function PostingSheet({
         setMetaTitle('')
         setMetaDescription('')
         setEeoEnabled(false)
-        setIsExternalUpdate(true)
       }
     }
     load()
@@ -375,7 +372,6 @@ export function PostingSheet({
       }
       if (data?.description) {
         setDescription(markdownToHtml(data.description))
-        setIsExternalUpdate(true)
         toast({ title: 'Description generated', description: 'Gio refreshed the public copy.' })
       } else {
         throw new Error('No description returned')
@@ -743,17 +739,18 @@ export function PostingSheet({
             title="Public description"
             chip={isEdit ? 'Gio rewrote · 2d ago' : 'Gio will draft'}
           >
-            <RichTextEditor
+            <FormattedTextBox
               value={description}
-              onChange={(html) => setDescription(html)}
+              onChange={setDescription}
+              headings
+              ariaLabel="Public description"
               placeholder={
                 isEdit
                   ? 'Polish the public copy of this posting.'
                   : "Click 'Draft from job' to generate from the job information."
               }
-              minHeight="240px"
-              isExternalUpdate={isExternalUpdate}
-              onExternalUpdateComplete={() => setIsExternalUpdate(false)}
+              minHeight={240}
+              disabled={readOnly}
             />
             <div className="flex items-center justify-between mt-3">
               <div className="flex items-center gap-2">

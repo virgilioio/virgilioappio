@@ -34,6 +34,8 @@ import { useTenant } from '@/hooks/useTenant'
 import { ApplicationFormBuilder, SMART_FIELD_TYPES_SET as SMART_FIELD_TYPES_SHARED, newOptionValue, type AppField as SharedAppField, type ChoiceOption, type FieldType as SharedFieldType, iconForType as iconForTypeShared } from '@/components/jobs/postings/ApplicationFormBuilder'
 import { PostingChannelsCard, type ChannelsValue } from '@/components/jobs/postings/PostingChannelsCard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { FormattedTextBox } from '@/components/ui/formatted-text'
+import { markdownToHtml } from '@/utils/markdown'
 
 
 /* ---------------- helpers ---------------- */
@@ -224,7 +226,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     const initedDesc = useRef(false)
     useEffect(() => {
       if (!initedDesc.current && jobData.description) {
-        setDescription(jobData.description)
+        setDescription(markdownToHtml(jobData.description))
         initedDesc.current = true
       }
     }, [jobData.description])
@@ -250,7 +252,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           throw new Error(msg)
         }
         if (data?.description) {
-          setDescription(data.description)
+          setDescription(markdownToHtml(data.description))
           toast.success('Description generated')
         }
       } catch (e: any) {
@@ -723,14 +725,18 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
         >
           <div>
             <FieldLabel required>Posting copy</FieldLabel>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="## About the role…"
-              className="mt-2 min-h-[260px] font-mono text-[13px] leading-relaxed"
-            />
+            <div className="mt-2">
+              <FormattedTextBox
+                value={description}
+                onChange={setDescription}
+                headings
+                ariaLabel="Posting copy"
+                placeholder="About the role…"
+                minHeight={260}
+              />
+            </div>
             <div className="mt-3 flex items-center justify-between gap-3">
-              <FieldHint>Markdown supported. We've optimized your internal description for tone, inclusivity, and SEO.</FieldHint>
+              <FieldHint>We've optimized your internal description for tone, inclusivity, and SEO.</FieldHint>
               <Button variant="purple" size="sm" icon={Sparkles} onClick={handleGenerate} loading={genLoading}>
                 Generate with Gio
               </Button>
