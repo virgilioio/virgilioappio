@@ -269,7 +269,6 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     const [bannerName, setBannerName] = useState('')
     const [bannerUrl, setBannerUrl] = useState<string | null>(null)
     const [bannerUploading, setBannerUploading] = useState(false)
-    const [teamPhotos, setTeamPhotos] = useState(true)
     const [video, setVideo] = useState<PostingVideo>(NO_VIDEO)
 
     async function handleBannerFileChange(file: File | null) {
@@ -379,7 +378,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           slug, reference_id: refId || null, language,
           deadline: deadline ? deadline.toISOString().slice(0, 10) : null,
           show_in_search: showInSearch, show_response_badge: showResponseBadge,
-          ...brandingDetails({ brandColor, bannerUrl, bannerName: bannerName || null, teamPhotos, video }),
+          ...brandingDetails({ brandColor, bannerUrl, bannerName: bannerName || null, video }),
           application_fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type, required: f.required, locked: !!f.locked, hint: f.hint, isSmart: !!f.isSmart || SMART_FIELD_TYPES.has(f.type), ...(f.options ? { options: f.options } : {}) })),
           eeo_survey: eeo,
           channels: Object.entries(channelOn).filter(([, v]) => v).map(([id]) => id),
@@ -804,7 +803,6 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
             </div>
           </div>
           <div className="border-t border-virgilio-border pt-4 space-y-1">
-            <ToggleRow label="Show team photos on posting" hint="3 random panel photos pulled from member profiles." checked={teamPhotos} onChange={setTeamPhotos} />
             <PostingVideoField value={video} onChange={setVideo} jobId={jobId} />
           </div>
         </SectionCard>

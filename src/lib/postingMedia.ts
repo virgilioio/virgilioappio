@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client'
  * A job post's cover image and video (Allan, 2026-10-22). Both editors (Create
  * job › Posting and the job page's posting sheet) write the same keys on
  * job_postings.details, and the public post reads them through readBranding():
- *   brand_color, banner_url, banner_name, team_photos,
+ *   brand_color, banner_url, banner_name,
  *   video: { enabled, source: 'link' | 'upload', url, name }
  * Files live in the public bucket job-posting-media under {job_id}/.
  */
@@ -26,7 +26,6 @@ export interface PostingBranding {
   brandColor: string | null
   bannerUrl: string | null
   bannerName: string | null
-  teamPhotos: boolean
   video: PostingVideo
 }
 
@@ -50,7 +49,6 @@ export function readBranding(details: Details): PostingBranding {
     brandColor: str(d.brand_color) || str(old.brand_color),
     bannerUrl: str(d.banner_url) || oldBanner,
     bannerName: str(d.banner_name),
-    teamPhotos: typeof d.team_photos === 'boolean' ? d.team_photos : !!old.show_team_photos,
     video: {
       enabled: !!v.enabled,
       source: v.source === 'upload' ? 'upload' : 'link',
@@ -60,13 +58,17 @@ export function readBranding(details: Details): PostingBranding {
   }
 }
 
-/** The keys both editors save (the old details.branding is cleared so the two can't disagree). */
+/**
+ * The keys both editors save. The old details.branding is cleared so the two
+ * can't disagree, and team_photos (a switch that never did anything) is cleared
+ * from postings that still carry it.
+ */
 export function brandingDetails(b: PostingBranding) {
   return {
     brand_color: b.brandColor || null,
     banner_url: b.bannerUrl || null,
     banner_name: b.bannerName || null,
-    team_photos: b.teamPhotos,
+    team_photos: null,
     video: { enabled: b.video.enabled, source: b.video.source, url: b.video.url, name: b.video.name ?? null },
     branding: null,
     culture_video: null,

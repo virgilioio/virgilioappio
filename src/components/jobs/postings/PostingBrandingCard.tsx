@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import { ImagePlus, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { mediaFileProblem, uploadPostingMedia, type PostingBranding } from '@/lib/postingMedia'
@@ -139,13 +138,6 @@ export function PostingBrandingCard({ value, onChange, workspaceColor, readOnly,
       </div>
 
       <div className="divide-y divide-virgilio-border/60 border-t border-virgilio-border/60">
-        <ToggleRow
-          title="Show team photos on posting"
-          helper="Pulls headshots from your About page"
-          checked={value.teamPhotos}
-          onChange={(v) => onChange({ ...value, teamPhotos: v })}
-          disabled={readOnly}
-        />
         <PostingVideoField
           value={value.video}
           onChange={(video) => onChange({ ...value, video })}
@@ -153,32 +145,6 @@ export function PostingBrandingCard({ value, onChange, workspaceColor, readOnly,
           readOnly={readOnly}
         />
       </div>
-    </div>
-  )
-}
-
-function ToggleRow({
-  title,
-  helper,
-  checked,
-  onChange,
-  disabled,
-}: {
-  title: string
-  helper: string
-  checked: boolean
-  onChange: (v: boolean) => void
-  disabled?: boolean
-}) {
-  return (
-    <div className="flex items-center justify-between py-3">
-      <div className="min-w-0">
-        <div className="font-poppins font-medium text-[13.5px] tracking-[-0.01em] text-text-primary">
-          {title}
-        </div>
-        <div className="text-[12.5px] text-text-secondary">{helper}</div>
-      </div>
-      <Switch checked={checked} onCheckedChange={(v) => onChange(!!v)} disabled={disabled} />
     </div>
   )
 }
