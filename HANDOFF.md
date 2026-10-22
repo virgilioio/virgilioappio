@@ -42,6 +42,13 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-22 (ATS) — on the branch, waiting for Apply!
+
+- **One formatted text box** (Allan: "the one we like is the one in the scorecards"; job posts and every text box with formatting controls). The scorecard's Key takeaways editor is now `FormattedTextBox` (`src/components/ui/formatted-text.tsx`), with Heading / Subheading (`headings`, or type `##` / `###`) for job posts. It is the Public description in Create and Edit job post, the wizard's Posting copy (Markdown is converted on open with `markdownToHtml`, stored as HTML from then on) and Find's job assistant description. The old `RichTextEditor` and the unused `IndependentCandidateForm` are gone.
+  - Email bodies keep `BodyTemplateEditor` (Lexical, merge-tag chips) but wear the same box: toolbar, colours, border, focus, `*` / `1.` lists, Tab nesting, ⌘K link, ⌘⇧X/8/7. A composer's own controls ride on its toolbar (`toolbarExtra`): Variables and Rewrite in the email composer (its Bold/Italic/List/Link buttons did nothing), Insert variable and Preview in stage automations (Quote and its own link box went).
+  - Fixed on the way: email bodies saved only paragraphs, so a bulleted or numbered list made with the old toolbar was dropped on save (`OnChangePlugin` now writes lists, nesting, headings, quotes, strikethrough, line breaks, and escapes text); merge tags inside a list or link now load as chips.
+  - Not changed: the job description in Create job › Job info is still Markdown (a separate step, agreed with Allan); Gio Sign documents, comments and chat keep their own editors.
+
 ## Done 2026-10-22 (ATS) — applied
 
 - **Victoria couldn't open Gio Docs; first-time app grants never reached the apps.** `os_set_app_role` read FOUND after its own INSERT, so a person's first Gio Docs or Gio Sales grant was saved as pending and never queued (role changes and removals were fine). 10 grants had waited since 2026-10-16. `20261022162856_os_new_grants_sync` (test 42, 6 checks; the first check fails on the old function) keeps the lookup's answer in `had_live` and queues the waiting grants as the admin who granted them; people already in the app turn active with no email, Victoria, success@ and support@ get invitations.
