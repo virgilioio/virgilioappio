@@ -70,20 +70,9 @@ export default function UniversalCandidateProfileSheet(props: UniversalCandidate
     )
   }
 
-  // Sourcing context with an Apollo id → always open the rich Apollo preview sheet,
-  // even when the candidate has already been collected (candidateId present).
-  if (actualContext === 'sourcing' && props.apolloId) {
-    return (
-      <ApolloPreviewSheet
-        {...props}
-        onCandidateCollected={(candidateId) => {
-          props.onCandidateCollected?.(candidateId, props.apolloId!)
-        }}
-      />
-    )
-  }
-
-  // Apollo preview (no candidateId yet) — fall back regardless of context
+  // Apollo preview only for people not in Gio yet. Anyone with a candidate id
+  // opens their Gio profile, the same one a job's Suggested tab shows
+  // (Allan, 2026-10-22), whether or not they first came from Apollo.
   if (props.apolloId && !props.candidateId) {
     return (
       <ApolloPreviewSheet
