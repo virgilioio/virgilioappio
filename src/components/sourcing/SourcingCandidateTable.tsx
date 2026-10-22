@@ -1,49 +1,51 @@
-import { Fragment, useState, useEffect, useMemo } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronRight, ChevronDown, Download, Mail, Phone, X, ArrowUpDown, Sparkles, Heart, Lock, RotateCcw, Search, MoreHorizontal, ThumbsDown, Users } from 'lucide-react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { toast } from 'sonner'
+import { ArrowUpDown, Briefcase, ChevronDown, Linkedin, MoreHorizontal, RotateCcw, Search, ThumbsDown, Undo2, Users } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { AnimatedEmpty, EmptyCard } from '@/components/empty/AnimatedEmpty'
 import { LoadError } from '@/components/empty/LoadError'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
-import { addCandidateToJob } from '@/lib/addCandidateToJob'
-import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { CandidateTableSkeleton } from './CandidateTableSkeleton'
 import { JobSelectionDialog } from './JobSelectionDialog'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { FindMatch, type FindMatchRow } from './FindMatch'
+import { FindAddButton } from './FindAddButton'
+import { SelectionBar, type SelectionAction } from '@/components/shared/SelectionBar'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { SortableHeader } from '@/components/ui/sortable-header'
-import { useSortableTable } from '@/hooks/useSortableTable'
-import { useToast } from '@/hooks/use-toast'
-import { supabase } from '@/lib/supabaseClient'
+import { IconTip } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
-import { IconTip, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useProjectPeople, useProjectPeopleActions, statusLookup, type PersonChange } from '@/hooks/useProjectPeople'
 import { snapshotOf } from '@/lib/projectCandidateState'
 import { createSimilarSearch } from '@/lib/findSimilar'
+import { addFromFind, addSummary, creditsFor, type FindAddTarget, type FindPerson } from '@/lib/findAdd'
 
-// Helper to safely resolve display name across PDL (full_name) and Apollo (candidate_name) candidates
+/**
+ * Find's results (Allan, 2026-10-22): one 52px row per person (name, title and
+ * company, location, match, Add), in lanes: people already in Gio, then new
+ * people from LinkedIn data (PDL) and from Apollo. Everything else about a
+ * person lives in the profile sheet a click opens. One Add control, on the row
+ * and in the bulk bar, puts people in the talent pool or a job.
+ */
+
 const getDisplayName = (c: { full_name?: string; candidate_name?: string }) =>
-  c.full_name || c.candidate_name || 'Unknown'
+  c.full_name || c.candidate_name || 'Unnamed candidate'
 
-// Helper to safely build location string from candidate fields
 const getLocation = (c: { location?: string; location_city?: string; location_state?: string; location_country?: string }) =>
-  c.location || [c.location_city, c.location_state, c.location_country].filter(Boolean).join(', ') || undefined
+  c.location || [c.location_city, c.location_country].filter(Boolean).join(', ') || undefined
 
-interface MatchedCandidate {
+interface MatchedCandidate extends FindMatchRow {
   id: string
   candidate_name?: string
   current_role?: string
@@ -53,64 +55,47 @@ interface MatchedCandidate {
   location_state?: string
   location_country?: string
   linkedin_url?: string
-  match_score: number
-  match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
+  match_tier?: 'excellent' | 'good' | 'fair' | 'minimal' | null
   skills?: string[]
   years_experience?: number
   experience_years?: number
   source: 'local' | 'apollo' | 'pdl'
   display_source?: 'internal' | 'gio' | 'apollo' | 'pdl'
   is_preview?: boolean
-  needs_enrichment?: boolean
-  is_gio_sourced?: boolean
   pdl_id?: string
   summary?: string
   profile_summary?: string | null
   full_name?: string
   apollo_id?: string
-  apollo_score?: number
   headline?: string
   email?: string
-  email_status?: string
   phone?: string
   candidate_id?: string | null
-  industry?: string
-  connections_count?: number
-  follower_count?: number
-  company_url?: string
-  company_website?: string
-  company_industry?: string
-  experience_location?: string
   has_email?: boolean
   has_phone?: boolean
   has_location?: boolean
-  keyword_score?: number
-  matched_keywords?: string[]
   created_at?: string
   /** Jobs this person is or was in (internal lane only). */
   pipeline?: Array<{ job_id: string; job_title: string; stage_name: string | null; status: string; updated_at: string }>
-  /** Why the rule-based fit score is what it is. */
-  fit_reasons?: string[]
   /** What this project decided about them (server, at search time). */
   project_status?: 'active' | 'shortlisted' | 'not_a_fit' | 'archived'
 }
+
+type Lane = 'internal' | 'pdl' | 'preview'
+type SortMode = 'best' | 'recent' | 'experience'
+
+const SORT_LABEL: Record<SortMode, string> = { best: 'Best match', recent: 'Recent activity', experience: 'Experience' }
+const PAGE_STEP = 50
 
 interface SourcingCandidateTableProps {
   candidates: MatchedCandidate[]
   isLoading: boolean
   jobId?: string | null
+  /** The linked job's title, for the Add button. */
+  jobTitle?: string | null
   projectId?: string | null
   searchCriteria?: import('@/types/sourcing').SearchCriteria
-  sourceBreakdown?: {
-    internal?: number
-    gio?: number
-    pdl: number
-    apollo: number
-    full_data: number
-    preview_only: number
-  }
   onCandidatesChanged?: () => void | Promise<void>
-  topMatchRowId?: string | null
   /** How many matches the search found before the result filters. */
   totalMatches?: number
   onClearFilters?: () => void
@@ -118,19 +103,18 @@ interface SourcingCandidateTableProps {
   /** §16: the search failed; shown instead of "no matches". */
   loadFailed?: boolean
   onRetry?: () => void
-  /** The project's organization, for "More like this" searches. */
+  /** The project's organization, for "Find people like this" searches. */
   organizationId?: string | null
 }
 
-export function SourcingCandidateTable({ 
-  candidates: allCandidates, 
+export function SourcingCandidateTable({
+  candidates: allCandidates,
   isLoading,
   jobId,
+  jobTitle,
   projectId,
   searchCriteria,
-  sourceBreakdown,
   onCandidatesChanged,
-  topMatchRowId,
   totalMatches = 0,
   onClearFilters,
   onEditSearch,
@@ -140,619 +124,207 @@ export function SourcingCandidateTable({
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { toast } = useToast()
+  const { isCollectDisabled, renewsOn } = useSourcingCreditWarnings()
+  const linkedJob = jobId ? { id: jobId, title: jobTitle?.trim() || 'the linked job' } : null
 
-  // Shortlist and "not a fit" (Find Phase 2): the project's decisions,
-  // applied at once; "not a fit" and archived people leave the results.
+  // "Not a fit" leaves the results (with Undo); "Show" brings them back to restore.
   const { data: projectPeople } = useProjectPeople(projectId)
   const peopleActions = useProjectPeopleActions(projectId)
   const statusOf = useMemo(() => statusLookup(projectPeople), [projectPeople])
+  const [showHidden, setShowHidden] = useState(false)
+
+  // Collected this session: the row becomes one of ours at once.
+  const [collectedId, setCollectedId] = useState<Map<string, string>>(new Map())
+  const [collectedName, setCollectedName] = useState<Map<string, string>>(new Map())
+  const [addedTo, setAddedTo] = useState<Map<string, string>>(new Map())
+  const [adding, setAdding] = useState<Set<string>>(new Set())
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [chooseFor, setChooseFor] = useState<string[] | null>(null)
+  const [sortMode, setSortMode] = useState<SortMode>('best')
+  const [visibleCount, setVisibleCount] = useState(PAGE_STEP)
+  const [startingSimilar, setStartingSimilar] = useState<string | null>(null)
+
+  const rowKey = (c: MatchedCandidate) => c.apollo_id || c.id
+  const laneOf = (c: MatchedCandidate): Lane =>
+    c.display_source === 'internal' || (!!c.apollo_id && collectedId.has(c.apollo_id))
+      ? 'internal'
+      : c.display_source === 'pdl' || c.source === 'pdl' ? 'pdl' : 'preview'
+  const candidateIdOf = (c: MatchedCandidate) =>
+    c.candidate_id || (c.apollo_id ? collectedId.get(c.apollo_id) : undefined) || (c.display_source === 'internal' ? c.id : null)
   const rowStatus = (c: MatchedCandidate) =>
-    statusOf({ apolloId: c.apollo_id, candidateId: c.display_source === 'internal' ? (c.candidate_id || c.id) : null }) ??
-    c.project_status ?? 'active'
-  const candidates = useMemo(
-    () => allCandidates.filter((c) => { const st = rowStatus(c); return st !== 'not_a_fit' && st !== 'archived' }),
+    statusOf({ apolloId: c.apollo_id, candidateId: laneOf(c) === 'internal' ? candidateIdOf(c) : null }) ?? c.project_status ?? 'active'
+  const isHidden = (c: MatchedCandidate) => { const st = rowStatus(c); return st === 'not_a_fit' || st === 'archived' }
+
+  const visibleRows = useMemo(
+    () => allCandidates.filter((c) => showHidden || !isHidden(c)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allCandidates, statusOf, showHidden],
+  )
+  const hiddenCount = useMemo(
+    () => allCandidates.filter(isHidden).length,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [allCandidates, statusOf],
   )
-  const hiddenCount = allCandidates.length - candidates.length
-  const [startingSimilar, setStartingSimilar] = useState<string | null>(null)
-  const PAGE_STEP = 25
-  const [visibleCount, setVisibleCount] = useState(PAGE_STEP)
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
-  const [selectedApolloId, setSelectedApolloId] = useState<string | null>(null)
-  const [selectedApolloData, setSelectedApolloData] = useState<any>(null)
-  const [selectedPdlData, setSelectedPdlData] = useState<MatchedCandidate | null>(null)
+
+  // Lanes in order; the sort applies within each lane. "Best match" keeps the
+  // server's order (search match for profiles, checks for previews).
+  const sortedData = useMemo(() => {
+    const by = (list: MatchedCandidate[]) => {
+      if (sortMode === 'best') return list
+      const val = (c: MatchedCandidate) =>
+        sortMode === 'experience' ? (c.years_experience ?? c.experience_years ?? -1) : Date.parse(c.created_at ?? '') || 0
+      return [...list].sort((a, b) => val(b) - val(a))
+    }
+    const lanes: Record<Lane, MatchedCandidate[]> = { internal: [], pdl: [], preview: [] }
+    for (const c of visibleRows) lanes[laneOf(c)].push(c)
+    return [...by(lanes.internal), ...by(lanes.pdl), ...by(lanes.preview)]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleRows, sortMode, collectedId])
+  const laneCounts = useMemo(() => {
+    const n: Record<Lane, number> = { internal: 0, pdl: 0, preview: 0 }
+    for (const c of sortedData) n[laneOf(c)]++
+    return n
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedData])
+
+  const pageRows = sortedData.slice(0, visibleCount)
+  const hasMore = visibleCount < sortedData.length
+
+  // ── The profile sheet ──
   const [sheetOpen, setSheetOpen] = useState(false)
-  const { isCollectDisabled, renewsOn } = useSourcingCreditWarnings()
-
-  // Fit segment filter (toolbar) — All / Strong fit / Good / Possible / Collected
-  type FitSegment = 'all' | 'strong' | 'good' | 'possible' | 'collected'
-  const [fitSegment, setFitSegment] = useState<FitSegment>('all')
-  const fitSegRef = useSegmentLayer<HTMLDivElement>()
-  // Sort mode (toolbar)
-  type SortMode = 'ai_fit' | 'recent' | 'experience'
-  const [sortMode, setSortMode] = useState<SortMode>('ai_fit')
-
-  // Bulk selection state
-  const [selectedApolloIds, setSelectedApolloIds] = useState<Set<string>>(new Set())
-  const [isBulkCollecting, setIsBulkCollecting] = useState(false)
-  const [showJobDialog, setShowJobDialog] = useState(false)
-  const [pendingBulkIds, setPendingBulkIds] = useState<string[]>([])
-
-  // Track which candidates are already in pipeline (also referenced below; declared early for filter use)
-  const [addedCandidates, setAddedCandidates] = useState<Set<string>>(new Set())
-  const [loadingCandidates, setLoadingCandidates] = useState<Set<string>>(new Set())
-  const [collectingProfiles, setCollectingProfiles] = useState<Set<string>>(new Set())
-  // Track apollo IDs that have been collected in this session (optimistic state)
-  const [collectedApolloIds, setCollectedApolloIds] = useState<Set<string>>(new Set())
-  // apollo_id -> candidate_id mapping for session-collected rows, so the sheet can open as internal
-  const [collectedCandidateIdByApollo, setCollectedCandidateIdByApollo] = useState<Map<string, string>>(new Map())
-  // apollo_id -> real (un-obfuscated) name returned by enrich-apollo-profile
-  const [collectedNameByApollo, setCollectedNameByApollo] = useState<Map<string, string>>(new Map())
-
-  // Segment counts (computed from full candidate set, ignoring segment filter)
-  const segmentCounts = {
-    all: candidates.length,
-    strong: candidates.filter(c => c.match_tier === 'excellent').length,
-    good: candidates.filter(c => c.match_tier === 'good').length,
-    possible: candidates.filter(c => c.match_tier === 'fair' || c.match_tier === 'minimal').length,
-    collected: candidates.filter(c =>
-      c.display_source === 'internal' ||
-      (c.source === 'apollo' && !!c.candidate_id) ||
-      (!!c.apollo_id && collectedApolloIds.has(c.apollo_id))
-    ).length,
+  const [sheetKey, setSheetKey] = useState<string | null>(null)
+  const sheetRow = sheetKey ? sortedData.find((c) => rowKey(c) === sheetKey) ?? null : null
+  const sheetIndex = sheetRow ? sortedData.indexOf(sheetRow) : -1
+  const openSheet = (c: MatchedCandidate) => {
+    setSheetKey(rowKey(c))
+    setSheetOpen(true)
+    const i = sortedData.indexOf(c)
+    if (i >= visibleCount) setVisibleCount(Math.ceil((i + 1) / PAGE_STEP) * PAGE_STEP)
   }
-
-  // Apply fit segment filter
-  const segmentFiltered = candidates.filter(c => {
-    switch (fitSegment) {
-      case 'strong': return c.match_tier === 'excellent'
-      case 'good': return c.match_tier === 'good'
-      case 'possible': return c.match_tier === 'fair' || c.match_tier === 'minimal'
-      case 'collected':
-        return c.display_source === 'internal' ||
-          (c.source === 'apollo' && !!c.candidate_id) ||
-          (!!c.apollo_id && collectedApolloIds.has(c.apollo_id))
-      default: return true
-    }
-  })
-
-  // Sortable table — sort key derived from sortMode
-  // Experience arrives as years_experience or experience_years depending on the source.
-  const sortKey = sortMode === 'ai_fit' ? 'match_score' : sortMode === 'experience' ? 'sort_experience' : 'created_at'
-  const sortable = segmentFiltered.map(c => ({ ...c, sort_experience: c.years_experience ?? c.experience_years ?? null }))
-  const { sortedData: sortedRaw, sortConfig, requestSort } = useSortableTable(
-    sortable,
-    { key: sortKey as any, direction: 'desc' }
-  )
-  // Lanes (Find Phase 1): people already in Gio first, then new ones, each
-  // in the chosen sort order.
-  const isInGioLane = (c: MatchedCandidate) => c.display_source === 'internal'
-  const sortedData = useMemo(
-    () => [...sortedRaw.filter(isInGioLane), ...sortedRaw.filter(c => !isInGioLane(c))],
-    [sortedRaw],
-  )
-  const inGioCount = useMemo(() => sortedData.filter(isInGioLane).length, [sortedData])
-
-  // Pagination — client-side Load N more
-  const totalCount = sortedData.length
-  const startIndex = 0
-  const paginatedData = sortedData.slice(0, visibleCount)
-  const hasMore = visibleCount < totalCount
-
-  // Apollo candidates that can be selected on current page (not already collected)
-  const apolloCandidatesOnPage = paginatedData.filter(c => 
-    c.source === 'apollo' && !c.candidate_id && c.apollo_id
-  )
-
-  const isAllApolloSelected = apolloCandidatesOnPage.length > 0 && 
-    apolloCandidatesOnPage.every(c => selectedApolloIds.has(c.apollo_id!))
-
-  const toggleSelectApollo = (apolloId: string) => {
-    setSelectedApolloIds(prev => {
-      const next = new Set(prev)
-      if (next.has(apolloId)) {
-        next.delete(apolloId)
-      } else {
-        next.add(apolloId)
+  const sheetLane = sheetRow ? laneOf(sheetRow) : null
+  const sheetProps = (() => {
+    if (!sheetRow) return { candidateId: null, apolloId: null, apolloData: null, pdlData: null }
+    const realName = sheetRow.apollo_id ? collectedName.get(sheetRow.apollo_id) : undefined
+    if (sheetLane === 'internal') {
+      return {
+        candidateId: candidateIdOf(sheetRow),
+        apolloId: sheetRow.apollo_id || null,
+        apolloData: sheetRow.apollo_id ? { ...sheetRow, candidate_name: realName || sheetRow.candidate_name, full_name: realName || sheetRow.full_name } : null,
+        pdlData: null,
       }
-      return next
-    })
-  }
+    }
+    if (sheetLane === 'pdl') return { candidateId: null, apolloId: null, apolloData: null, pdlData: sheetRow }
+    return { candidateId: null, apolloId: sheetRow.apollo_id || null, apolloData: sheetRow, pdlData: null }
+  })()
 
-  const toggleSelectAllApollo = () => {
-    if (isAllApolloSelected) {
-      // Deselect all on current page
-      setSelectedApolloIds(prev => {
-        const next = new Set(prev)
-        apolloCandidatesOnPage.forEach(c => next.delete(c.apollo_id!))
-        return next
-      })
-    } else {
-      // Select all on current page
-      setSelectedApolloIds(prev => {
-        const next = new Set(prev)
-        apolloCandidatesOnPage.forEach(c => next.add(c.apollo_id!))
-        return next
-      })
+  // ── Adding ──
+  const personOf = (c: MatchedCandidate): FindPerson => {
+    const lane = laneOf(c)
+    return {
+      key: rowKey(c),
+      kind: lane,
+      candidateId: lane === 'internal' ? candidateIdOf(c) : null,
+      apolloId: lane === 'preview' ? c.apollo_id ?? null : null,
+      name: getDisplayName(c),
+      pdl: lane === 'pdl' ? (c as unknown as Record<string, unknown>) : undefined,
     }
   }
 
-  const clearSelection = () => setSelectedApolloIds(new Set())
-
-  // Track current candidate index for navigation
-  const currentIndex = selectedApolloId 
-    ? sortedData.findIndex(c => c.apollo_id === selectedApolloId)
-    : selectedPdlData
-    ? sortedData.findIndex(c => c.id === selectedPdlData.id)
-    : sortedData.findIndex(c => c.id === selectedCandidateId)
-  
-  const hasPrev = currentIndex > 0
-  const hasNext = currentIndex >= 0 && currentIndex < sortedData.length - 1
-
-  // Navigation handlers
-  const handleNavigatePrev = () => {
-    if (currentIndex > 0) {
-      const prevCandidate = sortedData[currentIndex - 1]
-      
-      if (isPdlCandidate(prevCandidate)) {
-        setSelectedPdlData(prevCandidate)
-        setSelectedCandidateId(null)
-        setSelectedApolloId(null)
-        setSelectedApolloData(null)
-      } else if (prevCandidate.candidate_id || prevCandidate.source === 'local') {
-        setSelectedCandidateId(prevCandidate.id)
-        setSelectedApolloId(null)
-        setSelectedApolloData(null)
-        setSelectedPdlData(null)
-      } else if (prevCandidate.source === 'apollo' && prevCandidate.apollo_id) {
-        setSelectedCandidateId(null)
-        setSelectedPdlData(null)
-        setSelectedApolloId(prevCandidate.apollo_id)
-        setSelectedApolloData({
-          candidate_name: getDisplayName(prevCandidate),
-          headline: prevCandidate.headline,
-          location: getLocation(prevCandidate),
-          current_company: prevCandidate.current_company,
-          current_role: prevCandidate.current_role,
-          linkedin_url: prevCandidate.linkedin_url,
-          apollo_score: prevCandidate.apollo_score,
-          email: prevCandidate.email,
-          phone: prevCandidate.phone,
-          industry: prevCandidate.industry,
-          connections_count: prevCandidate.connections_count,
-          follower_count: prevCandidate.follower_count,
-          company_url: prevCandidate.company_url,
-          company_website: prevCandidate.company_website,
-          company_industry: prevCandidate.company_industry,
-          experience_location: prevCandidate.experience_location,
-          has_email: prevCandidate.has_email,
-          has_phone: prevCandidate.has_phone,
-          has_location: prevCandidate.has_location
-        })
-      }
-      
-      // Ensure prev candidate is visible
-      if (currentIndex - 1 >= visibleCount) {
-        setVisibleCount(Math.ceil((currentIndex) / PAGE_STEP) * PAGE_STEP)
-      }
-    }
-  }
-
-  const handleNavigateNext = () => {
-    if (currentIndex < sortedData.length - 1) {
-      const nextCandidate = sortedData[currentIndex + 1]
-      
-      if (isPdlCandidate(nextCandidate)) {
-        setSelectedPdlData(nextCandidate)
-        setSelectedCandidateId(null)
-        setSelectedApolloId(null)
-        setSelectedApolloData(null)
-      } else if (nextCandidate.candidate_id || nextCandidate.source === 'local') {
-        setSelectedCandidateId(nextCandidate.id)
-        setSelectedApolloId(null)
-        setSelectedApolloData(null)
-        setSelectedPdlData(null)
-      } else if (nextCandidate.source === 'apollo' && nextCandidate.apollo_id) {
-        setSelectedCandidateId(null)
-        setSelectedPdlData(null)
-        setSelectedApolloId(nextCandidate.apollo_id)
-        setSelectedApolloData({
-          candidate_name: getDisplayName(nextCandidate),
-          headline: nextCandidate.headline,
-          location: getLocation(nextCandidate),
-          current_company: nextCandidate.current_company,
-          current_role: nextCandidate.current_role,
-          linkedin_url: nextCandidate.linkedin_url,
-          apollo_score: nextCandidate.apollo_score,
-          email: nextCandidate.email,
-          phone: nextCandidate.phone,
-          industry: nextCandidate.industry,
-          connections_count: nextCandidate.connections_count,
-          follower_count: nextCandidate.follower_count,
-          company_url: nextCandidate.company_url,
-          company_website: nextCandidate.company_website,
-          company_industry: nextCandidate.company_industry,
-          experience_location: nextCandidate.experience_location,
-          has_email: nextCandidate.has_email,
-          has_phone: nextCandidate.has_phone,
-          has_location: nextCandidate.has_location
-        })
-      }
-      
-      // Ensure next candidate is visible
-      if (currentIndex + 1 >= visibleCount) {
-        setVisibleCount(Math.ceil((currentIndex + 2) / PAGE_STEP) * PAGE_STEP)
-      }
-    }
-  }
-
-  // Handler for when a candidate is collected from the sheet
-  const handleCandidateCollected = (candidateId: string, apolloId: string) => {
-    setCollectedApolloIds(prev => new Set(prev).add(apolloId))
-    setAddedCandidates(prev => new Set(prev).add(candidateId))
-    if (apolloId && candidateId) {
-      setCollectedCandidateIdByApollo(prev => {
-        const next = new Map(prev)
-        next.set(apolloId, candidateId)
-        return next
-      })
-    }
-    void onCandidatesChanged?.()
-  }
-
-  // Check existing pipeline candidates
-  useEffect(() => {
-    if (!jobId || candidates.length === 0) return
-
-    const checkExisting = async () => {
-      const { data } = await supabase
-        .from('job_candidate_associations')
-        .select('candidate_id')
-        .eq('job_id', jobId)
-        .in('candidate_id', candidates.map(c => c.id))
-
-      if (data) {
-        setAddedCandidates(new Set(data.map(d => d.candidate_id)))
-      }
-    }
-
-    checkExisting()
-  }, [jobId, candidates])
-
-  // Bulk collect handler
-  const handleBulkCollect = async () => {
-    if (selectedApolloIds.size === 0) return
-    
-    const idsToCollect = Array.from(selectedApolloIds)
-    
-    // If no job linked, show job selection dialog
-    if (!jobId) {
-      setPendingBulkIds(idsToCollect)
-      setShowJobDialog(true)
+  const runAdd = async (rows: MatchedCandidate[], target: FindAddTarget) => {
+    const people = rows.filter((c) => !addedTo.has(rowKey(c))).map(personOf)
+    if (!people.length) return
+    if (creditsFor(people) > 0 && isCollectDisabled) {
+      toast.error(`This cycle's Apollo credits are used. They renew on ${renewsOn}.`)
       return
     }
-    
-    // Proceed with bulk collection
-    await executeBulkCollect(idsToCollect, jobId)
-  }
-
-  const executeBulkCollect = async (apolloIds: string[], targetJobId?: string | null, stageId?: string) => {
-    setIsBulkCollecting(true)
-    
+    const keys = people.map((p) => p.key)
+    setAdding((prev) => new Set([...prev, ...keys]))
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      const { data, error } = await supabase.functions.invoke('enrich-apollo-profile', {
-        body: {
-          apollo_ids: apolloIds,
-          job_id: targetJobId,
-          stage_id: stageId,
-          sourcing_project_id: projectId,
-          user_id: user?.id
-        }
+      const res = await addFromFind(people, target, projectId ?? null)
+      if (res.collected.size) setCollectedId((prev) => new Map([...prev, ...res.collected]))
+      if (res.names.size) setCollectedName((prev) => new Map([...prev, ...res.names]))
+      const label = target.kind === 'job' ? target.jobTitle : 'Talent pool'
+      setAddedTo((prev) => { const next = new Map(prev); for (const k of res.ok) next.set(k, label); return next })
+      setSelected((prev) => { const next = new Set(prev); for (const k of res.ok) next.delete(k); return next })
+      if (res.error === 'credits') toast.error(`This cycle's Apollo credits are used. They renew on ${renewsOn}.`)
+      else if (res.ok.size === 0) toast.error(people.length === 1 ? `Couldn't add ${people[0].name}. Try again.` : "Couldn't add them. Try again.", {
+        action: { label: 'Retry', onClick: () => void runAdd(rows, target) },
       })
-      
-      if (error) {
-        if (error.message?.includes('CREDITS_EXHAUSTED')) {
-          throw new Error(`This cycle's Apollo credits are used. They renew on ${renewsOn}.`)
-        }
-        throw error
-      }
-      
-      const successCount = data?.enriched_count || 0
-      const alreadyCollected = data?.results?.filter((r: any) => r.already_collected).length || 0
-      
-      toast({
-        title: 'Profiles collected',
-        description: `${successCount} new profile(s) collected.${alreadyCollected > 0 ? ` ${alreadyCollected} were already in your database.` : ''}`
-      })
-      
-      // Immediately mark all as collected for instant badge display
-      setCollectedApolloIds(prev => {
-        const next = new Set(prev)
-        apolloIds.forEach(id => next.add(id))
-        return next
-      })
-      // Capture apollo_id -> candidate_id + real name mapping so the sheet can route to internal view immediately
-      if (Array.isArray(data?.results)) {
-        setCollectedCandidateIdByApollo(prev => {
-          const next = new Map(prev)
-          for (const r of data.results) {
-            if (r?.apollo_id && r?.candidate_id) next.set(r.apollo_id, r.candidate_id)
-          }
-          return next
-        })
-        setCollectedNameByApollo(prev => {
-          const next = new Map(prev)
-          for (const r of data.results) {
-            if (r?.apollo_id && r?.candidate_name) next.set(r.apollo_id, r.candidate_name)
-          }
-          return next
-        })
-      }
-
-      clearSelection()
-      // Re-run sourcing-search so display_source / candidate_id reflect the new collection
-      void onCandidatesChanged?.()
+      else toast.success(addSummary(res, target))
+      if (res.collected.size) void onCandidatesChanged?.()
       queryClient.invalidateQueries({ queryKey: ['saved-candidates', projectId] })
-    } catch (error: any) {
-      toast({
-        title: 'Failed to collect profiles',
-        description: error.message,
-        variant: 'destructive'
-      })
     } finally {
-      setIsBulkCollecting(false)
+      setAdding((prev) => { const next = new Set(prev); for (const k of keys) next.delete(k); return next })
     }
   }
 
-  const handleCollectProfile = async (apolloId: string) => {
-    if (!jobId) {
-      toast({
-        title: 'No job linked',
-        description: 'Cannot collect profile without a job context.',
-        variant: 'destructive'
-      })
-      return
-    }
+  const chooseJobFor = (rows: MatchedCandidate[]) => setChooseFor(rows.map(rowKey))
 
-    if (isCollectDisabled) {
-      toast({
-        title: 'Apollo credits used up',
-        description: `This cycle's Apollo credits are used. They renew on ${renewsOn}.`,
-        variant: 'destructive',
-        duration: 8000
-      })
-      return
-    }
-
-    setCollectingProfiles(prev => new Set(prev).add(apolloId))
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-
-      const { data, error } = await supabase.functions.invoke('enrich-apollo-profile', {
-        body: {
-          apollo_id: apolloId,
-          job_id: jobId,
-          sourcing_project_id: projectId,
-          user_id: user?.id
-        }
-      })
-
-      if (error) {
-        // Handle credit exhaustion error specifically
-        if (error.message?.includes('CREDITS_EXHAUSTED')) {
-          throw new Error(`This cycle's Apollo credits are used. They renew on ${renewsOn}.`)
-        }
-        throw error
-      }
-
-      toast({
-        title: 'Profile collected',
-        description: 'Full candidate profile has been added to your pipeline.'
-      })
-
-      // Immediately mark as collected for instant badge display
-      setCollectedApolloIds(prev => new Set(prev).add(apolloId))
-      // Capture candidate_id + real name when returned so the row + sheet update instantly
-      const firstResult = (data as any)?.results?.[0]
-      const newCandidateId = (data as any)?.candidate_id || firstResult?.candidate_id
-      const newCandidateName = firstResult?.candidate_name
-      if (newCandidateId) {
-        setCollectedCandidateIdByApollo(prev => {
-          const next = new Map(prev)
-          next.set(apolloId, newCandidateId)
-          return next
-        })
-      }
-      if (newCandidateName) {
-        setCollectedNameByApollo(prev => {
-          const next = new Map(prev)
-          next.set(apolloId, newCandidateName)
-          return next
-        })
-      }
-
-      // Re-run sourcing-search so display_source / candidate_id reflect the new collection
-      void onCandidatesChanged?.()
-      queryClient.invalidateQueries({ queryKey: ['saved-candidates', projectId] })
-    } catch (error: any) {
-      toast({
-        title: 'Failed to collect profile',
-        description: error.message,
-        variant: 'destructive'
-      })
-    } finally {
-      setCollectingProfiles(prev => {
-        const next = new Set(prev)
-        next.delete(apolloId)
-        return next
-      })
-    }
-  }
-
-  const handleAddToPipeline = async (candidate: MatchedCandidate, e?: React.MouseEvent) => {
-    e?.stopPropagation()
-    
-    if (!jobId) {
-      toast({
-        title: 'No job linked',
-        description: 'This project is not linked to a job yet.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    setLoadingCandidates(prev => new Set(prev).add(candidate.id))
-
-    try {
-      // The real candidate: an internal row's candidate_id, or a PDL person
-      // saved just below. An Apollo preview has no candidate until collected.
-      let candidateDbId: string | null = candidate.candidate_id ?? null
-
-      // PDL candidates are in-memory only — upsert into candidates table first
-      if (isPdlCandidate(candidate) && !candidate.candidate_id) {
-        const { data: { user } } = await supabase.auth.getUser()
-        
-        // Get org id from user profile
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const client: any = supabase
-        const { data: profile } = await client
-          .from('profiles')
-          .select('organization_id')
-          .eq('id', user!.id)
-          .single()
-
-        if (!profile?.organization_id) throw new Error('No organization found')
-
-        const insertData = {
-          candidate_name: candidate.full_name || candidate.candidate_name || 'Unknown',
-          email: candidate.email || null,
-          phone: candidate.phone || null,
-          linkedin_url: candidate.linkedin_url || null,
-          current_job_title: candidate.current_role || null,
-          company_current: candidate.current_company || null,
-          location_city: candidate.location_city || null,
-          location_state: candidate.location_state || null,
-          location_country: candidate.location_country || null,
-          profile_summary: candidate.summary || candidate.profile_summary || null,
-          skills: candidate.skills || null,
-          years_experience: candidate.years_experience || candidate.experience_years || null,
-          source: 'pdl' as const,
-          organization_id: profile.organization_id,
-          created_by: user!.id,
-        }
-
-        const { data: newCandidate, error: insertError } = await supabase
-          .from('candidates')
-          .insert(insertData)
-          .select('id')
-          .single()
-
-        if (insertError) throw insertError
-        candidateDbId = newCandidate.id
-      }
-
-      if (!candidateDbId) {
-        throw new Error('Collect this person first, then add them to the job.')
-      }
-      await addCandidateToJob(jobId, candidateDbId)
-
-      setAddedCandidates(prev => new Set(prev).add(candidate.id))
-      toast({
-        title: 'Added to pipeline',
-        description: `${getDisplayName(candidate)} has been added.`
-      })
-    } catch (error: any) {
-      toast({
-        title: 'Failed to add candidate',
-        description: error.message,
-        variant: 'destructive'
-      })
-    } finally {
-      setLoadingCandidates(prev => {
-        const next = new Set(prev)
-        next.delete(candidate.id)
-        return next
-      })
-    }
-  }
-
-  // Unified display source helper — trusts backend `display_source`, falls back to legacy flags
-  const getDisplaySource = (c: MatchedCandidate): 'internal' | 'gio' | 'apollo' | 'pdl' =>
-    c.display_source ||
-    (c.source === 'apollo' && c.is_preview === false && !!c.candidate_id && !c.is_gio_sourced ? 'internal' :
-     c.is_gio_sourced ? 'gio' :
-     c.source === 'pdl' ? 'pdl' : 'apollo')
-
-  // Legacy helpers now derived from getDisplaySource
-  const isCollectedApollo = (c: MatchedCandidate) => getDisplaySource(c) === 'internal'
-  const isGioSourced = (c: MatchedCandidate) => getDisplaySource(c) === 'gio'
-  const isPdlCandidate = (c: MatchedCandidate) => getDisplaySource(c) === 'pdl'
-  const isApolloPreview = (c: MatchedCandidate) => getDisplaySource(c) === 'apollo'
-
-  const getMatchBadgeColor = (tier: string) => {
-    switch (tier) {
-      case 'excellent': return 'bg-green-500 text-white hover:bg-green-600'
-      case 'good': return 'bg-blue-500 text-white hover:bg-blue-600'
-      case 'fair': return 'bg-yellow-500 text-white hover:bg-yellow-600'
-      case 'minimal': return 'bg-orange-500 text-white hover:bg-orange-600'
-      default: return 'bg-muted text-muted-foreground'
-    }
-  }
-
-  const personKey = (c: MatchedCandidate) => {
-    const internal = c.display_source === 'internal' || (!!c.apollo_id && collectedApolloIds.has(c.apollo_id))
-    const mapped = c.apollo_id ? collectedCandidateIdByApollo.get(c.apollo_id) : undefined
-    return { apolloId: c.apollo_id ?? null, candidateId: internal ? (c.candidate_id || mapped || (c.display_source === 'internal' ? c.id : null)) : null }
-  }
+  // ── Not a fit, Find people like this ──
   const changeFor = (c: MatchedCandidate): PersonChange => ({
-    key: personKey(c),
+    key: { apolloId: c.apollo_id ?? null, candidateId: laneOf(c) === 'internal' ? candidateIdOf(c) : null },
     snapshot: snapshotOf(c),
     previous: rowStatus(c),
   })
-  const canKeep = (c: MatchedCandidate) => { const k = personKey(c); return !!(k.apolloId || k.candidateId) }
-
-  const toggleShortlist = (c: MatchedCandidate) => {
-    if (rowStatus(c) === 'shortlisted') void peopleActions.restore([changeFor(c)])
-    else void peopleActions.shortlist([changeFor(c)])
-  }
-  const selectedRows = () => allCandidates.filter((c) => c.apollo_id && selectedApolloIds.has(c.apollo_id))
-  const bulkShortlist = () => { void peopleActions.shortlist(selectedRows().map(changeFor)); clearSelection() }
-  const bulkNotAFit = () => { void peopleActions.notAFit(selectedRows().map(changeFor)); clearSelection() }
-
+  const canKeep = (c: MatchedCandidate) => !!(c.apollo_id || candidateIdOf(c))
   const startSimilar = async (c: MatchedCandidate) => {
-    const candidateId = personKey(c).candidateId
+    const candidateId = candidateIdOf(c)
     if (!candidateId || !organizationId) return
     setStartingSimilar(candidateId)
     try {
-      const id = await createSimilarSearch(candidateId, organizationId)
-      navigate(`/find/${id}`)
+      navigate(`/find/${await createSimilarSearch(candidateId, organizationId)}`)
     } catch (error) {
-      toast({ title: "Couldn't start that search", description: error instanceof Error ? error.message : 'Try again in a moment.', variant: 'destructive' })
+      toast.error("Couldn't start that search", { description: error instanceof Error ? error.message : 'Try again in a moment.' })
     } finally {
       setStartingSimilar(null)
     }
   }
 
-  if (loadFailed && candidates.length === 0) {
-    return (
-      <EmptyCard>
-        <LoadError what="matches for this search" onRetry={onRetry} />
-      </EmptyCard>
-    )
-  }
+  // ── Selection ──
+  const selectable = (c: MatchedCandidate) => !addedTo.has(rowKey(c)) && !isHidden(c)
+  const pageSelectable = pageRows.filter(selectable)
+  const allOnPage = pageSelectable.length > 0 && pageSelectable.every((c) => selected.has(rowKey(c)))
+  const someOnPage = pageSelectable.some((c) => selected.has(rowKey(c)))
+  const toggle = (c: MatchedCandidate) =>
+    setSelected((prev) => { const next = new Set(prev); const k = rowKey(c); if (next.has(k)) next.delete(k); else next.add(k); return next })
+  const togglePage = () =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      for (const c of pageSelectable) { if (allOnPage) next.delete(rowKey(c)); else next.add(rowKey(c)) }
+      return next
+    })
+  const selectedRows = sortedData.filter((c) => selected.has(rowKey(c)))
+  const selectedPeople = selectedRows.map(personOf)
+  const selCredits = creditsFor(selectedPeople)
+  const selOnlyInGio = selectedPeople.length > 0 && selectedPeople.every((p) => p.kind === 'internal')
+  const costHint = selCredits ? `${selCredits} credit${selCredits === 1 ? '' : 's'}` : undefined
+  const bulkBusy = selectedRows.some((c) => adding.has(rowKey(c)))
 
-  if (isLoading) {
-    return <CandidateTableSkeleton rows={8} />
-  }
+  const bulkActions: SelectionAction[] = [
+    {
+      id: 'add',
+      slot: 'primary',
+      label: linkedJob ? `Add to ${linkedJob.title}` : selOnlyInGio ? 'Add to a job' : 'Add to talent pool',
+      onClick: () => (linkedJob
+        ? void runAdd(selectedRows, { kind: 'job', jobId: linkedJob.id, jobTitle: linkedJob.title })
+        : selOnlyInGio ? chooseJobFor(selectedRows) : void runAdd(selectedRows, { kind: 'pool' })),
+      disabled: bulkBusy,
+    },
+    { id: 'pool', slot: 'overflow', icon: Users, label: 'Talent pool', hint: costHint, disabled: selOnlyInGio, onClick: () => void runAdd(selectedRows, { kind: 'pool' }) },
+    ...(linkedJob ? [{ id: 'job', slot: 'overflow' as const, icon: Briefcase, label: linkedJob.title, hint: costHint, onClick: () => void runAdd(selectedRows, { kind: 'job', jobId: linkedJob.id, jobTitle: linkedJob.title }) }] : []),
+    { id: 'choose', slot: 'overflow', icon: Search, label: linkedJob ? 'Another job or stage…' : 'Choose a job and stage…', onClick: () => chooseJobFor(selectedRows) },
+    ...(projectId ? [{
+      id: 'notfit', slot: 'overflow' as const, icon: ThumbsDown, label: 'Not a fit',
+      onClick: () => { void peopleActions.notAFit(selectedRows.filter(canKeep).map(changeFor)); setSelected(new Set()) },
+    }] : []),
+  ]
 
-  if (candidates.length === 0) {
-    // §17: the result filters hide every match → Clear filters; the search itself
-    // found nothing → widen it.
+  // ── States ──
+  if (loadFailed && allCandidates.length === 0) {
+    return <EmptyCard><LoadError what="matches for this search" onRetry={onRetry} /></EmptyCard>
+  }
+  if (isLoading) return <CandidateTableSkeleton rows={10} />
+  if (visibleRows.length === 0) {
     return (
       <EmptyCard>
         {hiddenCount > 0 && totalMatches <= hiddenCount ? (
@@ -760,7 +332,8 @@ export function SourcingCandidateTable({
             scene="search"
             onceKey="find-results"
             title="Everyone here is marked not a fit"
-            body={`${hiddenCount.toLocaleString()} ${hiddenCount === 1 ? 'person is' : 'people are'} on the Shortlist tab under Not a fit.`}
+            body={`${hiddenCount.toLocaleString()} ${hiddenCount === 1 ? 'person is' : 'people are'} hidden from the results.`}
+            primary={{ label: 'Show them', icon: <RotateCcw size={16} strokeWidth={2} />, onClick: () => setShowHidden(true) }}
           />
         ) : totalMatches > 0 ? (
           <AnimatedEmpty
@@ -775,7 +348,7 @@ export function SourcingCandidateTable({
             scene="search"
             onceKey="find-results"
             title="No matches for this search"
-            body="Try widening the criteria. Fewer must-haves usually helps."
+            body="Try widening it: more titles or places, or fewer must-have skills."
             primary={onEditSearch ? { label: 'Edit search', icon: <Search size={16} strokeWidth={2} />, onClick: onEditSearch } : undefined}
           />
         )}
@@ -783,819 +356,315 @@ export function SourcingCandidateTable({
     )
   }
 
+  const laneLabel: Record<Lane, string> = {
+    internal: `Already in Gio · ${laneCounts.internal.toLocaleString()}`,
+    pdl: `New from LinkedIn data · ${laneCounts.pdl.toLocaleString()}`,
+    preview: `New from Apollo · ${laneCounts.preview.toLocaleString()}`,
+  }
+  const laneNote: Partial<Record<Lane, string>> = {
+    preview: 'Apollo shows the title and company until you add someone · 1 credit each',
+  }
+
+  const initials = (name: string) =>
+    name.split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]).join('').toUpperCase().replace(/[^A-Z0-9]/g, '') || '?'
+
+  const RowMenu = ({ c }: { c: MatchedCandidate }) => {
+    const lane = laneOf(c)
+    const hidden = isHidden(c)
+    if (!projectId || !canKeep(c)) return null
+    return (
+      <DropdownMenu>
+        <IconTip label="More actions">
+          <DropdownMenuTrigger asChild>
+            <Button size="xs" variant="ghost" iconOnly icon={MoreHorizontal} aria-label="More actions" onClick={(e) => e.stopPropagation()} />
+          </DropdownMenuTrigger>
+        </IconTip>
+        <DropdownMenuContent align="end" sideOffset={6} onClick={(e) => e.stopPropagation()}>
+          {hidden ? (
+            <DropdownMenuItem onSelect={() => void peopleActions.restore([changeFor(c)])}>
+              <Undo2 /><span className="truncate">Back to the results</span>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onSelect={() => void peopleActions.notAFit([changeFor(c)])}>
+              <ThumbsDown /><span className="truncate">Not a fit</span>
+            </DropdownMenuItem>
+          )}
+          {lane === 'internal' && organizationId && (
+            <DropdownMenuItem disabled={!!startingSimilar} onSelect={() => void startSimilar(c)}>
+              <Users /><span className="truncate">{startingSimilar === candidateIdOf(c) ? 'Starting search…' : 'Find people like this'}</span>
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
+
+  const AddCell = ({ c, compact }: { c: MatchedCandidate; compact?: boolean }) => {
+    const k = rowKey(c)
+    const done = addedTo.get(k)
+    const lane = laneOf(c)
+    const jobs = c.pipeline?.length ?? 0
+    if (isHidden(c)) return <Badge tone="neutral" size="xs">Not a fit</Badge>
+    if (done) return <Badge tone="green" size="xs" className="max-w-[200px] truncate">Added · {done}</Badge>
+    return (
+      <>
+        {lane === 'internal' && jobs > 0 && (
+          <span className="text-[12px] text-text-tertiary [@media(hover:hover)]:group-hover:hidden group-focus-within:hidden group-has-[[data-add-menu-open]]:hidden [@media(hover:none)]:hidden">
+            In {jobs} {jobs === 1 ? 'job' : 'jobs'}
+          </span>
+        )}
+        <span className="hidden group-hover:inline-flex group-focus-within:inline-flex group-has-[[data-add-menu-open]]:inline-flex [@media(hover:none)]:inline-flex">
+          <FindAddButton
+            size="xs"
+            compact={compact}
+            who={getDisplayName(c)}
+            linkedJob={linkedJob}
+            credits={lane === 'preview' ? 1 : 0}
+            onlyInGio={lane === 'internal'}
+            loading={adding.has(k)}
+            disabled={lane === 'preview' && isCollectDisabled}
+            onAdd={(t) => void runAdd([c], t)}
+            onChooseJob={() => chooseJobFor([c])}
+          />
+        </span>
+      </>
+    )
+  }
+
+  const Identity = ({ c }: { c: MatchedCandidate }) => {
+    const name = (c.apollo_id && collectedName.get(c.apollo_id)) || getDisplayName(c)
+    const sub = [c.current_role || c.headline, c.current_company].filter(Boolean).join(' · ')
+    return (
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Avatar className="h-7 w-7 shrink-0 bg-virgilio-purple/10">
+          <AvatarFallback className="bg-virgilio-purple/10 text-[11px] font-semibold text-virgilio-purple">{initials(name)}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-[13.5px] font-medium text-text-primary">{name}</span>
+            {c.linkedin_url && (
+              <IconTip label="Open LinkedIn">
+                <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="shrink-0 text-[#0A66C2]" aria-label="Open LinkedIn">
+                  <Linkedin className="h-3.5 w-3.5" />
+                </a>
+              </IconTip>
+            )}
+          </div>
+          {sub && <div className="truncate text-[12.5px] text-text-secondary">{sub}</div>}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
-
-      {/* Toolbar / Bulk Action Bar — mutually exclusive */}
-      {selectedApolloIds.size > 0 ? (
-        // Dark bulk action bar
-        <div className="sticky top-0 z-10 rounded-lg bg-[#0d0d09] px-4 py-2.5 flex items-center justify-between shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)] shrink-0">
-          <div className="flex items-center gap-3 text-white">
-            <span className="font-poppins text-[13px] font-medium tabular-nums inline-flex items-center">
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-white/15 px-1.5 text-xs text-white">
-                {selectedApolloIds.size}
-              </span>
-              <span className="ml-2 text-white">selected</span>
-            </span>
-            <span className="text-white/30">·</span>
-            <button
-              type="button"
-              onClick={() => {
-                const all = new Set(selectedApolloIds)
-                sortedData.forEach(c => {
-                  if (c.source === 'apollo' && !c.candidate_id && c.apollo_id) all.add(c.apollo_id)
-                })
-                setSelectedApolloIds(all)
-              }}
-              className="text-[12.5px] text-white/80 hover:text-white underline-offset-2 hover:underline"
-            >
-              Select all {sortedData.filter(c => c.source === 'apollo' && !c.candidate_id && c.apollo_id).length}
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-text-secondary">
+          <span className="tabular-nums"><span className="font-medium text-text-primary">{sortedData.length.toLocaleString()}</span> people</span>
+          {laneCounts.internal > 0 && <span className="tabular-nums">· {laneCounts.internal.toLocaleString()} in Gio</span>}
+          {laneCounts.pdl + laneCounts.preview > 0 && <span className="tabular-nums">· {(laneCounts.pdl + laneCounts.preview).toLocaleString()} new</span>}
+          {hiddenCount > 0 && (
+            <button type="button" onClick={() => setShowHidden((v) => !v)} className="tabular-nums text-text-tertiary underline-offset-2 hover:text-text-primary hover:underline">
+              · {showHidden ? `Hide ${hiddenCount} not a fit` : `${hiddenCount} hidden as not a fit · Show`}
             </button>
-            <span className="text-white/30">·</span>
-            <button
-              type="button"
-              onClick={clearSelection}
-              className="text-[12.5px] text-white/60 hover:text-white"
-            >
-              Clear
-            </button>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="purple"
-              icon={isBulkCollecting ? undefined : Download}
-              onClick={handleBulkCollect}
-              disabled={isBulkCollecting || isCollectDisabled}
-            >
-              {isBulkCollecting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-              {isCollectDisabled
-                ? 'Credits exhausted'
-                : `Collect ${selectedApolloIds.size} · ${selectedApolloIds.size} credit${selectedApolloIds.size === 1 ? '' : 's'}`}
-            </Button>
-            <Button size="sm" variant="secondary" onDark icon={Heart} onClick={bulkShortlist} disabled={!projectId}>
-              Shortlist {selectedApolloIds.size}
-            </Button>
-            <Button size="sm" variant="ghost" onDark onClick={bulkNotAFit} disabled={!projectId}>
-              Not a fit
-            </Button>
-            <Button
-              size="xs"
-              variant="ghost"
-              onDark
-              iconOnly
-              icon={X}
-              aria-label="Clear selection"
-              onClick={clearSelection}
-            />
-          </div>
+          )}
         </div>
-      ) : (
-        // Results toolbar
-        <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
-          {/* Left: count */}
-          <div className="flex items-center gap-2 text-[12.5px] text-text-secondary">
-            <span>
-              Showing{' '}
-              <span className="font-medium text-text-primary tabular-nums">
-                {sortedData.length === 0 ? 0 : 1}–{Math.min(visibleCount, sortedData.length)}
-              </span>{' '}
-              of <span className="font-medium text-text-primary tabular-nums">{sortedData.length}</span>
-            </span>
-          </div>
-
-          {/* Center: fit segments */}
-          <div ref={fitSegRef} className="gio-seg inline-flex items-center gap-0.5 rounded-lg bg-[#ECEAE2] p-0.5">
-            {([
-              { id: 'all', label: 'All', count: segmentCounts.all },
-              { id: 'strong', label: 'Strong fit', count: segmentCounts.strong },
-              { id: 'good', label: 'Good', count: segmentCounts.good },
-              { id: 'possible', label: 'Possible', count: segmentCounts.possible },
-              { id: 'collected', label: 'Collected', count: segmentCounts.collected },
-            ] as const).map(seg => (
-              <button
-                key={seg.id}
-                type="button"
-                data-seg-option
-                data-active={fitSegment === seg.id || undefined}
-                onClick={() => { setFitSegment(seg.id); setVisibleCount(PAGE_STEP) }}
-                className={cn(
-                  'h-7 px-2.5 rounded-md font-poppins text-[12px] font-medium tracking-[-0.005em] transition-colors',
-                  'inline-flex items-center gap-1.5',
-                  fitSegment === seg.id
-                    ? 'text-text-primary'
-                    : 'text-text-secondary hover:text-text-primary'
-                )}
-              >
-                <span>{seg.label}</span>
-                <span className={cn(
-                  'text-[11px] tabular-nums',
-                  fitSegment === seg.id ? 'text-text-tertiary' : 'text-text-tertiary/70'
-                )}>
-                  {seg.count}
-                </span>
-              </button>
-            ))}
-            <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
-          </div>
-
-          {/* Right: sort + select all */}
-          <div className="flex items-center gap-1.5">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="ghost" icon={ArrowUpDown} dropdown>
-                  Sort: {sortMode === 'ai_fit' ? 'AI fit' : sortMode === 'recent' ? 'Recent activity' : 'Experience'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={8}>
-                <DropdownMenuItem onSelect={() => setSortMode('ai_fit')}>AI fit</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setSortMode('recent')}>Recent activity</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setSortMode('experience')}>Experience</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon={CheckCircle2}
-              onClick={toggleSelectAllApollo}
-              disabled={apolloCandidatesOnPage.length === 0}
-            >
-              Select all
-            </Button>
-          </div>
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="ghost" className="md:hidden" onClick={togglePage} disabled={pageSelectable.length === 0}>
+            {allOnPage ? 'Clear selection' : 'Select all'}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" icon={ArrowUpDown} dropdown>{SORT_LABEL[sortMode]}</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={8}>
+              {(Object.keys(SORT_LABEL) as SortMode[]).map((m) => (
+                <DropdownMenuItem key={m} onSelect={() => setSortMode(m)}>
+                  <span className="truncate">{SORT_LABEL[m]}</span>
+                  {sortMode === m && <span className="gio-mrow-check" aria-hidden />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      )}
+      </div>
 
-      {/* Desktop Table View */}
-      <Card className="shadow-calendly hidden md:flex flex-1 min-h-0 flex-col overflow-hidden">
-        <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <Table>
+      {/* Desktop table */}
+      <Card className="hidden min-h-0 flex-1 flex-col overflow-clip md:flex">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-10 pl-4">
+                  <Checkbox
+                    checked={allOnPage ? true : someOnPage ? 'indeterminate' : false}
+                    onCheckedChange={togglePage}
+                    disabled={pageSelectable.length === 0}
+                    aria-label="Select everyone shown"
+                  />
+                </TableHead>
+                <TableHead>Person</TableHead>
+                <TableHead className="w-[14%]">Location</TableHead>
+                <TableHead className="w-[29%]">Match</TableHead>
+                <TableHead className="w-[250px] pr-3 text-right"><span className="sr-only">Actions</span></TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
-              {paginatedData.map((candidate, pIdx) => {
-                const isAdded = addedCandidates.has(candidate.id)
-                const isLoading = loadingCandidates.has(candidate.id)
-                const isCollecting = candidate.apollo_id ? collectingProfiles.has(candidate.apollo_id) : false
-                const isPdl = isPdlCandidate(candidate)
-                const isSessionCollected = !!candidate.apollo_id && collectedApolloIds.has(candidate.apollo_id)
-                const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id && !isSessionCollected
-                const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
-
-                // Check if this row is currently open in the preview
-                const isActiveRow = sheetOpen && (
-                  (selectedCandidateId && candidate.id === selectedCandidateId) ||
-                  (selectedApolloId && candidate.apollo_id === selectedApolloId) ||
-                  (selectedPdlData && candidate.id === selectedPdlData.id)
-                )
-
-                // Determine candidate type for unified rendering
-                const isInternal = isCollectedApollo(candidate) || isSessionCollected
-                const isGio = isGioSourced(candidate)
-                const isApollo = !isInternal && !isGio && candidate.source === 'apollo' && !candidate.candidate_id
-                const location = getLocation(candidate)
-
-                // Badge config per type
-                const badgeClass = isInternal ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : isGio ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' : isPdl ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                const badgeLabel = isInternal ? 'Internal' : isGio ? 'Gio' : isPdl ? 'PDL' : 'Apollo'
-
-                // Click handler per type
-                const handleRowClick = () => {
-                  if (isInternal) {
-                    const mappedId = candidate.apollo_id ? collectedCandidateIdByApollo.get(candidate.apollo_id) : undefined
-                    const realName = candidate.apollo_id ? collectedNameByApollo.get(candidate.apollo_id) : undefined
-                    setSelectedCandidateId(candidate.candidate_id || mappedId || candidate.id)
-                    // Also pass Apollo context so the rich Apollo preview sheet opens for collected rows
-                    setSelectedApolloId(candidate.apollo_id || null)
-                    setSelectedApolloData(candidate.apollo_id ? { ...(candidate as any), candidate_name: realName || (candidate as any).candidate_name, full_name: realName || (candidate as any).full_name } : null)
-                    setSelectedPdlData(null)
-                    setSheetOpen(true)
-                  } else if (isPdl) {
-                    setSelectedPdlData(candidate)
-                    setSelectedCandidateId(null)
-                    setSelectedApolloId(null)
-                    setSelectedApolloData(null)
-                    setSheetOpen(true)
-                  } else if (isGio) {
-                    // Gio candidates have rich data — open PDL-style sheet
-                    setSelectedPdlData(candidate)
-                    setSelectedCandidateId(null)
-                    setSelectedApolloId(null)
-                    setSelectedApolloData(null)
-                    setSheetOpen(true)
-                  } else if (candidate.source === 'apollo' && candidate.apollo_id) {
-                    // Apollo candidates open as Apollo preview
-                    setSelectedCandidateId(null)
-                    setSelectedApolloId(candidate.apollo_id || null)
-                    setSelectedApolloData(candidate)
-                    setSelectedPdlData(null)
-                    setSheetOpen(true)
-                  } else if (candidate.candidate_id || candidate.source === 'local') {
-                    setSelectedCandidateId(candidate.candidate_id || candidate.id)
-                    setSelectedApolloId(null)
-                    setSelectedApolloData(null)
-                    setSelectedPdlData(null)
-                    setSheetOpen(true)
-                  } else if (candidate.source === 'apollo' && candidate.apollo_id) {
-                    setSelectedCandidateId(null)
-                    setSelectedApolloId(candidate.apollo_id)
-                    setSelectedApolloData({
-                      candidate_name: getDisplayName(candidate),
-                      headline: candidate.headline,
-                      location: getLocation(candidate),
-                      current_company: candidate.current_company,
-                      current_role: candidate.current_role,
-                      linkedin_url: candidate.linkedin_url,
-                      apollo_score: candidate.apollo_score,
-                      email: candidate.email,
-                      phone: candidate.phone,
-                      industry: candidate.industry,
-                      connections_count: candidate.connections_count,
-                      follower_count: candidate.follower_count,
-                      company_url: candidate.company_url,
-                      company_website: candidate.company_website,
-                      company_industry: candidate.company_industry,
-                      experience_location: candidate.experience_location,
-                      has_email: candidate.has_email,
-                      has_phone: candidate.has_phone,
-                      has_location: candidate.has_location
-                    })
-                    setSelectedPdlData(null)
-                    setSheetOpen(true)
-                  }
-                }
-
-                const isShortlisted = rowStatus(candidate) === 'shortlisted'
-
-                // Fit score band → tone for right rail
-                const fitScore = candidate.match_score ?? 0
-                const fitBand =
-                  fitScore >= 85 ? { label: 'text-emerald-700', bg: 'bg-emerald-50', ring: 'ring-emerald-200' } :
-                  fitScore >= 70 ? { label: 'text-blue-700', bg: 'bg-blue-50', ring: 'ring-blue-200' } :
-                  fitScore >= 55 ? { label: 'text-amber-700', bg: 'bg-amber-50', ring: 'ring-amber-200' } :
-                  { label: 'text-text-tertiary', bg: 'bg-[#F1F0EC]', ring: 'ring-border' }
-
-                // Initials for avatar — prefer the real name once collected this session
-                const realCollectedName = candidate.apollo_id ? collectedNameByApollo.get(candidate.apollo_id) : undefined
-                const displayName = realCollectedName || getDisplayName(candidate)
-                const initials = displayName
-                  .split(/\s+/)
-                  .filter(Boolean)
-                  .slice(0, 2)
-                  .map(s => s[0])
-                  .join('')
-                  .toUpperCase()
-
-                // Top match: evidence-backed (internal candidate + strong AI fit), resolved upstream
-                const isTopMatch = !!topMatchRowId && topMatchRowId === candidate.id
-
-                // Matched skills (green check chips)
-                const matchedSkills = (candidate.matched_keywords ?? []).slice(0, 4)
-                const extraSkills = (candidate.skills ?? [])
-                  .filter(s => !matchedSkills.includes(s))
-                  .slice(0, Math.max(0, 5 - matchedSkills.length))
-
-                const laneStarts = pIdx === 0 || isInGioLane(paginatedData[pIdx - 1]) !== isInGioLane(candidate)
-                const laneLabel = isInGioLane(candidate)
-                  ? `Already in Gio · ${inGioCount}`
-                  : `New from Apollo · ${sortedData.length - inGioCount}`
-
+              {pageRows.map((c, i) => {
+                const k = rowKey(c)
+                const lane = laneOf(c)
+                const laneStarts = i === 0 || laneOf(pageRows[i - 1]) !== lane
+                const isSel = selected.has(k)
+                const isActive = sheetOpen && sheetKey === k
                 return (
-                  <Fragment key={`${candidate.apollo_id || candidate.id}-${pIdx}`}>
-                  {laneStarts && inGioCount > 0 && (
-                    <TableRow className="hover:bg-transparent border-b border-border/60 bg-[#FAFAF7]">
-                      <TableCell colSpan={5} className="py-2 px-5 text-[11.5px] font-medium uppercase tracking-[0.06em] text-text-tertiary">
-                        {laneLabel}
+                  <Fragment key={k}>
+                    {laneStarts && (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={5} className="h-[34px] bg-[#FAFAF7] px-4 py-0 text-[11.5px] font-medium text-text-tertiary">
+                          {laneLabel[lane]}
+                          {laneNote[lane] && <span className="font-normal"> · {laneNote[lane]}</span>}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    <TableRow
+                      data-row-id={k}
+                      className={cn(
+                        'group h-[52px] cursor-pointer',
+                        isSel && 'bg-[#FAF8FF]',
+                        isActive && 'bg-[#FAF8FF] shadow-[inset_2px_0_0_hsl(var(--virgilio-purple))]',
+                        isHidden(c) && 'opacity-60',
+                      )}
+                      onClick={() => openSheet(c)}
+                    >
+                      <TableCell className="py-0 pl-4" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={isSel}
+                          onCheckedChange={() => toggle(c)}
+                          disabled={!selectable(c)}
+                          aria-label={`Select ${getDisplayName(c)}`}
+                        />
+                      </TableCell>
+                      <TableCell className="max-w-0 py-0"><Identity c={c} /></TableCell>
+                      <TableCell className="max-w-0 truncate py-0 text-[12.5px] text-text-secondary">
+                        {lane === 'preview' ? <span className="text-text-tertiary">—</span> : getLocation(c) || <span className="text-text-tertiary">—</span>}
+                      </TableCell>
+                      <TableCell className="max-w-0 overflow-hidden py-0"><FindMatch row={c} /></TableCell>
+                      <TableCell className="py-0 pr-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <AddCell c={c} />
+                          <RowMenu c={c} />
+                        </div>
                       </TableCell>
                     </TableRow>
-                  )}
-                  <TableRow
-                    className={cn(
-                      "cursor-pointer transition-colors border-b border-border/60",
-                      "hover:bg-[#FAFAF7]",
-                      isSelected && "bg-[#FAF8FF]",
-                      isActiveRow && "bg-[#FAF8FF] border-l-2 border-l-virgilio-purple"
-                    )}
-                    onClick={handleRowClick}
-                  >
-                    <TableCell colSpan={5} className="py-4 px-5">
-                      <div className="flex items-start gap-4">
-                        {/* Checkbox */}
-                        <div className="pt-1" onClick={(e) => e.stopPropagation()}>
-                          {canSelect ? (
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={() => toggleSelectApollo(candidate.apollo_id!)}
-                              aria-label={`Select ${displayName}`}
-                            />
-                          ) : (
-                            <div className="w-4 h-4" />
-                          )}
-                        </div>
-
-                        {/* Avatar */}
-                        <Avatar className="h-10 w-10 shrink-0 ring-1 ring-border bg-virgilio-purple/10 text-virgilio-purple">
-                          <AvatarFallback className="bg-virgilio-purple/10 text-virgilio-purple font-poppins text-[12px] font-semibold tracking-[-0.01em]">
-                            {initials || '?'}
-                          </AvatarFallback>
-                        </Avatar>
-
-                        {/* Identity block */}
-                        <div className="flex-1 min-w-0 space-y-1">
-                          {/* Name + tag row */}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-poppins text-[14px] font-semibold tracking-[-0.01em] text-text-primary">
-                              {displayName}
-                            </span>
-                            {isTopMatch && (
-                              <Badge tone="purple" size="xs" icon={Sparkles}>Top match</Badge>
-                            )}
-                            {isInternal && (
-                              <Badge tone="green" size="xs">In Gio</Badge>
-                            )}
-                            {isGio && (
-                              <Badge tone="purple" size="xs">Gio</Badge>
-                            )}
-                            {!isInternal && !isGio && isApollo && (
-                              <Badge tone="neutral" size="xs">Preview</Badge>
-                            )}
-                            {isPdl && (
-                              <Badge tone="blue" size="xs">LinkedIn</Badge>
-                            )}
-                            {candidate.linkedin_url && (
-                              <a
-                                href={candidate.linkedin_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-[#0A66C2] hover:opacity-80"
-                                aria-label="LinkedIn"
-                              >
-                                <Linkedin className="h-3.5 w-3.5" />
-                              </a>
-                            )}
-                          </div>
-
-                          {/* Headline / role at company */}
-                          {(candidate.current_role || candidate.current_company) && (
-                            <p className="text-[12.5px] text-text-secondary truncate">
-                              {candidate.current_role}
-                              {candidate.current_role && candidate.current_company && ' at '}
-                              {candidate.current_company && (
-                                <span className="text-text-primary font-medium">{candidate.current_company}</span>
-                              )}
-                            </p>
-                          )}
-
-                          {/* Pipeline history (already in Gio) */}
-                          {isInternal && (candidate.pipeline?.length ?? 0) > 0 && (
-                            <p className="text-[11.5px] text-text-secondary truncate">
-                              {candidate.pipeline!.length === 1 ? 'In 1 job' : `In ${candidate.pipeline!.length} jobs`}
-                              {' · '}
-                              {candidate.pipeline![0].job_title}
-                              {candidate.pipeline![0].stage_name ? ` — ${candidate.pipeline![0].stage_name}` : ''}
-                              {candidate.pipeline![0].status && candidate.pipeline![0].status !== 'active' ? ` (${candidate.pipeline![0].status})` : ''}
-                            </p>
-                          )}
-
-                          {/* Metadata line */}
-                          <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-[11.5px] text-text-tertiary">
-                            {((isInternal || isPdl || isGio) && location) ? (
-                              <span className="inline-flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />{location}
-                              </span>
-                            ) : isApollo && candidate.has_location ? (
-                              <span className="inline-flex items-center gap-1 italic">
-                                <MapPin className="h-3 w-3" />Location
-                              </span>
-                            ) : null}
-                            {(candidate.years_experience || candidate.experience_years) ? (
-                              <span>{candidate.years_experience || candidate.experience_years}y exp.</span>
-                            ) : null}
-                            {((isInternal || isPdl) && candidate.email) ? (
-                              <span className="inline-flex items-center gap-1">
-                                <Mail className="h-3 w-3" />{candidate.email}
-                              </span>
-                            ) : isApollo && candidate.has_email ? (
-                              <span className="inline-flex items-center gap-1.5 text-text-tertiary">
-                                <Lock className="h-3 w-3" />
-                                <span className="inline-block h-2.5 w-28 rounded-sm bg-[repeating-linear-gradient(90deg,hsl(var(--muted-foreground)/0.25)_0_3px,transparent_3px_6px)]" aria-label="Email locked — collect to reveal" />
-                              </span>
-                            ) : null}
-                            {((isInternal || isPdl) && candidate.phone) ? (
-                              <span className="inline-flex items-center gap-1">
-                                <Phone className="h-3 w-3" />{candidate.phone}
-                              </span>
-                            ) : isApollo && candidate.has_phone ? (
-                              <span className="inline-flex items-center gap-1.5 text-text-tertiary">
-                                <Lock className="h-3 w-3" />
-                                <span className="inline-block h-2.5 w-20 rounded-sm bg-[repeating-linear-gradient(90deg,hsl(var(--muted-foreground)/0.25)_0_3px,transparent_3px_6px)]" aria-label="Phone locked — collect to reveal" />
-                              </span>
-                            ) : null}
-                          </div>
-
-                          {/* Matched + extra skill chips */}
-                          {(matchedSkills.length > 0 || extraSkills.length > 0) && (
-                            <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                              {matchedSkills.map(skill => (
-                                <span
-                                  key={`m-${skill}`}
-                                  className="inline-flex items-center gap-1 rounded-md bg-emerald-50 text-emerald-700 px-1.5 h-[18px] text-[10.5px] font-medium ring-1 ring-emerald-200/60"
-                                >
-                                  <CheckCircle2 className="h-2.5 w-2.5" />
-                                  {skill}
-                                </span>
-                              ))}
-                              {extraSkills.map(skill => (
-                                <span
-                                  key={`x-${skill}`}
-                                  className="inline-flex items-center rounded-md bg-[#F1F0EC] text-text-secondary px-1.5 h-[18px] text-[10.5px] font-medium"
-                                >
-                                  {skill}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Actions */}
-                          <div className="flex items-center gap-1.5 pt-2" onClick={(e) => e.stopPropagation()}>
-                            {isApollo ? (
-                              <Button
-                                size="sm"
-                                variant="primary"
-                                icon={isCollecting ? undefined : Download}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleCollectProfile(candidate.apollo_id!)
-                                }}
-                                disabled={isCollecting || isCollectDisabled}
-                                title={isCollectDisabled ? `Apollo credits used up until ${renewsOn}` : 'Reveal full profile (1 credit)'}
-                              >
-                                {isCollecting && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                                {isCollectDisabled ? 'Credits exhausted' : 'Collect · 1 credit'}
-                              </Button>
-                            ) : isAdded ? (
-                              <Button size="sm" variant="secondary" disabled icon={CheckCircle2}>
-                                Added to pipeline
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="primary"
-                                icon={isLoading ? undefined : Plus}
-                                onClick={(e) => handleAddToPipeline(candidate, e)}
-                                disabled={isLoading || !jobId}
-                              >
-                                {isLoading && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                                {jobId ? 'Add to job' : 'Link a job first'}
-                              </Button>
-                            )}
-                            {projectId && canKeep(candidate) && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                icon={Heart}
-                                aria-pressed={isShortlisted}
-                                className={cn(isShortlisted && '[&_svg]:fill-current text-virgilio-purple')}
-                                onClick={(e) => { e.stopPropagation(); toggleShortlist(candidate) }}
-                              >
-                                {isShortlisted ? 'Shortlisted' : 'Shortlist'}
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              iconRight={ChevronRight}
-                              onClick={(e) => { e.stopPropagation(); handleRowClick() }}
-                            >
-                              View profile
-                            </Button>
-                            {projectId && canKeep(candidate) && (
-                              <DropdownMenu>
-                                <IconTip label="More actions">
-                                  <DropdownMenuTrigger asChild>
-                                    <Button size="sm" variant="ghost" iconOnly icon={MoreHorizontal} aria-label="More actions" />
-                                  </DropdownMenuTrigger>
-                                </IconTip>
-                                <DropdownMenuContent align="end" sideOffset={6}>
-                                  <DropdownMenuItem onSelect={() => void peopleActions.notAFit([changeFor(candidate)])}>
-                                    <ThumbsDown className="h-4 w-4 mr-2" />Not a fit
-                                  </DropdownMenuItem>
-                                  {isInternal && organizationId && (
-                                    <DropdownMenuItem
-                                      disabled={!!startingSimilar}
-                                      onSelect={() => void startSimilar(candidate)}
-                                    >
-                                      <Users className="h-4 w-4 mr-2" />
-                                      {startingSimilar === personKey(candidate).candidateId ? 'Starting search…' : 'Find people like this'}
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Right rail: rule-based fit (title, location, level,
-                            keywords); AI fit is scored on the shortlist. */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div
-                              tabIndex={0}
-                              aria-label={`Fit ${fitScore}${candidate.fit_reasons?.length ? `: ${candidate.fit_reasons.join(', ')}` : ''}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className={cn(
-                                "shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-lg ring-1 px-3 py-2 min-w-[64px]",
-                                fitBand.bg,
-                                fitBand.ring
-                              )}
-                            >
-                              <span className="font-poppins text-[10.5px] uppercase tracking-[0.08em] text-text-tertiary">
-                                Fit
-                              </span>
-                              <span className={cn("font-poppins text-[22px] font-semibold leading-none tabular-nums tracking-[-0.02em]", fitBand.label)}>
-                                {fitScore}
-                              </span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="left">
-                            {candidate.fit_reasons?.length
-                              ? candidate.fit_reasons.join(' · ')
-                              : 'Scored on title, location, level and keywords'}
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
                   </Fragment>
                 )
               })}
             </TableBody>
           </Table>
-          </div>
-
-          {/* Load more */}
           {hasMore && (
-            <div className="flex items-center justify-center px-6 py-4 border-t border-border flex-shrink-0 bg-background">
-              <Button
-                variant="secondary"
-                size="sm"
-                iconRight={ChevronDown}
-                onClick={() => setVisibleCount(c => Math.min(c + PAGE_STEP, totalCount))}
-              >
-                Load {Math.min(PAGE_STEP, totalCount - visibleCount)} more
+            <div className="flex justify-center border-t border-border px-6 py-3">
+              <Button variant="secondary" size="sm" iconRight={ChevronDown} onClick={() => setVisibleCount((n) => n + PAGE_STEP)}>
+                Load {Math.min(PAGE_STEP, sortedData.length - visibleCount)} more
               </Button>
             </div>
           )}
-        </CardContent>
+        </div>
       </Card>
 
-      {/* Mobile Card List */}
-      <div className="md:hidden space-y-3">
-        {paginatedData.map((candidate, pIdx) => {
-          const isAdded = addedCandidates.has(candidate.id)
-          const isLoading = loadingCandidates.has(candidate.id)
-          const isPdl = isPdlCandidate(candidate)
-          const isSessionCollected = !!candidate.apollo_id && collectedApolloIds.has(candidate.apollo_id)
-          const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id && !isSessionCollected
-          const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
-
-          const isInternal = isCollectedApollo(candidate) || isSessionCollected
-          const isGio = isGioSourced(candidate)
-          const isApollo = !isInternal && !isGio && candidate.source === 'apollo' && !candidate.candidate_id
-          const location = getLocation(candidate)
-          const badgeClass = isInternal ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : isGio ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' : isPdl ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-          const badgeLabel = isInternal ? 'Internal' : isGio ? 'Gio' : isPdl ? 'PDL' : 'Apollo'
-
-          const handleCardClick = () => {
-            if (isInternal) {
-              const mappedId = candidate.apollo_id ? collectedCandidateIdByApollo.get(candidate.apollo_id) : undefined
-              setSelectedCandidateId(candidate.candidate_id || mappedId || candidate.id)
-              setSelectedApolloId(null)
-              setSelectedApolloData(null)
-              setSelectedPdlData(null)
-              setSheetOpen(true)
-            } else if (isPdl) {
-              setSelectedPdlData(candidate)
-              setSelectedCandidateId(null)
-              setSelectedApolloId(null)
-              setSelectedApolloData(null)
-              setSheetOpen(true)
-            } else if (isGio || (candidate.source === 'apollo' && candidate.apollo_id)) {
-              setSelectedCandidateId(null)
-              setSelectedApolloId(candidate.apollo_id || null)
-              setSelectedApolloData(candidate)
-              setSelectedPdlData(null)
-              setSheetOpen(true)
-            } else if (candidate.candidate_id || candidate.source === 'local') {
-              setSelectedCandidateId(candidate.candidate_id || candidate.id)
-              setSelectedApolloId(null)
-              setSelectedApolloData(null)
-              setSelectedApolloData({
-                candidate_name: getDisplayName(candidate),
-                headline: candidate.headline,
-                location: getLocation(candidate),
-                current_company: candidate.current_company,
-                current_role: candidate.current_role,
-                linkedin_url: candidate.linkedin_url,
-                apollo_score: candidate.apollo_score,
-                email: candidate.email,
-                phone: candidate.phone,
-                industry: candidate.industry,
-                connections_count: candidate.connections_count,
-                follower_count: candidate.follower_count,
-                company_url: candidate.company_url,
-                company_website: candidate.company_website,
-                company_industry: candidate.company_industry,
-                experience_location: candidate.experience_location,
-                has_email: candidate.has_email,
-                has_phone: candidate.has_phone,
-                has_location: candidate.has_location
-              })
-              setSelectedPdlData(null)
-              setSheetOpen(true)
-            }
-          }
-
+      {/* Phone list: the same row, stacked */}
+      <Card className="min-h-0 flex-1 overflow-y-auto md:hidden">
+        {pageRows.map((c, i) => {
+          const k = rowKey(c)
+          const lane = laneOf(c)
+          const laneStarts = i === 0 || laneOf(pageRows[i - 1]) !== lane
           return (
-            <Card
-              key={`${candidate.apollo_id || candidate.id}-${pIdx}`}
-              className={cn(
-                "shadow-calendly cursor-pointer hover:shadow-lg transition-shadow",
-                isSelected && "ring-2 ring-primary"
+            <Fragment key={k}>
+              {laneStarts && (
+                <div className="bg-[#FAFAF7] px-3 py-2 text-[11.5px] font-medium text-text-tertiary">{laneLabel[lane]}</div>
               )}
-              onClick={handleCardClick}
-            >
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    {canSelect && (
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleSelectApollo(candidate.apollo_id!)}
-                          aria-label={`Select ${getDisplayName(candidate)}`}
-                        />
-                      </div>
-                    )}
-                    <Badge className={cn("text-[10px] px-1.5 py-0 h-4 border-0", badgeClass)}>
-                      {badgeLabel}
-                    </Badge>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => openSheet(c)}
+                onKeyDown={(e) => { if (e.key === 'Enter') openSheet(c) }}
+                className={cn('group flex items-start gap-3 border-t border-border/60 px-3 py-2.5', selected.has(k) && 'bg-[#FAF8FF]')}
+              >
+                <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox checked={selected.has(k)} onCheckedChange={() => toggle(c)} disabled={!selectable(c)} aria-label={`Select ${getDisplayName(c)}`} />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Identity c={c} />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <FindMatch row={c} />
+                    <div className="flex items-center gap-1"><AddCell c={c} compact /><RowMenu c={c} /></div>
                   </div>
-                  <Badge className={cn("text-xs", getMatchBadgeColor(candidate.match_tier))}>
-                    {candidate.match_score}%
-                  </Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-sm">{getDisplayName(candidate)}</h3>
-                  {candidate.linkedin_url && (
-                    <a href={candidate.linkedin_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:text-blue-700">
-                      <Linkedin className="h-3 w-3" />
-                    </a>
-                  )}
-                </div>
-                {(candidate.current_role || candidate.current_company) && (
-                  <p className="text-xs text-muted-foreground">
-                    {candidate.current_role}{candidate.current_role && candidate.current_company && ' at '}{candidate.current_company}
-                  </p>
-                )}
-                {/* Metadata chips */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {(isInternal || isPdl) && location ? (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                      <MapPin className="h-2.5 w-2.5" />{location}
-                    </span>
-                  ) : isApollo && candidate.has_location ? (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                      <MapPin className="h-2.5 w-2.5" />Location
-                    </span>
-                  ) : null}
-                  {(isInternal || isPdl) && candidate.email ? (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                      <Mail className="h-2.5 w-2.5" />{candidate.email}
-                    </span>
-                  ) : isApollo && candidate.has_email ? (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                      <Mail className="h-2.5 w-2.5" />Email
-                    </span>
-                  ) : null}
-                  {(isInternal || isPdl) && candidate.phone ? (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                      <Phone className="h-2.5 w-2.5" />{candidate.phone}
-                    </span>
-                  ) : isApollo && candidate.has_phone ? (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                      <Phone className="h-2.5 w-2.5" />Phone
-                    </span>
-                  ) : null}
-                </div>
-                {/* Actions */}
-                <div className="flex gap-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
-                  {projectId && canKeep(candidate) && (
-                    <IconTip label={rowStatus(candidate) === 'shortlisted' ? 'Remove from shortlist' : 'Shortlist'}>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      iconOnly
-                      icon={Heart}
-                      aria-label={rowStatus(candidate) === 'shortlisted' ? 'Remove from shortlist' : 'Shortlist'}
-                      aria-pressed={rowStatus(candidate) === 'shortlisted'}
-                      className={cn(rowStatus(candidate) === 'shortlisted' && '[&_svg]:fill-current text-virgilio-purple')}
-                      onClick={(e) => { e.stopPropagation(); toggleShortlist(candidate) }}
-                    />
-                    </IconTip>
-                  )}
-                  {isApollo ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleCollectProfile(candidate.apollo_id!)
-                      }}
-                      disabled={collectingProfiles.has(candidate.apollo_id || '') || isCollectDisabled}
-                    >
-                      {collectingProfiles.has(candidate.apollo_id || '') ? (
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      ) : (
-                        <Download className="h-3 w-3 mr-1" />
-                      )}
-                      Reveal (1 credit)
-                    </Button>
-                  ) : (
-                    <>
-                      <Button size="sm" variant="outline" className="flex-1" onClick={(e) => { e.stopPropagation(); handleCardClick() }}>
-                        <Eye className="h-3 w-3 mr-1" />View
-                      </Button>
-                      {isAdded ? (
-                        <Button size="sm" variant="secondary" className="flex-1" disabled>
-                          <CheckCircle2 className="h-3 w-3 mr-1" />Added
-                        </Button>
-                      ) : (
-                        <Button size="sm" variant="default" className="flex-1" onClick={(e) => handleAddToPipeline(candidate, e)} disabled={isLoading || !jobId}>
-                          {isLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
-                          Add
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </Fragment>
           )
         })}
-        {/* Mobile Load More */}
         {hasMore && (
-          <div className="flex items-center justify-center pt-4">
-            <Button
-              variant="secondary"
-              size="sm"
-              iconRight={ChevronDown}
-              onClick={() => setVisibleCount(c => Math.min(c + PAGE_STEP, totalCount))}
-            >
-              Load {Math.min(PAGE_STEP, totalCount - visibleCount)} more
+          <div className="flex justify-center border-t border-border p-3">
+            <Button variant="secondary" size="sm" iconRight={ChevronDown} onClick={() => setVisibleCount((n) => n + PAGE_STEP)}>
+              Load {Math.min(PAGE_STEP, sortedData.length - visibleCount)} more
             </Button>
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* Universal Candidate Profile Sheet */}
+      {selected.size > 0 && (
+        <SelectionBar
+          count={selected.size}
+          actions={bulkActions}
+          onClear={() => setSelected(new Set())}
+          totalCount={sortedData.filter(selectable).length}
+          onSelectAll={() => setSelected(new Set(sortedData.filter(selectable).map(rowKey)))}
+          busy={bulkBusy}
+        />
+      )}
+
       <UniversalCandidateProfileSheet
         open={sheetOpen}
-        onOpenChange={(open) => {
-          setSheetOpen(open)
-          if (!open) setSelectedPdlData(null)
-        }}
-        candidateId={selectedCandidateId}
-        apolloId={selectedApolloId}
-        apolloData={selectedApolloData}
-        pdlData={selectedPdlData as any}
-        onPdlAddToPipeline={selectedPdlData ? () => handleAddToPipeline(selectedPdlData) : undefined}
-        isPdlAdding={selectedPdlData ? loadingCandidates.has(selectedPdlData.id) : false}
-        isPdlAdded={selectedPdlData ? addedCandidates.has(selectedPdlData.id) : false}
+        onOpenChange={(open) => { setSheetOpen(open); if (!open) setSheetKey(null) }}
+        candidateId={sheetProps.candidateId}
+        apolloId={sheetProps.apolloId}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the sheet takes the raw search row
+        apolloData={sheetProps.apolloData as any}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pdlData={sheetProps.pdlData as any}
+        onPdlAddToPipeline={sheetRow && sheetLane === 'pdl'
+          ? () => void runAdd([sheetRow], linkedJob ? { kind: 'job', jobId: linkedJob.id, jobTitle: linkedJob.title } : { kind: 'pool' })
+          : undefined}
+        isPdlAdding={sheetRow ? adding.has(rowKey(sheetRow)) : false}
+        isPdlAdded={sheetRow ? addedTo.has(rowKey(sheetRow)) : false}
         jobId={jobId}
         context="sourcing"
-        hasPrev={hasPrev}
-        hasNext={hasNext}
-        onNavigatePrev={handleNavigatePrev}
-        onNavigateNext={handleNavigateNext}
+        hasPrev={sheetIndex > 0}
+        hasNext={sheetIndex >= 0 && sheetIndex < sortedData.length - 1}
+        onNavigatePrev={() => { if (sheetIndex > 0) openSheet(sortedData[sheetIndex - 1]) }}
+        onNavigateNext={() => { if (sheetIndex >= 0 && sheetIndex < sortedData.length - 1) openSheet(sortedData[sheetIndex + 1]) }}
         searchCriteria={searchCriteria}
-        onCandidateCollected={handleCandidateCollected}
+        onCandidateCollected={(candidateId: string, apolloId: string) => {
+          if (apolloId && candidateId) setCollectedId((prev) => new Map(prev).set(apolloId, candidateId))
+          void onCandidatesChanged?.()
+        }}
       />
 
-      {/* Job Selection Dialog for bulk collection without linked job */}
       <JobSelectionDialog
-        open={showJobDialog}
-        onOpenChange={setShowJobDialog}
-        onJobSelected={async (selectedJobId, jobName, stageId) => {
-          setShowJobDialog(false)
-          await executeBulkCollect(pendingBulkIds, selectedJobId, stageId)
+        open={!!chooseFor}
+        onOpenChange={(open) => { if (!open) setChooseFor(null) }}
+        onJobSelected={(id, name, stageId, stageName) => {
+          const rows = sortedData.filter((c) => chooseFor?.includes(rowKey(c)))
+          setChooseFor(null)
+          void runAdd(rows, { kind: 'job', jobId: id, jobTitle: name, stageId: stageId ?? null, stageName: stageName ?? null })
         }}
-        onSkip={async () => {
-          setShowJobDialog(false)
-          await executeBulkCollect(pendingBulkIds, null)
+        onSkip={() => {
+          const rows = sortedData.filter((c) => chooseFor?.includes(rowKey(c)))
+          setChooseFor(null)
+          if (rows.some((c) => laneOf(c) !== 'internal')) void runAdd(rows, { kind: 'pool' })
         }}
-        initialJobId={null}
+        initialJobId={jobId ?? null}
       />
     </div>
   )

@@ -1,11 +1,8 @@
-import { useMemo } from 'react'
 import { SourcingProject, SearchCriteria } from '@/types/sourcing'
 import { SourcingCandidateTable } from './SourcingCandidateTable'
 import { LinkToJobBanner } from './LinkToJobBanner'
-import { useTopMatchForResults } from '@/hooks/useTopMatchForResults'
 
 import { LinkedJobStrip } from './LinkedJobStrip'
-import { ResultsRunSummary } from './ResultsRunSummary'
 import type { LinkToJobPayload } from './LinkToJobDialog'
 
 interface Candidate {
@@ -16,8 +13,8 @@ interface Candidate {
   location_city?: string;
   location_country?: string;
   linkedin_url?: string;
-  match_score: number;
-  match_tier: 'excellent' | 'good' | 'fair' | 'minimal';
+  match_score?: number | null;
+  match_tier?: 'excellent' | 'good' | 'fair' | 'minimal' | null;
   skills?: string[];
   years_experience?: number;
   source: 'local' | 'apollo' | 'pdl';
@@ -65,7 +62,6 @@ export function CandidatesTab({
   jobId,
   projectId,
   searchCriteria,
-  sourceBreakdown,
   onLinkToJob,
   onUnlinkJob,
   savedCandidatesCount = 0,
@@ -76,52 +72,20 @@ export function CandidatesTab({
   loadFailed,
   onRetry,
 }: CandidatesTabProps) {
-  // Run summary stats — derived from candidates
-  const summary = useMemo(() => {
-    let strongFit = 0
-    let good = 0
-    let possible = 0
-    let alreadyCollected = 0
-
-    for (const c of candidates) {
-      if (c.match_tier === 'excellent') strongFit++
-      else if (c.match_tier === 'good') good++
-      else if (c.match_tier === 'fair' || c.match_tier === 'minimal') possible++
-
-      const isInternal =
-        c.display_source === 'internal' ||
-        (c.source === 'apollo' && !!c.candidate_id)
-      if (isInternal) alreadyCollected++
-    }
-
-    return {
-      total: candidates.length,
-      strongFit,
-      good,
-      possible,
-      alreadyCollected,
-    }
-  }, [candidates])
-
-  const isLinked = !!(jobId || project.job_id)
-
-  // Evidence-backed Top match — only when an internal candidate has a strong AI fit score
-  const { topMatch } = useTopMatchForResults(jobId || project.job_id || null, candidates)
+  const linkedJobId = jobId || project.job_id || null
 
   return (
     <div className="flex-1 min-h-0 overflow-hidden h-full flex flex-col">
-      {/* Banner zone — only when results exist and not loading */}
+      {/* The linked job, or the offer to link one, once there are results. */}
       {!isLoading && candidates.length > 0 && (
-        <div className="px-4 pt-4 space-y-2 shrink-0">
-          {isLinked ? (
-            <>
-              <LinkedJobStrip
-                jobId={(jobId || project.job_id)!}
-                jobTitle={project.jobs?.title}
-                department={project.jobs?.organizations?.name}
-                onUnlink={() => onUnlinkJob?.()}
-              />
-            </>
+        <div className="px-4 pt-4 shrink-0">
+          {linkedJobId ? (
+            <LinkedJobStrip
+              jobId={linkedJobId}
+              jobTitle={project.jobs?.title}
+              department={project.jobs?.organizations?.name}
+              onUnlink={() => onUnlinkJob?.()}
+            />
           ) : (
             onLinkToJob && (
               <LinkToJobBanner
@@ -133,30 +97,19 @@ export function CandidatesTab({
               />
             )
           )}
-          <ResultsRunSummary
-            totalCount={summary.total}
-            strongFit={summary.strongFit}
-            good={summary.good}
-            possible={summary.possible}
-            alreadyCollected={summary.alreadyCollected}
-            topMatchName={topMatch?.name ?? null}
-            topMatchScore={topMatch?.score ?? null}
-            sourceBreakdown={sourceBreakdown}
-          />
         </div>
       )}
 
       <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4 pt-4">
-
         <SourcingCandidateTable
-          candidates={candidates}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the search rows carry more than this type lists
+          candidates={candidates as any}
           isLoading={isLoading}
-          jobId={jobId || project.job_id}
+          jobId={linkedJobId}
+          jobTitle={project.jobs?.title ?? null}
           projectId={projectId}
           searchCriteria={searchCriteria || project.search_criteria}
-          sourceBreakdown={sourceBreakdown}
           onCandidatesChanged={onCandidatesChanged}
-          topMatchRowId={topMatch?.rowId ?? null}
           totalMatches={totalMatches}
           onClearFilters={onClearFilters}
           onEditSearch={onEditSearch}
