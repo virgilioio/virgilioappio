@@ -1,6 +1,12 @@
 /**
  * BodyTemplateEditor - Rich text Lexical editor for email body
- * 
+ *
+ * Wears the ATS's formatted text box look (FormattedTextBox, the scorecard's
+ * editor; Allan, 2026-10-22): the same frame, toolbar, link popover, typing
+ * shortcuts and Tab nesting. It stays Lexical because email bodies hold
+ * merge-tag chips. `toolbarExtra` puts a composer's own controls (variables,
+ * Rewrite, Preview) on the toolbar's right.
+ *
  * Features:
  * - Rich text formatting (bold, italic, underline, lists)
  * - Placeholder badges rendered inline
@@ -29,16 +35,30 @@ import {
   LexicalEditor,
   $getSelection,
   $isRangeSelection,
+  $isParagraphNode,
   FORMAT_TEXT_COMMAND,
+  INDENT_CONTENT_COMMAND,
+  OUTDENT_CONTENT_COMMAND,
+  KEY_TAB_COMMAND,
+  KEY_SPACE_COMMAND,
+  COMMAND_PRIORITY_LOW,
   ParagraphNode,
 } from 'lexical';
 import { $generateNodesFromDOM } from '@lexical/html';
-import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list';
-import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
+import {
+  INSERT_ORDERED_LIST_COMMAND,
+  INSERT_UNORDERED_LIST_COMMAND,
+  REMOVE_LIST_COMMAND,
+  $isListNode,
+  $isListItemNode,
+} from '@lexical/list';
+import { $isLinkNode, $createLinkNode } from '@lexical/link';
+import { $getNearestNodeOfType, mergeRegister } from '@lexical/utils';
+import { Link as LinkIcon, Unlink } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { Toggle } from '@/components/ui/toggle';
-import { Separator } from '@/components/ui/separator';
+import { IconTip } from '@/components/ui/tooltip';
+import { BTN, FORMATTED_TEXT_STYLES, isMac } from '@/components/ui/formatted-text';
 import { lexicalTheme, LEXICAL_EDITOR_STYLES } from './lexicalTheme';
 import { PlaceholderNode, $createPlaceholderNode } from './nodes/PlaceholderNode';
 import { PlaceholderPlugin } from './plugins/PlaceholderPlugin';
@@ -59,6 +79,10 @@ export interface BodyTemplateEditorProps {
   disabled?: boolean;
   onFocus?: () => void;
   hideToolbar?: boolean;
+  /** A composer's own controls, on the toolbar's right (variables, Rewrite, Preview). */
+  toolbarExtra?: React.ReactNode;
+  /** Read by screen readers; the field's visible label. */
+  ariaLabel?: string;
 }
 
 export type BodyEditorCommand = 'bold' | 'italic' | 'underline' | 'ul' | 'ol' | 'quote' | 'link';
@@ -71,50 +95,202 @@ export interface BodyTemplateEditorHandle {
   exec: (command: BodyEditorCommand, arg?: string) => void;
 }
 
-// Toolbar component
-function Toolbar() {
+type ToolbarState = {
+  bold: boolean; italic: boolean; underline: boolean; strikethrough: boolean;
+  ul: boolean; ol: boolean; inLi: boolean; nested: boolean; link: string | null;
+};
+const EMPTY_STATE: ToolbarState = {
+  bold: false, italic: false, underline: false, strikethrough: false,
+  ul: false, ol: false, inLi: false, nested: false, link: null,
+};
+
+/** Reads the toolbar's state from the selection: marks, list kind and depth, link. */
+function readState(): ToolbarState {
+  const sel = $getSelection();
+  if (!$isRangeSelection(sel)) return EMPTY_STATE;
+  const node = sel.anchor.getNode();
+  const li = $getNearestNodeOfType(node, ListItemNode);
+  const list = li?.getParent();
+  const linkNode = $isLinkNode(node) ? node : $isLinkNode(node.getParent()) ? node.getParent() : null;
+  return {
+    bold: sel.hasFormat('bold'),
+    italic: sel.hasFormat('italic'),
+    underline: sel.hasFormat('underline'),
+    strikethrough: sel.hasFormat('strikethrough'),
+    ul: $isListNode(list) && list.getListType() === 'bullet',
+    ol: $isListNode(list) && list.getListType() === 'number',
+    inLi: !!li,
+    nested: !!li && $isListItemNode(list?.getParent()),
+    link: linkNode && $isLinkNode(linkNode) ? linkNode.getURL() : null,
+  };
+}
+
+/** The formatted text box's toolbar, driving Lexical. */
+function FormatToolbar({ extra, disabled }: { extra?: React.ReactNode; disabled?: boolean }) {
   const [editor] = useLexicalComposerContext();
+  const [st, setSt] = useState<ToolbarState>(EMPTY_STATE);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+
+  useEffect(
+    () => editor.registerUpdateListener(({ editorState }) => editorState.read(() => setSt(readState()))),
+    [editor],
+  );
+
+  // ⌘K opens the link box; the formatted text box's other shortcuts.
+  useEffect(() => {
+    const onOpen = () => { setLinkUrl(editor.getEditorState().read(() => readState().link) || ''); setLinkOpen(true); };
+    const el = editor.getRootElement();
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      const k = e.key.toLowerCase();
+      if (mod && k === 'k') { e.preventDefault(); onOpen(); }
+      else if (mod && e.shiftKey && k === 'x') { e.preventDefault(); editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough'); }
+      else if (mod && e.shiftKey && (e.code === 'Digit8' || k === '*')) { e.preventDefault(); run('ul'); }
+      else if (mod && e.shiftKey && (e.code === 'Digit7' || k === '&')) { e.preventDefault(); run('ol'); }
+    };
+    el?.addEventListener('keydown', onKey);
+    return () => el?.removeEventListener('keydown', onKey);
+  });
+
+  const run = (key: string) => {
+    editor.focus();
+    switch (key) {
+      case 'bold': case 'italic': case 'underline':
+        editor.dispatchCommand(FORMAT_TEXT_COMMAND, key); return;
+      case 'strikeThrough':
+        editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough'); return;
+      case 'ul':
+        editor.dispatchCommand(st.ul ? REMOVE_LIST_COMMAND : INSERT_UNORDERED_LIST_COMMAND, undefined); return;
+      case 'ol':
+        editor.dispatchCommand(st.ol ? REMOVE_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND, undefined); return;
+      case 'indent':
+        if (st.inLi) editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined); return;
+      case 'outdent':
+        if (st.nested) editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined); return;
+      case 'link':
+        setLinkUrl(st.link || ''); setLinkOpen(true); return;
+    }
+  };
+
+  const closeLink = () => { setLinkOpen(false); editor.focus(); };
+  const applyLink = () => {
+    let url = linkUrl.trim();
+    setLinkOpen(false);
+    editor.focus();
+    if (!url) { editor.dispatchCommand(TOGGLE_LINK_COMMAND, null); return; }
+    if (!/^(https?:|mailto:)/i.test(url)) url = `https://${url}`;
+    const collapsed = editor.getEditorState().read(() => {
+      const sel = $getSelection();
+      return $isRangeSelection(sel) && sel.isCollapsed();
+    });
+    if (collapsed && !st.link) {
+      // Nothing selected: the link's own address becomes its text.
+      editor.update(() => {
+        const sel = $getSelection();
+        if (!$isRangeSelection(sel)) return;
+        const link = $createLinkNode(url, { target: '_blank', rel: 'noopener noreferrer' });
+        link.append($createTextNode(url));
+        sel.insertNodes([link, $createTextNode(' ')]);
+      });
+      return;
+    }
+    editor.dispatchCommand(TOGGLE_LINK_COMMAND, { url, target: '_blank', rel: 'noopener noreferrer' });
+  };
+  const unlink = () => { setLinkOpen(false); editor.focus(); editor.dispatchCommand(TOGGLE_LINK_COMMAND, null); };
+
+  const on: Record<string, boolean> = {
+    bold: st.bold, italic: st.italic, underline: st.underline, strikeThrough: st.strikethrough,
+    ul: st.ul, ol: st.ol, link: !!st.link,
+  };
 
   return (
-    <div className="flex items-center gap-1 p-2 border-b border-border bg-surface-secondary/50 rounded-t-brand">
-      <Toggle
-        size="sm"
-        aria-label="Bold"
-        onPressedChange={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}
-      >
-        <Bold className="h-4 w-4" />
-      </Toggle>
-      <Toggle
-        size="sm"
-        aria-label="Italic"
-        onPressedChange={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}
-      >
-        <Italic className="h-4 w-4" />
-      </Toggle>
-      <Toggle
-        size="sm"
-        aria-label="Underline"
-        onPressedChange={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline')}
-      >
-        <Underline className="h-4 w-4" />
-      </Toggle>
-      <Separator orientation="vertical" className="h-6 mx-1" />
-      <Toggle
-        size="sm"
-        aria-label="Bullet List"
-        onPressedChange={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}
-      >
-        <List className="h-4 w-4" />
-      </Toggle>
-      <Toggle
-        size="sm"
-        aria-label="Numbered List"
-        onPressedChange={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}
-      >
-        <ListOrdered className="h-4 w-4" />
-      </Toggle>
-    </div>
+    <>
+      <div className="gne-tb" role="toolbar" aria-label="Formatting">
+        {BTN.map((b, i) => {
+          if (b === '|') return <span key={`d${i}`} className="gne-div" />;
+          const active = !!on[b.key];
+          const off = disabled || (b.key === 'indent' && !st.inLi) || (b.key === 'outdent' && !st.nested);
+          const Icon = b.icon;
+          return (
+            <IconTip key={b.key} label={b.title} side="top">
+              <button
+                type="button"
+                className="gne-btn"
+                aria-label={b.title}
+                aria-pressed={active}
+                data-active={active}
+                disabled={off}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => run(b.key)}
+              >
+                <Icon size={14} strokeWidth={active ? 2.1 : 1.75} />
+              </button>
+            </IconTip>
+          );
+        })}
+        {extra && (
+          <>
+            <span className="gne-div" />
+            {extra}
+          </>
+        )}
+      </div>
+      {linkOpen && (
+        <div className="gne-pop">
+          <LinkIcon size={13} color="#8B8F9E" />
+          <input
+            autoFocus
+            value={linkUrl}
+            placeholder="Paste or type a link…"
+            onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); applyLink(); }
+              if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeLink(); }
+            }}
+          />
+          {st.link && (
+            <IconTip label="Remove link" side="top">
+              <button type="button" className="gne-btn" aria-label="Remove link" onMouseDown={(e) => e.preventDefault()} onClick={unlink}>
+                <Unlink size={13} />
+              </button>
+            </IconTip>
+          )}
+          <button type="button" className="gne-apply" onMouseDown={(e) => e.preventDefault()} onClick={applyLink}>Apply</button>
+        </div>
+      )}
+    </>
   );
+}
+
+/** Tab nests list items; "* ", "- " and "1. " at the start of a line start a list. */
+function ShortcutsPlugin() {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => mergeRegister(
+    // Command handlers run inside an update, so $ functions are read directly.
+    editor.registerCommand(KEY_TAB_COMMAND, (e: KeyboardEvent) => {
+      if (!readState().inLi) return false;
+      e.preventDefault();
+      editor.dispatchCommand(e.shiftKey ? OUTDENT_CONTENT_COMMAND : INDENT_CONTENT_COMMAND, undefined);
+      return true;
+    }, COMMAND_PRIORITY_LOW),
+    editor.registerCommand(KEY_SPACE_COMMAND, (e: KeyboardEvent) => {
+      const sel = $getSelection();
+      if (!$isRangeSelection(sel) || !sel.isCollapsed()) return false;
+      const block = sel.anchor.getNode().getTopLevelElement();
+      if (!$isParagraphNode(block)) return false;
+      const text = block.getTextContent();
+      if (sel.anchor.offset !== text.length || !sel.anchor.getNode().is(block.getFirstChild())) return false;
+      const kind = text === '*' || text === '-' ? 'ul' : /^1[.)]$/.test(text) ? 'ol' : null;
+      if (!kind) return false;
+      block.getFirstChild()?.remove();
+      block.select(0, 0);
+      e.preventDefault();
+      editor.dispatchCommand(kind === 'ul' ? INSERT_UNORDERED_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND, undefined);
+      return true;
+    }, COMMAND_PRIORITY_LOW),
+  ), [editor]);
+  return null;
 }
 
 // Inner component with Lexical context access
@@ -128,6 +304,8 @@ function BodyEditorInner({
   disabled,
   onFocus,
   hideToolbar,
+  toolbarExtra,
+  ariaLabel,
   editorRef,
 }: BodyTemplateEditorProps & { editorRef: React.MutableRefObject<LexicalEditor | null> }) {
   const [editor] = useLexicalComposerContext();
@@ -202,29 +380,29 @@ function BodyEditorInner({
   }, []);
 
   return (
-    <div className={cn("border rounded-brand bg-surface-primary", className)}>
-      {!hideToolbar && <Toolbar />}
+    <div className={cn('gne', className)} data-disabled={disabled}>
+      <style>{FORMATTED_TEXT_STYLES}</style>
+      {!hideToolbar && <FormatToolbar extra={toolbarExtra} disabled={disabled} />}
       <div className="relative overflow-y-auto" style={{ minHeight, maxHeight }}>
         <RichTextPlugin
           contentEditable={
             <ContentEditable
-              className={cn(
-                "lexical-root p-3 outline-none break-words",
-                disabled && "opacity-50 cursor-not-allowed"
-              )}
+              className="lexical-root gne-ed"
               style={{ minHeight }}
               onFocus={handleFocus}
               onBlur={handleBlur}
               disabled={disabled}
+              aria-label={ariaLabel}
             />
           }
           placeholder={
-            <div className="lexical-editor-placeholder absolute left-3 top-3 pointer-events-none">
+            <div className="gne-ph" style={{ top: 14 }}>
               {placeholder}
             </div>
           }
           ErrorBoundary={LexicalErrorBoundary}
         />
+        <ShortcutsPlugin />
         <PlaceholderPlugin />
         <OnChangePlugin onChange={handleChange} />
         <HistoryPlugin />
@@ -232,6 +410,14 @@ function BodyEditorInner({
         <LinkPlugin />
         <AutoLinkPlugin />
       </div>
+      {!hideToolbar && !disabled && (
+        <div className="gne-hint" aria-hidden="true">
+          <span><span className="gne-kbd">*</span>bullets</span>
+          <span><span className="gne-kbd">1.</span>numbered</span>
+          <span><span className="gne-kbd">Tab</span>nest</span>
+          <span><span className="gne-kbd">{isMac ? '⌘K' : 'Ctrl+K'}</span>link</span>
+        </div>
+      )}
     </div>
   );
 }

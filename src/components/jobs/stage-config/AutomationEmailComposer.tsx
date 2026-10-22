@@ -1,15 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  Bold, Italic, Underline, List, ListOrdered, Quote, Link2, Braces, Paperclip, X, Eye, Search,
+  Braces, Paperclip, X, Eye, Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
-import type { SubjectTemplateEditorHandle, BodyTemplateEditorHandle, BodyEditorCommand } from '@/components/editors';
+import type { SubjectTemplateEditorHandle, BodyTemplateEditorHandle } from '@/components/editors';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { menuPanel, menuItem, menuGroupLabel } from '@/lib/menu-classes';
 import { cn } from '@/lib/utils';
 import {
@@ -53,8 +51,6 @@ export function AutomationEmailComposer({
   const lastFocused = useRef<'subject' | 'body'>('body');
   const [varOpen, setVarOpen] = useState<null | 'subject' | 'body'>(null);
   const [varQuery, setVarQuery] = useState('');
-  const [linkOpen, setLinkOpen] = useState(false);
-  const [linkUrl, setLinkUrl] = useState('');
   const [showCc, setShowCc] = useState(cc.length > 0 || bcc.length > 0);
   const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -80,7 +76,6 @@ export function AutomationEmailComposer({
     setVarQuery('');
   };
 
-  const exec = (c: BodyEditorCommand, arg?: string) => bodyRef.current?.exec(c, arg);
 
   const applyTemplate = (id: string) => {
     if (id === '__none') { onTemplateChange(null); return; }
@@ -172,17 +167,14 @@ export function AutomationEmailComposer({
     </Popover>
   );
 
-  const ToolBtn = ({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) => (
+  const previewToggle = (
     <button
       type="button"
-      title={title}
-      aria-label={title}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onClick}
-      className="h-7 w-7 rounded-md inline-flex items-center justify-center hover:bg-[#F1F0EC]"
-      style={{ color: '#5A6072' }}
+      onClick={() => setPreview((p) => !p)}
+      className={cn('h-7 px-2 rounded-md inline-flex items-center gap-1.5 font-inter hover:bg-[#F1F0EC]', preview && 'bg-[#EDE4FF]')}
+      style={{ fontSize: 12, color: '#5A6072' }}
     >
-      {children}
+      <Eye className="h-3.5 w-3.5" /> {preview ? 'Edit' : 'Preview'}
     </button>
   );
 
@@ -250,68 +242,40 @@ export function AutomationEmailComposer({
         />
       </div>
 
-      {/* Toolbar */}
-      <div className="px-3 pt-2 flex items-center gap-0.5">
-        <ToolBtn title="Bold" onClick={() => exec('bold')}><Bold className="h-3.5 w-3.5" /></ToolBtn>
-        <ToolBtn title="Italic" onClick={() => exec('italic')}><Italic className="h-3.5 w-3.5" /></ToolBtn>
-        <ToolBtn title="Underline" onClick={() => exec('underline')}><Underline className="h-3.5 w-3.5" /></ToolBtn>
-        <span className="mx-1 h-4 w-px" style={{ background: '#E8E6E0' }} />
-        <ToolBtn title="Bulleted list" onClick={() => exec('ul')}><List className="h-3.5 w-3.5" /></ToolBtn>
-        <ToolBtn title="Numbered list" onClick={() => exec('ol')}><ListOrdered className="h-3.5 w-3.5" /></ToolBtn>
-        <ToolBtn title="Quote" onClick={() => exec('quote')}><Quote className="h-3.5 w-3.5" /></ToolBtn>
-        <Popover open={linkOpen} onOpenChange={setLinkOpen}>
-          <PopoverTrigger asChild>
-            <button type="button" title="Link" aria-label="Link" onMouseDown={(e) => e.preventDefault()} className="h-7 w-7 rounded-md inline-flex items-center justify-center hover:bg-[#F1F0EC]" style={{ color: '#5A6072' }}>
-              <Link2 className="h-3.5 w-3.5" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" sideOffset={6} className="w-[300px] p-2 z-[1300]">
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => { e.preventDefault(); exec('link', linkUrl.trim()); setLinkOpen(false); setLinkUrl(''); }}
-            >
-              <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://" className="h-8 text-[12.5px]" autoFocus />
-              <Button type="submit" size="sm">Apply</Button>
-            </form>
-          </PopoverContent>
-        </Popover>
-        <span className="mx-1 h-4 w-px" style={{ background: '#E8E6E0' }} />
-        {variablePopover('body', (
-          <button type="button" onMouseDown={(e) => e.preventDefault()} className="h-7 px-2 rounded-md inline-flex items-center gap-1.5 font-inter hover:bg-[#F1F0EC]" style={{ fontSize: 12, color: '#6F3FF5' }}>
-            <Braces className="h-3.5 w-3.5" /> Insert variable
-          </button>
-        ))}
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => setPreview((p) => !p)}
-          className={cn('h-7 px-2 rounded-md inline-flex items-center gap-1.5 font-inter hover:bg-[#F1F0EC]', preview && 'bg-[#EDE4FF]')}
-          style={{ fontSize: 12, color: '#5A6072' }}
-        >
-          <Eye className="h-3.5 w-3.5" /> {preview ? 'Edit' : 'Preview'}
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="px-4 pb-3 pt-1">
+      {/* Body: the formatted box's toolbar carries Insert variable and Preview */}
+      <div className="px-4 pb-3 pt-2">
         {preview ? (
-          <div className="rounded-lg p-4 font-inter" style={{ border: '1px solid #E8E6E0', background: '#FAFAF7', fontSize: 13, color: '#0d0d09', minHeight: 200 }}>
-            <div className="font-poppins mb-3" style={{ fontSize: 13.5, fontWeight: 600 }}>
-              {previewTemplate(step.subject, sample as any) || <span style={{ color: '#8B8F9E' }}>No subject</span>}
+          <>
+            <div className="flex items-center justify-end mb-1.5">{previewToggle}</div>
+            <div className="rounded-lg p-4 font-inter" style={{ border: '1px solid #E8E6E0', background: '#FAFAF7', fontSize: 13, color: '#0d0d09', minHeight: 200 }}>
+              <div className="font-poppins mb-3" style={{ fontSize: 13.5, fontWeight: 600 }}>
+                {previewTemplate(step.subject, sample as any) || <span style={{ color: '#8B8F9E' }}>No subject</span>}
+              </div>
+              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: previewTemplate(step.body_html, sample as any) }} />
+              <div className="mt-3 font-inter" style={{ fontSize: 11, color: '#8B8F9E' }}>Preview uses sample values. Real sends use each candidate's data.</div>
             </div>
-            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: previewTemplate(step.body_html, sample as any) }} />
-            <div className="mt-3 font-inter" style={{ fontSize: 11, color: '#8B8F9E' }}>Preview uses sample values. Real sends use each candidate's data.</div>
-          </div>
+          </>
         ) : (
           <BodyTemplateEditor
             ref={bodyRef}
             value={step.body_html}
             onChange={(v) => onChange({ ...step, body_html: v })}
             placeholder="Write your email…"
-            hideToolbar
+            ariaLabel="Email body"
             minHeight="200px"
             maxHeight="420px"
             onFocus={() => { lastFocused.current = 'body'; }}
+            toolbarExtra={
+              <>
+                {variablePopover('body', (
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} className="h-7 px-2 rounded-md inline-flex items-center gap-1.5 font-inter hover:bg-[#F1F0EC]" style={{ fontSize: 12, color: '#6F3FF5' }}>
+                    <Braces className="h-3.5 w-3.5" /> Insert variable
+                  </button>
+                ))}
+                <div className="flex-1" />
+                {previewToggle}
+              </>
+            }
           />
         )}
 

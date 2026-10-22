@@ -25,11 +25,6 @@ import {
   Send,
   Mail,
   Sparkles,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  Link as LinkIcon,
   AtSign,
   Calendar,
   Bookmark,
@@ -604,78 +599,12 @@ export function EmailComposer({
 
         {/* Body region — flex column, editor grows to fill */}
         <div className="flex-1 min-h-0 flex flex-col" style={{ padding: '12px 16px' }}>
-          {/* Toolbar — single row, no wrap */}
-          <div
-            className="flex items-center gap-1 mb-2.5 shrink-0 flex-nowrap overflow-hidden"
-            style={{
-              padding: '5px 8px',
-              background: '#FAFAF7',
-              border: '1px solid #E7E8EE',
-              borderRadius: 7,
-            }}
-          >
-            <ToolbarIcon icon={<Bold className="h-3.5 w-3.5" />} label="Bold" />
-            <ToolbarIcon icon={<Italic className="h-3.5 w-3.5" />} label="Italic" />
-            <ToolbarIcon icon={<Underline className="h-3.5 w-3.5" />} label="Underline" />
-            <ToolbarDivider />
-            <ToolbarIcon icon={<List className="h-3.5 w-3.5" />} label="List" />
-            <ToolbarIcon icon={<LinkIcon className="h-3.5 w-3.5" />} label="Link" />
-            <ToolbarDivider />
-            <VariablesPicker
-              onSelect={(key) => bodyEditorRef.current?.insertPlaceholder(key)}
-              trigger={
-                <button
-                  type="button"
-                  className="inline-flex flex-nowrap items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0 leading-none"
-                  style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
-                >
-                  <AtSign className="h-3 w-3 shrink-0" />
-                  <span className="whitespace-nowrap">Variables</span>
-                </button>
-              }
-            />
-            <div className="flex-1 min-w-0" />
-            {candidateId && jobId && (
-              <AIDraftPopover
-                candidateId={candidateId}
-                jobId={jobId}
-                senderName={fromIdentity?.display_name || undefined}
-                currentBody={bodyHtml}
-                onInsert={(subject, body) => {
-                  setSubjectHtml(subject);
-                  setValue('subject', subject);
-                  const templateBody = normalizeToTemplateString(body);
-                  setBodyHtml(templateBody);
-                  setValue('body_html', templateBody);
-                }}
-              >
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 h-6 px-2.5 rounded-md transition-colors whitespace-nowrap shrink-0"
-                  style={{
-                    background: '#EDE4FF',
-                    color: '#5B21B6',
-                    fontSize: 11,
-                    fontFamily: 'Poppins, sans-serif',
-                    fontWeight: 500,
-                  }}
-                >
-                  <Sparkles className="h-2.5 w-2.5" />
-                  Rewrite
-                </button>
-              </AIDraftPopover>
-            )}
-          </div>
-
-          {/* Editor — grows to fill remaining space */}
+          {/* Editor — grows to fill remaining space; the box's own toolbar carries Variables and Rewrite */}
           <div
             className={cn(
               'flex-1 min-h-0 flex flex-col',
-              '[&>div]:flex-1 [&>div]:flex [&>div]:flex-col [&>div]:min-h-0',
-              '[&>div]:border [&>div]:border-[#E0DDD3] [&>div]:rounded-lg [&>div]:bg-white',
-              '[&_.lexical-root]:flex-1 [&_.lexical-root]:min-h-[220px] [&_.lexical-root]:outline-none [&_.lexical-root]:overflow-auto',
-              '[&_.lexical-root]:text-[13px] [&_.lexical-root]:leading-[1.6] [&_.lexical-root]:text-[#1F2230]',
-              '[&_.lexical-editor-placeholder]:!text-[13px] [&_.lexical-editor-placeholder]:!leading-[1.6] [&_.lexical-editor-placeholder]:!font-normal [&_.lexical-editor-placeholder]:!text-[#8B8F9E] [&_.lexical-editor-placeholder]:!top-3 [&_.lexical-editor-placeholder]:!left-3',
+              '[&>.gne]:flex-1 [&>.gne]:flex [&>.gne]:flex-col [&>.gne]:min-h-0',
+              '[&_.gne>.relative]:flex-1 [&_.gne>.relative]:min-h-0',
             )}
           >
             <BodyTemplateEditor
@@ -686,8 +615,57 @@ export function EmailComposer({
                 setValue('body_html', content);
               }}
               placeholder="Write your message…"
-              hideToolbar
+              ariaLabel="Message"
               minHeight="220px"
+              maxHeight="none"
+              toolbarExtra={
+                <>
+                  <VariablesPicker
+                    onSelect={(key) => bodyEditorRef.current?.insertPlaceholder(key)}
+                    trigger={
+                      <button
+                        type="button"
+                        className="gne-btn"
+                        style={{ width: 'auto', padding: '0 8px', gap: 4, fontSize: 12, fontFamily: 'Inter' }}
+                      >
+                        <AtSign className="h-3.5 w-3.5 shrink-0" />
+                        <span className="whitespace-nowrap">Variables</span>
+                      </button>
+                    }
+                  />
+                  <div className="flex-1 min-w-0" />
+                  {candidateId && jobId && (
+                    <AIDraftPopover
+                      candidateId={candidateId}
+                      jobId={jobId}
+                      senderName={fromIdentity?.display_name || undefined}
+                      currentBody={bodyHtml}
+                      onInsert={(subject, body) => {
+                        setSubjectHtml(subject);
+                        setValue('subject', subject);
+                        const templateBody = normalizeToTemplateString(body);
+                        setBodyHtml(templateBody);
+                        setValue('body_html', templateBody);
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 h-6 px-2.5 rounded-md transition-colors whitespace-nowrap shrink-0"
+                        style={{
+                          background: '#EDE4FF',
+                          color: '#5B21B6',
+                          fontSize: 11,
+                          fontFamily: 'Poppins, sans-serif',
+                          fontWeight: 500,
+                        }}
+                      >
+                        <Sparkles className="h-2.5 w-2.5" />
+                        Rewrite
+                      </button>
+                    </AIDraftPopover>
+                  )}
+                </>
+              }
             />
           </div>
 
@@ -1235,25 +1213,6 @@ function ChipInput({
   );
 }
 
-
-function ToolbarIcon({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className="flex h-6 w-6 items-center justify-center rounded hover:bg-white transition-colors"
-      style={{ color: '#5A6072' }}
-    >
-      {icon}
-    </button>
-  );
-}
-
-function ToolbarDivider() {
-  return <div style={{ width: 1, height: 16, background: '#E0DDD3', margin: '0 4px' }} />;
-}
 
 function FooterIcon({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
   return (

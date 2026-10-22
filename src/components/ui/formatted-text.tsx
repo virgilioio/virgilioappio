@@ -15,7 +15,8 @@ import { IconTip } from '@/components/ui/tooltip'
  * each keystroke. Email bodies keep BodyTemplateEditor (merge-tag chips) in this look.
  */
 
-const STYLES = `
+/** Shared with BodyTemplateEditor so email bodies wear the same look. */
+export const FORMATTED_TEXT_STYLES = `
 .gne{position:relative;background:#fff;border:1px solid #E0DDD3;border-radius:8px;transition:border-color .15s,box-shadow .15s}
 .gne:focus-within{border-color:#B9B6AC;box-shadow:0 0 0 3px rgba(31,34,48,.06)}
 .gne-tb{display:flex;align-items:center;gap:2px;padding:6px 8px;border-bottom:1px solid #F1F0EC;background:#fff;flex-wrap:wrap;border-radius:8px 8px 0 0}
@@ -40,6 +41,9 @@ const STYLES = `
 .gne-ed ul{list-style:disc}.gne-ed ul ul{list-style:circle}.gne-ed ul ul ul{list-style:square}
 .gne-ed ol{list-style:decimal}.gne-ed ol ol{list-style:lower-alpha}.gne-ed ol ol ol{list-style:lower-roman}
 .gne-ed li::marker{color:#5A6072}
+.gne-ed .lexical-nested-listitem{list-style:none}
+.gne-ed .lexical-nested-listitem::marker{content:none}
+.gne-ed blockquote{margin:4px 0;padding:2px 0 2px 12px;border-left:3px solid #E0DDD3;color:#5A6072}
 .gne-ed ol>li::marker{font-variant-numeric:tabular-nums;font-size:12.5px}
 .gne-ph{position:absolute;left:16px;color:#8B8F9E;pointer-events:none;font-family:Inter,sans-serif;font-size:13.5px;line-height:1.6}
 .gne-hint{display:flex;justify-content:flex-end;gap:10px;padding:0 12px 9px;font-family:Inter,sans-serif;font-size:11px;color:#8B8F9E;opacity:0;pointer-events:none;transition:opacity .15s}
@@ -50,7 +54,7 @@ const STYLES = `
 .gne-apply{background:#1F2230;color:#fff;font-family:Inter,sans-serif;font-size:12px;font-weight:500;height:26px;padding:0 10px;border-radius:6px;border:0;cursor:pointer}
 `
 
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+export const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 
 type Caret = { node: Node; offset: number } | null
 const saveCaret = (): Caret => {
@@ -120,10 +124,12 @@ function retag(block: HTMLElement, tag: 'P' | 'H2' | 'H3') {
   const c = saveCaret()
   const next = document.createElement(tag)
   while (block.firstChild) next.appendChild(block.firstChild)
-  if (!next.firstChild) next.appendChild(document.createElement('br'))
+  // A line emptied by a shortcut ("## ") keeps a <br>, or the caret has nowhere to sit.
+  const blank = !(next.textContent || '').length
+  if (blank) { next.textContent = ''; next.appendChild(document.createElement('br')) }
   block.replaceWith(next)
-  if (c && c.node.isConnected && next.contains(c.node)) restoreCaret(c)
-  else placeCaretIn(next, true)
+  if (!blank && c && c.node.isConnected && next.contains(c.node)) restoreCaret(c)
+  else placeCaretIn(next, !blank)
   return next
 }
 
@@ -243,7 +249,8 @@ const HEADING_BTN: Array<{ key: string; icon: LucideIcon; title: string } | '|'>
   '|',
 ]
 
-const BTN: Array<{ key: string; icon: LucideIcon; title: string } | '|'> = [
+/** The toolbar both editors draw: text marks, lists, link. */
+export const BTN: Array<{ key: string; icon: LucideIcon; title: string } | '|'> = [
   { key: 'bold', icon: Bold, title: 'Bold ⌘B' },
   { key: 'italic', icon: Italic, title: 'Italic ⌘I' },
   { key: 'underline', icon: Underline, title: 'Underline ⌘U' },
@@ -514,7 +521,7 @@ export function FormattedTextBox({
 
   return (
     <div className="gne" data-disabled={disabled}>
-      <style>{STYLES}</style>
+      <style>{FORMATTED_TEXT_STYLES}</style>
       <div className="gne-tb" role="toolbar" aria-label="Formatting">
         {(headings ? [...HEADING_BTN, ...BTN] : BTN).map((b, i) => {
           if (b === '|') return <span key={`d${i}`} className="gne-div" />
