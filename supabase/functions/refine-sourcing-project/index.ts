@@ -152,7 +152,10 @@ Also provide a friendly explanation of what you changed.`
       .from('sourcing_projects')
       .update({ 
         search_criteria: updatedCriteria,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        // New criteria, new results: the cached Apollo and PDL rows belong to the old ones.
+        sourcing_cache_expires_at: null,
+        pdl_cache_expires_at: null,
       })
       .eq('id', project_id);
 

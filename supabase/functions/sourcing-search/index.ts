@@ -518,6 +518,10 @@ serve(async (req) => {
       deduplicated,
     };
 
+    // When the search last ran, for the results header (not updated_at, which
+    // any edit to the project moves).
+    await supabase.from('sourcing_projects').update({ last_search_at: new Date().toISOString() }).eq('id', sourcing_project_id);
+
     console.log(`📊 Final: ${allCandidates.length} candidates (PDL: ${sourceBreakdown.pdl}, Apollo: ${sourceBreakdown.apollo}, deduped: ${deduplicated})`);
 
     return new Response(JSON.stringify({

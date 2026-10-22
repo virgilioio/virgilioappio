@@ -103,7 +103,7 @@ serve(async (req) => {
       .select(`
         id, title, internal_title, description, department, location,
         additional_locations, work_mode, location_requirement, job_level,
-        min_years_experience, max_years_experience, skills, must_have_skills,
+        min_years_experience, max_years_experience, skills, must_have_skills, skill_priorities,
         salary_min, salary_max, currency, organization_id, tenant_id
       `)
       .eq('id', body.job_id)
@@ -125,8 +125,15 @@ serve(async (req) => {
       ? []
       : uniq<string>([job.location, ...((job.additional_locations as string[] | null) ?? [])]).filter(Boolean);
 
+    // The job's skills with their tiers (Find, 2026-10-22): must-haves rank
+    // people in Gio and can be required on Apollo; nothing goes to keywords.
     const skills = uniq<string>((job.skills as string[] | null) ?? []);
-    const mustHaves = uniq<string>((job.must_have_skills as string[] | null) ?? []);
+    const rawPriorities = (job.skill_priorities ?? {}) as Record<string, unknown>;
+    const skill_priorities: Record<string, string> = {};
+    for (const s of skills) {
+      const p = rawPriorities[s];
+      skill_priorities[s] = p === 'must' || p === 'bonus' ? p : 'nice';
+    }
 
     const seniorities = levelToSeniorities(job.job_level);
 
@@ -141,7 +148,8 @@ serve(async (req) => {
       skills,
       title_keywords: titleKeywords,
       locations,
-      keywords: mustHaves.slice(0, 3),
+      skill_priorities,
+      keywords: [],
       seniorities,
       experience_years,
       salary_min: job.salary_min ?? undefined,
