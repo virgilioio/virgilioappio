@@ -1,6 +1,6 @@
 import { Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { NotesEditor } from './NotesEditor'
+import { FormattedTextBox } from '@/components/ui/formatted-text'
 import { CandidateSheetSection } from '../form/CandidateSheetSection'
 
 interface Props {
@@ -43,10 +43,11 @@ export function KeyTakeawaysCard({ value, onChange, onPolish, isPolishing, disab
 
   return (
     <CandidateSheetSection label="KEY TAKEAWAYS" action={action}>
-      <NotesEditor
+      <FormattedTextBox
         value={value}
         onChange={onChange}
         placeholder="Share your key takeaways and observations…"
+        ariaLabel="Key takeaways"
       />
     </CandidateSheetSection>
   )

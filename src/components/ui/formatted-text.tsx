@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered, IndentDecrease, IndentIncrease,
-  Link as LinkIcon, Unlink, type LucideIcon,
+  Link as LinkIcon, Unlink, Heading2, Heading3, type LucideIcon,
 } from 'lucide-react'
+import { IconTip } from '@/components/ui/tooltip'
 
 /**
- * Neutral Notion/Linear-style notes editor used by the scorecard Key takeaways field.
- * Stores HTML. The contentEditable is uncontrolled: innerHTML is only written when the
- * value changes from outside (initial load, Polish notes), never on each keystroke.
+ * The ATS's formatted text box (Allan, 2026-10-22: "the one we like is the one in
+ * the scorecards"): the scorecard's Key takeaways editor, shared. Neutral
+ * Notion/Linear look, Bold · Italic · Underline · Strikethrough, lists with nesting,
+ * links, typing shortcuts, and with `headings` a Heading (H2) and Subheading (H3)
+ * for job posts. Stores HTML. The contentEditable is uncontrolled: innerHTML is only
+ * written when the value changes from outside (initial load, Gio drafts), never on
+ * each keystroke. Email bodies keep BodyTemplateEditor (merge-tag chips) in this look.
  */
 
 const STYLES = `
@@ -22,6 +27,11 @@ const STYLES = `
 .gne-ed{font-family:Inter,sans-serif;font-size:13.5px;line-height:1.6;color:#1F2230;padding:14px 16px 16px;min-height:132px;word-break:break-word;outline:none}
 .gne-ed p{margin:0 0 6px}.gne-ed>:last-child{margin-bottom:0}
 .gne-ed b,.gne-ed strong{font-weight:600}
+.gne-ed h1,.gne-ed h2{font-family:Poppins,sans-serif;font-weight:600;font-size:15.5px;line-height:1.4;letter-spacing:-.01em;color:#1F2230;margin:16px 0 6px}
+.gne-ed h3{font-family:Poppins,sans-serif;font-weight:600;font-size:14px;line-height:1.45;color:#1F2230;margin:12px 0 4px}
+.gne-ed>h1:first-child,.gne-ed>h2:first-child,.gne-ed>h3:first-child{margin-top:0}
+.gne[data-disabled=true]{background:#FBFAF7}
+.gne[data-disabled=true] .gne-ed{color:#5A6072}
 .gne-ed a{color:#1F2230;text-decoration:underline;text-decoration-color:#B9B6AC;text-underline-offset:2px}
 .gne-ed a:hover{text-decoration-color:#1F2230}
 .gne-ed ul,.gne-ed ol{margin:2px 0 8px;padding-left:22px}
@@ -96,6 +106,34 @@ function currentBlock(root: HTMLElement): HTMLElement | null {
     return p
   }
   return n as HTMLElement
+}
+
+/** Top-level block holding a node, without touching the DOM (for toolbar state). */
+function blockOf(node: Node | null, root: HTMLElement): HTMLElement | null {
+  let n: Node | null = node
+  while (n && n.parentNode && n.parentNode !== root) n = n.parentNode
+  return n && n.nodeType === 1 && n.parentNode === root ? (n as HTMLElement) : null
+}
+
+/** Turns a top-level block into another block type (P, H2, H3), keeping its content and the caret. */
+function retag(block: HTMLElement, tag: 'P' | 'H2' | 'H3') {
+  const c = saveCaret()
+  const next = document.createElement(tag)
+  while (block.firstChild) next.appendChild(block.firstChild)
+  if (!next.firstChild) next.appendChild(document.createElement('br'))
+  block.replaceWith(next)
+  if (c && c.node.isConnected && next.contains(c.node)) restoreCaret(c)
+  else placeCaretIn(next, true)
+  return next
+}
+
+function caretAtEnd(block: HTMLElement) {
+  const s = window.getSelection()
+  if (!s || !s.isCollapsed || !s.rangeCount) return false
+  const r = document.createRange()
+  r.setStart(s.anchorNode!, s.anchorOffset)
+  r.setEnd(block, block.childNodes.length)
+  return r.toString() === ''
 }
 
 function mergeAdjacent(list: HTMLElement) {
@@ -189,7 +227,21 @@ interface Props {
   value: string
   onChange: (html: string) => void
   placeholder?: string
+  /** Read by screen readers; the field's visible label. */
+  ariaLabel?: string
+  /** Heading (H2) and Subheading (H3), for job posts. */
+  headings?: boolean
+  /** Height of the empty writing area, px. */
+  minHeight?: number
+  disabled?: boolean
+  id?: string
 }
+
+const HEADING_BTN: Array<{ key: string; icon: LucideIcon; title: string } | '|'> = [
+  { key: 'h2', icon: Heading2, title: 'Heading · or type ##' },
+  { key: 'h3', icon: Heading3, title: 'Subheading · or type ###' },
+  '|',
+]
 
 const BTN: Array<{ key: string; icon: LucideIcon; title: string } | '|'> = [
   { key: 'bold', icon: Bold, title: 'Bold ⌘B' },
@@ -205,7 +257,16 @@ const BTN: Array<{ key: string; icon: LucideIcon; title: string } | '|'> = [
   { key: 'link', icon: LinkIcon, title: 'Link ⌘K' },
 ]
 
-export function NotesEditor({ value, onChange, placeholder = 'Share your key takeaways and observations…' }: Props) {
+export function FormattedTextBox({
+  value,
+  onChange,
+  placeholder,
+  ariaLabel,
+  headings = false,
+  minHeight,
+  disabled = false,
+  id,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const last = useRef<string | null>(null)
   const savedRange = useRef<Range | null>(null)
@@ -247,7 +308,10 @@ export function NotesEditor({ value, onChange, placeholder = 'Share your key tak
     if (!el || !s?.anchorNode || !el.contains(s.anchorNode)) return
     const li = closest(s.anchorNode, 'li', el)
     const listTag = li?.parentElement?.tagName
+    const blockTag = li ? null : blockOf(s.anchorNode, el)?.tagName
     setActive({
+      h2: blockTag === 'H2' || blockTag === 'H1',
+      h3: blockTag === 'H3',
       bold: document.queryCommandState('bold'),
       italic: document.queryCommandState('italic'),
       underline: document.queryCommandState('underline'),
@@ -278,7 +342,7 @@ export function NotesEditor({ value, onChange, placeholder = 'Share your key tak
       const list = li.parentElement!
       if (list.tagName === tag) {
         // back to paragraph: outdent to top then convert
-        let cur = li
+        const cur = li
         while (cur.parentElement?.parentElement?.tagName === 'LI') outdent(cur, el)
         outdent(cur, el)
       } else {
@@ -298,6 +362,18 @@ export function NotesEditor({ value, onChange, placeholder = 'Share your key tak
         el.appendChild(p); blockToList(p, tag)
       }
     }
+    emit(); updateActive()
+  }
+
+  const toggleHeading = (tag: 'H2' | 'H3') => {
+    const el = ref.current!
+    const s = window.getSelection()
+    if (!s?.anchorNode || !el.contains(s.anchorNode)) { el.focus(); return }
+    if (closest(s.anchorNode, 'li', el)) return
+    const b = currentBlock(el)
+    if (!b) return
+    const same = b.tagName === tag || (tag === 'H2' && b.tagName === 'H1')
+    retag(b, same ? 'P' : tag)
     emit(); updateActive()
   }
 
@@ -356,6 +432,8 @@ export function NotesEditor({ value, onChange, placeholder = 'Share your key tak
     const s = window.getSelection()
     const li = s?.anchorNode ? closest(s.anchorNode, 'li', el) : null
     switch (key) {
+      case 'h2': return toggleHeading('H2')
+      case 'h3': return toggleHeading('H3')
       case 'ul': return toggleList('UL')
       case 'ol': return toggleList('OL')
       case 'indent': if (li) { indent(li); emit() } return
@@ -382,6 +460,14 @@ export function NotesEditor({ value, onChange, placeholder = 'Share your key tak
       if (e.shiftKey) outdent(li, el); else indent(li)
       emit(); return
     }
+    if (e.key === 'Enter' && !e.shiftKey && !li && headings) {
+      const b = blockOf(s?.anchorNode ?? null, el)
+      if (b && /^H[1-6]$/.test(b.tagName) && caretAtEnd(b)) {
+        e.preventDefault()
+        const p = document.createElement('p'); p.appendChild(document.createElement('br'))
+        b.after(p); placeCaretIn(p); emit(); updateActive(); return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey && li && ownText(li) === '') {
       e.preventDefault(); outdent(li, el); emit(); return
     }
@@ -394,6 +480,14 @@ export function NotesEditor({ value, onChange, placeholder = 'Share your key tak
       const r = document.createRange()
       r.setStart(block, 0); r.setEnd(s.anchorNode, s.anchorOffset)
       const before = r.toString()
+      const head = !headings ? null : before === '#' || before === '##' ? 'H2' : before === '###' ? 'H3' : null
+      if (head) {
+        e.preventDefault()
+        r.deleteContents()
+        retag(block, head)
+        emit(); updateActive()
+        return
+      }
       const tag = before === '*' || before === '-' ? 'UL' : /^1[.)]$/.test(before) ? 'OL' : null
       if (tag) {
         e.preventDefault()
@@ -419,29 +513,33 @@ export function NotesEditor({ value, onChange, placeholder = 'Share your key tak
   }
 
   return (
-    <div className="gne">
+    <div className="gne" data-disabled={disabled}>
       <style>{STYLES}</style>
       <div className="gne-tb" role="toolbar" aria-label="Formatting">
-        {BTN.map((b, i) => {
+        {(headings ? [...HEADING_BTN, ...BTN] : BTN).map((b, i) => {
           if (b === '|') return <span key={`d${i}`} className="gne-div" />
           const on = !!active[b.key]
-          const disabled = (b.key === 'indent' && !active.inLi) || (b.key === 'outdent' && !active.nested)
+          const off =
+            disabled ||
+            (b.key === 'indent' && !active.inLi) ||
+            (b.key === 'outdent' && !active.nested) ||
+            ((b.key === 'h2' || b.key === 'h3') && !!active.inLi)
           const Icon = b.icon
           return (
+            <IconTip key={b.key} label={b.title} side="top">
             <button
-              key={b.key}
               type="button"
               className="gne-btn"
-              title={b.title}
               aria-label={b.title}
               aria-pressed={on}
               data-active={on}
-              disabled={disabled}
+              disabled={off}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => run(b.key)}
             >
               <Icon size={14} strokeWidth={on ? 2.1 : 1.75} />
             </button>
+            </IconTip>
           )
         })}
       </div>
@@ -460,25 +558,30 @@ export function NotesEditor({ value, onChange, placeholder = 'Share your key tak
             }}
           />
           {editingLink && (
-            <button type="button" className="gne-btn" title="Remove link" aria-label="Remove link" onMouseDown={(e) => e.preventDefault()} onClick={unlink}>
-              <Unlink size={13} />
-            </button>
+            <IconTip label="Remove link" side="top">
+              <button type="button" className="gne-btn" aria-label="Remove link" onMouseDown={(e) => e.preventDefault()} onClick={unlink}>
+                <Unlink size={13} />
+              </button>
+            </IconTip>
           )}
           <button type="button" className="gne-apply" onMouseDown={(e) => e.preventDefault()} onClick={applyLink}>Apply</button>
         </div>
       )}
 
       <div style={{ position: 'relative' }}>
-        {empty && <div className="gne-ph" style={{ top: 14 }}>{placeholder}</div>}
+        {empty && placeholder && <div className="gne-ph" style={{ top: 14 }}>{placeholder}</div>}
         <div
           ref={ref}
+          id={id}
           className="gne-ed"
-          contentEditable
+          style={minHeight ? { minHeight } : undefined}
+          contentEditable={!disabled}
           suppressContentEditableWarning
           spellCheck
           role="textbox"
           aria-multiline="true"
-          aria-label="Key takeaways"
+          aria-disabled={disabled || undefined}
+          aria-label={ariaLabel}
           onInput={emit}
           onBlur={emit}
           onKeyDown={onKeyDown}
@@ -487,6 +590,7 @@ export function NotesEditor({ value, onChange, placeholder = 'Share your key tak
       </div>
 
       <div className="gne-hint" aria-hidden="true">
+        {headings && <span><span className="gne-kbd">##</span>heading</span>}
         <span><span className="gne-kbd">*</span>bullets</span>
         <span><span className="gne-kbd">1.</span>numbered</span>
         <span><span className="gne-kbd">Tab</span>nest</span>
