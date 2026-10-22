@@ -1,4 +1,4 @@
--- Run after 20261022224455_os_person_details inside a transaction that is rolled back.
+-- Run after 20261022230518_os_person_details inside a transaction that is rolled back.
 -- Allan (an admin) fills in a teammate's details; the teammate edits their own;
 -- another member can neither read nor write them. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);

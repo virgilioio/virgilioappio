@@ -6792,6 +6792,53 @@ export type Database = {
           },
         ]
       }
+      os_person_details: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          created_at: string
+          personal_email: string | null
+          personal_phone: string | null
+          region: string | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          personal_email?: string | null
+          personal_phone?: string | null
+          region?: string | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          personal_email?: string | null
+          personal_phone?: string | null
+          region?: string | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_person_details_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_person_profile: {
         Row: {
           bundle_id: string | null
