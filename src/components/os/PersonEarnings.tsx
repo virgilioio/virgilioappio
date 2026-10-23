@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { Coins, ListChecks, ReceiptText } from 'lucide-react'
+import { CircleDollarSign, Clock, Coins, ListChecks, ReceiptText, TrendingUp, type LucideIcon } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
-import { BlendNumber } from '@/components/ui/blend-number'
+import { MetricStrip, type MetricItem, type MetricTone } from '@/components/ui/metric-strip'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { LoadError } from '@/components/empty/LoadError'
 import { JobPreview } from '@/components/previews/EntityPreview'
@@ -57,27 +57,17 @@ function Dot({ label, dot }: { label: string; dot: string }) {
   )
 }
 
-/** One KPI tile: the first currency counts up once per session, any other currency sits under it. */
-function Tile({ id, label, hint, sums, loading }: { id: string; label: string; hint: string; sums: { amount: number; currency: string }[]; loading: boolean }) {
+/** A strip cell: the first currency counts up once per session, any other currency sits under it. */
+function moneyMetric(label: string, icon: LucideIcon, tone: MetricTone, sums: { amount: number; currency: string }[]): MetricItem {
   const [first, ...rest] = sums.length ? sums : [{ amount: 0, currency: 'USD' }]
-  return (
-    <div className="rounded-[10px] bg-[#F7F6F2] px-3 py-2">
-      <div className="font-poppins text-[18px] font-semibold tabular-nums tracking-[-0.02em] text-[#1F2230]">
-        {loading ? (
-          <Skeleton className="my-1 h-5 w-20" />
-        ) : (
-          <BlendNumber id={`${id}-${first.currency}`} value={first.amount} format={(v) => money(v, first.currency).text} />
-        )}
-      </div>
-      {!loading && rest.length > 0 && (
-        <div className="font-inter text-[11.5px] tabular-nums text-[#5A6072]">
-          {rest.map((s) => `+ ${money(s.amount, s.currency).text}`).join(' · ')}
-        </div>
-      )}
-      <div className="font-inter text-[11.5px] text-[#6B7080]">{label}</div>
-      <div className="font-inter text-[11px] text-[#8B8F9E]">{hint}</div>
-    </div>
-  )
+  return {
+    label,
+    icon,
+    tone,
+    value: first.amount,
+    format: (v) => money(v, first.currency).text,
+    detail: rest.length ? rest.map((s) => `+ ${money(s.amount, s.currency).text}`).join(' · ') : undefined,
+  }
 }
 
 /**
@@ -121,33 +111,31 @@ export function PersonEarnings({
 
   return (
     <div className="space-y-4">
-      <ProfileCard title="Commissions" icon={Coins}>
-        {earnings.isError ? (
+      {earnings.isError ? (
+        <ProfileCard title="Commissions" icon={Coins}>
           <LoadError what="their earnings" compact onRetry={() => void earnings.refetch()} />
-        ) : (
-          <>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <Tile id={`os-earned-${userId}`} label="Earned" hint="Their share of what clients paid" sums={earned} loading={loadingMoney} />
-              <Tile id={`os-pending-${userId}`} label="Pending" hint="Invoiced, not paid yet" sums={pending} loading={loadingMoney} />
-              <Tile
-                id={`os-potential-${userId}`}
-                label="Potential"
-                hint="Estimate for open openings"
-                sums={potential}
-                loading={loadingPotential}
-              />
-            </div>
-            <p className="pt-3 font-inter text-[12px] leading-[1.5] text-[#6B7080]">
-              Earned and pending come from Gio Sales invoices, for every role that credits them. Potential estimates the
-              openings still open where they're a Sourcer or a Recruiter: the job's salary × the opening's fee × today's rate
-              {sp != null && tap != null ? ` (Sourcer ${sp}%, Recruiter ${tap}%)` : ''}.
-              {!loadingPotential && unestimated > 0
-                ? ` ${unestimated} ${unestimated === 1 ? "opening isn't" : "openings aren't"} in it yet: ${unestimated === 1 ? 'it has' : 'they have'} no fee, salary or salary period.`
-                : ''}
-            </p>
-          </>
-        )}
-      </ProfileCard>
+        </ProfileCard>
+      ) : (
+        <div>
+          <MetricStrip
+            id={`os-earnings-${userId}`}
+            loading={loadingMoney || loadingPotential}
+            items={[
+              moneyMetric('Earned', CircleDollarSign, 'green', earned),
+              moneyMetric('Pending', Clock, 'yellow', pending),
+              moneyMetric('Potential', TrendingUp, 'purple', potential),
+            ]}
+          />
+        <p className="px-1 pt-2 font-inter text-[12px] leading-[1.5] text-[#6B7080]">
+          Earned and pending come from Gio Sales invoices, for every role that credits them. Potential estimates the
+          openings still open where they're a Sourcer or a Recruiter: the job's salary × the opening's fee × today's rate
+          {sp != null && tap != null ? ` (Sourcer ${sp}%, Recruiter ${tap}%)` : ''}.
+          {!loadingPotential && unestimated > 0
+            ? ` ${unestimated} ${unestimated === 1 ? "opening isn't" : "openings aren't"} in it yet: ${unestimated === 1 ? 'it has' : 'they have'} no fee, salary or salary period.`
+            : ''}
+        </p>
+        </div>
+      )}
 
       <ProfileCard title="Invoices" icon={ReceiptText} flush>
         {earnings.isLoading ? (
