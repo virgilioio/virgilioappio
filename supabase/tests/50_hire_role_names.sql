@@ -1,4 +1,4 @@
--- Run after 20261023120000_hire_role_names inside a transaction that is rolled back.
+-- Run after 20261023042119_hire_role_names inside a transaction that is rolled back.
 -- The seat label and the publish checks say Sourcer and Recruiter. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
 
