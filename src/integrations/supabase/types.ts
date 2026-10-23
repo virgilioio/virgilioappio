@@ -6704,6 +6704,53 @@ export type Database = {
           },
         ]
       }
+      os_bank_alerts: {
+        Row: {
+          attempts: number
+          changed_by: string | null
+          claimed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          sent_at: string | null
+          status: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          changed_by?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          changed_by?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_bank_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_bundles: {
         Row: {
           archived_at: string | null
@@ -6939,6 +6986,71 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "os_offboardings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_person_bank: {
+        Row: {
+          account_enc: string
+          account_label: string
+          account_last4: string
+          account_type: string | null
+          bank_name: string
+          country_code: string
+          created_at: string
+          currency: string
+          holder_name: string
+          kind: string
+          routing_number: string | null
+          swift: string | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          account_enc: string
+          account_label: string
+          account_last4: string
+          account_type?: string | null
+          bank_name: string
+          country_code: string
+          created_at?: string
+          currency: string
+          holder_name: string
+          kind: string
+          routing_number?: string | null
+          swift?: string | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          account_enc?: string
+          account_label?: string
+          account_last4?: string
+          account_type?: string | null
+          bank_name?: string
+          country_code?: string
+          created_at?: string
+          currency?: string
+          holder_name?: string
+          kind?: string
+          routing_number?: string | null
+          swift?: string | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_person_bank_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -11093,6 +11205,7 @@ export type Database = {
     }
     Functions: {
       _tenant_id_root: { Args: { _tenant_id: string }; Returns: string }
+      aba_routing_valid: { Args: { _r: string }; Returns: boolean }
       accept_invitation: {
         Args: { new_user_id: string; token_input: string }
         Returns: {
@@ -11416,6 +11529,8 @@ export type Database = {
         Args: { required_role: string; tenant_id_param: string }
         Returns: boolean
       }
+      clabe_bank: { Args: { _c: string }; Returns: string }
+      clabe_valid: { Args: { _c: string }; Returns: boolean }
       classify_job_title: {
         Args: { p_title: string }
         Returns: {
@@ -11778,6 +11893,7 @@ export type Database = {
         Args: { _tenant_id: string }
         Returns: boolean
       }
+      iban_valid: { Args: { _iban: string }; Returns: boolean }
       identity_email: { Args: { p: string }; Returns: string }
       identity_phone: { Args: { p: string }; Returns: string }
       increment_sourcing_usage: {
@@ -12056,6 +12172,45 @@ export type Database = {
         Args: { org_id_param: string }
         Returns: boolean
       }
+      os_bank_alerts_claim: {
+        Args: { _limit?: number }
+        Returns: {
+          account_label: string
+          account_last4: string
+          alert_id: string
+          bank_name: string
+          changed_at: string
+          changed_by_name: string
+          person_name: string
+          to_email: string
+        }[]
+      }
+      os_bank_alerts_finish: {
+        Args: { _error?: string; _id: string; _ok: boolean }
+        Returns: undefined
+      }
+      os_bank_details: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: {
+          account_label: string
+          account_last4: string
+          account_type: string
+          bank_name: string
+          can_edit: boolean
+          can_reveal: boolean
+          country_code: string
+          currency: string
+          has_details: boolean
+          holder_name: string
+          kind: string
+          routing_number: string
+          swift: string
+          updated_at: string
+          updated_by_name: string
+        }[]
+      }
+      os_bank_key: { Args: never; Returns: string }
+      os_can_see_bank: { Args: { _tenant_id: string }; Returns: boolean }
       os_commission_rate: {
         Args: { _on?: string; _role_key: string; _tenant_id: string }
         Returns: number
@@ -12106,6 +12261,26 @@ export type Database = {
       os_resend_access: {
         Args: { _app: string; _tenant_id: string; _user_id: string }
         Returns: string
+      }
+      os_reveal_bank_account: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: string
+      }
+      os_save_bank_details: {
+        Args: {
+          _account: string
+          _account_type?: string
+          _bank_name: string
+          _country_code?: string
+          _currency?: string
+          _holder_name: string
+          _kind: string
+          _routing_number?: string
+          _swift?: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: undefined
       }
       os_set_app_role: {
         Args: {
@@ -12897,6 +13072,7 @@ export type Database = {
         | "talent_pool"
         | "candidate_update"
         | "sign"
+        | "account"
       org_kind_enum: "tenant" | "client" | "department" | "root"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -13324,6 +13500,7 @@ export const Constants = {
         "talent_pool",
         "candidate_update",
         "sign",
+        "account",
       ],
       org_kind_enum: ["tenant", "client", "department", "root"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],

@@ -1,4 +1,4 @@
--- Run after 20261023070000_os_person_bank inside a transaction that is rolled back.
+-- Run after 20261023071449_os_person_bank inside a transaction that is rolled back.
 -- A teammate adds their own CLABE, sees it masked and can't reveal it. Another
 -- member sees nothing. Billing reads and reveals (in the history) but can't
 -- edit. An admin's change rings the person's bell and queues the email. Bad

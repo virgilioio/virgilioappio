@@ -14,6 +14,7 @@ export type NotificationCategory =
   | 'talent_pool'
   | 'candidate_update'
   | 'sign'
+  | 'account'
 
 export interface NotificationRow {
   id: string

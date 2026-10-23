@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Bell, Check, CheckCheck, SlidersHorizontal, ArrowLeft, ChevronRight,
   AtSign, Users2, ClipboardCheck, CalendarCheck2, FileCheck2, Briefcase,
-  CalendarDays, Filter, Inbox, MessageSquare, UserPlus, PenLine, Volume2,
+  CalendarDays, Filter, Inbox, MessageSquare, UserPlus, PenLine, Volume2, Landmark,
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -40,6 +40,7 @@ const CATEGORY_META: Record<NotificationCategory, { label: string; icon: any; to
   talent_pool:         { label: 'TALENT POOL',       icon: UserPlus,       tone: 'purple', bg: '#EDE4FF', fg: '#6F3FF5' },
   candidate_update:    { label: 'JOB CHANGE',        icon: Briefcase,      tone: 'blue',   bg: '#DBEAFE', fg: '#1D4ED8' },
   sign:                { label: 'SIGN',              icon: PenLine,        tone: 'purple', bg: '#EDE4FF', fg: '#6F3FF5' },
+  account:             { label: 'YOUR ACCOUNT',      icon: Landmark,       tone: 'grey',   bg: '#F1F0EC', fg: '#5A6072' },
 }
 
 function relTime(iso: string): string {
@@ -71,7 +72,7 @@ function dateBucket(iso: string): 'Today' | 'Yesterday' | 'Earlier' {
 function NotificationItem({ n, onClick, onMarkRead }: {
   n: NotificationRow; onClick: () => void; onMarkRead: () => void
 }) {
-  const meta = CATEGORY_META[n.category]
+  const meta = CATEGORY_META[n.category] ?? CATEGORY_META.account
   const Icon = meta.icon
   const isMention = n.category === 'mention'
   const unread = !n.read_at
