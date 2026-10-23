@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { Send } from 'lucide-react'
+import { History, KeyRound, Send, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { undoToast } from '@/lib/undoToast'
 
@@ -14,7 +14,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
 import {
   APPS,
-  JOB_SEAT_LABEL,
   SYNCED_APPS,
   UNDELIVERED_AFTER_MS,
   accessErrorMessage,
@@ -30,6 +29,7 @@ import {
   useAudit,
   useBundles,
   usePeople,
+  usePersonDetails,
   useResendAccess,
   usePersonJobs,
   useSetAppRole,
@@ -37,35 +37,30 @@ import {
 } from '@/lib/os/peopleAccess'
 import { GoogleStatus, PersonAvatar, PersonStateBadge } from '@/components/os/PeopleBits'
 import { LoadError } from '@/components/empty/LoadError'
-import { JobPreview } from '@/components/previews/EntityPreview'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { DangerZone } from '@/components/os/DangerZone'
-import { PersonalDetailsForm } from '@/components/os/PersonalDetailsForm'
 import { PersonJobsTable } from '@/components/os/PersonJobsTable'
-import { RatingForm, WorkProfileForm } from '@/components/os/WorkProfile'
+import { PersonEarnings } from '@/components/os/PersonEarnings'
+import { ProfileCard } from '@/components/os/ProfileParts'
+import { CurrentWorkCard, GeneralCard, PersonalCard, RatingCard, RoleCard } from '@/components/os/ProfileSections'
+import { COUNTRIES } from '@/constants/countries'
+import { loadLevel, segmentLabel, takesSegments, useWorkProfile } from '@/lib/os/workProfile'
 import { AgreementsCard } from '@/components/sign/AgreementsCard'
 
 const NO_ACCESS = '__none__'
-const TABS = ['overview', 'access', 'jobs', 'agreements'] as const
+const TABS = ['overview', 'work', 'earnings', 'agreements', 'access', 'history'] as const
 type Tab = (typeof TABS)[number]
-
-function Card({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
-  return (
-    <section className="rounded-[12px] border border-[#E7E8EE] bg-white">
-      <header className="flex items-center justify-between gap-3 border-b border-[#EFEEEA] px-4 py-3">
-        <h2 className="font-poppins text-[13.5px] font-semibold tracking-[-0.02em] text-[#1F2230]">{title}</h2>
-        {aside}
-      </header>
-      <div className="px-4 py-3">{children}</div>
-    </section>
-  )
-}
 
 function when(iso: string) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-/** /os/people/:memberId — one person: Overview · Access (with the Danger zone) · Jobs · Agreements. */
+/**
+ * /os/people/:memberId — one person (Allan, 2026-10-23: Deel's order in our
+ * DNA). Tabs: Overview (role, current work, personal, general, rating) · Work
+ * · Earnings · Agreements · Access (with the Danger zone) · History. Every
+ * card reads first and turns into its form with Edit.
+ */
 export default function PersonDetailPage() {
   const { memberId } = useParams<{ memberId: string }>()
   const { user } = useAuth()
@@ -75,6 +70,8 @@ export default function PersonDetailPage() {
   const person = people.data?.find((p) => p.member_id === memberId) ?? null
   const jobs = usePersonJobs(person?.user_id)
   const history = useAudit(tenant?.id, person?.user_id ?? null)
+  const work = useWorkProfile(tenant?.id, person?.user_id)
+  const details = usePersonDetails(tenant?.id, person?.user_id)
   const setRole = useSetAppRole(tenant?.id)
   const applyBundle = useApplyBundle(tenant?.id)
   const resend = useResendAccess(tenant?.id)
@@ -86,7 +83,9 @@ export default function PersonDetailPage() {
   const peopleTimedOut = useLoadTimeout(people.isLoading, peopleRetry)
   // The tab lives in the URL (?tab=jobs), so a link or Back lands on it.
   const [params, setParams] = useSearchParams()
-  const tab: Tab = (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'overview'
+  // Older links used ?tab=jobs for what is now Work.
+  const rawTab = params.get('tab') === 'jobs' ? 'work' : params.get('tab') ?? ''
+  const tab: Tab = (TABS as readonly string[]).includes(rawTab) ? (rawTab as Tab) : 'overview'
   const setTab = (next: Tab) =>
     setParams(
       (prev) => {
@@ -243,10 +242,8 @@ export default function PersonDetailPage() {
     closed: jobList.filter((j) => jobBucket(j.status) === 'closed').length,
   }
   const first = personName(person).split(' ')[0]
-  const recent = (history.data ?? []).slice(0, 5)
-
-  const historyList = (rows: typeof recent) => (
-    <ol className="space-y-2">
+  const historyList = (rows: NonNullable<typeof history.data>) => (
+    <ol className="space-y-2.5">
       {rows.map((row) => (
         <li key={row.id} className="flex gap-3 font-inter text-[12.5px]">
           <span className="w-[112px] shrink-0 tabular-nums text-[#6B7080]">{when(row.created_at)}</span>
@@ -258,15 +255,15 @@ export default function PersonDetailPage() {
       ))}
     </ol>
   )
-  const seeAll = (label: string, to: Tab) => (
-    <button
-      type="button"
-      onClick={() => setTab(to)}
-      className="font-inter text-[12px] font-medium text-virgilio-purple transition-colors duration-hover hover:text-text-primary"
-    >
-      {label}
-    </button>
-  )
+
+  // The header's one-line answer to "who is this": job role · segments · status · where · load.
+  const segments = work.data && (takesSegments(currentBundle?.name) || work.data.segments.length > 0) ? work.data.segments : []
+  const place = details.data
+    ? [details.data.city, COUNTRIES.find((c) => c.value === details.data?.country_code)?.label].filter(Boolean).join(', ')
+    : ''
+  const max = work.data?.max_open_jobs ?? null
+  const level = loadLevel(jobCounts.open, max)
+  const loadColor = { unset: '#12B886', ok: '#12B886', near: '#F59E0B', over: '#C2372B' }[level]
 
   return (
     <ListPage
@@ -279,14 +276,19 @@ export default function PersonDetailPage() {
       }
       meta={
         <>
-          {person.email && <span className="truncate">{person.email}</span>}
+          {currentBundle && <span className="font-medium text-[#1F2230]">{currentBundle.name}</span>}
+          {segments.length > 0 && <span>{segments.map(segmentLabel).join(' · ')}</span>}
           <PersonStateBadge person={person} />
           {person.user_type === 'platform_admin' && <Badge tone="ink">Platform admin</Badge>}
-          {currentBundle && <span>{currentBundle.name}</span>}
+          {place && <span className="truncate">{place}</span>}
           {joined && jobs.isSuccess && (
-            <MetaDot color="#12B886">
+            <MetaDot color={loadColor}>
               <span className="tabular-nums">
-                {jobCounts.open === 0 ? 'No open jobs' : `On ${jobCounts.open} open ${jobCounts.open === 1 ? 'job' : 'jobs'}`}
+                {max
+                  ? `On ${jobCounts.open} of ${max} open jobs`
+                  : jobCounts.open === 0
+                    ? 'No open jobs'
+                    : `On ${jobCounts.open} open ${jobCounts.open === 1 ? 'job' : 'jobs'}`}
               </span>
             </MetaDot>
           )}
@@ -296,144 +298,94 @@ export default function PersonDetailPage() {
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
         <TabsList aria-label="Member profile">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="access">Access</TabsTrigger>
-          <TabsTrigger value="jobs">
-            Jobs
+          <TabsTrigger value="work">
+            Work
             {joined && jobs.isSuccess && <span className="ml-1.5 tabular-nums">{jobList.length}</span>}
           </TabsTrigger>
+          <TabsTrigger value="earnings">Earnings</TabsTrigger>
           <TabsTrigger value="agreements">Agreements</TabsTrigger>
+          <TabsTrigger value="access">Access</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="space-y-4">
-              <Card title="Contact">
-                <dl className="grid grid-cols-[120px_minmax(0,1fr)] gap-x-3 gap-y-2 font-inter text-[12.5px]">
-                  <dt className="text-[#6B7080]">Work email</dt>
-                  <dd className="truncate text-[#1F2230]">{person.email ?? '—'}</dd>
-                  <dt className="text-[#6B7080]">Google account</dt>
-                  <dd className="truncate text-[#1F2230]">{person.google_email ?? 'Not connected'}</dd>
-                  <dt className="text-[#6B7080]">ATS role</dt>
-                  <dd className="text-[#1F2230]">{person.system_role === 'admin' ? 'Admin' : 'Member'}</dd>
-                </dl>
-              </Card>
-
-              <Card title="Work profile">
-                {joined && tenant?.id && person.user_id ? (
-                  <WorkProfileForm
+          {tenant?.id && (
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0 space-y-4">
+                {joined ? (
+                  <RoleCard
                     tenantId={tenant.id}
-                    userId={person.user_id}
+                    person={person}
                     jobRole={currentBundle?.name ?? null}
-                    openJobs={openJobs.length}
+                    openJobs={jobCounts.open}
                     jobsReady={jobs.isSuccess}
                     editable={personState(person) !== 'deactivated'}
                   />
                 ) : (
-                  <p className="font-inter text-[12.5px] text-[#6B7080]">Set up once they accept their invitation.</p>
+                  <ProfileCard title="Role">
+                    <p className="font-inter text-[12.5px] text-[#6B7080]">Set up once they accept their invitation.</p>
+                  </ProfileCard>
                 )}
-              </Card>
-
-              <Card title="Personal details">
-                {joined && tenant?.id && person.user_id ? (
-                  <>
-                    <p className="mb-3 font-inter text-[11.5px] text-[#6B7080]">
-                      Only People &amp; Access admins and {isSelf ? 'you' : first} can see these.{' '}
-                      {isSelf ? '' : `${first} can also update them in Settings › Profile.`}
-                    </p>
-                    <PersonalDetailsForm tenantId={tenant.id} userId={person.user_id} self={isSelf} />
-                  </>
-                ) : (
-                  <p className="font-inter text-[12.5px] text-[#6B7080]">They can be added once they accept their invitation.</p>
-                )}
-              </Card>
-
-              <Card title="Jobs" aside={joined && jobList.length > 0 ? seeAll(`See all ${jobList.length}`, 'jobs') : undefined}>
-                {!joined ? (
-                  <p className="font-inter text-[12.5px] text-[#6B7080]">No jobs until they accept their invitation.</p>
-                ) : jobs.isLoading ? (
-                  <Skeleton className="h-16 w-full" />
-                ) : jobs.isError ? (
-                  <LoadError what="their jobs" compact onRetry={() => void jobs.refetch()} />
-                ) : jobList.length === 0 ? (
-                  <p className="font-inter text-[12.5px] text-[#6B7080]">
-                    Not on any job.{' '}
-                    {person.system_role === 'admin' ? 'Admins see every job without a seat.' : "Seat them from a job's Hiring team."}
-                  </p>
-                ) : (
-                  <>
-                    <p className="font-inter text-[12.5px] tabular-nums text-[#1F2230]">
-                      {jobCounts.open} open · {jobCounts.draft} draft · {jobCounts.closed} closed
-                    </p>
-                    {openJobs.length > 0 && (
-                      <ul className="mt-2 space-y-2">
-                        {openJobs.slice(0, 5).map((j) => (
-                          <li key={`${j.job_id}-${j.role}`} className="flex items-center justify-between gap-2">
-                            <JobPreview jobId={j.job_id}>
-                              <Link
-                                to={`/jobs/${j.job_id}`}
-                                className="min-w-0 truncate font-inter text-[12.5px] font-medium text-[#1F2230] hover:text-[#6F3FF5]"
-                              >
-                                {j.title}
-                              </Link>
-                            </JobPreview>
-                            <span className="shrink-0 font-inter text-[11.5px] text-[#6B7080]">
-                              {JOB_SEAT_LABEL[j.role] ?? j.role}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {openJobs.length > 5 && (
-                      <p className="mt-2 font-inter text-[12px] tabular-nums text-[#6B7080]">
-                        and {openJobs.length - 5} more open
-                      </p>
-                    )}
-                  </>
-                )}
-              </Card>
-
-              <Card title="Recent changes" aside={(history.data ?? []).length > 5 ? seeAll('See all', 'access') : undefined}>
-                {history.isLoading ? (
-                  <Skeleton className="h-20 w-full" />
-                ) : history.isError ? (
-                  <LoadError what="their history" compact onRetry={() => void history.refetch()} />
-                ) : recent.length === 0 ? (
-                  <p className="font-inter text-[12.5px] text-[#6B7080]">No changes recorded yet.</p>
-                ) : (
-                  historyList(recent)
-                )}
-              </Card>
+                <CurrentWorkCard
+                  person={person}
+                  jobs={jobList}
+                  loading={jobs.isLoading}
+                  error={jobs.isError}
+                  onRetry={() => void jobs.refetch()}
+                  onSeeAll={() => setTab('work')}
+                />
+              </div>
+              <div className="min-w-0 space-y-4">
+                <PersonalCard tenantId={tenant.id} person={person} isSelf={isSelf} />
+                <GeneralCard person={person} />
+                {joined && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
+              </div>
             </div>
+          )}
+        </TabsContent>
 
-            <div className="space-y-4">
-              {joined && tenant?.id && person.user_id && (
-                <Card title="Rating">
-                  <RatingForm tenantId={tenant.id} userId={person.user_id} firstName={first} isSelf={isSelf} nameOf={nameOf} />
-                </Card>
-              )}
+        <TabsContent value="work" className="mt-4">
+          {!joined ? (
+            <p className="font-inter text-[12.5px] text-[#6B7080]">No jobs until they accept their invitation.</p>
+          ) : (
+            <PersonJobsTable
+              jobs={jobs.data}
+              loading={jobs.isLoading}
+              error={jobs.isError}
+              onRetry={() => void jobs.refetch()}
+              firstName={first}
+              isAdmin={person.system_role === 'admin'}
+              memoryKey={`os-person:${person.member_id}:jobs`}
+            />
+          )}
+        </TabsContent>
 
-              <Card title="Sign-in">
-                <p className="font-inter text-[12.5px] text-[#1F2230]">
-                  {person.last_sign_in_at ? `Last signed in ${when(person.last_sign_in_at)}` : 'Has never signed in'}
-                </p>
-              </Card>
+        <TabsContent value="earnings" className="mt-4">
+          <div className="max-w-[960px]">
+            {joined ? (
+              <PersonEarnings userId={person.user_id} jobs={jobList} jobsLoading={jobs.isLoading} />
+            ) : (
+              <p className="font-inter text-[12.5px] text-[#6B7080]">Nothing to show until they accept their invitation.</p>
+            )}
+          </div>
+        </TabsContent>
 
-              <Card title="Google Workspace">
-                <GoogleStatus person={person} showEmail />
-                <p className="mt-2 font-inter text-[11.5px] text-[#6B7080]">
-                  {person.google_status === 'connected'
-                    ? 'Mail and calendar work in Gio.'
-                    : person.google_status === 'reconnect'
-                      ? 'Google stopped accepting the connection. They reconnect from Settings › Email & calendar.'
-                      : 'They connect from Settings › Email & calendar.'}
-                </p>
-              </Card>
-            </div>
+        <TabsContent value="agreements" className="mt-4">
+          <div className="max-w-[960px]">
+            {joined ? (
+              <AgreementsCard
+                className="rounded-[12px]"
+                source={{ type: 'member', id: person.member_id }}
+                recordLabel={personName(person)}
+              />
+            ) : (
+              <p className="font-inter text-[12.5px] text-[#6B7080]">Agreements can be sent once they accept their invitation.</p>
+            )}
           </div>
         </TabsContent>
 
         <TabsContent value="access" className="mt-4">
-          <div className="max-w-[880px] space-y-4">
+          <div className="max-w-[960px] space-y-4">
             {(notEditableReason || error) && (
               <p
                 role={error ? 'alert' : undefined}
@@ -443,7 +395,7 @@ export default function PersonDetailPage() {
               </p>
             )}
 
-            <Card title="Job role">
+            <ProfileCard title="Job role" icon={KeyRound}>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="min-w-[220px] flex-1">
                   <Select
@@ -477,9 +429,9 @@ export default function PersonDetailPage() {
                 Applying a job role sets every app below to that role's access, and removes apps it doesn't include.
                 {currentBundle && ` Current: ${currentBundle.name}.`}
               </p>
-            </Card>
+            </ProfileCard>
 
-            <Card title="Apps and roles">
+            <ProfileCard title="Apps and roles" icon={ShieldCheck}>
               <ul className="divide-y divide-[#EFEEEA]">
                 {APPS.map((app) => {
                   const grant = grants.find((g) => g.app === app.key)
@@ -553,9 +505,15 @@ export default function PersonDetailPage() {
                   )
                 })}
               </ul>
-            </Card>
+            </ProfileCard>
 
-            <Card title="History">
+            {tenant?.id && <DangerZone person={person} tenantId={tenant.id} isSelf={isSelf} />}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-4">
+          <div className="max-w-[960px]">
+            <ProfileCard title="History" icon={History}>
               {history.isLoading ? (
                 <Skeleton className="h-20 w-full" />
               ) : history.isError ? (
@@ -563,41 +521,9 @@ export default function PersonDetailPage() {
               ) : (history.data ?? []).length === 0 ? (
                 <p className="font-inter text-[12.5px] text-[#6B7080]">No changes recorded yet.</p>
               ) : (
-                <div className="max-h-[320px] overflow-y-auto pr-1">{historyList(history.data ?? [])}</div>
+                historyList(history.data ?? [])
               )}
-            </Card>
-
-            {tenant?.id && <DangerZone person={person} tenantId={tenant.id} isSelf={isSelf} />}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="jobs" className="mt-4">
-          {!joined ? (
-            <p className="font-inter text-[12.5px] text-[#6B7080]">No jobs until they accept their invitation.</p>
-          ) : (
-            <PersonJobsTable
-              jobs={jobs.data}
-              loading={jobs.isLoading}
-              error={jobs.isError}
-              onRetry={() => void jobs.refetch()}
-              firstName={first}
-              isAdmin={person.system_role === 'admin'}
-              memoryKey={`os-person:${person.member_id}:jobs`}
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="agreements" className="mt-4">
-          <div className="max-w-[880px]">
-            {joined ? (
-              <AgreementsCard
-                className="rounded-[12px]"
-                source={{ type: 'member', id: person.member_id }}
-                recordLabel={personName(person)}
-              />
-            ) : (
-              <p className="font-inter text-[12.5px] text-[#6B7080]">Agreements can be sent once they accept their invitation.</p>
-            )}
+            </ProfileCard>
           </div>
         </TabsContent>
       </Tabs>
