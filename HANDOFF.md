@@ -42,6 +42,14 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## In progress 2026-10-23 (ATS + Gio Sales) — commissions piece 3: earnings from Gio Sales — waiting for Apply!
+
+- **How it flows:** every change to an invoice that credits people (issued, partly paid, paid, voided, credits taken again) queues `earnings.upsert` in Gio Sales' `outbox` (`invoice_requests_z_earnings` → `invoice_earnings_payload`); `deliver-outbox` (pg_cron, every 5 minutes, retries) posts it to the ATS `sales-earnings` function (signed with GIO_LINK_SECRET), which calls `sales_earnings_upsert` into `os_earnings`: one row per person per invoice with share, earned (share × paid, never more than the invoice), pending (share × what is still owed while open), status issued / partly_paid / paid / void, in the invoice's currency. The Sourcer and Recruiter come with their ATS id; Sales and the Engagement Specialist are matched by email to a Virgilio member. Older messages never overwrite newer ones; credits that leave an invoice are voided. A person reads their own rows, People & Access admins all; only the service role writes.
+- **Files:** ATS `20261023140000_os_earnings` (test 51, 15 checks, dry run passed), `supabase/functions/sales-earnings`; Gio Sales `20261023140100_earnings_to_ats` (test `earnings_to_ats`, 10 checks, dry run passed; queues the three credited invoices R-1008, R-1009, R-1011 on the way in) and the `earnings.upsert` route in `deliver-outbox`. A real R-1009 payload passes the endpoint's validation.
+- **Apply order:** ATS migration, deploy `sales-earnings` (verify_jwt off), then the Gio Sales migration and redeploy `deliver-outbox`.
+- **Not credited:** invoices issued before credits existed (R-1003 to R-1007, before 2026-10-04) have no credits, so they carry no earnings until someone takes their credits.
+- **Desktop apply waiting:** Gio Sales `20261023130000_credit_names_in_issue_check` (the "can't issue" message says Sourcer and Recruiter; test `credit_names_in_issue_check`).
+
 ## Done 2026-10-23 (ATS + Gio Sales) — commissions piece 2: changing a hire — applied
 
 - **What piece 2 turned out to be:** Mark hired has required a Sourcer and a Recruiter since 2026-10-04 and every hire since has both. The 31 filled openings without them are all older, none from a Gio Sales deal, and 30 of those jobs never had a Sourcer seat, so they stay as they are (no guessing). The real gaps were in Gio Sales and in changing a hire afterwards.
