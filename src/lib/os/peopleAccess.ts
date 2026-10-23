@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { Database, Json } from '@/integrations/supabase/types'
+import { segmentLabel, specialtyLabel } from './workProfile'
 
 /**
  * People & Access (Gio OS, Part B, 2026-10-14): who works at Virgilio and
@@ -541,6 +542,22 @@ export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => 
       return row.actor_id && row.actor_id === row.subject_user_id
         ? `${who} updated their personal details${list}`
         : `${who}'s personal details were updated${list}`
+    }
+    case 'person.work_updated': {
+      const parts: string[] = []
+      if (Array.isArray(d.segments))
+        parts.push(`segments ${(d.segments as string[]).map(segmentLabel).join(', ') || 'cleared'}`)
+      if (Array.isArray(d.specialties))
+        parts.push(`specialties ${(d.specialties as string[]).map(specialtyLabel).join(', ') || 'cleared'}`)
+      if ('max_open_jobs' in d)
+        parts.push(typeof d.max_open_jobs === 'number' ? `capacity ${d.max_open_jobs} open jobs` : 'capacity cleared')
+      return `${who}'s work profile was updated${parts.length ? `: ${parts.join(' · ')}` : ''}`
+    }
+    case 'person.rating_updated': {
+      const parts: string[] = []
+      if ('rating' in d) parts.push(typeof d.rating === 'number' ? `rated ${d.rating} of 5` : 'rating cleared')
+      if (d.note_changed) parts.push('note changed')
+      return `${who}: ${parts.join(' · ') || 'rating updated'}`
     }
     case 'person.offboarded':
       return `${who} was offboarded`

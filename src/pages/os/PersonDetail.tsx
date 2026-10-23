@@ -42,6 +42,7 @@ import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { DangerZone } from '@/components/os/DangerZone'
 import { PersonalDetailsForm } from '@/components/os/PersonalDetailsForm'
 import { PersonJobsTable } from '@/components/os/PersonJobsTable'
+import { RatingForm, WorkProfileForm } from '@/components/os/WorkProfile'
 import { AgreementsCard } from '@/components/sign/AgreementsCard'
 
 const NO_ACCESS = '__none__'
@@ -317,6 +318,21 @@ export default function PersonDetailPage() {
                 </dl>
               </Card>
 
+              <Card title="Work profile">
+                {joined && tenant?.id && person.user_id ? (
+                  <WorkProfileForm
+                    tenantId={tenant.id}
+                    userId={person.user_id}
+                    jobRole={currentBundle?.name ?? null}
+                    openJobs={openJobs.length}
+                    jobsReady={jobs.isSuccess}
+                    editable={personState(person) !== 'deactivated'}
+                  />
+                ) : (
+                  <p className="font-inter text-[12.5px] text-[#6B7080]">Set up once they accept their invitation.</p>
+                )}
+              </Card>
+
               <Card title="Personal details">
                 {joined && tenant?.id && person.user_id ? (
                   <>
@@ -390,6 +406,12 @@ export default function PersonDetailPage() {
             </div>
 
             <div className="space-y-4">
+              {joined && tenant?.id && person.user_id && (
+                <Card title="Rating">
+                  <RatingForm tenantId={tenant.id} userId={person.user_id} firstName={first} isSelf={isSelf} nameOf={nameOf} />
+                </Card>
+              )}
+
               <Card title="Sign-in">
                 <p className="font-inter text-[12.5px] text-[#1F2230]">
                   {person.last_sign_in_at ? `Last signed in ${when(person.last_sign_in_at)}` : 'Has never signed in'}
