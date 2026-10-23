@@ -66,10 +66,13 @@ export function AgreementsCard({
   recordLabel,
   className,
   offer,
+  readOnly = false,
 }: {
   source: SendSource
   recordLabel: string
   className?: string
+  /** My profile: the person's own agreements, status only (nothing to send, no actions). */
+  readOnly?: boolean
   /** The candidate's offer on this job (if any): "Send for signature" sends it; other agreements stay available. */
   offer?: AgreementsOffer | null
 }) {
@@ -124,7 +127,7 @@ export function AgreementsCard({
         <h3 className="flex-1 font-poppins font-semibold text-[#0d0d09]" style={{ fontSize: 13, letterSpacing: '-0.02em' }}>
           Agreements
         </h3>
-        {offerSource ? (
+        {readOnly ? null : offerSource ? (
           <div className="flex items-center gap-1">
             <IconTip label={canSendOffer ? 'Send the offer for signature' : offerSendRefusal(gate.data?.reason)}>
               <Button variant="secondary" size="sm" icon={PenLine} onClick={() => openSheet('offer')} disabled={!canSendOffer} aria-label="Send the offer for signature">
@@ -166,18 +169,20 @@ export function AgreementsCard({
           </p>
         ) : rows.length === 0 ? (
           <p className="py-2 font-inter text-[12px] leading-snug text-[#6B7080]">
-            Nothing sent yet. Offers and agreements sent for signature show up here with their status.
+            {readOnly
+              ? 'Nothing yet. Agreements Virgilio sends you to sign show up here with their status.'
+              : 'Nothing sent yet. Offers and agreements sent for signature show up here with their status.'}
           </p>
         ) : (
           <div className="divide-y divide-[#F1F0EC]">
             {rows.map((e) => {
               // The sender and admins can act on it; everyone else on the job sees the status.
-              const actions = isAdmin || e.sender_user_id === userId ? actionsFor(e) : []
+              const actions = !readOnly && (isAdmin || e.sender_user_id === userId) ? actionsFor(e) : []
               const safe = actions.filter((x) => !x.danger)
               const danger = actions.filter((x) => x.danger)
               return (
                 <div key={e.id} className="flex items-center gap-1">
-                  {isAdmin ? (
+                  {isAdmin && !readOnly ? (
                     <Link to={`/sign?envelope=${e.id}`} className="-mx-2 block min-w-0 flex-1 rounded-lg px-2 transition-colors duration-hover hover:bg-[#FAFAF7]">
                       <Line e={e} />
                     </Link>

@@ -361,8 +361,8 @@ export function AccountMenu({ children }: AccountMenuProps) {
             <Row
               icon={UserIcon}
               label="My profile"
-              meta="Personal info & signature"
-              to="/settings?tab=profile"
+              meta="Role, work, earnings & agreements"
+              to="/me"
               closeMenu={close}
             />
             <Row

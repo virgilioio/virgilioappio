@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { History, KeyRound, Send, ShieldCheck } from 'lucide-react'
+import { History, KeyRound, Send, Settings2, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { undoToast } from '@/lib/undoToast'
 
@@ -50,6 +50,8 @@ import { AgreementsCard } from '@/components/sign/AgreementsCard'
 const NO_ACCESS = '__none__'
 const TABS = ['overview', 'work', 'earnings', 'agreements', 'access', 'history'] as const
 type Tab = (typeof TABS)[number]
+/** My profile (Part B): a member's own page has no Access or History. */
+const SELF_TABS: readonly Tab[] = ['overview', 'work', 'earnings', 'agreements']
 
 function when(iso: string) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -60,16 +62,21 @@ function when(iso: string) {
  * DNA). Tabs: Overview (role, current work, personal, general, rating) · Work
  * · Earnings · Agreements · Access (with the Danger zone) · History. Every
  * card reads first and turns into its form with Edit.
+ *
+ * With `self` it is /me, My profile (Part B, 2026-10-23): every member's own
+ * page. They edit their personal details and see their role, work, earnings
+ * and agreements read-only; never the rating, Access or History (os_people
+ * returns a member only their own row).
  */
-export default function PersonDetailPage() {
+export default function PersonDetailPage({ self = false }: { self?: boolean }) {
   const { memberId } = useParams<{ memberId: string }>()
   const { user } = useAuth()
   const { tenant } = useTenant()
   const people = usePeople(tenant?.id)
   const bundles = useBundles(tenant?.id)
-  const person = people.data?.find((p) => p.member_id === memberId) ?? null
+  const person = people.data?.find((p) => (self ? !!user && p.user_id === user.id : p.member_id === memberId)) ?? null
   const jobs = usePersonJobs(person?.user_id)
-  const history = useAudit(tenant?.id, person?.user_id ?? null)
+  const history = useAudit(self ? undefined : tenant?.id, person?.user_id ?? null)
   const work = useWorkProfile(tenant?.id, person?.user_id)
   const details = usePersonDetails(tenant?.id, person?.user_id)
   const setRole = useSetAppRole(tenant?.id)
@@ -85,7 +92,9 @@ export default function PersonDetailPage() {
   const [params, setParams] = useSearchParams()
   // Older links used ?tab=jobs for what is now Work.
   const rawTab = params.get('tab') === 'jobs' ? 'work' : params.get('tab') ?? ''
-  const tab: Tab = (TABS as readonly string[]).includes(rawTab) ? (rawTab as Tab) : 'overview'
+  const tabs: readonly Tab[] = self ? SELF_TABS : TABS
+  const tab: Tab = (tabs as readonly string[]).includes(rawTab) ? (rawTab as Tab) : 'overview'
+  const crumbs = self ? undefined : [{ label: 'People', to: '/os/people' }]
   const setTab = (next: Tab) =>
     setParams(
       (prev) => {
@@ -109,7 +118,7 @@ export default function PersonDetailPage() {
       <ListPage
         title={<Skeleton className="inline-block h-9 w-64 align-middle" />}
         meta={<Skeleton className="h-4 w-72" />}
-        breadcrumb={[{ label: 'People', to: '/os/people' }]}
+        breadcrumb={crumbs}
       >
         <Skeleton className="h-[42px] w-[380px] max-w-full rounded-[9px]" />
         <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -127,7 +136,7 @@ export default function PersonDetailPage() {
   }
   if (loadFailed) {
     return (
-      <ListPage title="Member profile" breadcrumb={[{ label: 'People', to: '/os/people' }]}>
+      <ListPage title={self ? 'My profile' : 'Member profile'} breadcrumb={crumbs}>
         <div className="rounded-2xl border border-virgilio-border bg-white" style={{ padding: '56px 24px' }}>
           <LoadError
             what="this profile"
@@ -143,13 +152,19 @@ export default function PersonDetailPage() {
   }
   if (!person) {
     return (
-      <ListPage title="Not found" breadcrumb={[{ label: 'People', to: '/os/people' }]}>
-        <p className="font-inter text-[13px] text-text-secondary">
-          This person isn't in your workspace.{' '}
-          <Link to="/os/people" className="text-virgilio-purple">
-            Back to People
-          </Link>
-        </p>
+      <ListPage title={self ? 'My profile' : 'Not found'} breadcrumb={crumbs}>
+        {self ? (
+          <p className="font-inter text-[13px] text-text-secondary">
+            Your profile isn't set up in this workspace yet. An admin adds it from People &amp; Access.
+          </p>
+        ) : (
+          <p className="font-inter text-[13px] text-text-secondary">
+            This person isn't in your workspace.{' '}
+            <Link to="/os/people" className="text-virgilio-purple">
+              Back to People
+            </Link>
+          </p>
+        )}
       </ListPage>
     )
   }
@@ -267,7 +282,17 @@ export default function PersonDetailPage() {
 
   return (
     <ListPage
-      breadcrumb={[{ label: 'People', to: '/os/people' }, { label: personName(person) }]}
+      breadcrumb={self ? undefined : [{ label: 'People', to: '/os/people' }, { label: personName(person) }]}
+      actions={
+        self ? (
+          <Button asChild variant="secondary">
+            <Link to="/settings?tab=profile">
+              <Settings2 aria-hidden />
+              Name, photo and signature
+            </Link>
+          </Button>
+        ) : undefined
+      }
       title={
         <span className="inline-flex min-w-0 items-center gap-3 align-middle">
           <PersonAvatar person={person} size={36} />
@@ -304,8 +329,8 @@ export default function PersonDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="earnings">Earnings</TabsTrigger>
           <TabsTrigger value="agreements">Agreements</TabsTrigger>
-          <TabsTrigger value="access">Access</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+          {!self && <TabsTrigger value="access">Access</TabsTrigger>}
+          {!self && <TabsTrigger value="history">History</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -319,7 +344,7 @@ export default function PersonDetailPage() {
                     jobRole={currentBundle?.name ?? null}
                     openJobs={jobCounts.open}
                     jobsReady={jobs.isSuccess}
-                    editable={personState(person) !== 'deactivated'}
+                    editable={!self && personState(person) !== 'deactivated'}
                   />
                 ) : (
                   <ProfileCard title="Role">
@@ -338,7 +363,7 @@ export default function PersonDetailPage() {
               <div className="min-w-0 space-y-4">
                 <PersonalCard tenantId={tenant.id} person={person} isSelf={isSelf} />
                 <GeneralCard person={person} />
-                {joined && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
+                {joined && !self && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
               </div>
             </div>
           )}
@@ -363,7 +388,7 @@ export default function PersonDetailPage() {
         <TabsContent value="earnings" className="mt-4">
           <div className="max-w-[960px]">
             {joined ? (
-              <PersonEarnings userId={person.user_id} tenantId={tenant?.id} jobs={jobList} jobsLoading={jobs.isLoading} />
+              <PersonEarnings userId={person.user_id} tenantId={tenant?.id} jobs={jobList} jobsLoading={jobs.isLoading} self={self} />
             ) : (
               <p className="font-inter text-[12.5px] text-[#6B7080]">Nothing to show until they accept their invitation.</p>
             )}
@@ -377,6 +402,7 @@ export default function PersonDetailPage() {
                 className="rounded-[12px]"
                 source={{ type: 'member', id: person.member_id }}
                 recordLabel={personName(person)}
+                readOnly={self}
               />
             ) : (
               <p className="font-inter text-[12.5px] text-[#6B7080]">Agreements can be sent once they accept their invitation.</p>

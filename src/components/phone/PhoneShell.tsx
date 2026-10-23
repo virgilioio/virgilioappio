@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, matchPath, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, LogOut, Search } from 'lucide-react'
+import { ArrowLeft, LogOut, Search, UserRound } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { IconTip } from '@/components/ui/tooltip'
@@ -286,6 +286,10 @@ function YouSheet({ open, onOpenChange, me }: { open: boolean; onOpenChange: (o:
         <BookingLinkCard dark />
 
         <div className="mt-3 overflow-hidden rounded-[14px] border border-[#E7E8EE] bg-white">
+          <button type="button" onClick={() => go('/me')} className="gio-pressable flex w-full items-center gap-3 border-b border-[#F1F0EC] px-4 py-3.5 text-left font-inter font-medium text-[14px] text-[#0d0d09]">
+            <UserRound className="h-[18px] w-[18px] text-[#5A6072]" aria-hidden />
+            My profile
+          </button>
           <button type="button" onClick={() => go('/settings')} className="gio-pressable flex w-full items-center gap-3 border-b border-[#F1F0EC] px-4 py-3.5 text-left font-inter font-medium text-[14px] text-[#0d0d09]">
             <span aria-hidden className="inline-flex"><SettingsGlyph size={18} color="#5A6072" accent="#5A6072" /></span>
             Settings

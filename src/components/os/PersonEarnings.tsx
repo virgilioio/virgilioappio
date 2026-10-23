@@ -80,12 +80,17 @@ export function PersonEarnings({
   tenantId,
   jobs,
   jobsLoading,
+  self = false,
 }: {
   userId: string | null
   tenantId: string | undefined
   jobs: PersonJob[]
   jobsLoading: boolean
+  /** My profile: the copy speaks to the person ("you") instead of about them. */
+  self?: boolean
 }) {
+  const their = self ? 'your' : 'their'
+  const them = self ? 'you' : 'them'
   const earnings = usePersonEarnings(userId)
   const openings = usePersonOpenings(userId, jobs, !jobsLoading)
   const rates = useCommissionRates(tenantId)
@@ -113,7 +118,7 @@ export function PersonEarnings({
     <div className="space-y-4">
       {earnings.isError ? (
         <ProfileCard title="Commissions" icon={Coins}>
-          <LoadError what="their earnings" compact onRetry={() => void earnings.refetch()} />
+          <LoadError what={`${their} earnings`} compact onRetry={() => void earnings.refetch()} />
         </ProfileCard>
       ) : (
         <div>
@@ -127,8 +132,8 @@ export function PersonEarnings({
             ]}
           />
         <p className="px-1 pt-2 font-inter text-[12px] leading-[1.5] text-[#6B7080]">
-          Earned and pending come from Gio Sales invoices, for every role that credits them. Potential estimates the
-          openings still open where they're a Sourcer or a Recruiter: the job's salary × the opening's fee × today's rate
+          Earned and pending come from Gio Sales invoices, for every role that credits {them}. Potential estimates the
+          openings still open where {self ? "you're" : "they're"} a Sourcer or a Recruiter: the job's salary × the opening's fee × today's rate
           {sp != null && tap != null ? ` (Sourcer ${sp}%, Recruiter ${tap}%)` : ''}.
           {!loadingPotential && unestimated > 0
             ? ` ${unestimated} ${unestimated === 1 ? "opening isn't" : "openings aren't"} in it yet: ${unestimated === 1 ? 'it has' : 'they have'} no fee, salary or salary period.`
@@ -146,10 +151,10 @@ export function PersonEarnings({
           </div>
         ) : earnings.isError ? (
           <div className="p-4">
-            <LoadError what="their invoices" compact onRetry={() => void earnings.refetch()} />
+            <LoadError what={`${their} invoices`} compact onRetry={() => void earnings.refetch()} />
           </div>
         ) : rows.length === 0 ? (
-          <p className="p-4 font-inter text-[12.5px] text-[#6B7080]">No invoices credit them yet.</p>
+          <p className="p-4 font-inter text-[12.5px] text-[#6B7080]">No invoices credit {them} yet.</p>
         ) : (
           <div className="max-h-[520px] overflow-y-auto">
             <Table>
@@ -217,13 +222,13 @@ export function PersonEarnings({
           </div>
         ) : openings.isError ? (
           <div className="p-4">
-            <LoadError what="their openings" compact onRetry={() => void openings.refetch()} />
+            <LoadError what={`${their} openings`} compact onRetry={() => void openings.refetch()} />
           </div>
         ) : list.length === 0 ? (
           <p className="p-4 font-inter text-[12.5px] text-[#6B7080]">
             {jobs.some((j) => j.role === 'recruiter' || j.role === 'sourcer')
-              ? 'No open openings on their jobs, and no hires credit them yet.'
-              : 'Not a Recruiter or a Sourcer on any job, and no hires credit them yet.'}
+              ? `No open openings on ${their} jobs, and no hires credit ${them} yet.`
+              : `${self ? "You're not" : 'Not'} a Recruiter or a Sourcer on any job, and no hires credit ${them} yet.`}
           </p>
         ) : (
           <div className="max-h-[520px] overflow-y-auto">

@@ -23,6 +23,7 @@ const SIGN_PREFIXES = ['/sign']
 
 export function getActiveSection(pathname: string, search = ''): AppSection {
   if (pathname === '/' || pathname === '/dashboard') return 'home'
+  if (pathname === '/me') return 'my-profile'
   if (ANALYTICS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'analytics'
   if (PEOPLE_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'people'
   if (SIGN_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'sign'
@@ -209,7 +210,7 @@ export function AppSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
-                to="/settings?tab=profile"
+                to="/me"
                 aria-current={active === 'my-profile' ? 'page' : undefined}
                 aria-label="My Profile"
                 className={cn(
