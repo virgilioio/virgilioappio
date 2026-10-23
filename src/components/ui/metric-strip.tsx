@@ -1,7 +1,8 @@
 /**
  * MetricStrip — single horizontal card with N MetricCells.
  * Strict spec: white card, radius 12, border #E7E8EE, padding 0, ~56h.
- * Cells flex-1, separated by 1px #F1F0EC vertical dividers.
+ * Cells flex-1, separated by 1px #F1F0EC vertical dividers (stacked, with
+ * horizontal dividers, below 640px so values never cut off on phones).
  * One strip per page.
  */
 import { ArrowDown, ArrowUp, type LucideIcon } from 'lucide-react'
@@ -43,6 +44,8 @@ export interface MetricItem {
   isZero?: boolean
   /** Formats a numeric value (and its count-up frames); default whole numbers. */
   format?: (value: number) => string
+  /** A short line under the value (Gio Sales' strip), e.g. the same total in another currency. */
+  detail?: string
 }
 
 /**
@@ -53,14 +56,13 @@ export interface MetricItem {
 export function MetricStrip({ items, id, loading = false }: { items: MetricItem[]; id?: string; loading?: boolean }) {
   return (
     <div
-      className="flex w-full overflow-hidden rounded-[12px] bg-white"
+      className="flex w-full flex-col overflow-hidden rounded-[12px] bg-white sm:flex-row"
       style={{ border: '1px solid #E7E8EE' }}
     >
       {items.map((it, i) => (
         <div
           key={i}
-          className="flex-1 min-w-0"
-          style={i > 0 ? { borderLeft: '1px solid #F1F0EC' } : undefined}
+          className={cn('flex-1 min-w-0', i > 0 && 'border-t border-[#F1F0EC] sm:border-l sm:border-t-0')}
         >
           <MetricCell {...it} countId={id ? `${id}:${it.label}` : undefined} loading={loading} />
         </div>
@@ -70,7 +72,7 @@ export function MetricStrip({ items, id, loading = false }: { items: MetricItem[
 }
 
 function MetricCell({
-  icon: Icon, tone, label, value, unit, delta, annotation, isZero, format, countId, loading,
+  icon: Icon, tone, label, value, unit, delta, annotation, isZero, format, detail, countId, loading,
 }: MetricItem & { countId?: string; loading?: boolean }) {
   const t = TONE[tone]
   const zero = !loading && (isZero ?? (value === 0 || value === '0'))
@@ -127,6 +129,11 @@ function MetricCell({
             </span>
           ) : null}
         </div>
+        {detail && !loading ? (
+          <div className="truncate font-inter tabular-nums" style={{ fontSize: 11.5, color: '#5A6072', lineHeight: 1.3, marginTop: 1 }}>
+            {detail}
+          </div>
+        ) : null}
       </div>
     </div>
   )
