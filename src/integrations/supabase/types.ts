@@ -6890,6 +6890,88 @@ export type Database = {
           },
         ]
       }
+      os_person_rating: {
+        Row: {
+          created_at: string
+          note: string | null
+          rated_at: string | null
+          rated_by: string | null
+          rating: number | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          note?: string | null
+          rated_at?: string | null
+          rated_by?: string | null
+          rating?: number | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          note?: string | null
+          rated_at?: string | null
+          rated_by?: string | null
+          rating?: number | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_person_rating_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_person_work: {
+        Row: {
+          created_at: string
+          max_open_jobs: number | null
+          segments: string[]
+          specialties: string[]
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          max_open_jobs?: number | null
+          segments?: string[]
+          specialties?: string[]
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          max_open_jobs?: number | null
+          segments?: string[]
+          specialties?: string[]
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_person_work_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_sync_queue: {
         Row: {
           actor_user_id: string

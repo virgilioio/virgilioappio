@@ -1,4 +1,4 @@
--- Run after 20261023000000_os_person_work inside a transaction that is rolled back.
+-- Run after 20261023002833_os_person_work inside a transaction that is rolled back.
 -- Allan (an admin) sets a teammate's work profile and rating; teammates read the
 -- work profile but can't change it or see the rating; nobody rates themself.
 -- Every row's ok is true.
@@ -60,7 +60,7 @@ begin
 
   -- 3. An admin rates them; the note is kept out of the history.
   insert into public.os_person_rating (tenant_id, user_id, rating, note)
-  values (ten, mate, 4, 'Strong closer; slow on intake calls.');
+  values (ten, mate, 4, 'Strong closer, slow on intake calls.');
   select * into r from public.os_person_rating where tenant_id = ten and user_id = mate;
   insert into t_results values ('an admin rates someone, signed and dated',
     r.rating = 4 and r.rated_by = allan and r.rated_at is not null);
@@ -119,7 +119,7 @@ begin
     get stacked diagnostics st = returned_sqlstate;
     insert into t_results values ('someone outside the workspace is refused', st = 'GOS02');
   end;
-  update public.os_person_rating set note = 'Strong closer; slow on intake calls.' where tenant_id = ten and user_id = mate;
+  update public.os_person_rating set note = 'Strong closer, slow on intake calls.' where tenant_id = ten and user_id = mate;
   insert into t_results values ('saving an unchanged rating adds nothing to the history',
     (select count(*) from public.os_audit_log a where a.subject_user_id = mate and a.action = 'person.rating_updated') = 1);
   perform set_config('role', 'postgres', true);
