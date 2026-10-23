@@ -167,6 +167,7 @@ export default {
 				'dup-legend-divider': 'hsl(var(--dup-legend-divider))',
 				// Virgilio Calendly-style brand colors
 				'virgilio-purple': '#6F3FF5',
+				'virgilio-cream': '#FFFCF9', // Opaline White, the page background (ListPage)
 				'virgilio-text': '#0F1222',
 				'virgilio-muted': '#5A6072',
 				'virgilio-border': '#E7E8EE',
