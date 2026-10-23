@@ -363,7 +363,7 @@ export default function PersonDetailPage() {
         <TabsContent value="earnings" className="mt-4">
           <div className="max-w-[960px]">
             {joined ? (
-              <PersonEarnings userId={person.user_id} jobs={jobList} jobsLoading={jobs.isLoading} />
+              <PersonEarnings userId={person.user_id} tenantId={tenant?.id} jobs={jobList} jobsLoading={jobs.isLoading} />
             ) : (
               <p className="font-inter text-[12.5px] text-[#6B7080]">Nothing to show until they accept their invitation.</p>
             )}
