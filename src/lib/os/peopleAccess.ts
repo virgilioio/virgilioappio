@@ -544,6 +544,29 @@ export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => 
         ? `${who} updated their personal details${list}`
         : `${who}'s personal details were updated${list}`
     }
+    case 'person.bank_updated': {
+      const names: Record<string, string> = {
+        bank_details: 'added',
+        kind: 'kind of account',
+        holder_name: 'account holder',
+        bank_name: 'bank',
+        clabe: 'CLABE',
+        account_number: 'account number',
+        iban: 'IBAN',
+        currency: 'currency',
+        country: 'country',
+        routing_number: 'routing number',
+        account_type: 'account type',
+        swift: 'SWIFT/BIC',
+      }
+      const fields = Array.isArray(d.fields) ? (d.fields as string[]).map((f) => names[f] ?? f) : []
+      const list = fields.length ? `: ${fields.join(', ')}` : ''
+      return row.actor_id && row.actor_id === row.subject_user_id
+        ? `${who} updated their bank details${list}`
+        : `${who}'s bank details were changed${list}`
+    }
+    case 'person.bank_revealed':
+      return `${who}'s ${typeof d.field === 'string' ? d.field : 'account number'} was shown in full`
     case 'person.work_updated': {
       const parts: string[] = []
       if (Array.isArray(d.segments))

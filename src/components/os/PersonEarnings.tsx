@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LoadError } from '@/components/empty/LoadError'
 import { JobPreview } from '@/components/previews/EntityPreview'
 import { ProfileCard } from '@/components/os/ProfileParts'
+import { BankDetailsCard } from '@/components/os/BankDetailsCard'
+import { maskedAccount, useBankDetails } from '@/lib/os/bank'
 import { rateFor, useCommissionRates } from '@/lib/os/commissions'
 import {
   byCurrency,
@@ -81,11 +83,14 @@ export function PersonEarnings({
   jobs,
   jobsLoading,
   self = false,
+  name,
 }: {
   userId: string | null
   tenantId: string | undefined
   jobs: PersonJob[]
   jobsLoading: boolean
+  /** The person's first name, for the bank details copy. */
+  name?: string
   /** My profile: the copy speaks to the person ("you") instead of about them. */
   self?: boolean
 }) {
@@ -94,6 +99,7 @@ export function PersonEarnings({
   const earnings = usePersonEarnings(userId)
   const openings = usePersonOpenings(userId, jobs, !jobsLoading)
   const rates = useCommissionRates(tenantId)
+  const bank = useBankDetails(tenantId, userId)
 
   const rows = earnings.data ?? []
   const live = rows.filter((e) => e.status !== 'void')
@@ -138,9 +144,12 @@ export function PersonEarnings({
           {!loadingPotential && unestimated > 0
             ? ` ${unestimated} ${unestimated === 1 ? "opening isn't" : "openings aren't"} in it yet: ${unestimated === 1 ? 'it has' : 'they have'} no fee, salary or salary period.`
             : ''}
+          {bank.data?.has_details ? ` Commissions are paid by bank transfer to ${maskedAccount(bank.data)}.` : ''}
         </p>
         </div>
       )}
+
+      <BankDetailsCard tenantId={tenantId} userId={userId} self={self} name={name} />
 
       <ProfileCard title="Invoices" icon={ReceiptText} flush>
         {earnings.isLoading ? (
