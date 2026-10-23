@@ -1,4 +1,4 @@
--- Run after 20261023110000_hire_changes_admin_only inside a transaction that is rolled back.
+-- Run after 20261023031128_hire_changes_admin_only inside a transaction that is rolled back.
 -- On REQ-1101 (a filled Gio Sales opening): someone on the job who isn't an
 -- admin can't undo the hire, change its credit or edit the hire columns; an
 -- admin changes the credit and undoes the hire through the functions only,

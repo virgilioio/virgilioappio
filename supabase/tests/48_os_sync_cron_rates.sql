@@ -1,4 +1,4 @@
--- Run after 20261023100000_os_sync_cron_rates inside a transaction that is rolled back.
+-- Run after 20261023030934_os_sync_cron_rates inside a transaction that is rolled back.
 -- The os-sync cron still fires for pending queue items and now also for
 -- commission rates waiting to reach Gio Sales. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);

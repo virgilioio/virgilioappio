@@ -11084,6 +11084,7 @@ export type Database = {
       }
       can_access_job_pipeline: { Args: { p_job_id: string }; Returns: boolean }
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
+      can_change_hire: { Args: { _job_id: string }; Returns: boolean }
       can_edit_job: { Args: { _job_id: string }; Returns: boolean }
       can_manage_job_team: {
         Args: {
@@ -11167,6 +11168,14 @@ export type Database = {
       categorize_skills: {
         Args: { generated_skills: Json; manual_skills: string[] }
         Returns: Json
+      }
+      change_hire_credit: {
+        Args: {
+          p_opening_id: string
+          p_recruiter_id: string
+          p_sourcer_id: string
+        }
+        Returns: undefined
       }
       chat_bell_enqueue: {
         Args: {
