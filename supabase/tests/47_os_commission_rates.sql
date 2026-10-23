@@ -1,4 +1,4 @@
--- Run after 20261023100000_os_commission_rates inside a transaction that is rolled back.
+-- Run after 20261023012116_os_commission_rates inside a transaction that is rolled back.
 -- Allan (a People & Access admin) adds a rate; a member reads but can't add or
 -- change one; only Virgilio's workspace has rates; delivery is recorded only by
 -- the service role. Every row's ok is true.

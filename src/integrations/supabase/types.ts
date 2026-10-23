@@ -6748,6 +6748,59 @@ export type Database = {
           },
         ]
       }
+      os_commission_rates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          id: string
+          note: string | null
+          pct: number
+          role_key: string
+          sync_attempts: number
+          sync_error: string | null
+          sync_status: string
+          synced_at: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          id?: string
+          note?: string | null
+          pct: number
+          role_key: string
+          sync_attempts?: number
+          sync_error?: string | null
+          sync_status?: string
+          synced_at?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          id?: string
+          note?: string | null
+          pct?: number
+          role_key?: string
+          sync_attempts?: number
+          sync_error?: string | null
+          sync_status?: string
+          synced_at?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_commission_rates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_offboardings: {
         Row: {
           finished_at: string | null
@@ -11892,6 +11945,14 @@ export type Database = {
       organization_has_active_public_posting: {
         Args: { org_id_param: string }
         Returns: boolean
+      }
+      os_commission_rate: {
+        Args: { _on?: string; _role_key: string; _tenant_id: string }
+        Returns: number
+      }
+      os_commission_rate_record: {
+        Args: { _detail: string; _id: string; _ok: boolean; _retry: boolean }
+        Returns: undefined
       }
       os_offboard_ats: {
         Args: { _tenant_id: string; _user_id: string }
