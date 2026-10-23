@@ -1,4 +1,4 @@
--- Run after 20261023140000_os_earnings inside a transaction that is rolled back.
+-- Run after 20261023043344_os_earnings inside a transaction that is rolled back.
 -- Gio Sales sends one invoice's credits: people are matched (Gio ATS id for the
 -- Sourcer and Recruiter, email for Sales), the opening and job are linked, a
 -- repeat is a no-op, an older message never overwrites a newer one, credits

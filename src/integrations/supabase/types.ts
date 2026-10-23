@@ -6801,6 +6801,107 @@ export type Database = {
           },
         ]
       }
+      os_earnings: {
+        Row: {
+          client_name: string | null
+          collected_amount: number
+          created_at: string
+          currency: string
+          deal_title: string | null
+          earned_amount: number
+          id: string
+          invoice_amount: number
+          invoice_number: string | null
+          issued_on: string | null
+          job_id: string | null
+          opening_id: string | null
+          paid_on: string | null
+          pending_amount: number
+          person_email: string | null
+          person_name: string | null
+          request_number: string
+          role_key: string
+          role_label: string
+          sales_credit_id: string
+          sales_request_id: string
+          sales_sent_at: string
+          share_pct: number
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+          void_reason: string | null
+        }
+        Insert: {
+          client_name?: string | null
+          collected_amount?: number
+          created_at?: string
+          currency: string
+          deal_title?: string | null
+          earned_amount?: number
+          id?: string
+          invoice_amount: number
+          invoice_number?: string | null
+          issued_on?: string | null
+          job_id?: string | null
+          opening_id?: string | null
+          paid_on?: string | null
+          pending_amount?: number
+          person_email?: string | null
+          person_name?: string | null
+          request_number: string
+          role_key: string
+          role_label: string
+          sales_credit_id: string
+          sales_request_id: string
+          sales_sent_at: string
+          share_pct: number
+          status: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+          void_reason?: string | null
+        }
+        Update: {
+          client_name?: string | null
+          collected_amount?: number
+          created_at?: string
+          currency?: string
+          deal_title?: string | null
+          earned_amount?: number
+          id?: string
+          invoice_amount?: number
+          invoice_number?: string | null
+          issued_on?: string | null
+          job_id?: string | null
+          opening_id?: string | null
+          paid_on?: string | null
+          pending_amount?: number
+          person_email?: string | null
+          person_name?: string | null
+          request_number?: string
+          role_key?: string
+          role_label?: string
+          sales_credit_id?: string
+          sales_request_id?: string
+          sales_sent_at?: string
+          share_pct?: number
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+          void_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_earnings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_offboardings: {
         Row: {
           finished_at: string | null
@@ -12179,6 +12280,7 @@ export type Database = {
       }
       sales_company_upsert: { Args: { payload: Json }; Returns: Json }
       sales_deal_won: { Args: { _p: Json; _tenant_id: string }; Returns: Json }
+      sales_earnings_upsert: { Args: { payload: Json }; Returns: Json }
       sales_line_updated: {
         Args: {
           _fee: number

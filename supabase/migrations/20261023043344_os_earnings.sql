@@ -1,13 +1,13 @@
 -- Earnings from Gio Sales (Allan, 2026-10-23, commissions piece 3). Gio Sales
--- issues and collects the invoices; each invoice credits people (Sales and
+-- issues and collects the invoices. Each invoice credits people (Sales and
 -- Engagement Specialist from the deal, the hire's Sourcer and Recruiter) with a
 -- share of its net amount. Gio Sales now sends those credits here every time
 -- the invoice changes (issued, partly paid, paid, voided), and they become one
 -- row per person per invoice:
 --   earned  = share x what the client has paid so far
 --   pending = share x what is still to be paid on an issued invoice
--- Amounts stay in the invoice's currency. Gio Sales does the maths; this table
--- only keeps what it sent. A person sees their own rows; People & Access
+-- Amounts stay in the invoice's currency. Gio Sales does the maths. This table
+-- only keeps what it sent. A person sees their own rows. People & Access
 -- admins see everyone's. Only the service role writes.
 
 create table public.os_earnings (
