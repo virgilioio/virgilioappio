@@ -216,7 +216,7 @@ export function JobOverviewTab({ jobId, job, onEdit, onNavigate }: JobOverviewTa
   }, [job?.id, job?.department, job?.created_at])
 
   return (
-    <div className="h-full overflow-auto bg-[#F6F5F1]">
+    <div className="h-full overflow-auto bg-virgilio-cream">
       <div className="mx-auto max-w-[1180px] px-[28px] pt-[20px] pb-[32px]">
         <div
           className="grid items-start"

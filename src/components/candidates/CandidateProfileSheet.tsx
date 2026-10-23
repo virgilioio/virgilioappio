@@ -1438,8 +1438,8 @@ const stageHasAutomation = useMemo(() => {
     <>
     <div className={cn(
       asPage
-        ? "h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden"
-        : "fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly"
+        ? "h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-virgilio-cream overflow-hidden"
+        : "fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-virgilio-cream overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly"
     )}>
       <div className={cn(asPage ? "flex w-full flex-1 min-h-0" : "flex h-full w-full")}>
         {candidate && jobId && candidate.id && job && (

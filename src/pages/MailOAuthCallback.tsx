@@ -75,7 +75,7 @@ export default function MailOAuthCallback() {
   }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background px-6 text-center">
+    <div className="flex items-center justify-center min-h-screen bg-virgilio-cream px-6 text-center">
       <BrandDot message={msg} />
     </div>
   );

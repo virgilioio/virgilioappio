@@ -757,7 +757,7 @@ export function CandidateFormSheet({
     <Sheet open={isOpen} onOpenChange={handleDismiss}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-[720px] p-0 flex flex-col h-full bg-[#F6F5F1] border-l border-virgilio-border"
+        className="w-full sm:max-w-[720px] p-0 flex flex-col h-full bg-virgilio-cream border-l border-virgilio-border"
         onEscapeKeyDown={(e) => {
           // While the discard question is up, Esc means "keep editing".
           if (confirmDiscard) {
@@ -766,7 +766,7 @@ export function CandidateFormSheet({
           }
         }}
       >
-        <SheetHeader className="px-6 pt-6 pb-5 border-b border-virgilio-border/60 bg-background space-y-0">
+        <SheetHeader className="px-6 pt-6 pb-5 border-b border-virgilio-border/60 bg-virgilio-cream space-y-0">
           <CandidateSheetHeader
             title={titleText}
             subtitle={subtitleText}

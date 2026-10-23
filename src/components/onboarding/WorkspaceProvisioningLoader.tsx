@@ -15,7 +15,7 @@ export function WorkspaceProvisioningLoader({ status, className = '' }: Workspac
   // Special rendering for welcome status
   if (status === 'welcome') {
     return (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in ${className}`}>
+      <div className={`fixed inset-0 z-50 flex items-center justify-center bg-virgilio-cream/80 backdrop-blur-sm animate-fade-in ${className}`}>
         <div className="flex flex-col items-center space-y-8">
           <div className="animate-pulse">
             <GoGioLogo size="xl" />
@@ -43,7 +43,7 @@ export function WorkspaceProvisioningLoader({ status, className = '' }: Workspac
   const statusText = STATUS_MESSAGES[status]
   
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in ${className}`}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-virgilio-cream/80 backdrop-blur-sm animate-fade-in ${className}`}>
       <div className="flex flex-col items-center space-y-8">
         {/* Logo with pulse animation */}
         <div className="animate-pulse">

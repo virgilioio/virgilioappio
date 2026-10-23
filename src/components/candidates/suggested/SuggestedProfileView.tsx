@@ -311,7 +311,7 @@ export function SuggestedProfileView({
   }
 
   return (
-    <div className={cn('min-h-[100dvh] bg-[#F6F5F1] px-7 pb-8 pt-4', className)}>
+    <div className={cn('min-h-[100dvh] bg-virgilio-cream px-7 pb-8 pt-4', className)}>
       <ProfileHeroCard
         candidateName={name}
         candidateFirstName={firstName}

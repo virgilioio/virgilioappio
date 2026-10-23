@@ -919,7 +919,7 @@ export function ApolloPreviewSheet({
     ? Math.max(0, (creditsData.collect_credits_limit - creditsData.collect_credits_used) + (creditsData.bonus_credits_available ?? 0))
     : null
   const PreCollectFooter = (
-    <div className="border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4 flex-shrink-0">
+    <div className="border-t border-virgilio-border bg-virgilio-cream/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4 flex-shrink-0">
       <div className="flex items-center gap-4">
         <Button variant="ghost" onClick={handleNavigateNext} disabled={!hasNext} type="button">
           Skip
@@ -1197,7 +1197,7 @@ export function ApolloPreviewSheet({
   )
 
   const PostCollectFooter = (
-    <div className="border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4 flex-shrink-0">
+    <div className="border-t border-virgilio-border bg-virgilio-cream/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4 flex-shrink-0">
       <p className="text-[12px] text-text-tertiary">
         Collected by you
         {collectedAgo && <> · {collectedAgo}</>}

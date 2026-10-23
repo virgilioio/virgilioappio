@@ -70,7 +70,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg gio-drawer",
+  "fixed z-50 gap-4 bg-virgilio-cream p-6 shadow-lg gio-drawer",
   {
     variants: {
       side: {

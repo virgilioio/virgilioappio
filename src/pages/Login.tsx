@@ -47,7 +47,7 @@ export default function Login() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-virgilio-cream flex items-center justify-center">
         <BrandDot message="Loading..." />
       </div>
     )

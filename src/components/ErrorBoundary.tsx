@@ -14,7 +14,7 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
   const isDev = import.meta.env.DEV
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-virgilio-cream flex items-center justify-center p-4">
       <Card className="max-w-2xl w-full">
         <CardHeader>
           <div className="flex items-center gap-2 text-destructive">

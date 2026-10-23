@@ -14,7 +14,7 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F6F5F1] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-virgilio-cream px-4">
       <div className="max-w-md w-full">
         <EmptyState
           size="route"

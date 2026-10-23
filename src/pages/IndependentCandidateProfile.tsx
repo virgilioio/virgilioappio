@@ -242,7 +242,7 @@ export default function IndependentCandidateProfile() {
     return (
       <AuthGate>
         <PermissionGate permission="canViewCandidates">
-          <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden">
+          <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-virgilio-cream overflow-hidden">
             <div className="layout-container pt-2 pb-3 sm:pt-3 sm:pb-4">
               <Skeleton className="h-[180px] w-full rounded-[16px]" />
             </div>
@@ -262,7 +262,7 @@ export default function IndependentCandidateProfile() {
     return (
       <AuthGate>
         <PermissionGate permission="canViewCandidates">
-          <div className="min-h-screen bg-[#F6F5F1] flex items-center justify-center">
+          <div className="min-h-screen bg-virgilio-cream flex items-center justify-center">
             <div className="text-center">
               <h1 className="text-xl font-poppins font-semibold text-[#1F2230] mb-2">Candidate not found</h1>
               <p className="text-[#5A6072] mb-4">This candidate doesn't exist or you don't have access.</p>
@@ -432,7 +432,7 @@ export default function IndependentCandidateProfile() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewCandidates">
-        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-[#F6F5F1] overflow-hidden">
+        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-virgilio-cream overflow-hidden">
           <div className="layout-container pt-2 pb-3 sm:pt-3 sm:pb-4 shrink-0">
             <div className="space-y-4">
             {/* ───── Hero card (breadcrumbs · actions · identity · meta · tabs) ───── */}

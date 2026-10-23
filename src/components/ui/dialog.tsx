@@ -45,7 +45,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={contentRef}
       className={cn(
-        "fixed left-[50%] top-[50%] z-[70] grid w-full max-w-lg [translate:-50%_-50%] gap-4 border bg-background p-6 shadow-lg gio-dialog sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-[70] grid w-full max-w-lg [translate:-50%_-50%] gap-4 border bg-white p-6 shadow-lg gio-dialog sm:rounded-lg",
         className
       )}
       onInteractOutside={(e) => keepOpenForToasts(e, onInteractOutside)}

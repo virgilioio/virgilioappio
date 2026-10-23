@@ -8,7 +8,7 @@
 @layer base {
   :root {
     /* Light Mode Colors - World-class depth pattern */
-    --background: 30 100% 98.8%; /* Opaline White, Virgilio's cream (#FFFCF9), the page background in Gio ATS and Gio Sales (Allan, 2026-10-23) */
+    --background: 0 0% 100%; /* White: cards, dialogs, tables and fields. Pages and sheets are virgilio-cream (Opaline White #FFFCF9; Allan, 2026-10-23) */
     --foreground: 0 0% 15%; /* Darker for better hierarchy */
 
     --card: 0 0% 100%; /* Keep cards pure white for contrast */
@@ -501,7 +501,7 @@
 
 @layer base {
   body {
-    @apply bg-background text-foreground font-inter;
+    @apply bg-virgilio-cream text-foreground font-inter;
     font-size: var(--font-size-base);
     font-feature-settings: "rlig" 1, "calt" 1;
     line-height: var(--line-height-normal);

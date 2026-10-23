@@ -117,7 +117,7 @@ export default function AccountSetup() {
       </div>
 
       {/* Right Side - Account Setup Form */}
-      <div className="w-full lg:w-1/2 bg-background flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
+      <div className="w-full lg:w-1/2 bg-virgilio-cream flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
             <GoGioLogo size="xl" />

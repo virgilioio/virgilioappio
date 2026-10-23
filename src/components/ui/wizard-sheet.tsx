@@ -96,7 +96,7 @@ export function WizardSheet({
         // §9: the sheet is a modal dialog (Radix gives role="dialog"; screen readers also want aria-modal).
         aria-modal="true"
         className={cn(
-          'w-full p-0 bg-[#F6F5F1] border-l border-virgilio-border [transition-property:transform,opacity,max-width] duration-[320ms]',
+          'w-full p-0 bg-virgilio-cream border-l border-virgilio-border [transition-property:transform,opacity,max-width] duration-[320ms]',
           wide ? 'sm:max-w-[calc(100vw-88px)]' : 'sm:max-w-[1080px]',
         )}
         onEscapeKeyDown={(e) => {
@@ -197,7 +197,7 @@ export function WizardSheet({
             </main>
           </div>
 
-          <div className="relative border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4">
+          <div className="relative border-t border-virgilio-border bg-virgilio-cream/95 backdrop-blur px-6 sm:px-10 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
                 {current === 0 ? (

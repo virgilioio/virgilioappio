@@ -61,7 +61,7 @@ function Logo({ className }: { className?: string }) {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-[#F6F5F1]">
+    <div className="flex min-h-[100dvh] flex-col bg-virgilio-cream">
       <div className="flex flex-1 items-center justify-center px-4 py-8">{children}</div>
     </div>
   )

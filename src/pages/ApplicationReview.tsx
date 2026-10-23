@@ -265,7 +265,7 @@ export default function ApplicationReviewPage() {
   const progressPct = total > 0 ? Math.min(100, (reviewed / total) * 100) : 0
 
   return (
-    <div className="relative w-full min-h-[100dvh] bg-[#F6F5F1] flex flex-col">
+    <div className="relative w-full min-h-[100dvh] bg-virgilio-cream flex flex-col">
       {/* Progress hairline */}
       <div className="h-[3px] w-full bg-[#EAE8E1] relative">
         <div

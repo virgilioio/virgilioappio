@@ -221,7 +221,7 @@ function PhoneTopTabs({ sections, current, me, onAccount }: {
     <nav
       ref={navRef}
       aria-label="Sections"
-      className="gio-phone-tabs sm:hidden fixed inset-x-0 top-0 z-50 flex items-center bg-[#F6F5F1]"
+      className="gio-phone-tabs sm:hidden fixed inset-x-0 top-0 z-50 flex items-center bg-virgilio-cream"
       onPointerDownCapture={capture}
       onClickCapture={capture}
     >
@@ -270,7 +270,7 @@ function YouSheet({ open, onOpenChange, me }: { open: boolean; onOpenChange: (o:
   }
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-[20px] border-0 bg-[#F6F5F1] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] pt-3">
+      <SheetContent side="bottom" className="rounded-t-[20px] border-0 bg-virgilio-cream px-4 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] pt-3">
         <div aria-hidden className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#D9D6CE]" />
         <div className="mb-4 flex items-center gap-3">
           <Avatar className="h-11 w-11">

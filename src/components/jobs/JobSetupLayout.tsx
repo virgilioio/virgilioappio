@@ -363,7 +363,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   return (
     <div
       ref={scrollRef}
-      className="h-full overflow-auto bg-[#F6F5F1]"
+      className="h-full overflow-auto bg-virgilio-cream"
     >
       <CrmJobSetup jobId={job?.sales_deal_id ? jobId : null} open={crmSetupOpen} onClose={() => { setCrmSetupOpen(false); window.dispatchEvent(new CustomEvent('job-detail:refresh')) }} />
       <div className="mx-auto max-w-[1280px] px-6 sm:px-8 py-6">

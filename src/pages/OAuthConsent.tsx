@@ -117,7 +117,7 @@ export default function OAuthConsent() {
   const clientName = details.client?.name ?? "an app";
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-[#F6F5F1]">
+    <main className="min-h-screen flex items-center justify-center p-6 bg-virgilio-cream">
       <div className="max-w-md w-full bg-white border border-[#E7E8EE] rounded-2xl p-6 shadow-sm">
         <h1
           className="font-poppins font-semibold text-[18px] text-[#0d0d09] mb-1"

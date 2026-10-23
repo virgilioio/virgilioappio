@@ -101,7 +101,7 @@ export default function ChromeOAuthStart() {
   // Show loading spinner while checking session
   if (isChecking) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-virgilio-cream flex items-center justify-center">
         <BrandDot message="Connecting to GoGio..." />
       </div>
     );
@@ -110,7 +110,7 @@ export default function ChromeOAuthStart() {
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="min-h-screen bg-virgilio-cream flex items-center justify-center p-6">
         <div className="max-w-md w-full text-center space-y-6">
           <GoGioLogo size="lg" />
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
@@ -127,7 +127,7 @@ export default function ChromeOAuthStart() {
   // Show login prompt
   if (needsLogin) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="min-h-screen bg-virgilio-cream flex items-center justify-center p-6">
         <div className="max-w-md w-full">
           <div className="bg-card border border-border rounded-2xl shadow-lg p-8 text-center space-y-6">
             <div className="flex justify-center">

@@ -219,7 +219,7 @@ function IntelligenceBody({
   const remove = (s: MarketSelection) => setSelections(selections.filter(x => !(x.dimension === s.dimension && x.value === s.value)))
 
   return (
-    <div className="min-h-screen bg-[#F6F5F1]">
+    <div className="min-h-screen bg-virgilio-cream">
       <div className="mx-auto" style={{ maxWidth: 1320, padding: '26px 32px 48px' }}>
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-5">

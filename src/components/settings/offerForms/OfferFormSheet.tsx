@@ -89,7 +89,7 @@ export function OfferFormSheet({
       <SheetContent
         side="right"
         aria-modal="true"
-        className="w-full border-l border-virgilio-border bg-[#F6F5F1] p-0 sm:max-w-[920px]"
+        className="w-full border-l border-virgilio-border bg-virgilio-cream p-0 sm:max-w-[920px]"
         onEscapeKeyDown={(e) => {
           // A field or section being edited takes Esc for itself.
           const local = document.activeElement instanceof Element && document.activeElement.closest('[data-escape-local]')
@@ -155,7 +155,7 @@ export function OfferFormSheet({
             )}
           </main>
 
-          <footer className="flex items-center justify-between gap-4 border-t border-virgilio-border bg-[#F6F5F1]/95 px-6 py-4 backdrop-blur sm:px-10">
+          <footer className="flex items-center justify-between gap-4 border-t border-virgilio-border bg-virgilio-cream/95 px-6 py-4 backdrop-blur sm:px-10">
             <p className="min-w-0 truncate font-inter text-[12px] text-text-tertiary">
               {id ? 'Changes save as you go. Offers already made keep their answers.' : 'Name the form to start adding fields.'}
             </p>

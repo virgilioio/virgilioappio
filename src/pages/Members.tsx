@@ -90,7 +90,7 @@ export default function Members() {
   return (
     <AuthGate>
       <PermissionGate permission="canManageMembers">
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-virgilio-cream">
           <Section variant="default" banded container>
             <PageHeader
               title="Team Members"

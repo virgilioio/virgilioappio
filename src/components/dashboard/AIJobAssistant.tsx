@@ -921,7 +921,7 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
 
       <Sheet open={showModal} onOpenChange={setShowModal}>
         <SheetContent side="right" className="w-full sm:w-[1050px] lg:w-[1400px] overflow-y-auto p-0">
-          <SheetHeader className="space-y-4 border-b border-virgilio-border pb-6 px-6 pt-6 sticky top-0 bg-background z-10">
+          <SheetHeader className="space-y-4 border-b border-virgilio-border pb-6 px-6 pt-6 sticky top-0 bg-virgilio-cream z-10">
             <div className="flex items-center gap-3">
               <img 
                 src={gioAvatar} 

@@ -549,7 +549,7 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-[1080px] p-0 bg-[#F6F5F1] border-l border-virgilio-border"
+        className="w-full sm:max-w-[1080px] p-0 bg-virgilio-cream border-l border-virgilio-border"
       >
         <div className="flex h-full flex-col">
 
@@ -644,7 +644,7 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
 
           {/* Sticky footer */}
           {showFooter && (
-            <div className="border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4">
+            <div className="border-t border-virgilio-border bg-virgilio-cream/95 backdrop-blur px-6 sm:px-10 py-4">
               {publishError && (
                 <p role="alert" className="mb-3 text-[12px] font-inter text-destructive">{publishError}</p>
               )}

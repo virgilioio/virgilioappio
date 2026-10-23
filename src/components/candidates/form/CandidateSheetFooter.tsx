@@ -46,7 +46,7 @@ export function CandidateSheetFooter({
   return (
     <div
       className={cn(
-        'relative border-t border-virgilio-border/60 bg-background',
+        'relative border-t border-virgilio-border/60 bg-virgilio-cream',
         'px-6 py-4 flex items-center gap-3 flex-wrap',
       )}
     >

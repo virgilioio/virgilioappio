@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 
 export function PhonePage({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('bg-[#F6F5F1] px-4 pt-3 pb-4', className)}>
+    <div className={cn('bg-virgilio-cream px-4 pt-3 pb-4', className)}>
       {children}
     </div>
   )

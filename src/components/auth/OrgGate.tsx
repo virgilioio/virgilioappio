@@ -16,7 +16,7 @@ export function OrgGate({ children, fallback }: OrgGateProps) {
 
   if (authLoading || orgLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-virgilio-cream flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
           <p className="text-muted-foreground">Loading...</p>
@@ -41,7 +41,7 @@ export function OrgGate({ children, fallback }: OrgGateProps) {
     }
 
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-virgilio-cream flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">

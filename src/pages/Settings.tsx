@@ -153,7 +153,7 @@ export default function Settings() {
   const workspaceName = tenant?.name || 'Workspace'
 
   return (
-    <div className="min-h-screen bg-[#F6F5F1]">
+    <div className="min-h-screen bg-virgilio-cream">
       <div style={{ padding: '24px 28px' }}>
         {/* Page header */}
         <div className="mb-6 flex items-start justify-between gap-4">
@@ -184,7 +184,7 @@ export default function Settings() {
 
         {/* Mobile sidebar sheet */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetContent side="left" className="w-[280px] p-4 bg-[#F6F5F1]">
+          <SheetContent side="left" className="w-[280px] p-4 bg-virgilio-cream">
             <SettingsSidebar
               currentTab={currentTab}
               onTabChange={handleTabChange}

@@ -38,7 +38,7 @@ export function JobAssignmentGuard({ children }: JobAssignmentGuardProps) {
   // Show loading state while checking assignment for regular members
   if (isLoading && permissions.isMember && !permissions.isAdmin) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-virgilio-cream">
         <div className="container mx-auto py-lg px-md">
           <div className="flex items-center justify-center py-xl">
             <Skeleton className="h-8 w-8 rounded-full" />

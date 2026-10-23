@@ -72,9 +72,9 @@ export function Layout() {
         <BulkUploadProvider>
           <AppSidebar />
           {!isReview && (
-            <div aria-hidden className="hidden sm:block fixed top-0 left-[5.5rem] right-3 h-3 z-40 bg-background pointer-events-none" />
+            <div aria-hidden className="hidden sm:block fixed top-0 left-[5.5rem] right-3 h-3 z-40 bg-virgilio-cream pointer-events-none" />
           )}
-          <div className={isReview ? 'bg-background sm:pl-[5.5rem]' : 'bg-background sm:pl-[5.5rem] sm:pr-3'}>
+          <div className={isReview ? 'bg-virgilio-cream sm:pl-[5.5rem]' : 'bg-virgilio-cream sm:pl-[5.5rem] sm:pr-3'}>
             {!isReview && <Header />}
             {!isReview && <HeaderContextBands />}
             <main

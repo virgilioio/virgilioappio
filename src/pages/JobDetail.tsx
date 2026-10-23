@@ -1098,7 +1098,7 @@ export default function JobDetail() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-virgilio-cream">
         <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
           <Card>
             <CardContent className="py-8">
@@ -1121,7 +1121,7 @@ export default function JobDetail() {
 
   if (jobLoading) {
     return (
-      <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] bg-background overflow-hidden">
+      <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] bg-virgilio-cream overflow-hidden">
         <div className="layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 space-y-4">
           <HeroCardSkeleton variant="job" />
           <PipelineSectionTabsSkeleton />
@@ -1134,7 +1134,7 @@ export default function JobDetail() {
   }
 
   if (!job) return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-virgilio-cream">
       <div className="layout-container py-6 sm:py-8 lg:py-12">
         <Skeleton className="h-12 w-64 mb-4" />
         <div className="grid grid-cols-4 gap-4">
@@ -1150,7 +1150,7 @@ export default function JobDetail() {
 
   return (
 
-    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+72px)] sm:pb-0">
+    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-virgilio-cream overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+72px)] sm:pb-0">
       <div className="layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Mobile Header */}
         {isMobile && (

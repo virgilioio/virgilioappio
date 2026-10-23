@@ -388,7 +388,7 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
       )}
 
       {/* Document */}
-      <div className="bg-[#F6F5F1] px-5 py-6">
+      <div className="bg-virgilio-cream px-5 py-6">
         <div className="mx-auto max-w-[860px] overflow-hidden rounded-[10px] border border-[#E7E8EE] bg-white shadow-[0_2px_12px_rgba(13,13,9,0.07)]">
           {isPdf && previewUrl ? (
             <PDFResumeViewer url={previewUrl} height={height} />
