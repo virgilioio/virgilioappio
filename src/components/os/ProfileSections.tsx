@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Briefcase, IdCard, Star, User, Workflow } from 'lucide-react'
+import { Archive, Briefcase, CircleDot, IdCard, PencilLine, Star, User, Workflow } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { MetricStrip } from '@/components/ui/metric-strip'
 import { LoadError } from '@/components/empty/LoadError'
 import { JobPreview } from '@/components/previews/EntityPreview'
 import { GoogleStatus } from '@/components/os/PeopleBits'
@@ -147,17 +148,15 @@ export function CurrentWorkCard({
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2 pb-3">
-            {[
-              { label: 'Open', n: open.length },
-              { label: 'Draft', n: draft },
-              { label: 'Closed', n: closed },
-            ].map((s) => (
-              <div key={s.label} className="rounded-[10px] bg-[#F7F6F2] px-3 py-2">
-                <div className="font-poppins text-[18px] font-semibold tabular-nums tracking-[-0.02em] text-[#1F2230]">{s.n}</div>
-                <div className="font-inter text-[11.5px] text-[#6B7080]">{s.label}</div>
-              </div>
-            ))}
+          <div className="pb-3">
+            <MetricStrip
+              id={`os-work-${person.member_id}`}
+              items={[
+                { label: 'Open', value: open.length, icon: CircleDot, tone: 'green' },
+                { label: 'Draft', value: draft, icon: PencilLine, tone: 'yellow' },
+                { label: 'Closed', value: closed, icon: Archive, tone: 'neutral' },
+              ]}
+            />
           </div>
           {open.length === 0 ? (
             <p className="font-inter text-[12.5px] text-[#6B7080]">No open jobs right now.</p>
