@@ -10,6 +10,8 @@
  *   Gio Sales: GIO_SALES_URL + OS_PROVISION_SECRET_SALES
  *   Gio Docs:  GIO_DOCS_URL (defaults to its Supabase URL) + OS_PROVISION_SECRET_DOCS
  * An app whose URL or secret isn't set yet is skipped; its items wait.
+ * It also delivers new commission rates (os_commission_rates) to Gio Sales,
+ * kind 'commission_rate' on the same endpoint, settled by os_commission_rate_record.
  *
  * Called by:
  *   - People & Access right after a change: POST { tenant_id } with the admin's token;
@@ -151,5 +153,60 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, processed: results.length, results })
+  // Commission rates (2026-10-23): People & Access owns them, Gio Sales keeps
+  // the copy its invoices use. Same endpoint and secret, kind 'commission_rate'.
+  const sales = target('sales')
+  const rates: Array<{ id: string; result: string; detail?: string | null }> = []
+  if (sales) {
+    let rq = admin
+      .from('os_commission_rates')
+      .select('id, tenant_id, role_key, pct, effective_from, note, created_by, sync_attempts')
+      .eq('sync_status', 'pending')
+      .order('created_at')
+      .limit(50)
+    if (tenantId) rq = rq.eq('tenant_id', tenantId)
+    const { data: pending } = await rq
+    for (const rate of (pending ?? []) as Array<{ id: string; role_key: string; pct: number; effective_from: string; note: string | null; created_by: string | null; sync_attempts: number }>) {
+      if (!isCron && rate.sync_attempts >= 3) continue
+      const actorEmail = rate.created_by ? await emailOf(rate.created_by) : null
+      const body = JSON.stringify({
+        kind: 'commission_rate',
+        request_id: rate.id,
+        role_key: rate.role_key,
+        pct: Number(rate.pct),
+        effective_from: rate.effective_from,
+        note: rate.note,
+        actor_email: actorEmail ?? '',
+      })
+      const ts = String(Math.floor(Date.now() / 1000))
+      let res: Response
+      try {
+        res = await fetch(`${sales.url}/functions/v1/os-provision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-gio-timestamp': ts, 'x-gio-signature': await hmac(sales.secret, `${ts}.${body}`) },
+          body,
+          signal: AbortSignal.timeout(20_000),
+        })
+      } catch (e) {
+        await admin.rpc('os_commission_rate_record', { _id: rate.id, _ok: false, _detail: String(e).slice(0, 480), _retry: true })
+        rates.push({ id: rate.id, result: 'retry' })
+        continue
+      }
+      const text = await res.text()
+      let parsed: Record<string, unknown> = {}
+      try { parsed = JSON.parse(text) } catch { parsed = { error: text.slice(0, 300) } }
+      if (res.ok && parsed.ok === true) {
+        await admin.rpc('os_commission_rate_record', { _id: rate.id, _ok: true, _detail: null, _retry: false })
+        rates.push({ id: rate.id, result: String(parsed.outcome ?? 'done') })
+      } else if (res.ok || res.status === 400) {
+        await admin.rpc('os_commission_rate_record', { _id: rate.id, _ok: false, _detail: refusalText('sales', parsed), _retry: false })
+        rates.push({ id: rate.id, result: 'refused', detail: refusalText('sales', parsed) })
+      } else {
+        await admin.rpc('os_commission_rate_record', { _id: rate.id, _ok: false, _detail: `HTTP ${res.status}: ${refusalText('sales', parsed)}`.slice(0, 480), _retry: true })
+        rates.push({ id: rate.id, result: 'retry' })
+      }
+    }
+  }
+
+  return json({ ok: true, processed: results.length, results, rates })
 })

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { Database, Json } from '@/integrations/supabase/types'
+import { commissionRoleLabel } from './commissions'
 import { segmentLabel, specialtyLabel } from './workProfile'
 
 /**
@@ -563,6 +564,8 @@ export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => 
       return `${who} was offboarded`
     case 'person.active':
       return `${who} was reactivated`
+    case 'commission.rate_added':
+      return `Commission rate: ${commissionRoleLabel(String(d.role_key ?? ''))} ${Number(d.pct)}% from ${String(d.effective_from ?? '')}`
     case 'bundle.added':
       return `Job role "${String(d.name ?? '')}" was created`
     case 'bundle.updated':
