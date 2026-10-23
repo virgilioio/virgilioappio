@@ -1,4 +1,4 @@
--- Run after 20261023080000_os_my_profile inside a transaction that is rolled
+-- Run after 20261023060702_os_my_profile inside a transaction that is rolled
 -- back. A member (Mitzy, job role TA / Sourcer) reads only their own row and
 -- their own job role, never the rating, the history, someone else's personal
 -- details or another job role. An admin still reads everyone. Nobody signed in

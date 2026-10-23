@@ -12064,6 +12064,7 @@ export type Database = {
         Args: { _detail: string; _id: string; _ok: boolean; _retry: boolean }
         Returns: undefined
       }
+      os_my_bundle_id: { Args: { _tenant_id: string }; Returns: string }
       os_offboard_ats: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: Json
