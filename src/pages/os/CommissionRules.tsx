@@ -1,40 +1,29 @@
 import { useMemo, useState } from 'react'
 import { History as HistoryIcon, Percent, Plus, RefreshCw } from 'lucide-react'
-import { toast } from 'sonner'
 
 import { ListPage } from '@/components/layout/ListPage'
 import { Button } from '@/components/ui/button'
-import { AffixInput } from '@/components/ui/affix-input'
-import { Input } from '@/components/ui/input'
-import { FormField } from '@/components/ui/form-field'
-import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { LoadError } from '@/components/empty/LoadError'
 import { ProfileCard } from '@/components/os/ProfileParts'
+import { AddCommissionRateDialog } from '@/components/os/AddCommissionRateDialog'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { useTenant } from '@/hooks/useTenant'
-import { shakeFirstInvalid } from '@/lib/motion'
 import { personName, usePeople } from '@/lib/os/peopleAccess'
 import {
   COMMISSION_ROLES,
   commissionRoleLabel,
   rateFor,
   sendRatesNow,
-  todayIso,
-  useAddCommissionRate,
   useCommissionRates,
   type CommissionRate,
-  type CommissionRoleKey,
 } from '@/lib/os/commissions'
 
 function day(iso: string) {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
-const toIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const pctText = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(2).replace(/0$/, '')}%`
 
 /** Where a rate got to in Gio Sales. */
@@ -61,124 +50,6 @@ function Delivery({ rate }: { rate: CommissionRate }) {
       Sending to Gio Sales
       {rate.sync_error && <span className="sr-only">: {rate.sync_error}</span>}
     </span>
-  )
-}
-
-function AddRateDialog({ open, onOpenChange, tenantId }: { open: boolean; onOpenChange: (v: boolean) => void; tenantId: string }) {
-  const add = useAddCommissionRate(tenantId)
-  const [role, setRole] = useState<CommissionRoleKey | ''>('')
-  const [pct, setPct] = useState('')
-  const [from, setFrom] = useState<Date | undefined>(undefined)
-  const [note, setNote] = useState('')
-  const [tried, setTried] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const n = Number(pct)
-  const problems = {
-    role: !role ? 'Choose a role.' : undefined,
-    pct: pct.trim() === '' ? 'Enter a rate.' : !Number.isFinite(n) || n < 0 || n > 100 ? 'Enter a rate from 0 to 100.' : undefined,
-    from: !from ? 'Choose the date it applies from.' : undefined,
-  }
-  const reset = () => {
-    setRole('')
-    setPct('')
-    setFrom(undefined)
-    setNote('')
-    setTried(false)
-    setError(null)
-  }
-
-  const submit = async () => {
-    setTried(true)
-    setError(null)
-    if (problems.role || problems.pct || problems.from) {
-      shakeFirstInvalid()
-      return
-    }
-    try {
-      await add.mutateAsync({ role_key: role as CommissionRoleKey, pct: Math.round(n * 100) / 100, effective_from: toIso(from!), note: note.trim() || null })
-      toast(`${commissionRoleLabel(role)}: ${pctText(n)} from ${day(toIso(from!))}. Sending to Gio Sales.`)
-      reset()
-      onOpenChange(false)
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (add.isPending) return
-        if (!v) reset()
-        onOpenChange(v)
-      }}
-    >
-      <DialogContent className="max-w-[460px]">
-        <DialogHeader>
-          <DialogTitle>Add a commission rate</DialogTitle>
-          <DialogDescription>
-            The new rate applies from its date on. Earlier invoices keep the rate they were issued with.
-          </DialogDescription>
-        </DialogHeader>
-        <form
-          className="space-y-1"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void submit()
-          }}
-        >
-          <FormField label="Role" htmlFor="rate-role" error={tried ? problems.role : undefined}>
-            <Select value={role} onValueChange={(v) => setRole(v as CommissionRoleKey)} disabled={add.isPending}>
-              <SelectTrigger id="rate-role" aria-invalid={tried && !!problems.role}>
-                <SelectValue placeholder="Choose a role" />
-              </SelectTrigger>
-              <SelectContent>
-                {COMMISSION_ROLES.map((r) => (
-                  <SelectItem key={r.key} value={r.key}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Rate" htmlFor="rate-pct" error={tried ? problems.pct : undefined}>
-              <AffixInput
-                id="rate-pct"
-                numeric
-                inputMode="decimal"
-                suffix="%"
-                value={pct}
-                invalid={tried && !!problems.pct}
-                aria-invalid={tried && !!problems.pct}
-                disabled={add.isPending}
-                onChange={(e) => setPct(e.target.value.replace(/[^0-9.]/g, '').slice(0, 6))}
-              />
-            </FormField>
-            <FormField label="Applies from" htmlFor="rate-from" error={tried ? problems.from : undefined}>
-              <div aria-invalid={tried && !!problems.from}>
-                <DatePickerVirgilio value={from} onChange={setFrom} placeholder="Pick a date" className="w-full" />
-              </div>
-            </FormField>
-          </div>
-          <FormField label="Note" htmlFor="rate-note" helpText="Optional, for example the agreement it comes from">
-            <Input id="rate-note" value={note} maxLength={300} disabled={add.isPending} onChange={(e) => setNote(e.target.value)} />
-          </FormField>
-          <p className="min-h-[18px] font-inter text-[12px] text-[#B91C1C]" role={error ? 'alert' : undefined}>
-            {error ?? ''}
-          </p>
-          <DialogFooter>
-            <Button type="button" variant="secondary" disabled={add.isPending} onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={add.isPending}>
-              Add rate
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -329,7 +200,7 @@ export default function CommissionRulesPage() {
         </div>
       )}
 
-      {tenant?.id && <AddRateDialog open={adding} onOpenChange={setAdding} tenantId={tenant.id} />}
+      {tenant?.id && <AddCommissionRateDialog open={adding} onOpenChange={setAdding} tenantId={tenant.id} rates={rows} />}
     </ListPage>
   )
 }

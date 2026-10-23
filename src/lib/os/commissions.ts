@@ -13,11 +13,11 @@ import { supabase } from '@/lib/supabaseClient'
 export type CommissionRoleKey = 'sales_new' | 'sales_existing' | 'es' | 'sp' | 'tap'
 
 export const COMMISSION_ROLES: { key: CommissionRoleKey; label: string; source: string }[] = [
-  { key: 'tap', label: 'TA Partner', source: 'The hire, in Gio ATS' },
-  { key: 'sp', label: 'Sourcing Partner', source: 'The hire, in Gio ATS' },
-  { key: 'es', label: 'Engagement Specialist', source: 'The deal, in Gio Sales' },
-  { key: 'sales_new', label: 'Sales, new client', source: 'The deal, in Gio Sales' },
-  { key: 'sales_existing', label: 'Sales, existing client', source: 'The deal, in Gio Sales' },
+  { key: 'tap', label: 'TA Partner', source: 'From the hire in Gio ATS' },
+  { key: 'sp', label: 'Sourcing Partner', source: 'From the hire in Gio ATS' },
+  { key: 'es', label: 'Engagement Specialist', source: 'From the deal in Gio Sales' },
+  { key: 'sales_new', label: 'Sales, new client', source: 'From the deal in Gio Sales' },
+  { key: 'sales_existing', label: 'Sales, existing client', source: 'From the deal in Gio Sales' },
 ]
 
 export const commissionRoleLabel = (key: string) => COMMISSION_ROLES.find((r) => r.key === key)?.label ?? key
