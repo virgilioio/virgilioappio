@@ -41,6 +41,7 @@ import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { DangerZone } from '@/components/os/DangerZone'
 import { PersonJobsTable } from '@/components/os/PersonJobsTable'
 import { PersonEarnings } from '@/components/os/PersonEarnings'
+import { PersonPerformance } from '@/components/os/PersonPerformance'
 import { ProfileCard } from '@/components/os/ProfileParts'
 import { CurrentWorkCard, GeneralCard, PersonalCard, RatingCard, RoleCard } from '@/components/os/ProfileSections'
 import { COUNTRIES } from '@/constants/countries'
@@ -373,6 +374,8 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
           {!joined ? (
             <p className="font-inter text-[12.5px] text-[#6B7080]">No jobs until they accept their invitation.</p>
           ) : (
+            <div className="space-y-6">
+            <PersonPerformance tenantId={tenant?.id} userId={person.user_id} self={self} />
             <PersonJobsTable
               jobs={jobs.data}
               loading={jobs.isLoading}
@@ -382,6 +385,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
               isAdmin={person.system_role === 'admin'}
               memoryKey={`os-person:${person.member_id}:jobs`}
             />
+            </div>
           )}
         </TabsContent>
 
