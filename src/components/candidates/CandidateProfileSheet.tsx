@@ -130,6 +130,9 @@ import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { checkScorecardGate } from '@/utils/scorecardGate'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { ChangeHireCreditDialog } from './ChangeHireCreditDialog'
+import { hireChangeMessage, hireCreditKey, useCanChangeHire, useHireCredit, usePeopleNames } from '@/lib/hireCredit'
+import { Undo2, UserCog } from 'lucide-react'
 import { confirmDeleteResume, confirmReplaceResume } from '@/lib/removeOldResumes'
 import { useResumeRefresh } from '@/hooks/useResumeRefresh'
 import { ResumeStatusLine } from '@/components/candidates/profile/ResumeStatus'
@@ -516,6 +519,11 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
 const [offerFormOpen, setOfferFormOpen] = useState(false)
 const [editingOffer, setEditingOffer] = useState<{ id: string; form_id: string; field_values: Record<string, any>; opening_id?: string | null } | null>(null)
 const [markHiredOpen, setMarkHiredOpen] = useState(false)
+// Changing a hire (2026-10-23): admins only, from the profile's actions menu.
+const [changeCreditOpen, setChangeCreditOpen] = useState(false)
+const hireCredit = useHireCredit(associationId, associationStatus === 'hired')
+const canChangeHire = useCanChangeHire(jobId).data === true
+const creditNames = usePeopleNames([hireCredit.data?.sourcerId, hireCredit.data?.recruiterId])
 
 // Simple schedule interview (not stage-specific)
 const [simpleScheduleOpen, setSimpleScheduleOpen] = useState(false)
@@ -1332,18 +1340,31 @@ const stageHasAutomation = useMemo(() => {
   }
   const handleHire = () => setMarkHiredOpen(true)
 
+  // Undo hire (admins only, 2026-10-23): the database checks the role again,
+  // reopens the opening and tells Gio Sales.
   const handleUnhire = async () => {
     if (!associationId) return
+    const first = (candidate?.first_name || candidate?.candidate_name || '').trim().split(/\s+/)[0] || 'this candidate'
+    const req = hireCredit.data?.reqId || hiredDetails?.reqId || 'The opening'
+    const ok = await confirmDestructive({
+      variant: 'remove',
+      icon: Undo2,
+      title: `Undo ${first}\u2019s hire?`,
+      description: `${first} goes back to the offer stage and ${req} opens again, with no one credited. If this job comes from a Gio Sales deal, Gio Sales voids the draft success-fee invoice, or asks Billing to void an invoice it already issued. You can mark ${first} hired again later.`,
+      confirmLabel: 'Undo hire',
+    })
+    if (!ok) return
     const { error } = await (supabase as any).rpc('unmark_hired', { p_application_id: associationId })
     if (error) {
-      console.error('Error unhiring candidate:', error)
-      toast({ title: 'Error', description: 'Failed to return candidate to offer stage', variant: 'destructive' })
+      toast({ title: 'Couldn\u2019t undo the hire', description: hireChangeMessage(error, 'Try again in a moment.'), variant: 'destructive' })
       return
     }
     setAssociationStatus('offer')
     setHiredDetails(null)
+    void summaryQueryClient.invalidateQueries({ queryKey: hireCreditKey(associationId) })
+    void summaryQueryClient.invalidateQueries({ queryKey: ['activity-feed'] })
     onStageChanged?.()
-    toast({ title: 'Status updated', description: 'Candidate returned to offer stage' })
+    toast({ title: 'Hire undone', description: `${first} is back at the offer stage and ${req} is open again.` })
   }
 
   const handleSendOfferReminder = async () => {
@@ -1592,15 +1613,25 @@ const stageHasAutomation = useMemo(() => {
                         }
                         other.push({ id: 'download', label: 'Download profile', icon: Download, onClick: () => setDownloadOpen(true) })
 
+                        // After a hire only admins change it: who's credited, or undo it.
+                        const hireAdmin = isHiredNow && canChangeHire && !!hireCredit.data
+                        const hire: ActionMenuItem[] = hireAdmin
+                          ? [{ id: 'change-credit', label: 'Change credit', icon: UserCog, hint: 'Sourcer, Recruiter', onClick: () => setChangeCreditOpen(true) }]
+                          : []
+
                         return (
                           <ProfileActionMenu
                             sections={[
                               { label: 'Move', items: move },
+                              { label: 'Hire', items: hire },
                               { label: 'Evaluate', items: evaluate },
                               { label: 'Reach out', items: reachOut },
                               { items: other },
                               ...(!isRejectedNow && !isHiredNow
                                 ? [{ items: [{ id: 'reject', label: 'Reject candidate', icon: XCircle, danger: true, onClick: handleReject }] as ActionMenuItem[] }]
+                                : []),
+                              ...(hireAdmin
+                                ? [{ items: [{ id: 'undo-hire', label: 'Undo hire', icon: Undo2, danger: true, onClick: () => void handleUnhire() }] as ActionMenuItem[] }]
                                 : []),
                             ]}
                           />
@@ -1649,6 +1680,14 @@ const stageHasAutomation = useMemo(() => {
                         startDate={hiredDetails?.startDate || null}
                         jobTitle={job?.title}
                         reqId={hiredDetails?.reqId || null}
+                        credit={
+                          hireCredit.data
+                            ? {
+                                sourcer: hireCredit.data.sourcerId ? creditNames.data?.get(hireCredit.data.sourcerId) ?? null : null,
+                                recruiter: hireCredit.data.recruiterId ? creditNames.data?.get(hireCredit.data.recruiterId) ?? null : null,
+                              }
+                            : undefined
+                        }
                         onOpenOnboarding={() => setActiveTab('onboarding')}
                         onMarkReqClosed={job?.status === 'open' ? handleMarkReqClosed : undefined}
                       />
@@ -2299,6 +2338,17 @@ const stageHasAutomation = useMemo(() => {
         />
       )}
       
+      {associationId && hireCredit.data && canChangeHire && (
+        <ChangeHireCreditDialog
+          open={changeCreditOpen}
+          onOpenChange={setChangeCreditOpen}
+          applicationId={associationId}
+          jobId={jobId}
+          candidateFirstName={(candidate?.first_name || candidate?.candidate_name || '').trim().split(/\s+/)[0] || 'this candidate'}
+          credit={hireCredit.data}
+        />
+      )}
+
       {/* Offer Form Overlay */}
       {candidate && job && (
         <MinimizableOfferComposer

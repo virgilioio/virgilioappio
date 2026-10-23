@@ -14,6 +14,8 @@ interface HiredBannerSmartProps {
   startDate?: string | null;
   jobTitle?: string;
   reqId?: string | null;
+  /** Who the hire credits (names), once the opening is known. */
+  credit?: { sourcer: string | null; recruiter: string | null };
   onOpenOnboarding?: () => void;
   onMarkReqClosed?: () => void;
 }
@@ -39,6 +41,7 @@ export function HiredBannerSmart({
   startDate,
   jobTitle,
   reqId,
+  credit,
   onOpenOnboarding,
   onMarkReqClosed,
 }: HiredBannerSmartProps) {
@@ -63,6 +66,7 @@ export function HiredBannerSmart({
   if (base) headFragments.push(`${base} base`);
   if (hiredAt) headFragments.push(`signed ${format(new Date(hiredAt), 'MMM d')}`);
   if (headFragments.length) fragments.push(headFragments.join(' · '));
+  if (credit) fragments.push(`Sourcer ${credit.sourcer || 'not set'}, Recruiter ${credit.recruiter || 'not set'}`);
   if (welcome) fragments.push(welcome.done ? 'welcome packet sent' : 'welcome packet pending');
   if (it) fragments.push(it.done ? 'IT provisioning complete' : 'IT provisioning in progress');
 
