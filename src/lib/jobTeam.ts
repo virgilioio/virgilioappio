@@ -8,8 +8,8 @@ export function missingForPublish(
 ): string[] {
   const live = assignments.filter((a) => !a.deleted_at)
   const missing: string[] = []
-  if (!live.some((a) => a.role === 'sourcer')) missing.push('a Sourcing Partner')
-  if (!live.some((a) => a.role === 'recruiter')) missing.push('a TA Partner')
+  if (!live.some((a) => a.role === 'sourcer')) missing.push('a Sourcer')
+  if (!live.some((a) => a.role === 'recruiter')) missing.push('a Recruiter')
   if (job?.sales_deal_id) {
     if (!(job.sales_team?.sales?.length)) missing.push('Sales')
     if (!(job.sales_team?.es?.length)) missing.push('an Engagement Specialist')

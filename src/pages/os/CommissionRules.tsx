@@ -145,7 +145,7 @@ export default function CommissionRulesPage() {
               </div>
             )}
             <p className="pt-3 font-inter text-[11.5px] leading-[1.5] text-[#6B7080]">
-              TA Partner and Sourcing Partner are credited from the hire in Gio ATS; Sales and Engagement Specialist from the
+              The Recruiter and the Sourcer are credited from the hire in Gio ATS; Sales and Engagement Specialist from the
               deal in Gio Sales. People who share a role split its rate equally.
             </p>
           </ProfileCard>

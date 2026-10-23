@@ -115,7 +115,7 @@ export function HiringTeamStep({
   const hmAssignment = assignments.find((a) => a.role === 'hiring_manager')
   const sourcerAssignment = assignments.find((a) => a.role === 'sourcer')
 
-  // Owner setter: swaps the person in the TA Partner / Sourcing Partner /
+  // Owner setter: swaps the person in the Recruiter / Sourcer /
   // hiring manager slot. One seat per person per job (Allan, 2026-10-22): someone
   // already on the job moves into the role (assignUserToJob changes their seat),
   // so a slot they held before shows as empty.
@@ -207,13 +207,13 @@ export function HiringTeamStep({
       <SectionCard title="Owners">
         <div className="space-y-5">
           <div>
-            <FieldLabel required>TA Partner</FieldLabel>
+            <FieldLabel required>Recruiter</FieldLabel>
             <div className="mt-2">
               <SearchableSelect
                 options={ownerOptions(recruiterAssignment?.user_id)}
                 value={recruiterAssignment?.user_id ?? ''}
                 onValueChange={(v) => setOwner('recruiter', v)}
-                placeholder="Select a TA Partner…"
+                placeholder="Select a Recruiter…"
                 searchPlaceholder="Search members…"
                 emptyMessage="No members found."
                 disabled={loading}
@@ -223,13 +223,13 @@ export function HiringTeamStep({
           </div>
 
           <div>
-            <FieldLabel required>Sourcing Partner</FieldLabel>
+            <FieldLabel required>Sourcer</FieldLabel>
             <div className="mt-2">
               <SearchableSelect
                 options={ownerOptions(sourcerAssignment?.user_id)}
                 value={sourcerAssignment?.user_id ?? ''}
                 onValueChange={(v) => setOwner('sourcer', v)}
-                placeholder="Select a Sourcing Partner…"
+                placeholder="Select a Sourcer…"
                 searchPlaceholder="Search members…"
                 emptyMessage="No members found."
                 disabled={loading}

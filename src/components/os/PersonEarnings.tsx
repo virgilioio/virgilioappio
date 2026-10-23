@@ -24,7 +24,7 @@ interface Opening {
   target_hire_date: string | null
 }
 
-/** Openings on the jobs where this person is TA Partner or Sourcing Partner. */
+/** Openings on the jobs where this person is a Recruiter or a Sourcer. */
 function usePersonOpenings(userId: string | null | undefined, jobIds: string[]) {
   return useQuery({
     queryKey: ['os-person-openings', userId, jobIds.slice().sort().join(',')],
@@ -105,7 +105,7 @@ export function PersonEarnings({ userId, jobs, jobsLoading }: { userId: string |
         ) : rows.length === 0 ? (
           <p className="p-4 font-inter text-[12.5px] text-[#6B7080]">
             {seats.length === 0
-              ? 'Not TA Partner or Sourcing Partner on any job yet.'
+              ? 'Not a Recruiter or a Sourcer on any job yet.'
               : 'No openings on their jobs yet.'}
           </p>
         ) : (

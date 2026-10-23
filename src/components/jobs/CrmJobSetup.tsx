@@ -33,7 +33,7 @@ const SUBTITLES = [
   'The basics candidates and the team see: department, level, location and pay.',
   'Upload the intake or client brief, then let Gio draft the description and the skills candidates are scored on.',
   'The stages candidates move through.',
-  'Who runs the search: the TA Partner, the Sourcing Partner and the hiring manager.',
+  'Who runs the search: the Recruiter, the Sourcer and the hiring manager.',
   'Everything the job needs before it opens.',
 ]
 
@@ -43,11 +43,13 @@ const REQUIREMENTS: { key: string; label: string; step: number | 'deal' }[] = [
   { key: 'Openings', label: 'Openings', step: 'deal' },
   { key: 'Hiring plan', label: 'Hiring plan', step: 3 },
   { key: 'Hiring team', label: 'Hiring team', step: 4 },
-  { key: 'TA Partner', label: 'TA Partner', step: 4 },
-  { key: 'Sourcing Partner', label: 'Sourcing Partner', step: 4 },
+  { key: 'Recruiter', label: 'Recruiter', step: 4 },
+  { key: 'Sourcer', label: 'Sourcer', step: 4 },
   { key: 'Sales', label: 'Sales', step: 'deal' },
   { key: 'Engagement Specialist', label: 'Engagement Specialist', step: 'deal' },
 ]
+
+const OLD_NAMES: Record<string, string> = { 'TA Partner': 'Recruiter', 'Sourcing Partner': 'Sourcer' }
 
 const SAVE_KEYS = JOB_DATA_KEYS.filter((k) => k !== 'status' && k !== 'organization_id')
 
@@ -100,7 +102,8 @@ export function CrmJobSetup({
   const job = jobQuery.data
   const { openings } = useJobOpenings(open ? jobId : null)
   const checksQuery = useJobSetupChecks(open ? jobId : null)
-  const missing = checksQuery.data?.missing ?? []
+  // The checks said TA Partner / Sourcing Partner before 2026-10-23: read either.
+  const missing = (checksQuery.data?.missing ?? []).map((k: string) => OLD_NAMES[k] ?? k)
 
   // Start from the saved job each time the sheet opens.
   React.useEffect(() => {
@@ -186,7 +189,7 @@ export function CrmJobSetup({
     has('Job info') ? 'done' : 'todo',
     (jobData?.description || '').trim() && skills.length ? 'done' : 'todo',
     has('Hiring plan') ? 'done' : 'todo',
-    has('TA Partner') && has('Sourcing Partner') && has('Hiring team') ? 'done' : 'todo',
+    has('Recruiter') && has('Sourcer') && has('Hiring team') ? 'done' : 'todo',
     missing.length ? 'todo' : 'done',
   ]
   const steps: WizardStep[] = STEPS.map((title, i) => ({ title, state: i === step ? 'todo' : stepStates[i] }))

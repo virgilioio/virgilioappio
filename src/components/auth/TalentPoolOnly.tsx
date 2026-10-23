@@ -5,7 +5,7 @@ import { useTalentPoolAccess } from '@/hooks/useTalentPoolAccess'
 
 /**
  * Pages that work on the whole talent pool (Find, Candidates, Reference
- * checks, Analytics) when someone has no TA or Sourcer seat on an open job.
+ * checks, Analytics) when someone has no Recruiter or Sourcer seat on an open job.
  * The database already returns nothing to them; this explains why.
  */
 export function TalentPoolOnly({ what, children }: { what: string; children: ReactNode }) {
@@ -17,10 +17,10 @@ export function TalentPoolOnly({ what, children }: { what: string; children: Rea
         <Users className="h-5 w-5" aria-hidden />
       </span>
       <h1 className="font-poppins text-[18px] font-semibold tracking-[-0.02em] text-[#0d0d09]">
-        {what} opens with a TA or Sourcer seat
+        {what} opens with a Recruiter or Sourcer seat
       </h1>
       <p className="mt-2 max-w-[420px] font-inter text-[13px] leading-[1.5] text-[#5A6072]">
-        You see the jobs you're on. An admin adds TA and Sourcers to a job's hiring team, and that opens {what} for as long as
+        You see the jobs you're on. An admin adds Recruiters and Sourcers to a job's hiring team, and that opens {what} for as long as
         the job is open.
       </p>
       <Link

@@ -7,7 +7,7 @@ import { useTenant } from '@/hooks/useTenant'
  * Whether the signed-in person may use the talent pool (job-based access,
  * 2026-10-14). The database decides (has_workspace_wide_access): always yes
  * while the workspace's switch is off; with it on, admins and people with a
- * TA or Sourcer seat on a draft or open job. `undefined` while loading.
+ * Recruiter or Sourcer seat on a draft or open job. `undefined` while loading.
  */
 export function useTalentPoolAccess(): boolean | undefined {
   const { user } = useAuth()

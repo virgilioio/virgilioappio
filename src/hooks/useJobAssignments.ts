@@ -18,7 +18,7 @@ async function assertCanManage(jobId: string, role: JobAssignmentRole) {
 export function jobTeamError(err: unknown, fallback: string): string {
   const e = err as { code?: string; message?: string } | null
   if (e?.code === '42501') {
-    return 'Only admins can add, change or remove a job\'s TA and Sourcers. A TA on the job can add its hiring managers and interviewers.'
+    return 'Only admins can add, change or remove a job\'s Recruiters and Sourcers. A Recruiter on the job can add its hiring managers and interviewers.'
   }
   if (e?.code === 'GJT01' && e.message) return e.message
   if (e?.code === '23505') return 'That person is already on this job. Change their role instead.'

@@ -374,7 +374,7 @@ export function DangerZone({ person, tenantId, isSelf }: { person: Person; tenan
         confirmLabel={`Offboard ${first}`}
         typeToConfirm={name}
         onConfirm={async () => {
-          // Seats first, so no open job is left without its TA or Sourcer.
+          // Seats first, so no open job is left without its Recruiter or Sourcer.
           const picks = liveSeats
             .filter((s) => handover[s.job_id] && handover[s.job_id] !== NO_ONE)
             .map((s) => ({

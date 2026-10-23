@@ -298,8 +298,8 @@ export const jobBucket = (status: string): JobBucket =>
 
 /** Seats a job role holds, in the words the ATS uses. */
 export const JOB_SEAT_LABEL: Record<string, string> = {
-  recruiter: 'TA Partner',
-  sourcer: 'Sourcing Partner',
+  recruiter: 'Recruiter',
+  sourcer: 'Sourcer',
   hiring_manager: 'Hiring manager',
   interviewer: 'Interviewer',
 }
