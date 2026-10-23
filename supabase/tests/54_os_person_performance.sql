@@ -1,4 +1,4 @@
--- Run after 20261023090000_os_person_performance inside a transaction that is rolled back.
+-- Run after 20261023153047_os_person_performance inside a transaction that is rolled back.
 -- Allan (an admin) reads the busiest recruiter's numbers and they match direct
 -- counts. The person reads their own, another member is refused, and a bad
 -- period is refused. Every row's ok is true.

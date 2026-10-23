@@ -12254,6 +12254,15 @@ export type Database = {
           user_type: string
         }[]
       }
+      os_person_performance: {
+        Args: {
+          _from: string
+          _tenant_id: string
+          _to: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       os_reactivate_ats: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: Json
