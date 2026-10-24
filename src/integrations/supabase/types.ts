@@ -12487,6 +12487,10 @@ export type Database = {
         Returns: Json
       }
       os_holidays_sync: { Args: { _queue?: boolean }; Returns: Json }
+      os_is_external: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       os_my_bundle_id: { Args: { _tenant_id: string }; Returns: string }
       os_next_occurrence: {
         Args: { _d: string; _from: string }
@@ -13493,7 +13497,12 @@ export type Database = {
         | "application_review"
       system_role: "admin" | "member" | "sales"
       trigger_event_type: "on_stage_enter" | "on_stage_exit"
-      user_type_enum: "platform_admin" | "workspace_owner" | "member" | "guest"
+      user_type_enum:
+        | "platform_admin"
+        | "workspace_owner"
+        | "member"
+        | "guest"
+        | "external"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -13932,7 +13941,13 @@ export const Constants = {
       ],
       system_role: ["admin", "member", "sales"],
       trigger_event_type: ["on_stage_enter", "on_stage_exit"],
-      user_type_enum: ["platform_admin", "workspace_owner", "member", "guest"],
+      user_type_enum: [
+        "platform_admin",
+        "workspace_owner",
+        "member",
+        "guest",
+        "external",
+      ],
     },
   },
 } as const

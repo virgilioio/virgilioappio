@@ -1,4 +1,4 @@
--- Run after 20261024120100_external_users inside a transaction that is rolled back.
+-- Run after 20261024143441_external_users inside a transaction that is rolled back.
 -- Client accounts became external and Virgilio people stayed members; a new
 -- invite follows its email address; an external can't be an admin; People &
 -- Access keeps nothing for them and gives them no other app; they can be a
