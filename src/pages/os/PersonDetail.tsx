@@ -53,6 +53,7 @@ import {
   RoleCard,
 } from '@/components/os/ProfileSections'
 import { BankDetailsCard } from '@/components/os/BankDetailsCard'
+import { TaxIdsCard } from '@/components/os/TaxIdsCard'
 import { ProfileNav, TAB_META, type ProfileTab } from '@/components/os/ProfileNav'
 import { COUNTRIES } from '@/constants/countries'
 import { loadLevel, segmentLabel, takesSegments, useWorkProfile } from '@/lib/os/workProfile'
@@ -387,6 +388,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                 <GeneralCard person={person} />
                 <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
                 {joined && <BankDetailsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
+                {joined && <TaxIdsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
               </div>
             </div>
           )}
