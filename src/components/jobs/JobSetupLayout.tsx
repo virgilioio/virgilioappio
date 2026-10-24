@@ -122,6 +122,8 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   const { assignments, updateAssignmentRole, removeUserFromJob, assignUserToJob, getAssignments } =
     useJobAssignments(jobId)
   const { members } = useMembers(true)
+  // Recruiter and coordinator are Virgilio's people: external users (2026-10-24) are never offered.
+  const internalMembers = useMemo(() => members.filter((m) => m.user_type !== 'external'), [members])
 
 
   const memberOptions = useMemo(
@@ -558,7 +560,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                       required
                       helper="Owns the job — receives all candidate notifications."
                       value={primaryRecruiterId}
-                      members={members}
+                      members={internalMembers}
                       roleLabel="Recruiter"
                       seatOf={seatOf}
                       onChange={(v) => updatePrimary('recruiter', v)}
@@ -593,7 +595,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                         placeholder="Same as recruiter"
                         clearLabel="Same as recruiter"
                         value={coordinatorId}
-                        members={members}
+                        members={internalMembers}
                         disabled={isReadOnly}
                         onChange={(v) => saveOptionalOwner('coordinator_user_id', v)}
                       />

@@ -279,7 +279,8 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {ROLE_OPTIONS.map(opt => (
+                        {/* External users (2026-10-24) are hiring managers or interviewers only. */}
+                        {ROLE_OPTIONS.filter(opt => member.user_type !== 'external' || opt.value === 'hiring_manager' || opt.value === 'interviewer').map(opt => (
                           <SelectItem key={opt.value} value={opt.value} className="text-xs">
                             {opt.label}
                           </SelectItem>

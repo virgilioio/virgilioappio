@@ -13,7 +13,7 @@ import {
 } from '@/lib/os/peopleAccess'
 
 /** Same-size initials; the photo fades in over them once loaded. */
-export function PersonAvatar({ person, size = 28 }: { person: Person; size?: number }) {
+export function PersonAvatar({ person, size = 28 }: { person: Pick<Person, 'first_name' | 'last_name' | 'email' | 'avatar_url'>; size?: number }) {
   return (
     <span
       aria-hidden

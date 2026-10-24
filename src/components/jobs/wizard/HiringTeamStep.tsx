@@ -93,8 +93,10 @@ export function HiringTeamStep({
 
   // Owner pickers show the role each person already holds here: picking them
   // moves that seat, it never adds a second one.
-  const ownerOptions = (currentUserId?: string) =>
-    memberOptions.map((o) => {
+  // Recruiter and Sourcer are Virgilio seats: external users (2026-10-24) are never offered.
+  const externalIds = useMemo(() => new Set(members.filter((m) => m.user_type === 'external').map((m) => m.user_id)), [members])
+  const ownerOptions = (currentUserId?: string, internalOnly = false) =>
+    memberOptions.filter((o) => !internalOnly || !externalIds.has(o.value)).map((o) => {
       const seat = o.value !== currentUserId ? assignments.find((a) => a.user_id === o.value) : undefined
       return seat ? { ...o, hint: DB_ROLE_LABEL[seat.role] } : o
     })
@@ -210,7 +212,7 @@ export function HiringTeamStep({
             <FieldLabel required>Recruiter</FieldLabel>
             <div className="mt-2">
               <SearchableSelect
-                options={ownerOptions(recruiterAssignment?.user_id)}
+                options={ownerOptions(recruiterAssignment?.user_id, true)}
                 value={recruiterAssignment?.user_id ?? ''}
                 onValueChange={(v) => setOwner('recruiter', v)}
                 placeholder="Select a Recruiter…"
@@ -226,7 +228,7 @@ export function HiringTeamStep({
             <FieldLabel required>Sourcer</FieldLabel>
             <div className="mt-2">
               <SearchableSelect
-                options={ownerOptions(sourcerAssignment?.user_id)}
+                options={ownerOptions(sourcerAssignment?.user_id, true)}
                 value={sourcerAssignment?.user_id ?? ''}
                 onValueChange={(v) => setOwner('sourcer', v)}
                 placeholder="Select a Sourcer…"

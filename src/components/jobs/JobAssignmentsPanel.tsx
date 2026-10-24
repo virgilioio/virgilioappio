@@ -60,8 +60,10 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
   // One seat per person per job: anyone already on the team changes role in the list below.
   const assignedUserIds = new Set(assignments.map(a => a.user_id))
 
+  // External users (2026-10-24) are hiring managers or interviewers only.
+  const internalSeat = selectedRole === 'recruiter' || selectedRole === 'sourcer'
   const unassignedUsers = members.filter(member => {
-    return member.user_id && !assignedUserIds.has(member.user_id)
+    return member.user_id && !assignedUserIds.has(member.user_id) && !(internalSeat && member.user_type === 'external')
   })
 
   const userOptions = unassignedUsers.map(member => {

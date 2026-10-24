@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback, KeyboardEvent, Clipb
 import { useChipMotion } from '@/lib/chipMotion'
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Button } from "@/components/ui/button"
+import { VIRGILIO_TENANT_ID } from "@/hooks/useChildOrganizationsForJobCreation"
 import { useAuth } from "@/contexts/AuthContext"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useOrganizations } from "@/hooks/useOrganizations"
@@ -290,7 +291,19 @@ export function MemberInviteSheet({
     { enabled: isOpen && !isEditing && !!organizationId },
   )
 
-  const selectedRoleDef = roleOptions.find((r) => r.value === role)
+  // External users (2026-10-24): in Virgilio's workspace anyone outside @virgilio.tech joins as
+  // External (the database decides from the email): a hiring manager or interviewer, Gio ATS only.
+  const outsideVirgilio =
+    tenantId === VIRGILIO_TENANT_ID &&
+    (isEditing
+      ? member?.user_type === "external"
+      : validChips.some((c) => !c.value.toLowerCase().endsWith("@virgilio.tech")))
+  const shownRoles = outsideVirgilio ? roleOptions.filter((r) => r.value === "member") : roleOptions
+  useEffect(() => {
+    if (outsideVirgilio && role !== "member") setRole("member")
+  }, [outsideVirgilio, role])
+
+  const selectedRoleDef = shownRoles.find((r) => r.value === role)
   const rolePaid = selectedRoleDef?.seat === "paid"
   const overSeats =
     rolePaid &&
@@ -664,8 +677,15 @@ export function MemberInviteSheet({
                   )}
                 </div>
 
+                {outsideVirgilio && (
+                  <p className="font-inter" style={{ fontSize: 11.5, lineHeight: 1.5, color: "#5A6072", margin: 0 }}>
+                    {isEditing ? "This person is outside Virgilio" : "People outside @virgilio.tech join as External"}: hiring manager
+                    or interviewer on their jobs, in Gio ATS only.
+                  </p>
+                )}
+
                 <div className="flex flex-col" style={{ gap: 8 }}>
-                  {roleOptions.map((r) => {
+                  {shownRoles.map((r) => {
                     const selected = role === r.value
                     const Icon = r.icon
                     return (

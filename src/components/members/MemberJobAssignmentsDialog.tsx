@@ -305,7 +305,10 @@ export function MemberJobAssignmentsDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(ROLE_LABEL) as JobAssignmentRole[]).map((r) => (
+                {/* External users (2026-10-24) are hiring managers or interviewers only. */}
+                {(Object.keys(ROLE_LABEL) as JobAssignmentRole[])
+                  .filter((r) => member?.user_type !== 'external' || r === 'hiring_manager' || r === 'interviewer')
+                  .map((r) => (
                   <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
                 ))}
               </SelectContent>

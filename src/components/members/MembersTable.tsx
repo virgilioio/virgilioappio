@@ -137,6 +137,15 @@ export function MembersTable({
 
   const renderRole = (m: EnrichedMember) => {
     const role = m.effectiveRole || (m.system_role === 'admin' ? 'Admin' : 'Hiring Manager')
+    // External users (2026-10-24): customers who take part as hiring managers or interviewers.
+    if (m.user_type === 'external') {
+      return (
+        <span className="inline-flex items-center gap-1">
+          <SpecChip tone={ROLE_TONE[role] ?? 'gray'}>{role}</SpecChip>
+          <SpecChip tone="gray">External</SpecChip>
+        </span>
+      )
+    }
     return <SpecChip tone={ROLE_TONE[role] ?? 'gray'}>{role}</SpecChip>
   }
   const renderSeat = (m: EnrichedMember) => m.seatType ? (

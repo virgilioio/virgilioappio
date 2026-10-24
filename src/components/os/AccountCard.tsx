@@ -57,7 +57,7 @@ const PHOTO_MAX = 5 * 1024 * 1024
  * replaces Settings › Profile. Reads first as rows; the photo changes from the
  * row itself and Edit opens the rest.
  */
-export function AccountCard() {
+export function AccountCard({ note = 'Your teammates see these, and candidates see your name, title and photo on your emails.' }: { note?: string } = {}) {
   const { user } = useAuth()
   const { profile, updateProfile, uploadAvatar } = useUserProfile()
   const qc = useQueryClient()
@@ -157,7 +157,7 @@ export function AccountCard() {
             </InfoRow>
           </InfoRows>
           <p className="pt-3 font-inter text-[11.5px] text-[#6B7080]">
-            Your teammates see these, and candidates see your name, title and photo on your emails.
+            {note}
           </p>
         </>
       )}

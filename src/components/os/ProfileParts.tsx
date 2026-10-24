@@ -116,11 +116,12 @@ export function InfoRow({
         stack ? 'space-y-1.5' : 'flex items-center justify-between gap-4',
       )}
     >
-      <dt className="shrink-0 text-[#5A6072]">
+      {/* A label with a hint may wrap, so the value (a button) never runs off a phone screen. */}
+      <dt className={cn('text-[#5A6072]', hint ? 'min-w-0' : 'shrink-0')}>
         {label}
         {hint && <span className="block text-[11.5px] text-[#8B8F9E]">{hint}</span>}
       </dt>
-      <dd className={cn('min-w-0 font-medium text-[#1F2230]', !stack && 'text-right')}>
+      <dd className={cn('min-w-0 font-medium text-[#1F2230]', !stack && 'text-right', hint && !stack && 'shrink-0')}>
         {hasValue ? children : <span className="font-normal text-[#8B8F9E]">{empty ?? 'Not set'}</span>}
       </dd>
     </div>

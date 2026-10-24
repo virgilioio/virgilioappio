@@ -87,9 +87,11 @@ export function HiringTeamManageDialog({
     () => new Set(assignments.map((a) => a.user_id)),
     [assignments]
   )
+  // External users (2026-10-24) are hiring managers or interviewers only.
+  const internalSeat = role === 'recruiter' || role === 'sourcer'
   const availableMembers = useMemo(
-    () => members.filter((m) => m.user_id && !assignedIds.has(m.user_id!)),
-    [members, assignedIds]
+    () => members.filter((m) => m.user_id && !assignedIds.has(m.user_id!) && !(internalSeat && m.user_type === 'external')),
+    [members, assignedIds, internalSeat]
   )
   const selectedMember = useMemo(
     () => members.find((m) => m.user_id === selectedUserId) || null,
