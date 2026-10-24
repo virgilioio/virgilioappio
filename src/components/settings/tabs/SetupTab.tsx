@@ -36,7 +36,7 @@ const CHIP: Record<Status, { bg: string; fg: string; label: string }> = {
   optional: { bg: '#F1F0EC', fg: '#5A6072', label: 'Optional' },
 }
 
-function buildTiers(c: SetupChecks, isAdminOrOwner: boolean): Tier[] {
+function buildTiers(c: SetupChecks, isAdminOrOwner: boolean, isExternal = false): Tier[] {
   const youRows: Row[] = [
     {
       id: 'profile', icon: User, title: 'Your photo and title',
@@ -118,6 +118,18 @@ function buildTiers(c: SetupChecks, isAdminOrOwner: boolean): Tier[] {
     },
   ]
 
+  // External users (2026-10-24): their photo and title, and a calendar for interviews.
+  if (isExternal) {
+    return [
+      {
+        id: 'you',
+        title: 'You',
+        subtitle: 'Two things so candidates know who they meet and interviews reach your calendar.',
+        rows: youRows.filter((r) => r.id === 'profile' || r.id === 'calendar'),
+      },
+    ]
+  }
+
   const tiers: Tier[] = [
     { id: 'you', title: 'You', subtitle: 'Personal — every teammate completes these.', rows: youRows },
   ]
@@ -134,8 +146,8 @@ function buildTiers(c: SetupChecks, isAdminOrOwner: boolean): Tier[] {
 
 export function SetupTab() {
   const navigate = useNavigate()
-  const { checks, isAdminOrOwner } = useSetupProgress()
-  const tiers = useMemo(() => buildTiers(checks, isAdminOrOwner), [checks, isAdminOrOwner])
+  const { checks, isAdminOrOwner, isExternal } = useSetupProgress()
+  const tiers = useMemo(() => buildTiers(checks, isAdminOrOwner, isExternal), [checks, isAdminOrOwner, isExternal])
 
   const go = (row: Row) => {
     if (row.href) {
@@ -271,6 +283,7 @@ export function SetupTab() {
         </section>
       ))}
 
+      {!isExternal && (
       <div
         className="flex items-start font-inter"
         style={{ gap: 6, padding: '4px 4px', fontSize: 11, color: '#8B8F9E' }}
@@ -281,6 +294,7 @@ export function SetupTab() {
           essentials are done — it stays reachable from General.
         </span>
       </div>
+      )}
     </div>
   )
 }

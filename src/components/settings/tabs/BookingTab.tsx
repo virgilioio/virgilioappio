@@ -26,6 +26,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useBookingConfig } from '@/hooks/useBookingConfig'
 import { useBookingEventTypes, BookingEventType } from '@/hooks/useBookingEventTypes'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
+import { usePermissions } from '@/hooks/usePermissions'
 import { EventTypeSheet } from '@/components/settings/booking/EventTypeSheet'
 import { GeneralLinkConfigurator } from '@/components/settings/booking/GeneralLinkConfigurator'
 import { toast } from 'sonner'
@@ -70,6 +71,8 @@ function summarizeHours(schedule: import('@/hooks/useBookingConfig').WeeklySched
   return 'Custom hours'
 }
 
+const EXTERNAL_HINT = 'The hours Virgilio\'s team can book interviews with you, in your time zone.'
+
 export function BookingTab() {
   const {
     config,
@@ -81,6 +84,8 @@ export function BookingTab() {
     isCreating,
   } = useBookingConfig()
   const { identities } = useCalendarIdentities()
+  // External users (2026-10-24) only set the hours interviews can be booked with them.
+  const { isExternal } = usePermissions()
   const {
     eventTypes,
     isLoading: isLoadingEventTypes,
@@ -104,8 +109,8 @@ export function BookingTab() {
   if (isLoading || isCreating) {
     return (
       <SettingsCard
-        title="Booking link"
-        description="Your public scheduling page — share it with candidates and clients."
+        title={isExternal ? 'Your availability' : 'Booking link'}
+        description={isExternal ? EXTERNAL_HINT : 'Your public scheduling page — share it with candidates and clients.'}
       >
         <div className="flex items-center justify-center py-10">
           <Loader2 className="w-5 h-5 animate-spin text-[#8B8F9E]" />
@@ -117,14 +122,14 @@ export function BookingTab() {
   if (needsProfileCompletion) {
     return (
       <SettingsCard
-        title="Booking link"
-        description="Your public scheduling page — share it with candidates and clients."
+        title={isExternal ? 'Your availability' : 'Booking link'}
+        description={isExternal ? EXTERNAL_HINT : 'Your public scheduling page — share it with candidates and clients.'}
       >
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Profile incomplete</AlertTitle>
           <AlertDescription>
-            Add your first and last name in Profile before creating a booking link.
+            Add your first and last name in My profile before {isExternal ? 'setting your hours' : 'creating a booking link'}.
           </AlertDescription>
         </Alert>
       </SettingsCard>
@@ -188,6 +193,7 @@ export function BookingTab() {
     <>
       <div className="space-y-4">
         {/* === Booking link card === */}
+        {!isExternal && (
         <SettingsCard
           title="Booking link"
           description="Your public scheduling page — share it with candidates and clients."
@@ -240,6 +246,7 @@ export function BookingTab() {
             </Button>
           </div>
         </SettingsCard>
+        )}
 
         {/* === General availability & rules === */}
         {isConfiguring ? (
@@ -253,8 +260,12 @@ export function BookingTab() {
           />
         ) : (
           <SettingsCard
-            title="General availability & rules"
-            description="The hours and rules behind your general link — also applied to every job, candidate and stage-specific link you generate."
+            title={isExternal ? 'Your availability' : 'General availability & rules'}
+            description={
+              isExternal
+                ? EXTERNAL_HINT
+                : 'The hours and rules behind your general link — also applied to every job, candidate and stage-specific link you generate.'
+            }
             bodyClassName="px-0 py-0"
           >
             <div className="flex items-center gap-4 px-[18px] py-[14px]">
@@ -307,6 +318,7 @@ export function BookingTab() {
         )}
 
         {/* === Event types card === */}
+        {!isExternal && (
         <SettingsCard
           title="Event types"
           description="Each event type carries its own weekly hours, meeting settings and booking rules."
@@ -436,6 +448,7 @@ export function BookingTab() {
             </ul>
           )}
         </SettingsCard>
+        )}
       </div>
 
       <EventTypeSheet

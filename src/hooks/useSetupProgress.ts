@@ -95,7 +95,10 @@ export function useSetupProgress() {
   }
 
   // Essentials visible to current user. Members only see the "You" tier.
-  const youEssentials = [checks.profile, checks.mail, checks.calendar, checks.booking]
+  // External users (2026-10-24) only need their photo and title and a calendar.
+  const youEssentials = permissions.isExternal
+    ? [checks.profile, checks.calendar]
+    : [checks.profile, checks.mail, checks.calendar, checks.booking]
   const workspaceEssentials = [
     checks.brand,
     checks.departments,
@@ -114,6 +117,7 @@ export function useSetupProgress() {
   return {
     checks,
     isAdminOrOwner,
+    isExternal: permissions.isExternal,
     essentialsRemaining,
     essentialsTotal,
     configuredCount,

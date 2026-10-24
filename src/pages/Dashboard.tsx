@@ -24,7 +24,6 @@ import { format } from 'date-fns'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrgContext } from '@/contexts/OrgContext'
-import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivities'
 import { useStaleCandidates } from '@/hooks/useStaleCandidates'
@@ -314,8 +313,9 @@ export default function Dashboard() {
 
   useReportSplashReady(!orgLoading && hasOrganizationContext && !profileLoading)
 
+  // The gio ats splash covers a cold load; inside a session the page's own skeleton shows.
   if (orgLoading || !hasOrganizationContext) {
-    return <WorkspaceProvisioningLoader status="finalizing" />
+    return <DashboardSkeleton />
   }
   if (permissions.isSalesUser) {
     return (
@@ -460,7 +460,7 @@ export default function Dashboard() {
             onRetry={() => { void refetchBookings() }}
             nextEventId={nextEventId}
             freeAfter={freeAfter}
-            onFullCalendar={() => navigate('/calendar')}
+            onFullCalendar={permissions.isExternal ? undefined : () => navigate('/calendar')}
             onRowClick={(b) => {
               if (b.job_id && b.candidate_id) {
                 navigate(`/jobs/${b.job_id}?candidate=${b.candidate_id}`)
@@ -759,6 +759,32 @@ function QueueRow({
   )
 }
 
+/** §6 loading: the page's footprint (greeting, queue, Today, Open jobs) before the workspace is known. */
+function DashboardSkeleton() {
+  const card = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 12 }
+  return (
+    <div style={{ background: C.pageBg, minHeight: '100%', padding: '24px 28px' }} aria-busy="true">
+      <div style={{ marginBottom: 18 }}>
+        <div className="gio-shimmer" style={{ width: 120, height: 11, borderRadius: 4 }} />
+        <div className="gio-shimmer" style={{ width: 280, height: 26, borderRadius: 6, margin: '8px 0 10px' }} />
+        <div className="gio-shimmer" style={{ width: 420, maxWidth: '100%', height: 13, borderRadius: 4 }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 14, alignItems: 'start' }}>
+        <div style={card}>
+          <div style={{ padding: '14px 16px' }}>
+            <div className="gio-shimmer" style={{ width: 110, height: 14, borderRadius: 4 }} />
+          </div>
+          <QueueSkeleton />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="gio-shimmer" style={{ ...card, height: 220 }} />
+          <div className="gio-shimmer" style={{ ...card, height: 160 }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** §6 loading: shimmering rows laid out like QueueRow. */
 function QueueSkeleton() {
   return (
@@ -834,7 +860,8 @@ interface TodayCardProps {
   onRetry?: () => void
   nextEventId?: string
   freeAfter: string | null
-  onFullCalendar: () => void
+  /** Left out for external users, who don't have the Calendar. */
+  onFullCalendar?: () => void
   onRowClick: (b: ScheduledBooking) => void
 }
 
@@ -862,6 +889,7 @@ function TodayCard({ bookings, isLoading, loadFailed, onRetry, nextEventId, free
         >
           {bookings.length}
         </span>
+        {onFullCalendar && (
         <button
           onClick={onFullCalendar}
           style={{
@@ -879,6 +907,7 @@ function TodayCard({ bookings, isLoading, loadFailed, onRetry, nextEventId, free
         >
           Full calendar <ArrowRight size={11} strokeWidth={2} />
         </button>
+        )}
       </div>
 
       {isLoading ? (

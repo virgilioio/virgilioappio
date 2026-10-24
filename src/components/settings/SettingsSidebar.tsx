@@ -62,7 +62,7 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
       show: true,
       items: [
         { id: 'email-calendar', label: 'Email & calendar', icon: Mail, show: true },
-        { id: 'booking', label: 'Booking & event types', icon: Clock, show: true },
+        { id: 'booking', label: permissions.isExternal ? 'Availability' : 'Booking & event types', icon: Clock, show: true },
         { id: 'notifications', label: 'Notifications', icon: Bell, show: true },
       ],
     },

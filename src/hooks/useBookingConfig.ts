@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrgContext } from '@/contexts/OrgContext';
 import { useUserProfile } from './useUserProfile';
 import { toast } from 'sonner';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export interface WeeklySchedule {
   monday: { enabled: boolean; start: string; end: string };
@@ -105,6 +106,7 @@ export function useBookingConfig() {
   const { user } = useAuth();
   const { organizationId } = useOrgContext();
   const { profile } = useUserProfile();
+  const { isExternal } = usePermissions();
   const queryClient = useQueryClient();
 
   const { data: config, isLoading, error } = useQuery({
@@ -187,7 +189,8 @@ export function useBookingConfig() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['booking-config'] });
-      toast.success('Your booking link has been created!');
+      // External users (2026-10-24) have no booking link of their own, only their hours.
+      if (!isExternal) toast.success('Your booking link has been created!');
     },
     onError: (error: Error) => {
       toast.error(`Failed to create booking link: ${error.message}`);

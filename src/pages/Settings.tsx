@@ -24,6 +24,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
+import { usePermissions } from '@/hooks/usePermissions'
 import { useSetupProgress } from '@/hooks/useSetupProgress'
 import { scrollToHighlightedSection } from '@/utils/scrollToHighlight'
 
@@ -43,6 +44,8 @@ const LEGACY_TAB_MAP: Record<string, string> = {
   // Settings › Automations held only the confirmation email, now on Careers page (2026-10-19).
   automations: 'careers-page',
 }
+
+const EXTERNAL_TABS = ['setup', 'email-calendar', 'booking', 'notifications']
 
 // Brand-new tabs that don't have content yet — render a small placeholder card.
 // (Will be replaced by real components in Phase 2.)
@@ -64,6 +67,7 @@ export default function Settings() {
   const location = useLocation()
   const { organizationId, userType } = useAuth()
   const { tenant } = useTenant()
+  const { isExternal } = usePermissions()
 
   const { essentialsRemaining, essentialsTotal, configuredCount } = useSetupProgress()
 
@@ -110,8 +114,11 @@ export default function Settings() {
   }
 
 
+  // External users (2026-10-24) have only their own settings.
+  const shownTab = isExternal && !EXTERNAL_TABS.includes(currentTab) ? 'email-calendar' : currentTab
+
   const renderContent = () => {
-    switch (currentTab) {
+    switch (shownTab) {
       case 'setup':
         return <SetupTab />
       case 'email-calendar':
@@ -147,8 +154,8 @@ export default function Settings() {
       case 'platform-customers':
         return <PlatformCustomers />
       default:
-        if (currentTab.startsWith('integration-')) {
-          return <IntegrationsTab initialConfigureId={currentTab.replace('integration-', '')} />
+        if (shownTab.startsWith('integration-')) {
+          return <IntegrationsTab initialConfigureId={shownTab.replace('integration-', '')} />
         }
         return <EmailCalendarTab />
     }
@@ -193,7 +200,7 @@ export default function Settings() {
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetContent side="left" className="w-[280px] p-4 bg-virgilio-cream">
             <SettingsSidebar
-              currentTab={currentTab}
+              currentTab={shownTab}
               onTabChange={handleTabChange}
               essentialsRemaining={essentialsRemaining}
             />
@@ -207,7 +214,7 @@ export default function Settings() {
         >
           <div className="hidden lg:block">
             <SettingsSidebar
-              currentTab={currentTab}
+              currentTab={shownTab}
               onTabChange={handleTabChange}
               essentialsRemaining={essentialsRemaining}
             />

@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   User as UserIcon,
   CalendarClock,
-  CreditCard,
   Users,
   LifeBuoy,
   LogOut,
@@ -22,7 +21,6 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useTenant } from '@/hooks/useTenant'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
-import { useBillingStatus } from '@/hooks/useBillingStatus'
 import { useBookingConfig } from '@/hooks/useBookingConfig'
 import { cn } from '@/lib/utils'
 import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
@@ -122,11 +120,10 @@ type AccountMenuProps = {
 export function AccountMenu({ children }: AccountMenuProps) {
   const [open, setOpen] = useState(false)
   const { user, logout, isLoggingOut, organizationId } = useAuth()
-  const { isPlatformAdmin, isWorkspaceOwner, isAdmin, isMember } = usePermissions()
+  const { isPlatformAdmin, isWorkspaceOwner, isAdmin, isMember, isExternal, canViewMembers } = usePermissions()
   const { profile } = useUserProfile()
   const { tenant } = useTenant()
   const { data: credits } = useSourcingCredits()
-  const { data: billing } = useBillingStatus()
   const { bookingUrl } = useBookingConfig()
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
@@ -154,6 +151,8 @@ export function AccountMenu({ children }: AccountMenuProps) {
     ? 'Owner'
     : isAdmin
     ? 'Admin'
+    : isExternal
+    ? 'External'
     : isMember
     ? 'Member'
     : 'Member'
@@ -161,26 +160,6 @@ export function AccountMenu({ children }: AccountMenuProps) {
   const creditsRemaining = credits
     ? Math.max(0, (credits.collect_credits_limit || 0) - (credits.collect_credits_used || 0))
     : 0
-
-  const planName = (() => {
-    const t = billing?.subscription_tier
-    if (!t) return null
-    if (t === 'per_seat') return 'Per seat'
-    return t.charAt(0).toUpperCase() + t.slice(1)
-  })()
-
-  const renewsAt = billing?.subscription_end
-    ? new Date(billing.subscription_end).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      })
-    : null
-
-  const billingMeta = planName
-    ? renewsAt
-      ? `${planName} · renews ${renewsAt}`
-      : planName
-    : 'Manage subscription'
 
   const handleLogout = async () => {
     await logout()
@@ -275,7 +254,8 @@ export function AccountMenu({ children }: AccountMenuProps) {
           </div>
         </div>
 
-        {/* 3. Credits region: booking link + credits */}
+        {/* 3. Credits region: booking link + credits (never for external users) */}
+        {!isExternal && (
         <div className="px-3 pb-3 flex flex-col gap-2">
           {/* 3a. Booking link */}
           {bookingUrl && bookingDisplay && (
@@ -351,6 +331,7 @@ export function AccountMenu({ children }: AccountMenuProps) {
             </button>
           </div>
         </div>
+        )}
 
 
         <div className="h-px bg-[#F1F0EC]" />
@@ -364,7 +345,7 @@ export function AccountMenu({ children }: AccountMenuProps) {
             <Row
               icon={UserIcon}
               label="My profile"
-              meta="Role, work, earnings & agreements"
+              meta={isExternal ? 'Your jobs and details' : 'Role, work, earnings & agreements'}
               to="/me"
               closeMenu={close}
             />
@@ -381,20 +362,15 @@ export function AccountMenu({ children }: AccountMenuProps) {
               to="/settings"
               closeMenu={close}
             />
-            <Row
-              icon={CreditCard}
-              label="Billing & plan"
-              meta={billingMeta}
-              to="/billing"
-              closeMenu={close}
-            />
-            <Row
-              icon={Users}
-              label="Members & invites"
-              to="/settings?tab=members"
-              chevron
-              closeMenu={close}
-            />
+            {canViewMembers && (
+              <Row
+                icon={Users}
+                label="Members & invites"
+                to="/settings?tab=members"
+                chevron
+                closeMenu={close}
+              />
+            )}
           </div>
         </div>
 
