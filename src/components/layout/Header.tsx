@@ -1,7 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +33,7 @@ import {
   LayoutTemplate,
   Percent,
   Link2,
+  MoreHorizontal,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -49,7 +49,6 @@ import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabaseClient'
-import { useUserProfile } from '@/hooks/useUserProfile'
 import { useTalentPoolAccess } from '@/hooks/useTalentPoolAccess'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 
@@ -81,7 +80,6 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false)
   const { members } = useMembers()
   const { toast } = useToast()
-  const { profile } = useUserProfile()
   const { hasRecruiterRole, isPrivileged } = useUserJobRoles()
 
   const canSeeRecruiterTools = isPrivileged || hasRecruiterRole
@@ -202,17 +200,6 @@ export function Header() {
   const visibleNavItems = navigationItems.filter(
     (item) => item.show && item.section === activeSection,
   )
-
-  const userDisplayName =
-    (profile?.first_name && profile?.last_name
-      ? `${profile.first_name} ${profile.last_name}`
-      : profile?.first_name) ||
-    user?.email?.split('@')[0] ||
-    'User'
-  const userInitials =
-    profile?.first_name && profile?.last_name
-      ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
-      : user?.email?.[0]?.toUpperCase() || 'U'
 
   return (
     <header
@@ -352,18 +339,14 @@ export function Header() {
             </DropdownMenu>
           )}
 
+          {/* Your avatar lives at the bottom of the side rail (My profile); this opens the account menu (Allan, 2026-10-24). */}
           <AccountMenu>
             <button
               type="button"
-              aria-label="Account"
-              className="relative h-7 w-7 rounded-full p-0 transition-all hover:ring-2 hover:ring-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40"
+              aria-label="Account and settings"
+              className="relative h-8 w-8 rounded-md flex items-center justify-center text-white/80 hover:text-white hover:bg-white/8 transition-colors data-[state=open]:bg-white/[0.12] data-[state=open]:text-white"
             >
-              <Avatar className="h-7 w-7">
-                <AvatarImage src={profile?.avatar_url} alt={userDisplayName} />
-                <AvatarFallback className="text-[10px] bg-virgilio-purple text-white font-poppins font-semibold">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
+              <MoreHorizontal className="h-[17px] w-[17px]" strokeWidth={1.75} aria-hidden />
             </button>
           </AccountMenu>
         </div>

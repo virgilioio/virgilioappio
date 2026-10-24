@@ -15,6 +15,7 @@ import {
   Check,
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { IconTip } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -208,7 +209,9 @@ export function AccountMenu({ children }: AccountMenuProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      <IconTip label="Account and settings">
+        <PopoverTrigger asChild>{children}</PopoverTrigger>
+      </IconTip>
       <PopoverContent
         align="end"
         sideOffset={10}
