@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 
+import { Input } from '@/components/ui/input'
 import { AffixInput } from '@/components/ui/affix-input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -255,6 +256,21 @@ export function WorkProfileForm({
           <p className="gio-field-message mt-1 min-h-[18px] font-inter text-[11.5px] text-[#B91C1C]" role={capError ? 'alert' : undefined}>
             {capError ?? ''}
           </p>
+          <FieldLabel hint="Anniversaries count from it">Start date</FieldLabel>
+          <Input
+            type="date"
+            aria-label="Start date"
+            className="tabular-nums"
+            min="1980-01-01"
+            max="2100-01-01"
+            value={current.start_date ?? ''}
+            disabled={!editable}
+            onChange={(e) => {
+              const v = e.target.value || null
+              if (v === current.start_date || (v && (v < '1980-01-01' || v > '2100-01-01'))) return
+              commit({ ...current, start_date: v })
+            }}
+          />
         </div>
 
         {showSegments && (

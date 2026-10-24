@@ -249,6 +249,8 @@ export interface PersonDetails {
   country_code: string | null
   region: string | null
   city: string | null
+  /** YYYY-MM-DD. The year stays with the person and admins (2026-10-24). */
+  birth_date: string | null
 }
 
 export const PERSONAL_EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
@@ -261,7 +263,7 @@ export function usePersonDetails(tenantId: string | undefined, userId: string | 
     queryFn: async (): Promise<PersonDetails | null> => {
       const { data, error } = await supabase
         .from('os_person_details')
-        .select('personal_email, personal_phone, country_code, region, city')
+        .select('personal_email, personal_phone, country_code, region, city, birth_date')
         .eq('tenant_id', tenantId!)
         .eq('user_id', userId!)
         .maybeSingle()
@@ -279,7 +281,7 @@ export function useSavePersonDetails(tenantId: string | undefined, userId: strin
       const { data, error } = await supabase
         .from('os_person_details')
         .upsert({ tenant_id: tenantId!, user_id: userId!, ...details }, { onConflict: 'tenant_id,user_id' })
-        .select('personal_email, personal_phone, country_code, region, city')
+        .select('personal_email, personal_phone, country_code, region, city, birth_date')
         .single()
       if (error) throw error
       return data as PersonDetails

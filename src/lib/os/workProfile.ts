@@ -46,9 +46,22 @@ export interface WorkProfile {
   segments: Segment[]
   specialties: Specialty[]
   max_open_jobs: number | null
+  /** YYYY-MM-DD, set by admins: work anniversaries count from it (2026-10-24). */
+  start_date: string | null
 }
 
-export const EMPTY_WORK: WorkProfile = { segments: [], specialties: [], max_open_jobs: null }
+export const EMPTY_WORK: WorkProfile = { segments: [], specialties: [], max_open_jobs: null, start_date: null }
+
+/** "Mar 2023 · 3 years" (a calendar day, read without a time zone). */
+export function startedText(iso: string, today = new Date()) {
+  const [y, m, d] = iso.split('-').map(Number)
+  const start = new Date(y, m - 1, d)
+  let years = today.getFullYear() - y
+  if (today.getMonth() < m - 1 || (today.getMonth() === m - 1 && today.getDate() < d)) years -= 1
+  const when = start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  if (start > today) return `Starts ${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+  return years >= 1 ? `${when} · ${years} ${years === 1 ? 'year' : 'years'}` : `${when} · under a year`
+}
 
 export interface Rating {
   rating: number | null
@@ -71,7 +84,7 @@ const keys = {
   rating: (tenantId: string | undefined, userId: string | null | undefined) => ['os-person-rating', tenantId, userId] as const,
 }
 
-const WORK_COLS = 'segments, specialties, max_open_jobs'
+const WORK_COLS = 'segments, specialties, max_open_jobs, start_date'
 const RATING_COLS = 'rating, note, rated_by, rated_at'
 
 export function useWorkProfile(tenantId: string | undefined, userId: string | null | undefined) {

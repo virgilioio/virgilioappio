@@ -15,7 +15,7 @@ import {
   type PersonDetails,
 } from '@/lib/os/peopleAccess'
 
-const EMPTY: PersonDetails = { personal_email: null, personal_phone: null, country_code: null, region: null, city: null }
+const EMPTY: PersonDetails = { personal_email: null, personal_phone: null, country_code: null, region: null, city: null, birth_date: null }
 const NO_COUNTRY = '__none__'
 const COUNTRY_OPTIONS = [{ value: NO_COUNTRY, label: 'Not set' }, ...COUNTRIES]
 
@@ -26,6 +26,7 @@ const toDraft = (d: PersonDetails | null): Draft => ({
   country_code: d?.country_code ?? '',
   region: d?.region ?? '',
   city: d?.city ?? '',
+  birth_date: d?.birth_date ?? '',
 })
 const toDetails = (d: Draft): PersonDetails => ({
   personal_email: d.personal_email.trim() || null,
@@ -33,12 +34,21 @@ const toDetails = (d: Draft): PersonDetails => ({
   country_code: d.country_code || null,
   region: d.region.trim() || null,
   city: d.city.trim() || null,
+  birth_date: d.birth_date || null,
 })
 const same = (a: PersonDetails, b: PersonDetails) =>
   (Object.keys(EMPTY) as (keyof PersonDetails)[]).every((k) => (a[k] ?? null) === (b[k] ?? null))
 
+/** The latest birth date the database takes: 14 years ago today. */
+const latestBirth = () => {
+  const t = new Date()
+  return `${t.getFullYear() - 14}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+}
+
 function problems(d: Draft) {
   return {
+    birth_date:
+      d.birth_date && (d.birth_date < '1900-01-01' || d.birth_date > latestBirth()) ? 'Check the date: it can\'t be in the future or less than 14 years ago.' : undefined,
     personal_email:
       d.personal_email.trim() && !PERSONAL_EMAIL_RE.test(d.personal_email.trim()) ? 'Enter an email like name@example.com.' : undefined,
     personal_phone:
@@ -51,9 +61,9 @@ function problems(d: Draft) {
 type SaveState = 'idle' | 'saving' | 'saved' | 'savedAgo' | 'error'
 
 /**
- * A person's personal email, phone and where they live (os_person_details).
- * Used by People & Access admins on the member profile and by each person in
- * Settings > Profile. Saves on its own (§12 autosave): after a pause of
+ * A person's personal email, phone, date of birth and where they live
+ * (os_person_details). Used by People & Access admins on the member profile
+ * and by each person on My profile. Saves on its own (§12 autosave): after a pause of
  * --delay-autosave, or when a field loses focus; "Saving…" → "Saved" →
  * "Saved just now". A field that isn't valid yet is never sent.
  */
@@ -101,7 +111,7 @@ export function PersonalDetailsForm({
     if (timer.current) window.clearTimeout(timer.current)
     timer.current = null
     const p = problems(next)
-    if (p.personal_email || p.personal_phone) return
+    if (p.personal_email || p.personal_phone || p.birth_date) return
     const value = toDetails(next)
     if (lastSaved.current && same(value, lastSaved.current)) return
     setState('saving')
@@ -134,7 +144,7 @@ export function PersonalDetailsForm({
   if (!draft) {
     return (
       <div className="grid gap-3 md:grid-cols-2">
-        {Array.from({ length: 5 }, (_, i) => (
+        {Array.from({ length: 6 }, (_, i) => (
           <Skeleton key={i} className={`h-[62px] w-full rounded-[8px] ${i === 0 ? 'md:col-span-2' : ''}`} />
         ))}
       </div>
@@ -179,6 +189,25 @@ export function PersonalDetailsForm({
             onChange={(e) => change('personal_phone', e.target.value)}
             onBlur={() => blur('personal_phone')}
             placeholder="+52 55 1234 5678"
+          />
+        </FormField>
+        <FormField
+          label="Date of birth"
+          htmlFor={id('birth')}
+          error={touched.birth_date ? p.birth_date : undefined}
+          helpText={touched.birth_date && p.birth_date ? undefined : 'Teammates see the day and month, never the year.'}
+        >
+          <Input
+            id={id('birth')}
+            type="date"
+            autoComplete={self ? 'bday' : 'off'}
+            min="1900-01-01"
+            max={latestBirth()}
+            className="tabular-nums"
+            value={draft.birth_date}
+            aria-invalid={touched.birth_date && !!p.birth_date}
+            onChange={(e) => change('birth_date', e.target.value)}
+            onBlur={() => blur('birth_date')}
           />
         </FormField>
         <FormField label="Country" htmlFor={id('country')}>

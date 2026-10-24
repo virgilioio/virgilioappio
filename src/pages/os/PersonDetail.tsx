@@ -55,7 +55,7 @@ import {
 import { BankDetailsCard } from '@/components/os/BankDetailsCard'
 import { TaxIdsCard } from '@/components/os/TaxIdsCard'
 import { AccountCard } from '@/components/os/AccountCard'
-import { ToDoCard, UsefulLinksCard } from '@/components/os/MyProfileCards'
+import { ComingUpCard, ToDoCard, UsefulLinksCard } from '@/components/os/MyProfileCards'
 import { ProfileNav, TAB_META, type ProfileTab } from '@/components/os/ProfileNav'
 import { COUNTRIES } from '@/constants/countries'
 import { loadLevel, segmentLabel, takesSegments, useWorkProfile } from '@/lib/os/workProfile'
@@ -403,6 +403,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                 <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
                 {joined && <BankDetailsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
                 {joined && <TaxIdsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
+                {self && joined && <ComingUpCard tenantId={tenant.id} />}
                 {self && <UsefulLinksCard tenantId={tenant.id} />}
               </div>
             </div>

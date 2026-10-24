@@ -23,6 +23,7 @@ import {
   takesSegments,
   useRating,
   useWorkProfile,
+  startedText,
 } from '@/lib/os/workProfile'
 
 const countryName = (code: string | null) => (code ? COUNTRIES.find((c) => c.value === code)?.label ?? code : null)
@@ -102,6 +103,9 @@ export function RoleCard({
             </InfoRow>
             <InfoRow label="Capacity" empty="Not set">
               {work.data.max_open_jobs != null && <span className="tabular-nums">{work.data.max_open_jobs} open jobs</span>}
+            </InfoRow>
+            <InfoRow label="Started" empty="Not set">
+              {work.data.start_date && <span className="tabular-nums">{startedText(work.data.start_date)}</span>}
             </InfoRow>
           </InfoRows>
         </>
@@ -196,6 +200,12 @@ export function CurrentWorkCard({
   )
 }
 
+/** "March 10, 1990" (dates are calendar days: read without a time zone). */
+function birthdayText(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
 /** Personal: what only admins and the person see. Reads first; Edit opens the autosaving form. */
 export function PersonalCard({ tenantId, person, isSelf }: { tenantId: string; person: Person; isSelf: boolean }) {
   const [editing, setEditing] = useState(false)
@@ -224,6 +234,7 @@ export function PersonalCard({ tenantId, person, isSelf }: { tenantId: string; p
           <InfoRow label="Personal email">{d?.personal_email && <CopyValue value={d.personal_email} label="personal email" />}</InfoRow>
           <InfoRow label="Personal phone">{d?.personal_phone && <CopyValue value={d.personal_phone} label="personal phone" />}</InfoRow>
           <InfoRow label="Lives in">{[d?.city, d?.region, countryName(d?.country_code ?? null)].filter(Boolean).join(', ')}</InfoRow>
+          <InfoRow label="Birthday">{d?.birth_date && birthdayText(d.birth_date)}</InfoRow>
         </InfoRows>
       )}
       <p className="pt-3 font-inter text-[11.5px] text-[#6B7080]">
