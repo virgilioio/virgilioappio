@@ -7197,6 +7197,57 @@ export type Database = {
           },
         ]
       }
+      os_person_tax_ids: {
+        Row: {
+          created_at: string
+          last4: string | null
+          removed_at: string | null
+          tenant_id: string
+          type_key: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          value_enc: string | null
+        }
+        Insert: {
+          created_at?: string
+          last4?: string | null
+          removed_at?: string | null
+          tenant_id: string
+          type_key: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          value_enc?: string | null
+        }
+        Update: {
+          created_at?: string
+          last4?: string | null
+          removed_at?: string | null
+          tenant_id?: string
+          type_key?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          value_enc?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_person_tax_ids_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_person_tax_ids_type_key_fkey"
+            columns: ["type_key"]
+            isOneToOne: false
+            referencedRelation: "os_tax_id_types"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       os_person_work: {
         Row: {
           created_at: string
@@ -7297,6 +7348,92 @@ export type Database = {
           },
           {
             foreignKeyName: "os_sync_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_tax_id_types: {
+        Row: {
+          check_rule: string
+          country_code: string | null
+          example: string
+          holder: string
+          key: string
+          label: string
+          note: string | null
+          pattern: string
+          position: number
+        }
+        Insert: {
+          check_rule?: string
+          country_code?: string | null
+          example: string
+          holder: string
+          key: string
+          label: string
+          note?: string | null
+          pattern: string
+          position?: number
+        }
+        Update: {
+          check_rule?: string
+          country_code?: string | null
+          example?: string
+          holder?: string
+          key?: string
+          label?: string
+          note?: string | null
+          pattern?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      os_useful_links: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          position: number
+          tenant_id: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+          url: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          position?: number
+          tenant_id: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          url: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          position?: number
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_useful_links_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -12267,12 +12404,20 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: Json
       }
+      os_remove_tax_id: {
+        Args: { _tenant_id: string; _type_key: string; _user_id: string }
+        Returns: undefined
+      }
       os_resend_access: {
         Args: { _app: string; _tenant_id: string; _user_id: string }
         Returns: string
       }
       os_reveal_bank_account: {
         Args: { _tenant_id: string; _user_id: string }
+        Returns: string
+      }
+      os_reveal_tax_id: {
+        Args: { _tenant_id: string; _type_key: string; _user_id: string }
         Returns: string
       }
       os_save_bank_details: {
@@ -12288,6 +12433,15 @@ export type Database = {
           _swift?: string
           _tenant_id: string
           _user_id: string
+        }
+        Returns: undefined
+      }
+      os_save_tax_id: {
+        Args: {
+          _tenant_id: string
+          _type_key: string
+          _user_id: string
+          _value: string
         }
         Returns: undefined
       }
@@ -12323,6 +12477,23 @@ export type Database = {
           _retry: boolean
         }
         Returns: undefined
+      }
+      os_tax_id_bell: {
+        Args: {
+          _label: string
+          _removed: boolean
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      os_tax_id_guard: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: undefined
+      }
+      os_tax_ids: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: Json
       }
       person_name_key: { Args: { p: string }; Returns: string }
       person_names_match: { Args: { a: string; b: string }; Returns: boolean }
@@ -12834,6 +13005,8 @@ export type Database = {
         Args: { _job_id: string }
         Returns: undefined
       }
+      tax_id_check: { Args: { _rule: string; _v: string }; Returns: boolean }
+      tax_id_normal: { Args: { _v: string }; Returns: string }
       test_get_user_organization_id: { Args: never; Returns: string }
       unmark_hired: { Args: { p_application_id: string }; Returns: undefined }
       update_feature_flag: {
