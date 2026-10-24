@@ -155,7 +155,7 @@ export default function Settings() {
   }
 
   // Settings › Profile is My profile's You card now (Allan, 2026-10-24): old links land there.
-  if (rawTab === 'profile') return <Navigate to="/me/details?focus=card-you" replace />
+  if (rawTab === 'profile') return <Navigate to="/me?focus=card-you" replace />
 
   const workspaceName = tenant?.name || 'Workspace'
 

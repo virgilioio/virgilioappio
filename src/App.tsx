@@ -8,6 +8,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { OrgContextProvider } from './contexts/OrgContext'
@@ -85,7 +86,6 @@ const References = lazy(() => import('./pages/References'))
 const OsPeople = lazy(() => import('./pages/os/People'))
 const OsPersonDetail = lazy(() => import('./pages/os/PersonDetail'))
 const MyProfile = lazy(() => import('./pages/os/MyProfile'))
-const MyHome = lazy(() => import('./pages/os/MyHome'))
 const OsJobRoles = lazy(() => import('./pages/os/JobRoles'))
 const OsHistory = lazy(() => import('./pages/os/History'))
 const OsCommissionRules = lazy(() => import('./pages/os/CommissionRules'))
@@ -127,6 +127,12 @@ if (typeof window !== 'undefined') {
 
 // Step 1.2 — gate /chat behind canUseChat
 import { useCanUseChat } from '@/hooks/usePermissions'
+/** /me/details was My profile's second page until 2026-10-24: its links (bell, emails) land on /me. */
+function MeDetailsRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/me${search}`} replace />
+}
+
 function ChatRouteGuard({ children }: { children: React.ReactNode }) {
   const canUseChat = useCanUseChat()
   if (!canUseChat) return <NotFound />
@@ -240,8 +246,8 @@ function AppContent() {
             {/* Gio OS: People & Access (admins and platform admins) */}
             <Route path="/os" element={<Navigate to="/os/people" replace />} />
             <Route path="/os/people" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsPeople /></OsAdminOnly></PhoneSwitch>} />
-            <Route path="/me" element={<MyHome />} />
-            <Route path="/me/details" element={<MyProfile />} />
+            <Route path="/me" element={<MyProfile />} />
+            <Route path="/me/details" element={<MeDetailsRedirect />} />
             <Route path="/os/people/:memberId" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsPersonDetail /></OsAdminOnly></PhoneSwitch>} />
             <Route path="/os/job-roles" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsJobRoles /></OsAdminOnly></PhoneSwitch>} />
             <Route path="/os/history" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsHistory /></OsAdminOnly></PhoneSwitch>} />

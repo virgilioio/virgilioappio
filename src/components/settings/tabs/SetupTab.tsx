@@ -43,7 +43,7 @@ function buildTiers(c: SetupChecks, isAdminOrOwner: boolean): Tier[] {
       description: 'In My profile. Candidates see them on every email you send.',
       estimate: '1 min',
       status: c.profile ? 'done' : 'todo',
-      href: '/me/details?focus=card-you',
+      href: '/me?focus=card-you',
     },
     {
       id: 'mail', icon: Mail, title: 'Email connection',

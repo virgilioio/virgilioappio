@@ -1,164 +1,23 @@
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import {
-  Camera,
-  Check,
-  ChevronRight,
-  Coins,
-  FileSignature,
-  IdCard,
-  Landmark,
-  Link2,
-  ListTodo,
-  MapPin,
-  UserRound,
-  type LucideIcon,
-} from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Camera, Check, ChevronRight, FileSignature, IdCard, Landmark, Link2, ListTodo, MapPin, type LucideIcon } from 'lucide-react'
 
-import { ListPage } from '@/components/layout/ListPage'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadError } from '@/components/empty/LoadError'
-import { PersonAvatar } from '@/components/os/PeopleBits'
-import { EarningsStrip } from '@/components/os/PersonEarnings'
 import { ProfileCard } from '@/components/os/ProfileParts'
-import { CurrentWorkCard, LatestAgreementsCard } from '@/components/os/ProfileSections'
 import { UsefulLinksList } from '@/components/os/UsefulLinks'
-import { useAuth } from '@/contexts/AuthContext'
-import { useLoadTimeout } from '@/hooks/useLoadTimeout'
-import { useTenant } from '@/hooks/useTenant'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useBankDetails } from '@/lib/os/bank'
-import { personName, usePeople, usePersonDetails, usePersonJobs, useBundles, type Person } from '@/lib/os/peopleAccess'
+import { usePersonDetails, type Person } from '@/lib/os/peopleAccess'
 import { useTaxIds } from '@/lib/os/taxIds'
 import { useUsefulLinks } from '@/lib/os/usefulLinks'
 import { SIGN_SENDING_LIVE, useRecordEnvelopes } from '@/lib/sign/send'
 import { signersOf } from '@/lib/sign/status'
 
-const DETAILS = '/me/details'
-
-function greeting() {
-  const h = new Date().getHours()
-  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
-}
-
 /**
- * /me, My profile's home (Allan, 2026-10-24: Deel's home in our DNA). A
- * greeting, the Earned · Pending · Potential strip, what's still missing from
- * the profile (To do), current work, the latest agreements and the links
- * People & Access pins for everyone. The full profile is /me/details; older
- * links to /me?tab=… land there.
+ * The cards only My profile has (Allan, 2026-10-24: My profile is one view,
+ * the details page with its side menu): To do, what's still missing, and the
+ * links People & Access pins for everyone. Both sit on the Overview at /me.
  */
-export default function MyHomePage() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  const { tenant } = useTenant()
-  const people = usePeople(tenant?.id)
-  const bundles = useBundles(tenant?.id)
-  const person = people.data?.find((p) => !!user && p.user_id === user.id) ?? null
-  const jobs = usePersonJobs(person?.user_id)
-  const timedOut = useLoadTimeout(people.isLoading, 0)
-
-  if (new URLSearchParams(location.search).has('tab')) return <Navigate to={`${DETAILS}${location.search}`} replace />
-
-  if (people.isError || timedOut) {
-    return (
-      <ListPage title="My profile">
-        <div className="rounded-2xl border border-virgilio-border bg-white" style={{ padding: '56px 24px' }}>
-          <LoadError what="your profile" timedOut={timedOut && !people.isError} onRetry={() => void people.refetch()} />
-        </div>
-      </ListPage>
-    )
-  }
-  if (people.isLoading) {
-    return (
-      <ListPage title={<Skeleton className="inline-block h-9 w-72 align-middle" />} meta={<Skeleton className="h-4 w-56" />}>
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
-          <div className="space-y-4">
-            <Skeleton className="h-[168px] w-full rounded-[16px]" />
-            <Skeleton className="h-[260px] w-full rounded-[16px]" />
-          </div>
-          <div className="space-y-4">
-            <Skeleton className="h-[240px] w-full rounded-[16px]" />
-            <Skeleton className="h-[180px] w-full rounded-[16px]" />
-          </div>
-        </div>
-      </ListPage>
-    )
-  }
-  if (!person) {
-    return (
-      <ListPage title="My profile">
-        <p className="font-inter text-[13px] text-text-secondary">
-          Your profile isn&apos;t set up in this workspace yet. An admin adds it from People &amp; Access.
-        </p>
-      </ListPage>
-    )
-  }
-
-  const jobRole = bundles.data?.find((b) => b.id === person.bundle_id)?.name ?? null
-  const first = personName(person).split(' ')[0]
-  const jobList = jobs.data ?? []
-  const toDetails = (tab?: string) => navigate(tab ? `${DETAILS}?tab=${tab}` : DETAILS)
-
-  return (
-    <ListPage
-      title={
-        <span className="inline-flex min-w-0 items-center gap-3 align-middle">
-          <PersonAvatar person={person} size={48} />
-          <span className="truncate">
-            {greeting()}, {first}
-          </span>
-        </span>
-      }
-      meta={
-        <>
-          {jobRole && <span className="font-medium text-[#1F2230]">{jobRole}</span>}
-          {tenant?.name && <span>{tenant.name}</span>}
-        </>
-      }
-      actions={
-        <Button asChild variant="secondary">
-          <Link to={DETAILS}>
-            <UserRound aria-hidden />
-            My details
-          </Link>
-        </Button>
-      }
-    >
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="min-w-0 space-y-4">
-          <ProfileCard
-            id="card-earnings"
-            title="Earnings"
-            icon={Coins}
-            tone="green"
-            aside={
-              <Button variant="ghost" size="sm" className="bg-[#F1F0EC]" onClick={() => toDetails('earnings')}>
-                See all
-              </Button>
-            }
-          >
-            <EarningsStrip userId={person.user_id} tenantId={tenant?.id} jobs={jobList} jobsLoading={jobs.isLoading} />
-          </ProfileCard>
-          <CurrentWorkCard
-            person={person}
-            jobs={jobList}
-            loading={jobs.isLoading}
-            error={jobs.isError}
-            onRetry={() => void jobs.refetch()}
-            onSeeAll={() => toDetails('work')}
-          />
-          <LatestAgreementsCard person={person} self onSeeAll={() => toDetails('agreements')} />
-        </div>
-        <div className="min-w-0 space-y-4">
-          {tenant?.id && <ToDoCard tenantId={tenant.id} person={person} />}
-          {tenant?.id && <LinksCard tenantId={tenant.id} />}
-        </div>
-      </div>
-    </ListPage>
-  )
-}
 
 interface ToDo {
   key: string
@@ -168,8 +27,8 @@ interface ToDo {
   to: string
 }
 
-/** What's still missing from the profile, each a link to where it's fixed. Nothing is counted until it has loaded. */
-function ToDoCard({ tenantId, person }: { tenantId: string; person: Person }) {
+/** What's still missing from My profile, each a link to the card that fixes it (or a tab). Nothing is counted until it has loaded. */
+export function ToDoCard({ tenantId, person }: { tenantId: string; person: Person }) {
   const userId = person.user_id
   const { profile } = useUserProfile()
   const details = usePersonDetails(tenantId, userId)
@@ -192,7 +51,7 @@ function ToDoCard({ tenantId, person }: { tenantId: string; person: Person }) {
         icon: Camera,
         title: !profile?.avatar_url && !profile?.title ? 'Add your photo and title' : !profile?.avatar_url ? 'Add your photo' : 'Add your title',
         body: `Candidates see ${!profile?.avatar_url && !profile?.title ? 'them' : 'it'} on every email you send.`,
-        to: `${DETAILS}?focus=card-you`,
+        to: `/me?focus=card-you`,
       })
     if (!d?.country_code || contact.length)
       items.push({
@@ -204,7 +63,7 @@ function ToDoCard({ tenantId, person }: { tenantId: string; person: Person }) {
             ? `Then ${contactText}, so admins can reach you outside work.`
             : 'It sets which tax IDs and bank details apply to you.'
           : 'So admins can reach you outside work. Only they see it.',
-        to: `${DETAILS}?focus=card-personal`,
+        to: `/me?focus=card-personal`,
       })
     if (tax.data && tax.data.ids.length === 0)
       items.push({
@@ -212,7 +71,7 @@ function ToDoCard({ tenantId, person }: { tenantId: string; person: Person }) {
         icon: IdCard,
         title: 'Add your tax ID',
         body: 'Virgilio needs it to pay your commissions.',
-        to: `${DETAILS}?focus=card-tax-ids`,
+        to: `/me?focus=card-tax-ids`,
       })
     if (bank.data && !bank.data.has_details)
       items.push({
@@ -220,7 +79,7 @@ function ToDoCard({ tenantId, person }: { tenantId: string; person: Person }) {
         icon: Landmark,
         title: 'Add your bank details',
         body: 'Where Virgilio pays your commissions.',
-        to: `${DETAILS}?focus=card-bank`,
+        to: `/me?focus=card-bank`,
       })
     const waiting = (envelopes.data ?? []).filter((e) => e.status === 'sent' && signersOf(e).some((r) => r.status !== 'signed' && !r.removed_at))
     if (waiting.length)
@@ -229,7 +88,7 @@ function ToDoCard({ tenantId, person }: { tenantId: string; person: Person }) {
         icon: FileSignature,
         title: waiting.length === 1 ? `Sign ${waiting[0].title}` : `Sign ${waiting.length} agreements`,
         body: 'Gio Sign emailed you the link. Your copy lands here once everyone signs.',
-        to: `${DETAILS}?tab=agreements`,
+        to: '/me?tab=agreements',
       })
   }
 
@@ -291,7 +150,7 @@ function ToDoCard({ tenantId, person }: { tenantId: string; person: Person }) {
 }
 
 /** The links People & Access pins for everyone. Hidden when there are none: members can't add any. */
-function LinksCard({ tenantId }: { tenantId: string }) {
+export function UsefulLinksCard({ tenantId }: { tenantId: string }) {
   const links = useUsefulLinks(tenantId)
   const live = (links.data ?? []).filter((l) => !l.archived_at)
   if (links.isSuccess && live.length === 0) return null

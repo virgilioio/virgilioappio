@@ -55,6 +55,7 @@ import {
 import { BankDetailsCard } from '@/components/os/BankDetailsCard'
 import { TaxIdsCard } from '@/components/os/TaxIdsCard'
 import { AccountCard } from '@/components/os/AccountCard'
+import { ToDoCard, UsefulLinksCard } from '@/components/os/MyProfileCards'
 import { ProfileNav, TAB_META, type ProfileTab } from '@/components/os/ProfileNav'
 import { COUNTRIES } from '@/constants/countries'
 import { loadLevel, segmentLabel, takesSegments, useWorkProfile } from '@/lib/os/workProfile'
@@ -107,7 +108,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
   const rawTab = params.get('tab') === 'jobs' ? 'work' : params.get('tab') ?? ''
   const tabs: readonly Tab[] = self ? SELF_TABS : TABS
   const tab: Tab = (tabs as readonly string[]).includes(rawTab) ? (rawTab as Tab) : 'overview'
-  const crumbs = self ? [{ label: 'My profile', to: '/me' }] : [{ label: 'People', to: '/os/people' }]
+  const crumbs = self ? undefined : [{ label: 'People', to: '/os/people' }]
   const setTab = (next: Tab) => {
     setParams(
       (prev) => {
@@ -316,7 +317,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
 
   return (
     <ListPage
-      breadcrumb={self ? [{ label: 'My profile', to: '/me' }, { label: 'Details' }] : [{ label: 'People', to: '/os/people' }, { label: personName(person) }]}
+      breadcrumb={self ? undefined : [{ label: 'People', to: '/os/people' }, { label: personName(person) }]}
       title={
         <span className="inline-flex min-w-0 items-center gap-3 align-middle">
           <PersonAvatar person={person} size={48} />
@@ -369,6 +370,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
           {tenant?.id && (
             <div className="grid gap-4 xl:grid-cols-2">
               <div className="min-w-0 space-y-4">
+                {self && joined && <ToDoCard tenantId={tenant.id} person={person} />}
                 {joined ? (
                   <RoleCard
                     tenantId={tenant.id}
@@ -401,6 +403,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                 <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
                 {joined && <BankDetailsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
                 {joined && <TaxIdsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
+                {self && <UsefulLinksCard tenantId={tenant.id} />}
               </div>
             </div>
           )}

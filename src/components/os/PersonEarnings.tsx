@@ -77,8 +77,8 @@ function moneyMetric(label: string, icon: LucideIcon, tone: MetricTone, sums: { 
  * Filled openings count only when the hire credits them.
  */
 /**
- * Earned, Pending and Potential for one person, shared by the Earnings tab and
- * the My profile home so the two always show the same numbers.
+ * Earned, Pending and Potential for one person, worked out once from the
+ * invoices, the openings and today's rates.
  */
 export function useEarningsSummary(userId: string | null, tenantId: string | undefined, jobs: PersonJob[], jobsLoading: boolean) {
   const earnings = usePersonEarnings(userId)
@@ -98,33 +98,6 @@ export function useEarningsSummary(userId: string | null, tenantId: string | und
   const unestimated = [...estimates.values()].filter((e) => 'missing' in e).length
   const loading = earnings.isLoading || jobsLoading || openings.isLoading || rates.isLoading
   return { earnings, openings, rates, rows, live, list, estimates, earned, pending, potential, unestimated, loading }
-}
-
-/** The Earned · Pending · Potential strip on its own (My profile home). */
-export function EarningsStrip({
-  userId,
-  tenantId,
-  jobs,
-  jobsLoading,
-}: {
-  userId: string | null
-  tenantId: string | undefined
-  jobs: PersonJob[]
-  jobsLoading: boolean
-}) {
-  const s = useEarningsSummary(userId, tenantId, jobs, jobsLoading)
-  if (s.earnings.isError) return <LoadError what="your earnings" compact onRetry={() => void s.earnings.refetch()} />
-  return (
-    <MetricStrip
-      id={`os-earnings-${userId}`}
-      loading={s.loading}
-      items={[
-        moneyMetric('Earned', CircleDollarSign, 'green', s.earned),
-        moneyMetric('Pending', Clock, 'yellow', s.pending),
-        moneyMetric('Potential', TrendingUp, 'purple', s.potential),
-      ]}
-    />
-  )
 }
 
 export function PersonEarnings({
