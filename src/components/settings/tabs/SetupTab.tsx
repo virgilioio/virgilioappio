@@ -39,11 +39,11 @@ const CHIP: Record<Status, { bg: string; fg: string; label: string }> = {
 function buildTiers(c: SetupChecks, isAdminOrOwner: boolean): Tier[] {
   const youRows: Row[] = [
     {
-      id: 'profile', icon: User, title: 'Profile',
-      description: 'Photo, title and timezone — on every candidate email.',
+      id: 'profile', icon: User, title: 'Your photo and title',
+      description: 'In My profile. Candidates see them on every email you send.',
       estimate: '1 min',
       status: c.profile ? 'done' : 'todo',
-      tab: 'profile',
+      href: '/me/details?focus=card-you',
     },
     {
       id: 'mail', icon: Mail, title: 'Email connection',

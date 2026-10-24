@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { Menu } from 'lucide-react'
-import { ProfileTab } from '@/components/settings/ProfileTab'
 import OrganizationTab from '@/components/settings/OrganizationTab'
 import { MembersTab } from '@/components/settings/MembersTab'
 import { DepartmentsManager } from '@/components/settings/DepartmentsManager'
@@ -72,7 +71,7 @@ export default function Settings() {
   const pickDefaultTab = () => {
     if (essentialsRemaining > 0) return 'setup'
     if (userType === 'workspace_owner' && organizationId) return 'organization'
-    return 'profile'
+    return 'email-calendar'
   }
 
   const rawTab = searchParams.get('tab')
@@ -83,6 +82,13 @@ export default function Settings() {
   useEffect(() => {
     scrollToHighlightedSection()
   }, [currentTab])
+
+  // A link to another tab while Settings is open (Setup's rows, the account menu) switches to it.
+  useEffect(() => {
+    if (isBillingRoute || !rawTab) return
+    const next = LEGACY_TAB_MAP[rawTab] || rawTab
+    setCurrentTab((cur) => (cur === next ? cur : next))
+  }, [rawTab, isBillingRoute])
 
   // Redirect legacy tab keys in the URL once
   useEffect(() => {
@@ -108,8 +114,6 @@ export default function Settings() {
     switch (currentTab) {
       case 'setup':
         return <SetupTab />
-      case 'profile':
-        return <ProfileTab />
       case 'email-calendar':
         return <EmailCalendarTab />
       case 'booking':
@@ -146,9 +150,12 @@ export default function Settings() {
         if (currentTab.startsWith('integration-')) {
           return <IntegrationsTab initialConfigureId={currentTab.replace('integration-', '')} />
         }
-        return <ProfileTab />
+        return <EmailCalendarTab />
     }
   }
+
+  // Settings › Profile is My profile's You card now (Allan, 2026-10-24): old links land there.
+  if (rawTab === 'profile') return <Navigate to="/me/details?focus=card-you" replace />
 
   const workspaceName = tenant?.name || 'Workspace'
 
