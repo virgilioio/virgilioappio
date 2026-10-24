@@ -12,8 +12,8 @@
  * An app whose URL or secret isn't set yet is skipped; its items wait.
  * It also delivers new commission rates (os_commission_rates) to Gio Sales,
  * kind 'commission_rate' on the same endpoint, settled by os_commission_rate_record.
- * On the cron run it also emails people whose bank details someone else changed
- * (os_bank_alerts, see bankAlert.ts).
+ * On the cron run it also emails people whose bank details or tax IDs someone
+ * else changed (os_bank_alerts through os_account_alerts_claim, see bankAlert.ts).
  *
  * Called by:
  *   - People & Access right after a change: POST { tenant_id } with the admin's token;
@@ -21,7 +21,7 @@
  * Keep this file ASCII only: the deploy tool rewrites escape sequences.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
-import { bankAlertMessage, type BankAlert } from './bankAlert.ts'
+import { bankAlertMessage, taxIdAlertMessage, type BankAlert } from './bankAlert.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -55,12 +55,12 @@ function target(app: string): { url: string; secret: string } | null {
   return { url: env.url.replace(/\/+$/, ''), secret: env.secret }
 }
 
-/** Claims waiting bank alerts (os_bank_alerts_claim), emails each person from
+/** Claims waiting account alerts (os_account_alerts_claim), emails each person from
  *  Gio's no-reply address and settles it. A failure is retried, up to five times. */
 // deno-lint-ignore no-explicit-any
 async function sendBankAlerts(admin: any): Promise<Array<{ id: string; result: string }>> {
   const out: Array<{ id: string; result: string }> = []
-  const { data, error } = await admin.rpc('os_bank_alerts_claim', { _limit: 20 })
+  const { data, error } = await admin.rpc('os_account_alerts_claim', { _limit: 20 })
   if (error) {
     console.error('os-sync bank alerts', error.message)
     return out
@@ -75,7 +75,7 @@ async function sendBankAlerts(admin: any): Promise<Array<{ id: string; result: s
         continue
       }
       if (!key) throw new Error('RESEND_API_KEY missing')
-      const m = bankAlertMessage(a)
+      const m = a.kind === 'bank' ? bankAlertMessage(a) : taxIdAlertMessage(a)
       const { Resend } = await import('npm:resend@2.0.0')
       const res = await new Resend(key).emails.send({ from: `Gio <${address}>`, to: [a.to_email], subject: m.subject, html: m.html, text: m.text })
       // deno-lint-ignore no-explicit-any
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     if (error || ok !== true) return json({ error: 'Only admins can change access.' }, 403)
   }
 
-  // Bank details changed by someone else: email the person (the bell rang already).
+  // Bank details or tax IDs changed by someone else: email the person (the bell rang already).
   const alerts = isCron ? await sendBankAlerts(admin) : []
 
   const apps = ['sales', 'docs'].filter((a) => target(a))
