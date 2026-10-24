@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { Lock, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { supabase } from '@/integrations/supabase/client'
@@ -14,6 +15,7 @@ import {
 } from '@/lib/jobOpenings'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { fromIsoDay, toIsoDay } from '@/lib/isoDay'
 
 const db = supabase as any
 
@@ -22,8 +24,8 @@ const GRID = {
   setup: '26px minmax(0,1.05fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.25fr) 30px',
 }
 
-const inputCls =
-  'h-[34px] w-full rounded-lg border border-[#E0DDD3] bg-white px-[10px] font-inter text-[12.5px] text-[#1F2230] outline-none transition-[border-color,box-shadow] hover:border-[#CFCBBF] focus:border-[#B9B6AC] focus:shadow-[0_0_0_3px_rgba(31,34,48,0.06)] focus-visible:ring-0 [&::-webkit-calendar-picker-indicator]:opacity-45 disabled:cursor-not-allowed disabled:opacity-60'
+// The date picker's trigger at the row's input size.
+const dateCls = 'h-[34px] w-full px-[10px] rounded-lg border-[#E0DDD3] bg-white text-[#1F2230] [&>span]:text-[12.5px] [&>svg]:mr-1.5'
 const errCls = '!border-[#FECACA] shadow-[0_0_0_3px_rgba(250,82,82,0.08)]'
 
 function prettyDate(d?: string) {
@@ -341,13 +343,15 @@ function EditorShell({
                       {prettyDate(r[k])}
                     </span>
                   ) : (
-                    <input
+                    <DatePickerVirgilio
                       key={k}
-                      type="date"
-                      className={cn(inputCls, has(k === 'target_hire_date' ? 'hire' : 'start') && errCls)}
-                      value={r[k] || ''}
-                      disabled={readOnly}
-                      onChange={(e) => onPatch(r.id, { [k]: e.target.value } as any)}
+                      aria-label={k === 'target_hire_date' ? 'Target hire date' : 'Target start date'}
+                      className={cn(dateCls, has(k === 'target_hire_date' ? 'hire' : 'start') && errCls)}
+                      aria-invalid={has(k === 'target_hire_date' ? 'hire' : 'start')}
+                      value={fromIsoDay(r[k])}
+                      readOnly={readOnly}
+                      onChange={(d) => onPatch(r.id, { [k]: toIsoDay(d) } as Partial<OpeningRow>)}
+                      onClear={() => onPatch(r.id, { [k]: '' } as Partial<OpeningRow>)}
                     />
                   ),
                 )}

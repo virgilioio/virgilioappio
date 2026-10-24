@@ -3,6 +3,7 @@ import { Check } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
 import { AffixInput } from '@/components/ui/affix-input'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
@@ -22,6 +23,7 @@ import {
   useWorkProfile,
   type WorkProfile,
 } from '@/lib/os/workProfile'
+import { fromIsoDay, toIsoDay } from '@/lib/isoDay'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'savedAgo' | 'error'
 
@@ -257,19 +259,20 @@ export function WorkProfileForm({
             {capError ?? ''}
           </p>
           <FieldLabel hint="Anniversaries count from it">Start date</FieldLabel>
-          <Input
-            type="date"
+          <DatePickerVirgilio
             aria-label="Start date"
-            className="tabular-nums"
-            min="1980-01-01"
-            max="2100-01-01"
-            value={current.start_date ?? ''}
-            disabled={!editable}
-            onChange={(e) => {
-              const v = e.target.value || null
-              if (v === current.start_date || (v && (v < '1980-01-01' || v > '2100-01-01'))) return
-              commit({ ...current, start_date: v })
+            className="h-11 w-full"
+            placeholder="Not set"
+            presets={[{ label: 'Today', days: 0 }]}
+            minDate={fromIsoDay('1980-01-01')}
+            maxDate={fromIsoDay('2100-01-01')}
+            value={fromIsoDay(current.start_date)}
+            readOnly={!editable}
+            onChange={(d) => {
+              const v = toIsoDay(d)
+              if (v !== current.start_date) commit({ ...current, start_date: v })
             }}
+            onClear={() => current.start_date && commit({ ...current, start_date: null })}
           />
         </div>
 

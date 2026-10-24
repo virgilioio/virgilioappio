@@ -8,6 +8,7 @@ import { useJobOpenings } from '@/hooks/useJobOpenings'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
@@ -23,6 +24,7 @@ import { toast as legacyToast } from '@/hooks/use-toast'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { burstFrom, claimOpeningFilled, tintHired } from '@/lib/delight'
+import { fromIsoDay, toIsoDay } from '@/lib/isoDay'
 
 interface MarkHiredDialogProps {
   open: boolean
@@ -348,13 +350,12 @@ export function MarkHiredDialog({
 
           <section className="px-[22px] pb-1 pt-3">
             <label htmlFor="hire-start-date" className="mb-1 block text-[12px] font-medium text-hire-ink">Start date <span aria-hidden>*</span></label>
-            <input
+            <DatePickerVirgilio
               id="hire-start-date"
-              type="date"
-              required
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-              className="h-9 w-full rounded-lg border border-hire-border bg-card px-2.5 font-inter text-[12.5px] text-hire-ink [color-scheme:light] hover:border-hire-hover-border focus:border-hire-focus-border focus:outline-none focus:ring-[3px] focus:ring-hire-ink/[0.06] [&::-webkit-calendar-picker-indicator]:opacity-45"
+              className="h-9 w-full rounded-lg border-hire-border bg-card px-2.5 text-hire-ink hover:border-hire-hover-border [&>span]:text-[12.5px]"
+              placeholder="Choose the start date"
+              value={fromIsoDay(startDate)}
+              onChange={(d) => setStartDate(toIsoDay(d))}
             />
             {selected && (
               <p className="mt-1.5 text-[11px] leading-[1.45] text-hire-muted">

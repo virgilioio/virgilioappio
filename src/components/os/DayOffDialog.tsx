@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
@@ -9,11 +10,9 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { COUNTRIES } from '@/constants/countries'
 import { shakeFirstInvalid } from '@/lib/motion'
 import { useAddDayOff } from '@/lib/os/calendar'
+import { fromIsoDay, toIsoDay } from '@/lib/isoDay'
 
-const todayIso = () => {
-  const t = new Date()
-  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
-}
+const todayIso = () => toIsoDay(new Date())
 
 /**
  * Add a day off (People & Access dashboard, 2026-10-24): the workspace's own
@@ -108,18 +107,18 @@ export function DayOffDialog({
             </FormField>
             <div className="grid gap-x-3 sm:grid-cols-2">
               <FormField label="Date" htmlFor="dayoff-date" error={show('day')}>
-                <Input
+                <DatePickerVirgilio
                   id="dayoff-date"
-                  type="date"
-                  min={todayIso()}
-                  className="tabular-nums"
-                  value={day}
-                  disabled={add.isPending}
-                  onChange={(e) => {
-                    setDay(e.target.value)
+                  className="h-11 w-full"
+                  placeholder="Choose a date"
+                  minDate={fromIsoDay(todayIso())}
+                  value={fromIsoDay(day)}
+                  readOnly={add.isPending}
+                  onChange={(d) => {
+                    setDay(toIsoDay(d))
                     setServerError(null)
                   }}
-                  aria-invalid={!!show('day') || undefined}
+                  aria-invalid={!!show('day')}
                 />
               </FormField>
               <FormField label="Observed in" htmlFor="dayoff-country" error={show('country')}>

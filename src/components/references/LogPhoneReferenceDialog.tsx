@@ -3,6 +3,7 @@ import { Phone } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DateTimePickerVirgilio } from '@/components/ui/datetime-picker-virgilio'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -193,10 +194,10 @@ export function LogPhoneReferenceDialog({
             </div>
             <div>
               <Label className="text-form-label">Spoke on</Label>
-              <Input
-                type="datetime-local"
-                value={spokeAt}
-                onChange={(e) => setSpokeAt(e.target.value)}
+              <DateTimePickerVirgilio
+                value={spokeAt ? new Date(spokeAt) : new Date()}
+                maxDate={new Date()}
+                onChange={(d) => setSpokeAt(toLocalInput(d.toISOString()))}
               />
             </div>
 

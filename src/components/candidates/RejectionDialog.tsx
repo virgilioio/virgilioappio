@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
+import { DateTimePickerVirgilio } from '@/components/ui/datetime-picker-virgilio';
 
 interface RejectionDialogProps {
   open: boolean;
@@ -688,19 +689,22 @@ export function RejectionDialog({
                               <PresetChip selected={preset === '1week'} onClick={() => setPreset('1week')} title="Next week" subtitle="Mon 9:00 AM" />
                               <PresetChip
                                 selected={preset === 'custom'}
-                                onClick={() => setPreset('custom')}
+                                onClick={() => {
+                                  setPreset('custom');
+                                  // Start from tomorrow 9:00 so the send time is never empty.
+                                  if (!customDateTime) setCustomDateTime(resolvePresetDate('tomorrow')!.toISOString());
+                                }}
                                 title="Custom"
                                 subtitle="Pick date"
                                 icon={<CalendarIcon size={11} style={{ color: preset === 'custom' ? '#5B21B6' : '#8B8F9E' }} />}
                               />
                             </div>
                             {preset === 'custom' && (
-                              <input
-                                type="datetime-local"
-                                value={customDateTime}
-                                onChange={(e) => setCustomDateTime(e.target.value)}
-                                className="w-full font-inter mt-2 focus:outline-none focus:ring-2 focus:ring-virgilio-purple/20"
-                                style={{ height: 38, border: '1px solid #E0DDD3', borderRadius: 9, padding: '0 12px', fontSize: 13, color: '#1F2230' }}
+                              <DateTimePickerVirgilio
+                                className="mt-2"
+                                value={resolvePresetDate('custom', customDateTime) ?? resolvePresetDate('tomorrow')!}
+                                minDate={new Date()}
+                                onChange={(d) => setCustomDateTime(d.toISOString())}
                               />
                             )}
                           </div>

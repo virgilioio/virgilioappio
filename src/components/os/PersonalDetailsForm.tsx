@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -14,6 +15,7 @@ import {
   useSavePersonDetails,
   type PersonDetails,
 } from '@/lib/os/peopleAccess'
+import { fromIsoDay, toIsoDay } from '@/lib/isoDay'
 
 const EMPTY: PersonDetails = { personal_email: null, personal_phone: null, country_code: null, region: null, city: null, birth_date: null }
 const NO_COUNTRY = '__none__'
@@ -137,6 +139,14 @@ export function PersonalDetailsForm({
     setTouched((t) => ({ ...t, [key]: true }))
     if (draft) flush(draft)
   }
+  // A date is picked in one go, so it saves at once.
+  const pick = (birth: string) => {
+    if (!draft) return
+    const next = { ...draft, birth_date: birth }
+    setDraft(next)
+    setTouched((t) => ({ ...t, birth_date: true }))
+    flush(next)
+  }
 
   if (details.isError) {
     return <LoadError what="their personal details" compact onRetry={() => void details.refetch()} />
@@ -197,17 +207,18 @@ export function PersonalDetailsForm({
           error={touched.birth_date ? p.birth_date : undefined}
           helpText={touched.birth_date && p.birth_date ? undefined : 'Teammates see the day and month, never the year.'}
         >
-          <Input
+          <DatePickerVirgilio
             id={id('birth')}
-            type="date"
-            autoComplete={self ? 'bday' : 'off'}
-            min="1900-01-01"
-            max={latestBirth()}
-            className="tabular-nums"
-            value={draft.birth_date}
+            className="h-11 w-full"
+            placeholder="Not set"
+            presets={false}
+            minDate={fromIsoDay('1900-01-01')}
+            maxDate={fromIsoDay(latestBirth())}
+            defaultMonth={fromIsoDay(`${new Date().getFullYear() - 30}-01-01`)}
+            value={fromIsoDay(draft.birth_date)}
             aria-invalid={touched.birth_date && !!p.birth_date}
-            onChange={(e) => change('birth_date', e.target.value)}
-            onBlur={() => blur('birth_date')}
+            onChange={(d) => pick(toIsoDay(d))}
+            onClear={() => pick('')}
           />
         </FormField>
         <FormField label="Country" htmlFor={id('country')}>

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Input } from '@/components/ui/input'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { cn } from '@/lib/utils'
 import { DATE_FIELDS, chipLabel, type DateField, type DateRangeFilter } from '@/lib/candidateDates'
+import { fromIsoDay, toIsoDay } from '@/lib/isoDay'
 
 /**
  * A Date filter chip (2026-10-14): pick which date (added, applied,
@@ -16,6 +17,9 @@ const PAST = [
   { within: 90, label: 'Last 90 days' },
   { within: 365, label: 'Last 12 months' },
 ]
+const TODAY = [{ label: 'Today', days: 0 }]
+// The "Or between" pickers at the menu's compact size.
+const dateCls = 'h-8 w-full rounded-md px-2.5 [&>span]:text-[12.5px] [&>svg]:mr-1.5'
 const FUTURE = [
   { next: 7, label: 'Next 7 days' },
   { next: 30, label: 'Next 30 days' },
@@ -132,8 +136,26 @@ export function DateFilterChip({ value, usedFields = [], onChange, onRemove }: D
             ))}
             <div className="mt-1.5 px-2 pb-1.5 space-y-1.5">
               <div className="text-[11.5px] text-text-tertiary font-inter">Or between</div>
-              <Input type="date" aria-label="From" value={from} max={to || undefined} onChange={(e) => setCustom(e.target.value, to)} className="h-8 text-[12.5px] rounded-md" />
-              <Input type="date" aria-label="To" value={to} min={from || undefined} onChange={(e) => setCustom(from, e.target.value)} className="h-8 text-[12.5px] rounded-md" />
+              <DatePickerVirgilio
+                aria-label="From"
+                placeholder="From"
+                presets={TODAY}
+                className={dateCls}
+                value={fromIsoDay(from)}
+                maxDate={fromIsoDay(to)}
+                onChange={(d) => setCustom(toIsoDay(d), to)}
+                onClear={() => setCustom('', to)}
+              />
+              <DatePickerVirgilio
+                aria-label="To"
+                placeholder="To"
+                presets={TODAY}
+                className={dateCls}
+                value={fromIsoDay(to)}
+                minDate={fromIsoDay(from)}
+                onChange={(d) => setCustom(from, toIsoDay(d))}
+                onClear={() => setCustom(from, '')}
+              />
             </div>
           </div>
         </div>
