@@ -7,8 +7,6 @@ import { FormField } from '@/components/ui/form-field'
 import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
-import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { User, UserMinus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
@@ -42,11 +40,9 @@ const getRoleLabel = (role: JobAssignmentRole) => {
 export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProps) {
   const [selectedUserId, setSelectedUserId] = useState('')
   const [selectedRole, setSelectedRole] = useState<JobAssignmentRole>('recruiter')
-  const [seatConfirm, setSeatConfirm] = useState<{ action: () => Promise<void>; memberName: string } | null>(null)
   const { assignments, assignUserToJob, removeUserFromJob, updateAssignmentRole, isLoading: assignmentsLoading } = useJobAssignments(jobId)
   const { members, isLoading: membersLoading } = useMembers(true)
   const permissions = usePermissions()
-  const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
 
   // Security check - only users who can manage job assignments can access
   if (!permissions.canManageJobAssignments) {
@@ -115,14 +111,7 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
 
   const handleAssignUser = async () => {
     if (!selectedUserId) return
-    const member = members.find(m => m.user_id === selectedUserId)
-    if (!member) return
-
-    if (selectedRole === 'recruiter' && wouldUpgrade(member.user_id, member.system_role, member.user_type)) {
-      const name = `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim() || member.user_email || 'this user'
-      setSeatConfirm({ action: executeAssign, memberName: name })
-      return
-    }
+    if (!members.some(m => m.user_id === selectedUserId)) return
 
     await executeAssign()
   }
@@ -148,20 +137,6 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
   }
 
   const handleRoleChange = async (assignmentId: string, newRole: JobAssignmentRole) => {
-    if (newRole === 'recruiter') {
-      const assignment = assignments.find(a => a.id === assignmentId)
-      if (assignment) {
-        const member = members.find(m => m.user_id === assignment.user_id)
-        if (member && wouldUpgrade(member.user_id, member.system_role, member.user_type)) {
-          const name = `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim() || member.user_email || 'this user'
-          setSeatConfirm({
-            action: async () => { await updateAssignmentRole(assignmentId, newRole) },
-            memberName: name
-          })
-          return
-        }
-      }
-    }
 
     try {
       await updateAssignmentRole(assignmentId, newRole)
@@ -305,18 +280,6 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
           </span>
         </div>
       </div>
-
-      <SeatUpgradeConfirmDialog
-        open={!!seatConfirm}
-        memberName={seatConfirm?.memberName || ''}
-        currentPaidSeats={paidSeatCount}
-        onConfirm={async () => {
-          const action = seatConfirm?.action
-          setSeatConfirm(null)
-          if (action) await action()
-        }}
-        onCancel={() => setSeatConfirm(null)}
-      />
     </div>
   )
 }

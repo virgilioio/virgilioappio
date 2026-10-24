@@ -12,7 +12,6 @@ import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { useAuth } from '@/contexts/AuthContext'
 
 export interface EnrichedMember extends Member {
-  seatType?: 'paid' | 'free'
   effectiveRole?: 'Owner' | 'Admin' | 'Sales' | 'Recruiter' | 'Hiring Manager' | 'Interviewer'
 }
 
@@ -58,7 +57,6 @@ export function MembersTable({
 }: MembersTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
-  const [seatFilter, setSeatFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [copyingInvite, setCopyingInvite] = useState<string | null>(null)
   const [detailMember, setDetailMember] = useState<EnrichedMember | null>(null)
@@ -89,12 +87,11 @@ export function MembersTable({
       })
       return
     }
-    const seat = m.seatType === 'paid' ? ' Their paid seat is freed.' : ''
     const ok = await confirmDestructive({
       variant: 'remove',
       icon: UserX,
       title: `Deactivate ${name}?`,
-      description: `${first} loses access to this workspace right away.${seat} Their jobs, candidates and history stay, and you can reactivate them from this list.`,
+      description: `${first} loses access to this workspace right away. Their jobs, candidates and history stay, and you can reactivate them from this list.`,
       confirmLabel: 'Deactivate member',
     })
     if (ok) onDeactivate(m.id)
@@ -107,10 +104,9 @@ export function MembersTable({
       if (!hay.includes(term)) return false
     }
     if (roleFilter !== 'all' && m.effectiveRole !== roleFilter) return false
-    if (seatFilter !== 'all' && m.seatType !== seatFilter) return false
     if (statusFilter !== 'all' && m.user_status !== statusFilter) return false
     return true
-  }), [members, searchTerm, roleFilter, seatFilter, statusFilter])
+  }), [members, searchTerm, roleFilter, statusFilter])
 
   const copyInviteLink = async (m: EnrichedMember) => {
     if (!m.invite_token) {
@@ -148,9 +144,6 @@ export function MembersTable({
     }
     return <SpecChip tone={ROLE_TONE[role] ?? 'gray'}>{role}</SpecChip>
   }
-  const renderSeat = (m: EnrichedMember) => m.seatType ? (
-    <SpecChip tone={m.seatType === 'paid' ? 'purple' : 'gray'}>{m.seatType === 'paid' ? 'Paid' : 'Free'}</SpecChip>
-  ) : null
   const renderStatus = (m: EnrichedMember) => {
     if (m.user_status === 'active') return <SpecChip tone="green">Active</SpecChip>
     if (m.user_status === 'invited') return <SpecChip tone="amber">Invited</SpecChip>
@@ -161,7 +154,7 @@ export function MembersTable({
     <>
       <SpecCard
         title="Team members"
-        description="Paid seats: admins, owners & recruiters. Hiring managers and interviewers are free."
+        description="Everyone in the workspace. People outside Virgilio are External: hiring managers or interviewers on their jobs."
         action={onAddNew ? (
           <button
             type="button"
@@ -185,9 +178,6 @@ export function MembersTable({
               style={{ background: '#F6F5F1', border: 'none' }}
             />
           </div>
-          <select value={seatFilter} onChange={(e) => setSeatFilter(e.target.value)} className={filterPillBase} style={pillStyle}>
-            <option value="all">All seats</option><option value="paid">Paid</option><option value="free">Free</option>
-          </select>
           <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className={filterPillBase} style={pillStyle}>
             <option value="all">All roles</option><option>Owner</option><option>Admin</option><option>Recruiter</option><option>Hiring Manager</option><option>Interviewer</option><option>Sales</option>
           </select>
@@ -237,7 +227,6 @@ export function MembersTable({
                 </div>
                 <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                   {renderRole(m)}
-                  {renderSeat(m)}
                   {renderStatus(m)}
                 </div>
                 <DropdownMenu>

@@ -8,7 +8,7 @@ import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialo
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
-import { Users, UserPlus, Archive, Lock } from 'lucide-react'
+import { Archive, Briefcase, UserPlus, Users } from 'lucide-react'
 import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -33,12 +33,6 @@ export function MembersTab() {
 
   const { recruiterUserIds } = useRecruiterUserIds()
 
-  const isBillableMember = (m: any) =>
-    m.system_role === 'admin'
-    || m.system_role === 'sales'
-    || m.user_type === 'workspace_owner'
-    || (m.user_id && recruiterUserIds.has(m.user_id))
-
   const getEffectiveRole = (m: any): EnrichedMember['effectiveRole'] => {
     if (m.user_type === 'workspace_owner') return 'Owner'
     if (m.system_role === 'admin') return 'Admin'
@@ -54,22 +48,19 @@ export function MembersTab() {
 
   const enrichedMembers: EnrichedMember[] = useMemo(() =>
     orgMembers.map(m => {
-      const isInactive = m.user_status === 'inactive'
       return {
         ...m,
-        seatType: isInactive ? undefined : (isBillableMember(m) ? 'paid' as const : 'free' as const),
         effectiveRole: getEffectiveRole(m),
       }
     }),
     [orgMembers, recruiterUserIds]
   )
 
-  const activeMembers = enrichedMembers.filter(m => m.user_status !== 'inactive')
-  const paidCount = activeMembers.filter(m => m.seatType === 'paid').length
-  const freeCount = activeMembers.filter(m => m.seatType === 'free').length
+  const activeMembers = enrichedMembers.filter(m => m.user_status === 'active')
+  const teamCount = activeMembers.filter(m => m.user_type !== 'external').length
+  const externalCount = activeMembers.filter(m => m.user_type === 'external').length
+  const invitedCount = enrichedMembers.filter(m => m.user_status === 'invited').length
   const deactivatedCount = enrichedMembers.filter(m => m.user_status === 'inactive').length
-
-  // Next billing date is shown on the Billing tab — keep Members focused on seats.
 
   const handleEdit = (member) => {
     setEditingMember(member)
@@ -136,8 +127,9 @@ export function MembersTab() {
     <div className="space-y-4">
       <MetricStrip
         items={[
-          { icon: Users, tone: 'purple', label: 'Paid seats', value: paidCount },
-          { icon: UserPlus, tone: 'green', label: 'Free collaborators', value: freeCount },
+          { icon: Users, tone: 'purple', label: 'Team', value: teamCount },
+          { icon: Briefcase, tone: 'blue', label: 'External', value: externalCount },
+          { icon: UserPlus, tone: 'green', label: 'Invited', value: invitedCount },
           { icon: Archive, tone: 'neutral', label: 'Deactivated', value: deactivatedCount },
         ] satisfies MetricItem[]}
       />
@@ -155,10 +147,6 @@ export function MembersTab() {
         onAddNew={permissions.canCreateMembers ? handleCreateNew : undefined}
       />
 
-      <p className="flex items-center justify-center gap-1.5 font-inter pt-1" style={{ fontSize: 11, color: '#8B8F9E' }}>
-        <Lock style={{ width: 11, height: 11 }} />
-        Billing &amp; invoices are visible to workspace owners.
-      </p>
 
 
       <MemberInviteSheet
@@ -184,7 +172,6 @@ export function MembersTab() {
             <AlertDialogTitle>Reactivate member</AlertDialogTitle>
             <AlertDialogDescription>
               {memberToReactivate?.user_email || memberToReactivate?.invited_email || 'This member'} will regain access to the workspace.
-              {' '}If their role is a paid one (Owner, Admin, Sales or Recruiter), they will occupy a billable seat again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-3">

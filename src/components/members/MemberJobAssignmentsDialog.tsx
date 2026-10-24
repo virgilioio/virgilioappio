@@ -10,8 +10,6 @@ import { toast } from '@/hooks/use-toast'
 import { Briefcase, Loader2 } from 'lucide-react'
 import { Member } from '@/hooks/useMembers'
 import { useQueryClient } from '@tanstack/react-query'
-import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
-import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftFlag } from '@/components/ui/EmptyIllustrations'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
@@ -44,7 +42,6 @@ export function MemberJobAssignmentsDialog({
   member 
 }: MemberJobAssignmentsDialogProps) {
   const queryClient = useQueryClient()
-  const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
   const [jobs, setJobs] = useState<Job[]>([])
   const [assignedJobIds, setAssignedJobIds] = useState<Set<string>>(new Set())
   // One seat per job: the role they hold where they're on the team already.
@@ -54,7 +51,6 @@ export function MemberJobAssignmentsDialog({
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [pendingChanges, setPendingChanges] = useState<{ add: string[], remove: string[] }>({ add: [], remove: [] })
-  const [showSeatConfirm, setShowSeatConfirm] = useState(false)
 
   useEffect(() => {
     if (isOpen && member?.user_id && member?.organization_id) {
@@ -159,15 +155,6 @@ export function MemberJobAssignmentsDialog({
         confirmLabel: many ? `Remove from ${removing.length} jobs` : 'Remove from job',
       })
       if (!ok) return
-    }
-    
-    // Only a recruiter seat turns a free member into a paid seat.
-    const isCurrentlyFree = wouldUpgrade(member.user_id, member.system_role, member.user_type)
-    const isAddingJobs = pendingChanges.add.length > 0
-    
-    if (isCurrentlyFree && isAddingJobs && addRole === 'recruiter') {
-      setShowSeatConfirm(true)
-      return
     }
     
     executeSave()
@@ -337,17 +324,6 @@ export function MemberJobAssignmentsDialog({
           </div>
         </div>
       </DialogContent>
-
-      <SeatUpgradeConfirmDialog
-        open={showSeatConfirm}
-        memberName={memberName}
-        currentPaidSeats={paidSeatCount}
-        onConfirm={() => {
-          setShowSeatConfirm(false)
-          executeSave()
-        }}
-        onCancel={() => setShowSeatConfirm(false)}
-      />
     </Dialog>
   )
 }

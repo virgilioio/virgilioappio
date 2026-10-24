@@ -11,8 +11,6 @@ import { IconTip } from '@/components/ui/tooltip'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { collapseRows, rowsById } from '@/lib/motion'
 import { useMemberJobAssignments } from '@/hooks/useMemberJobAssignments'
-import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
-import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
 import { EnrichedMember } from '@/components/members/MembersTable'
 import { Briefcase, Calendar, Mail, Trash2, Plus } from 'lucide-react'
 import { format } from 'date-fns'
@@ -89,9 +87,7 @@ const ROLE_OPTIONS = [
 export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: MemberDetailSheetProps) {
   const { data: assignments, isLoading: assignmentsLoading } = useMemberJobAssignments(member?.user_id)
   const queryClient = useQueryClient()
-  const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
-  const [seatConfirm, setSeatConfirm] = useState<{ assignmentId: string; newRole: string } | null>(null)
 
   if (!member) return null
 
@@ -124,10 +120,6 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
   }
 
   const handleRoleChange = async (assignmentId: string, newRole: string) => {
-    if (newRole === 'recruiter' && wouldUpgrade(member.user_id, member.system_role, member.user_type)) {
-      setSeatConfirm({ assignmentId, newRole })
-      return
-    }
     await executeRoleChange(assignmentId, newRole)
   }
 
@@ -199,9 +191,6 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
               <Badge variant={getRoleBadgeVariant(member.effectiveRole)}>
                 {member.effectiveRole || 'Member'}
               </Badge>
-              <Badge variant={member.seatType === 'paid' ? 'seat-paid' : 'seat-free'}>
-                {member.seatType === 'paid' ? 'Paid Seat' : 'Free Seat'}
-              </Badge>
               <Badge variant={getStatusBadgeVariant(member.user_status)}>
                 {member.user_status}
               </Badge>
@@ -223,8 +212,8 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
                 <div className="font-medium capitalize">{member.system_role}</div>
               </div>
               <div>
-                <div className="text-muted-foreground text-xs">Seat Type</div>
-                <div className="font-medium capitalize">{member.seatType || '—'}</div>
+                <div className="text-muted-foreground text-xs">Type</div>
+                <div className="font-medium">{member.user_type === 'external' ? 'External' : 'Virgilio team'}</div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs">Joined</div>
@@ -308,18 +297,6 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
       </Sheet>
 
 
-      {/* Seat upgrade confirmation */}
-      <SeatUpgradeConfirmDialog
-        open={!!seatConfirm}
-        memberName={getDisplayName(member)}
-        currentPaidSeats={paidSeatCount}
-        onConfirm={async () => {
-          const { assignmentId, newRole } = seatConfirm!
-          setSeatConfirm(null)
-          await executeRoleChange(assignmentId, newRole)
-        }}
-        onCancel={() => setSeatConfirm(null)}
-      />
     </>
   )
 }

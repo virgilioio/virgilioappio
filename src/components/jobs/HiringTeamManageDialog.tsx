@@ -14,8 +14,6 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
-import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
 import { toast } from '@/hooks/use-toast'
 import { confirmRemoveMember } from './confirmRemoveMember'
 
@@ -50,14 +48,10 @@ export function HiringTeamManageDialog({
   } = useJobAssignments(jobId)
   const { members } = useMembers(true)
   const permissions = usePermissions()
-  const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
 
   const [query, setQuery] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string>('')
   const [role, setRole] = useState<JobAssignmentRole>('recruiter')
-  const [seatConfirm, setSeatConfirm] = useState<
-    { action: () => Promise<void>; memberName: string } | null
-  >(null)
   const [searchOpen, setSearchOpen] = useState(false)
   // J13 (Block B §16, Pattern 1): Unassign asks first, with the shared copy.
   const handleUnassign = async (assignmentId: string, name: string) => {
@@ -151,17 +145,6 @@ export function HiringTeamManageDialog({
 
   const handleAssignClick = () => {
     if (!selectedMember) return
-    if (
-      role === 'recruiter' &&
-      wouldUpgrade(
-        selectedMember.user_id,
-        selectedMember.system_role,
-        selectedMember.user_type
-      )
-    ) {
-      setSeatConfirm({ action: doAssign, memberName: displayName(selectedMember) })
-      return
-    }
     void doAssign()
   }
 
@@ -169,19 +152,6 @@ export function HiringTeamManageDialog({
     assignmentId: string,
     newRole: JobAssignmentRole
   ) => {
-    if (newRole === 'recruiter') {
-      const a = assignments.find((x) => x.id === assignmentId)
-      const m = a ? members.find((mm) => mm.user_id === a.user_id) : null
-      if (m && wouldUpgrade(m.user_id, m.system_role, m.user_type)) {
-        setSeatConfirm({
-          action: async () => {
-            await updateAssignmentRole(assignmentId, newRole)
-          },
-          memberName: displayName(m),
-        })
-        return
-      }
-    }
     try {
       await updateAssignmentRole(assignmentId, newRole)
     } catch {
@@ -650,19 +620,6 @@ export function HiringTeamManageDialog({
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
-
-    <SeatUpgradeConfirmDialog
-      open={!!seatConfirm}
-      elevated
-      memberName={seatConfirm?.memberName || ''}
-      currentPaidSeats={paidSeatCount}
-      onConfirm={async () => {
-        const action = seatConfirm?.action
-        setSeatConfirm(null)
-        if (action) await action()
-      }}
-      onCancel={() => setSeatConfirm(null)}
-    />
     </>
   )
 }

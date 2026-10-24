@@ -6,8 +6,6 @@ import { VIRGILIO_TENANT_ID } from "@/hooks/useChildOrganizationsForJobCreation"
 import { useAuth } from "@/contexts/AuthContext"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useOrganizations } from "@/hooks/useOrganizations"
-import { useSeatsLimit } from "@/hooks/useSeatsLimit"
-import { useBillingStatus } from "@/hooks/useBillingStatus"
 import { useToast } from "@/hooks/use-toast"
 import { Member } from "@/hooks/useMembers"
 import {
@@ -17,7 +15,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Info,
-  Ticket,
   Send,
   ShieldCheck,
   Users,
@@ -25,7 +22,6 @@ import {
   Check,
   Plus,
 } from "lucide-react"
-import { SeatLimitUpgradeDialog } from "./SeatLimitUpgradeDialog"
 import { supabase } from "@/integrations/supabase/client"
 import { useAsyncValidation } from "@/hooks/useAsyncValidation"
 import { AsyncStatus } from "@/components/ui/async-status"
@@ -45,7 +41,6 @@ interface RoleDef {
   label: string
   description: string
   icon: typeof ShieldCheck
-  seat: "paid" | "free"
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -84,18 +79,10 @@ export function MemberInviteSheet({
   const { organizations } = useOrganizations()
   const permissions = usePermissions()
   const { toast } = useToast()
-  const { data: billing } = useBillingStatus()
 
   const currentOrg = organizations.find((o) => o.id === organizationId)
   const orgName = currentOrg?.name || "your workspace"
   const tenantId = currentOrg?.tenant_id
-  const { data: seatInfo } = useSeatsLimit(tenantId)
-
-  const seatsLeft = useMemo(() => {
-    if (!seatInfo) return null
-    if (seatInfo.seat_limit == null) return Infinity
-    return Math.max(0, seatInfo.seat_limit - seatInfo.current_seats)
-  }, [seatInfo])
 
   const roleOptions: RoleDef[] = useMemo(() => {
     const roles: RoleDef[] = []
@@ -104,9 +91,8 @@ export function MemberInviteSheet({
         value: "admin",
         label: "Admin",
         description:
-          "Full organization management access — settings, members, and billing.",
+          "Full organization management access: settings and members.",
         icon: ShieldCheck,
-        seat: "paid",
       })
     }
     roles.push({
@@ -115,7 +101,6 @@ export function MemberInviteSheet({
       description:
         "Assignable to jobs as recruiter, hiring manager, or interviewer.",
       icon: Users,
-      seat: "free",
     })
     roles.push({
       value: "sales",
@@ -123,7 +108,6 @@ export function MemberInviteSheet({
       description:
         "CRM only — manages companies and deals. No access to recruiting.",
       icon: Handshake,
-      seat: "paid",
     })
     return roles
   }, [permissions.isPlatformAdmin, permissions.isWorkspaceOwner])
@@ -135,12 +119,6 @@ export function MemberInviteSheet({
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
-  const [seatLimitInfo, setSeatLimitInfo] = useState<{
-    currentSeats: number
-    seatLimit: number | null
-    isTrial: boolean
-  } | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const chipContainerRef = useRef<HTMLDivElement>(null)
@@ -304,12 +282,6 @@ export function MemberInviteSheet({
   }, [outsideVirgilio, role])
 
   const selectedRoleDef = shownRoles.find((r) => r.value === role)
-  const rolePaid = selectedRoleDef?.seat === "paid"
-  const overSeats =
-    rolePaid &&
-    seatsLeft !== null &&
-    seatsLeft !== Infinity &&
-    validChips.length > (seatsLeft as number)
 
   const canConfirm =
     !submitting &&
@@ -346,7 +318,6 @@ export function MemberInviteSheet({
 
     setSubmitting(true)
     let failures = 0
-    let seatLimitHit = false
 
     for (const email of emails) {
       try {
@@ -358,32 +329,12 @@ export function MemberInviteSheet({
           user_status: "invited",
           personal_message: message.trim() || undefined,
         })
-      } catch (error) {
+      } catch {
         failures++
-        // Detect seat-limit error and surface upgrade dialog
-        try {
-          const em = error instanceof Error ? error.message : String(error)
-          const parsed = JSON.parse(em)
-          if (parsed?.type === "SEAT_LIMIT_REACHED") {
-            seatLimitHit = true
-            setSeatLimitInfo({
-              currentSeats: parsed.current_seats,
-              seatLimit: parsed.seat_limit,
-              isTrial: parsed.is_trial,
-            })
-          }
-        } catch {
-          /* not JSON */
-        }
       }
     }
 
     setSubmitting(false)
-
-    if (seatLimitHit) {
-      setShowUpgradeDialog(true)
-      return
-    }
 
     if (failures === 0) {
       onClose()
@@ -740,21 +691,6 @@ export function MemberInviteSheet({
                             >
                               {r.label}
                             </span>
-                            <span
-                              className="font-inter"
-                              style={{
-                                fontSize: 9.5,
-                                fontWeight: 600,
-                                borderRadius: 999,
-                                padding: "1px 7px",
-                                background:
-                                  r.seat === "paid" ? "#EDE4FF" : "#D1FAE5",
-                                color:
-                                  r.seat === "paid" ? "#5B21B6" : "#0B7A57",
-                              }}
-                            >
-                              {r.seat === "paid" ? "Paid seat" : "Free"}
-                            </span>
                           </div>
                           <div
                             className="font-inter"
@@ -863,34 +799,6 @@ export function MemberInviteSheet({
                 gap: 12,
               }}
             >
-              {!isEditing && (
-                <div
-                  className="flex items-center font-inter"
-                  style={{
-                    gap: 6,
-                    fontSize: 11.5,
-                    color: overSeats ? "#B4362F" : "#8B8F9E",
-                  }}
-                >
-                  {overSeats ? (
-                    <>
-                      <AlertCircle style={{ height: 12, width: 12 }} />
-                      <span>
-                        Only {seatsLeft} paid seats left — add more in Billing
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Ticket style={{ height: 12, width: 12 }} />
-                      <span>
-                        {seatsLeft === Infinity || seatsLeft === null
-                          ? "Unlimited paid seats available"
-                          : `${seatsLeft} paid seats available`}
-                      </span>
-                    </>
-                  )}
-                </div>
-              )}
               <div className="flex-1" />
               <Button
                 type="button"
@@ -916,20 +824,6 @@ export function MemberInviteSheet({
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
 
-      <SeatLimitUpgradeDialog
-        open={showUpgradeDialog}
-        onOpenChange={setShowUpgradeDialog}
-        currentTier={
-          billing?.subscription_tier as
-            | "solo"
-            | "launch"
-            | "growth"
-            | "business"
-            | null
-        }
-        currentSeats={seatLimitInfo?.currentSeats ?? 0}
-        seatLimit={seatLimitInfo?.seatLimit ?? null}
-      />
     </>
   )
 }
