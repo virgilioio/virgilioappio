@@ -1,4 +1,4 @@
--- Run after 20261024150000_os_people_dashboard inside a transaction that is rolled back.
+-- Run after 20261024075350_os_people_dashboard inside a transaction that is rolled back.
 -- Birthdays and anniversaries come round on the right day (29 February on the
 -- 28th), a birth date in the future is refused, a Nager.Date answer becomes
 -- national holidays only, India has its fixed days, the dashboard is for admins

@@ -6955,6 +6955,86 @@ export type Database = {
           },
         ]
       }
+      os_holiday_fetches: {
+        Row: {
+          attempts: number
+          country_code: string
+          done_at: string | null
+          holidays: number | null
+          request_id: number | null
+          requested_at: string | null
+          status: string
+          year: number
+        }
+        Insert: {
+          attempts?: number
+          country_code: string
+          done_at?: string | null
+          holidays?: number | null
+          request_id?: number | null
+          requested_at?: string | null
+          status?: string
+          year: number
+        }
+        Update: {
+          attempts?: number
+          country_code?: string
+          done_at?: string | null
+          holidays?: number | null
+          request_id?: number | null
+          requested_at?: string | null
+          status?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      os_holidays: {
+        Row: {
+          archived_at: string | null
+          country_code: string
+          created_at: string
+          created_by: string | null
+          day: string
+          id: string
+          local_name: string | null
+          name: string
+          source: string
+          tenant_id: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          country_code: string
+          created_at?: string
+          created_by?: string | null
+          day: string
+          id?: string
+          local_name?: string | null
+          name: string
+          source: string
+          tenant_id?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          country_code?: string
+          created_at?: string
+          created_by?: string | null
+          day?: string
+          id?: string
+          local_name?: string | null
+          name?: string
+          source?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_holidays_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_offboardings: {
         Row: {
           finished_at: string | null
@@ -7066,6 +7146,7 @@ export type Database = {
       }
       os_person_details: {
         Row: {
+          birth_date: string | null
           city: string | null
           country_code: string | null
           created_at: string
@@ -7078,6 +7159,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          birth_date?: string | null
           city?: string | null
           country_code?: string | null
           created_at?: string
@@ -7090,6 +7172,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          birth_date?: string | null
           city?: string | null
           country_code?: string | null
           created_at?: string
@@ -7260,6 +7343,7 @@ export type Database = {
           max_open_jobs: number | null
           segments: string[]
           specialties: string[]
+          start_date: string | null
           tenant_id: string
           updated_at: string
           updated_by: string | null
@@ -7270,6 +7354,7 @@ export type Database = {
           max_open_jobs?: number | null
           segments?: string[]
           specialties?: string[]
+          start_date?: string | null
           tenant_id: string
           updated_at?: string
           updated_by?: string | null
@@ -7280,6 +7365,7 @@ export type Database = {
           max_open_jobs?: number | null
           segments?: string[]
           specialties?: string[]
+          start_date?: string | null
           tenant_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -12330,6 +12416,19 @@ export type Database = {
           to_email: string
         }[]
       }
+      os_active_people: {
+        Args: { _tenant_id: string }
+        Returns: {
+          avatar_url: string
+          birth_date: string
+          country_code: string
+          max_open_jobs: number
+          member_id: string
+          name: string
+          start_date: string
+          user_id: string
+        }[]
+      }
       os_bank_alerts_claim: {
         Args: { _limit?: number }
         Returns: {
@@ -12377,7 +12476,22 @@ export type Database = {
         Args: { _detail: string; _id: string; _ok: boolean; _retry: boolean }
         Returns: undefined
       }
+      os_country_label: { Args: { _code: string }; Returns: string }
+      os_holidays_between: {
+        Args: {
+          _countries: string[]
+          _days: number
+          _from: string
+          _tenant_id: string
+        }
+        Returns: Json
+      }
+      os_holidays_sync: { Args: { _queue?: boolean }; Returns: Json }
       os_my_bundle_id: { Args: { _tenant_id: string }; Returns: string }
+      os_next_occurrence: {
+        Args: { _d: string; _from: string }
+        Returns: string
+      }
       os_offboard_ats: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: Json
@@ -12412,6 +12526,8 @@ export type Database = {
           user_type: string
         }[]
       }
+      os_people_bells: { Args: never; Returns: number }
+      os_people_dashboard: { Args: { _tenant_id: string }; Returns: Json }
       os_person_performance: {
         Args: {
           _from: string
@@ -12516,6 +12632,8 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: Json
       }
+      os_team_calendar: { Args: { _tenant_id: string }; Returns: Json }
+      os_today: { Args: never; Returns: string }
       person_name_key: { Args: { p: string }; Returns: string }
       person_names_match: { Args: { a: string; b: string }; Returns: boolean }
       platform_remove_workspace: {
@@ -13276,6 +13394,7 @@ export type Database = {
         | "candidate_update"
         | "sign"
         | "account"
+        | "team"
       org_kind_enum: "tenant" | "client" | "department" | "root"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -13704,6 +13823,7 @@ export const Constants = {
         "candidate_update",
         "sign",
         "account",
+        "team",
       ],
       org_kind_enum: ["tenant", "client", "department", "root"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
