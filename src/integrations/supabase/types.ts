@@ -6711,6 +6711,8 @@ export type Database = {
           claimed_at: string | null
           created_at: string
           id: string
+          kind: string
+          label: string | null
           last_error: string | null
           sent_at: string | null
           status: string
@@ -6723,6 +6725,8 @@ export type Database = {
           claimed_at?: string | null
           created_at?: string
           id?: string
+          kind?: string
+          label?: string | null
           last_error?: string | null
           sent_at?: string | null
           status?: string
@@ -6735,6 +6739,8 @@ export type Database = {
           claimed_at?: string | null
           created_at?: string
           id?: string
+          kind?: string
+          label?: string | null
           last_error?: string | null
           sent_at?: string | null
           status?: string
@@ -12308,6 +12314,21 @@ export type Database = {
       organization_has_active_public_posting: {
         Args: { org_id_param: string }
         Returns: boolean
+      }
+      os_account_alerts_claim: {
+        Args: { _limit?: number }
+        Returns: {
+          account_label: string
+          account_last4: string
+          alert_id: string
+          bank_name: string
+          changed_at: string
+          changed_by_name: string
+          kind: string
+          label: string
+          person_name: string
+          to_email: string
+        }[]
       }
       os_bank_alerts_claim: {
         Args: { _limit?: number }

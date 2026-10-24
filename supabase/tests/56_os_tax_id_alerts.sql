@@ -1,4 +1,4 @@
--- Run after 20261024120000_os_tax_id_alerts inside a transaction that is rolled back.
+-- Run after 20261024071257_os_tax_id_alerts inside a transaction that is rolled back.
 -- An admin changes and removes a teammate's tax ID: two alerts wait for the
 -- email, labelled, with no part of the number. The old bank claim skips them,
 -- the new claim hands them over. The person's own change queues nothing.
