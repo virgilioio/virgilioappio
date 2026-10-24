@@ -8,6 +8,7 @@ interface DateTimePickerVirgilioProps {
   onChange: (date: Date) => void
   className?: string
   minDate?: Date
+  maxDate?: Date
   disabledDates?: (date: Date) => boolean
   startHour?: number
   endHour?: number
@@ -19,6 +20,7 @@ export function DateTimePickerVirgilio({
   onChange,
   className,
   minDate,
+  maxDate,
   disabledDates,
   startHour = 6,
   endHour = 22,
@@ -47,6 +49,7 @@ export function DateTimePickerVirgilio({
         value={value}
         onChange={handleDateSelect}
         minDate={minDate}
+        maxDate={maxDate}
         disabled={disabledDates}
         className="flex-1 h-9"
       />
