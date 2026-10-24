@@ -23,7 +23,7 @@ const SIGN_PREFIXES = ['/sign']
 
 export function getActiveSection(pathname: string, search = ''): AppSection {
   if (pathname === '/' || pathname === '/dashboard') return 'home'
-  if (pathname === '/me') return 'my-profile'
+  if (pathname === '/me' || pathname.startsWith('/me/')) return 'my-profile'
   if (ANALYTICS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'analytics'
   if (PEOPLE_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'people'
   if (SIGN_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'sign'
@@ -31,10 +31,7 @@ export function getActiveSection(pathname: string, search = ''): AppSection {
   if (CHAT_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'chat'
   if (CRM_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'crm'
   if (ATS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'ats'
-  if (pathname === '/settings' || pathname === '/billing') {
-    const params = new URLSearchParams(search)
-    return params.get('tab') === 'profile' ? 'my-profile' : 'settings'
-  }
+  if (pathname === '/settings' || pathname === '/billing') return 'settings'
   return null
 }
 

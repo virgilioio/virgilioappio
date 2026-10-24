@@ -72,7 +72,6 @@ export function TaxIdsCard({
   const canEdit = !!d?.can_edit
   const rows = d?.ids ?? []
   const loading = ids.isLoading || types.isLoading
-  const typeOf = (key: string) => types.data?.find((t) => t.key === key)
   const free = (types.data ?? []).filter((t) => !rows.some((r) => r.type_key === t.key))
 
   return (
@@ -121,7 +120,6 @@ export function TaxIdsCard({
           canEdit={canEdit}
           canReveal={!!d?.can_reveal}
           self={self}
-          noteOf={(r) => typeOf(r.type_key)?.note ?? null}
           onEdit={setEditing}
         />
       ) : (
@@ -149,7 +147,6 @@ function TaxIdRows({
   canEdit,
   canReveal,
   self,
-  noteOf,
   onEdit,
 }: {
   tenantId: string
@@ -158,7 +155,6 @@ function TaxIdRows({
   canEdit: boolean
   canReveal: boolean
   self: boolean
-  noteOf: (r: TaxIdRow) => string | null
   onEdit: (typeKey: string) => void
 }) {
   const qc = useQueryClient()
@@ -223,7 +219,7 @@ function TaxIdRows({
         {rows.map((r) => {
           const open = shown?.key === r.type_key
           return (
-            <InfoRow key={r.type_key} label={r.label} hint={[countryName(r.country_code), noteOf(r)].filter(Boolean).join(' · ')}>
+            <InfoRow key={r.type_key} label={r.label} hint={countryName(r.country_code)}>
               <span className="inline-flex min-w-0 max-w-full items-center justify-end gap-1.5 tabular-nums">
                 {open ? <CopyValue value={shown.value} label={r.label} /> : <span className="whitespace-nowrap">•••• {r.last4}</span>}
                 {canReveal && (

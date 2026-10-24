@@ -85,6 +85,7 @@ const References = lazy(() => import('./pages/References'))
 const OsPeople = lazy(() => import('./pages/os/People'))
 const OsPersonDetail = lazy(() => import('./pages/os/PersonDetail'))
 const MyProfile = lazy(() => import('./pages/os/MyProfile'))
+const MyHome = lazy(() => import('./pages/os/MyHome'))
 const OsJobRoles = lazy(() => import('./pages/os/JobRoles'))
 const OsHistory = lazy(() => import('./pages/os/History'))
 const OsCommissionRules = lazy(() => import('./pages/os/CommissionRules'))
@@ -239,7 +240,8 @@ function AppContent() {
             {/* Gio OS: People & Access (admins and platform admins) */}
             <Route path="/os" element={<Navigate to="/os/people" replace />} />
             <Route path="/os/people" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsPeople /></OsAdminOnly></PhoneSwitch>} />
-            <Route path="/me" element={<MyProfile />} />
+            <Route path="/me" element={<MyHome />} />
+            <Route path="/me/details" element={<MyProfile />} />
             <Route path="/os/people/:memberId" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsPersonDetail /></OsAdminOnly></PhoneSwitch>} />
             <Route path="/os/job-roles" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsJobRoles /></OsAdminOnly></PhoneSwitch>} />
             <Route path="/os/history" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsHistory /></OsAdminOnly></PhoneSwitch>} />

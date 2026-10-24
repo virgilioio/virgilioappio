@@ -76,6 +76,57 @@ function moneyMetric(label: string, icon: LucideIcon, tone: MetricTone, sums: { 
  * Gio Sales' invoices, and an estimate of what their open openings could bring.
  * Filled openings count only when the hire credits them.
  */
+/**
+ * Earned, Pending and Potential for one person, shared by the Earnings tab and
+ * the My profile home so the two always show the same numbers.
+ */
+export function useEarningsSummary(userId: string | null, tenantId: string | undefined, jobs: PersonJob[], jobsLoading: boolean) {
+  const earnings = usePersonEarnings(userId)
+  const openings = usePersonOpenings(userId, jobs, !jobsLoading)
+  const rates = useCommissionRates(tenantId)
+
+  const rows = earnings.data ?? []
+  const live = rows.filter((e) => e.status !== 'void')
+  const earned = byCurrency(live.filter((e) => e.earned_amount > 0).map((e) => ({ amount: e.earned_amount, currency: e.currency })))
+  const pending = byCurrency(live.filter((e) => e.pending_amount > 0).map((e) => ({ amount: e.pending_amount, currency: e.currency })))
+
+  const list = (openings.data ?? [])
+    .slice()
+    .sort((a, b) => OPENING_ORDER[a.status] - OPENING_ORDER[b.status] || (b.filled_at ?? '').localeCompare(a.filled_at ?? ''))
+  const estimates = new Map(list.filter((o) => o.status !== 'filled').map((o) => [o.id, estimateOpening(o, rates.data ?? [])]))
+  const potential = byCurrency([...estimates.values()].flatMap((e) => ('amount' in e ? [{ amount: e.amount, currency: e.currency }] : [])))
+  const unestimated = [...estimates.values()].filter((e) => 'missing' in e).length
+  const loading = earnings.isLoading || jobsLoading || openings.isLoading || rates.isLoading
+  return { earnings, openings, rates, rows, live, list, estimates, earned, pending, potential, unestimated, loading }
+}
+
+/** The Earned · Pending · Potential strip on its own (My profile home). */
+export function EarningsStrip({
+  userId,
+  tenantId,
+  jobs,
+  jobsLoading,
+}: {
+  userId: string | null
+  tenantId: string | undefined
+  jobs: PersonJob[]
+  jobsLoading: boolean
+}) {
+  const s = useEarningsSummary(userId, tenantId, jobs, jobsLoading)
+  if (s.earnings.isError) return <LoadError what="your earnings" compact onRetry={() => void s.earnings.refetch()} />
+  return (
+    <MetricStrip
+      id={`os-earnings-${userId}`}
+      loading={s.loading}
+      items={[
+        moneyMetric('Earned', CircleDollarSign, 'green', s.earned),
+        moneyMetric('Pending', Clock, 'yellow', s.pending),
+        moneyMetric('Potential', TrendingUp, 'purple', s.potential),
+      ]}
+    />
+  )
+}
+
 export function PersonEarnings({
   userId,
   tenantId,
@@ -92,22 +143,13 @@ export function PersonEarnings({
 }) {
   const their = self ? 'your' : 'their'
   const them = self ? 'you' : 'them'
-  const earnings = usePersonEarnings(userId)
-  const openings = usePersonOpenings(userId, jobs, !jobsLoading)
-  const rates = useCommissionRates(tenantId)
+  const { earnings, openings, rates, rows, live, list, estimates, earned, pending, potential, unestimated } = useEarningsSummary(
+    userId,
+    tenantId,
+    jobs,
+    jobsLoading,
+  )
   const bank = useBankDetails(tenantId, userId)
-
-  const rows = earnings.data ?? []
-  const live = rows.filter((e) => e.status !== 'void')
-  const earned = byCurrency(live.filter((e) => e.earned_amount > 0).map((e) => ({ amount: e.earned_amount, currency: e.currency })))
-  const pending = byCurrency(live.filter((e) => e.pending_amount > 0).map((e) => ({ amount: e.pending_amount, currency: e.currency })))
-
-  const list = (openings.data ?? [])
-    .slice()
-    .sort((a, b) => OPENING_ORDER[a.status] - OPENING_ORDER[b.status] || (b.filled_at ?? '').localeCompare(a.filled_at ?? ''))
-  const estimates = new Map(list.filter((o) => o.status !== 'filled').map((o) => [o.id, estimateOpening(o, rates.data ?? [])]))
-  const potential = byCurrency([...estimates.values()].flatMap((e) => ('amount' in e ? [{ amount: e.amount, currency: e.currency }] : [])))
-  const unestimated = [...estimates.values()].filter((e) => 'missing' in e).length
 
   const earningsOf = (o: PersonOpening) => live.filter((e) => e.opening_id === o.id && (e.role_key === 'sp' || e.role_key === 'tap'))
 

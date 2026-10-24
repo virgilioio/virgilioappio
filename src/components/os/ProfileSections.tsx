@@ -228,7 +228,7 @@ export function PersonalCard({ tenantId, person, isSelf }: { tenantId: string; p
       )}
       <p className="pt-3 font-inter text-[11.5px] text-[#6B7080]">
         Only People &amp; Access admins and {isSelf ? 'you' : first} see these
-        {isSelf ? '.' : `. ${first} can also update them in Settings › Profile.`}
+        {isSelf ? '.' : `. ${first} can also update them in My profile.`}
       </p>
     </ProfileCard>
   )

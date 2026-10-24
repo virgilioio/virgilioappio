@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { Briefcase, History, KeyRound, Send, Settings2, ShieldCheck } from 'lucide-react'
+import { Briefcase, History, KeyRound, Send, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { undoToast } from '@/lib/undoToast'
 
@@ -54,6 +54,7 @@ import {
 } from '@/components/os/ProfileSections'
 import { BankDetailsCard } from '@/components/os/BankDetailsCard'
 import { TaxIdsCard } from '@/components/os/TaxIdsCard'
+import { AccountCard } from '@/components/os/AccountCard'
 import { ProfileNav, TAB_META, type ProfileTab } from '@/components/os/ProfileNav'
 import { COUNTRIES } from '@/constants/countries'
 import { loadLevel, segmentLabel, takesSegments, useWorkProfile } from '@/lib/os/workProfile'
@@ -106,7 +107,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
   const rawTab = params.get('tab') === 'jobs' ? 'work' : params.get('tab') ?? ''
   const tabs: readonly Tab[] = self ? SELF_TABS : TABS
   const tab: Tab = (tabs as readonly string[]).includes(rawTab) ? (rawTab as Tab) : 'overview'
-  const crumbs = self ? undefined : [{ label: 'People', to: '/os/people' }]
+  const crumbs = self ? [{ label: 'My profile', to: '/me' }] : [{ label: 'People', to: '/os/people' }]
   const setTab = (next: Tab) => {
     setParams(
       (prev) => {
@@ -118,6 +119,26 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
       { replace: true },
     )
   }
+
+  // ?focus=card-… (the My profile home's To do): scroll to that card once the page is drawn.
+  const focus = params.get('focus')
+  const ready = !!person && !!tenant?.id
+  useEffect(() => {
+    if (!focus || !ready) return
+    const t = window.setTimeout(() => {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      document.getElementById(focus)?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+      setParams(
+        (prev) => {
+          const p = new URLSearchParams(prev)
+          p.delete('focus')
+          return p
+        },
+        { replace: true },
+      )
+    }, 60)
+    return () => window.clearTimeout(t)
+  }, [focus, ready, setParams])
 
   const nameOf = useMemo(() => {
     const map = new Map((people.data ?? []).filter((p) => p.user_id).map((p) => [p.user_id!, personName(p)]))
@@ -295,17 +316,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
 
   return (
     <ListPage
-      breadcrumb={self ? undefined : [{ label: 'People', to: '/os/people' }, { label: personName(person) }]}
-      actions={
-        self ? (
-          <Button asChild variant="secondary">
-            <Link to="/settings?tab=profile">
-              <Settings2 aria-hidden />
-              Name, photo and signature
-            </Link>
-          </Button>
-        ) : undefined
-      }
+      breadcrumb={self ? [{ label: 'My profile', to: '/me' }, { label: 'Details' }] : [{ label: 'People', to: '/os/people' }, { label: personName(person) }]}
       title={
         <span className="inline-flex min-w-0 items-center gap-3 align-middle">
           <PersonAvatar person={person} size={48} />
@@ -384,6 +395,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                 {joined && !self && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
               </div>
               <div className="min-w-0 space-y-4">
+                {self && <AccountCard />}
                 <PersonalCard tenantId={tenant.id} person={person} isSelf={isSelf} />
                 <GeneralCard person={person} />
                 <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
