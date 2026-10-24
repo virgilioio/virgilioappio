@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { History, KeyRound, Send, Settings2, ShieldCheck } from 'lucide-react'
+import { Briefcase, History, KeyRound, Send, Settings2, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { undoToast } from '@/lib/undoToast'
 
@@ -43,14 +43,24 @@ import { PersonJobsTable } from '@/components/os/PersonJobsTable'
 import { PersonEarnings } from '@/components/os/PersonEarnings'
 import { PersonPerformance } from '@/components/os/PersonPerformance'
 import { ProfileCard } from '@/components/os/ProfileParts'
-import { CurrentWorkCard, GeneralCard, PersonalCard, RatingCard, RoleCard } from '@/components/os/ProfileSections'
+import {
+  AccessSummaryCard,
+  CurrentWorkCard,
+  GeneralCard,
+  LatestAgreementsCard,
+  PersonalCard,
+  RatingCard,
+  RoleCard,
+} from '@/components/os/ProfileSections'
+import { BankDetailsCard } from '@/components/os/BankDetailsCard'
+import { ProfileNav, TAB_META, type ProfileTab } from '@/components/os/ProfileNav'
 import { COUNTRIES } from '@/constants/countries'
 import { loadLevel, segmentLabel, takesSegments, useWorkProfile } from '@/lib/os/workProfile'
 import { AgreementsCard } from '@/components/sign/AgreementsCard'
 
 const NO_ACCESS = '__none__'
-const TABS = ['overview', 'work', 'earnings', 'agreements', 'access', 'history'] as const
-type Tab = (typeof TABS)[number]
+const TABS: readonly ProfileTab[] = ['overview', 'work', 'earnings', 'agreements', 'access', 'history']
+type Tab = ProfileTab
 /** My profile (Part B): a member's own page has no Access or History. */
 const SELF_TABS: readonly Tab[] = ['overview', 'work', 'earnings', 'agreements']
 
@@ -96,7 +106,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
   const tabs: readonly Tab[] = self ? SELF_TABS : TABS
   const tab: Tab = (tabs as readonly string[]).includes(rawTab) ? (rawTab as Tab) : 'overview'
   const crumbs = self ? undefined : [{ label: 'People', to: '/os/people' }]
-  const setTab = (next: Tab) =>
+  const setTab = (next: Tab) => {
     setParams(
       (prev) => {
         const p = new URLSearchParams(prev)
@@ -106,6 +116,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
       },
       { replace: true },
     )
+  }
 
   const nameOf = useMemo(() => {
     const map = new Map((people.data ?? []).filter((p) => p.user_id).map((p) => [p.user_id!, personName(p)]))
@@ -296,7 +307,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
       }
       title={
         <span className="inline-flex min-w-0 items-center gap-3 align-middle">
-          <PersonAvatar person={person} size={36} />
+          <PersonAvatar person={person} size={48} />
           <span className="truncate">{personName(person)}</span>
         </span>
       }
@@ -322,21 +333,29 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
       }
     >
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-        <TabsList aria-label="Member profile">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="work">
-            Work
-            {joined && jobs.isSuccess && <span className="ml-1.5 tabular-nums">{jobList.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="earnings">Earnings</TabsTrigger>
-          <TabsTrigger value="agreements">Agreements</TabsTrigger>
-          {!self && <TabsTrigger value="access">Access</TabsTrigger>}
-          {!self && <TabsTrigger value="history">History</TabsTrigger>}
+        <div className="lg:grid lg:grid-cols-[224px_minmax(0,1fr)] lg:items-start lg:gap-[26px]">
+          <aside className="hidden lg:sticky lg:top-0 lg:block">
+            <ProfileNav
+              tabs={tabs}
+              active={tab}
+              onPick={(t) => setTab(t)}
+              counts={joined && jobs.isSuccess ? { work: jobList.length } : undefined}
+            />
+          </aside>
+          <div className="min-w-0">
+        {/* Below lg the rail folds into the tab bar. */}
+        <TabsList aria-label="Member profile" className="lg:hidden">
+          {tabs.map((t) => (
+            <TabsTrigger key={t} value={t}>
+              {TAB_META[t].label}
+              {t === 'work' && joined && jobs.isSuccess && <span className="ml-1.5 tabular-nums">{jobList.length}</span>}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        <TabsContent value="overview" className="mt-4">
+        <TabsContent value="overview" className="mt-4 lg:mt-0">
           {tenant?.id && (
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="grid gap-4 xl:grid-cols-2">
               <div className="min-w-0 space-y-4">
                 {joined ? (
                   <RoleCard
@@ -348,7 +367,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                     editable={!self && personState(person) !== 'deactivated'}
                   />
                 ) : (
-                  <ProfileCard title="Role">
+                  <ProfileCard id="card-role" title="Role" icon={Briefcase} tone="purple">
                     <p className="font-inter text-[12.5px] text-[#6B7080]">Set up once they accept their invitation.</p>
                   </ProfileCard>
                 )}
@@ -360,17 +379,20 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                   onRetry={() => void jobs.refetch()}
                   onSeeAll={() => setTab('work')}
                 />
+                <LatestAgreementsCard person={person} self={self} onSeeAll={() => setTab('agreements')} />
+                {joined && !self && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
               </div>
               <div className="min-w-0 space-y-4">
                 <PersonalCard tenantId={tenant.id} person={person} isSelf={isSelf} />
                 <GeneralCard person={person} />
-                {joined && !self && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
+                <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
+                {joined && <BankDetailsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
               </div>
             </div>
           )}
         </TabsContent>
 
-        <TabsContent value="work" className="mt-4">
+        <TabsContent value="work" className="mt-4 lg:mt-0">
           {!joined ? (
             <p className="font-inter text-[12.5px] text-[#6B7080]">No jobs until they accept their invitation.</p>
           ) : (
@@ -389,17 +411,17 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
           )}
         </TabsContent>
 
-        <TabsContent value="earnings" className="mt-4">
+        <TabsContent value="earnings" className="mt-4 lg:mt-0">
           <div className="max-w-[960px]">
             {joined ? (
-              <PersonEarnings userId={person.user_id} tenantId={tenant?.id} jobs={jobList} jobsLoading={jobs.isLoading} self={self} name={person.first_name ?? undefined} />
+              <PersonEarnings userId={person.user_id} tenantId={tenant?.id} jobs={jobList} jobsLoading={jobs.isLoading} self={self} />
             ) : (
               <p className="font-inter text-[12.5px] text-[#6B7080]">Nothing to show until they accept their invitation.</p>
             )}
           </div>
         </TabsContent>
 
-        <TabsContent value="agreements" className="mt-4">
+        <TabsContent value="agreements" className="mt-4 lg:mt-0">
           <div className="max-w-[960px]">
             {joined ? (
               <AgreementsCard
@@ -414,7 +436,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
           </div>
         </TabsContent>
 
-        <TabsContent value="access" className="mt-4">
+        <TabsContent value="access" className="mt-4 lg:mt-0">
           <div className="max-w-[960px] space-y-4">
             {(notEditableReason || error) && (
               <p
@@ -425,7 +447,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
               </p>
             )}
 
-            <ProfileCard title="Job role" icon={KeyRound}>
+            <ProfileCard title="Job role" icon={KeyRound} tone="purple">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="min-w-[220px] flex-1">
                   <Select
@@ -461,7 +483,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
               </p>
             </ProfileCard>
 
-            <ProfileCard title="Apps and roles" icon={ShieldCheck}>
+            <ProfileCard title="Apps and roles" icon={ShieldCheck} tone="purple">
               <ul className="divide-y divide-[#EFEEEA]">
                 {APPS.map((app) => {
                   const grant = grants.find((g) => g.app === app.key)
@@ -541,9 +563,9 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
           </div>
         </TabsContent>
 
-        <TabsContent value="history" className="mt-4">
+        <TabsContent value="history" className="mt-4 lg:mt-0">
           <div className="max-w-[960px]">
-            <ProfileCard title="History" icon={History}>
+            <ProfileCard title="History" icon={History} tone="neutral">
               {history.isLoading ? (
                 <Skeleton className="h-20 w-full" />
               ) : history.isError ? (
@@ -556,6 +578,8 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
             </ProfileCard>
           </div>
         </TabsContent>
+          </div>
+        </div>
       </Tabs>
     </ListPage>
   )

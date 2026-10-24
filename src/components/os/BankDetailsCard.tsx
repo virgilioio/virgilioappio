@@ -135,8 +135,10 @@ export function BankDetailsCard({
   const canEdit = !!b?.can_edit
   return (
     <ProfileCard
+      id="card-bank"
       title="Bank details"
       icon={Landmark}
+      tone="green"
       aside={b?.has_details && canEdit && !editing ? <EditToggle editing={false} onChange={setEditing} label="bank details" /> : undefined}
     >
       {bank.isLoading ? (

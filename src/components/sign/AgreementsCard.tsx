@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { IconTip } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
-function Line({ e }: { e: EnvelopeRow }) {
+export function AgreementLine({ e }: { e: EnvelopeRow }) {
   const st = ENVELOPE_STATUS[e.status]
   const signers = signersOf(e)
   const done = signers.filter((r) => r.status === 'signed').length
@@ -184,11 +184,11 @@ export function AgreementsCard({
                 <div key={e.id} className="flex items-center gap-1">
                   {isAdmin && !readOnly ? (
                     <Link to={`/sign?envelope=${e.id}`} className="-mx-2 block min-w-0 flex-1 rounded-lg px-2 transition-colors duration-hover hover:bg-[#FAFAF7]">
-                      <Line e={e} />
+                      <AgreementLine e={e} />
                     </Link>
                   ) : (
                     <div className="min-w-0 flex-1">
-                      <Line e={e} />
+                      <AgreementLine e={e} />
                     </div>
                   )}
                   {actions.length > 0 && (

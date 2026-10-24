@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Archive, Briefcase, CircleDot, IdCard, PencilLine, Star, User, Workflow } from 'lucide-react'
+import { Archive, Briefcase, CircleDot, FileSignature, IdCard, PencilLine, ShieldCheck, Star, User, Workflow } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,8 +11,11 @@ import { GoogleStatus } from '@/components/os/PeopleBits'
 import { PersonalDetailsForm } from '@/components/os/PersonalDetailsForm'
 import { LoadBar, RatingForm, WorkProfileForm } from '@/components/os/WorkProfile'
 import { CopyValue, EditToggle, InfoRow, InfoRows, ProfileCard, ValueChips } from '@/components/os/ProfileParts'
+import { Badge } from '@/components/ui/badge'
+import { AgreementLine } from '@/components/sign/AgreementsCard'
+import { SIGN_SENDING_LIVE, useRecordEnvelopes } from '@/lib/sign/send'
 import { COUNTRIES } from '@/constants/countries'
-import { JOB_SEAT_LABEL, usePersonDetails, type Person, type PersonJob } from '@/lib/os/peopleAccess'
+import { APPS, JOB_SEAT_LABEL, effectiveGrants, roleLabel, usePersonDetails, type Person, type PersonJob } from '@/lib/os/peopleAccess'
 import {
   RATING_WORDS,
   segmentLabel,
@@ -60,8 +63,10 @@ export function RoleCard({
 
   return (
     <ProfileCard
+      id="card-role"
       title="Role"
       icon={Briefcase}
+      tone="purple"
       aside={work.isSuccess && editable ? <EditToggle editing={editing} onChange={setEditing} label="role" /> : undefined}
     >
       {editing && person.user_id ? (
@@ -126,11 +131,13 @@ export function CurrentWorkCard({
   const closed = jobs.length - open.length - draft
   return (
     <ProfileCard
+      id="card-work"
       title="Current work"
       icon={Workflow}
+      tone="green"
       aside={
         jobs.length > 0 ? (
-          <Button variant="ghost" size="sm" onClick={onSeeAll}>
+          <Button variant="ghost" size="sm" className="bg-[#F1F0EC]" onClick={onSeeAll}>
             See all {jobs.length}
           </Button>
         ) : undefined
@@ -161,9 +168,9 @@ export function CurrentWorkCard({
           {open.length === 0 ? (
             <p className="font-inter text-[12.5px] text-[#6B7080]">No open jobs right now.</p>
           ) : (
-            <ul className="-my-1 divide-y divide-[#F1F0EC]">
+            <ul className="flex flex-col gap-1.5">
               {open.slice(0, 6).map((j) => (
-                <li key={`${j.job_id}-${j.role}`} className="flex items-center justify-between gap-3 py-2.5">
+                <li key={`${j.job_id}-${j.role}`} className="flex min-h-[44px] items-center justify-between gap-3 rounded-[10px] bg-[#F7F6F2] px-3.5 py-2.5">
                   <div className="min-w-0">
                     <JobPreview jobId={j.job_id}>
                       <Link
@@ -198,8 +205,10 @@ export function PersonalCard({ tenantId, person, isSelf }: { tenantId: string; p
 
   return (
     <ProfileCard
+      id="card-personal"
       title="Personal"
       icon={User}
+      tone="blue"
       aside={person.user_id && details.isSuccess ? <EditToggle editing={editing} onChange={setEditing} label="personal details" /> : undefined}
     >
       {!person.user_id ? (
@@ -228,7 +237,7 @@ export function PersonalCard({ tenantId, person, isSelf }: { tenantId: string; p
 /** General: work identity and sign-in. */
 export function GeneralCard({ person }: { person: Person }) {
   return (
-    <ProfileCard title="General" icon={IdCard}>
+    <ProfileCard id="card-general" title="General" icon={IdCard} tone="neutral">
       <InfoRows>
         <InfoRow label="Work email">{person.email && <CopyValue value={person.email} label="work email" />}</InfoRow>
         <InfoRow label="Google">
@@ -266,8 +275,10 @@ export function RatingCard({
 
   return (
     <ProfileCard
+      id="card-rating"
       title="Rating"
       icon={Star}
+      tone="yellow"
       aside={!isSelf && rating.isSuccess ? <EditToggle editing={editing} onChange={setEditing} label="rating" /> : undefined}
     >
       {isSelf ? (
@@ -295,6 +306,92 @@ export function RatingCard({
           )}
         </div>
       )}
+    </ProfileCard>
+  )
+}
+
+/** Latest agreements: the newest few sent to them, with status; See all opens the Agreements section. */
+export function LatestAgreementsCard({ person, onSeeAll, self }: { person: Person; onSeeAll: () => void; self: boolean }) {
+  const q = useRecordEnvelopes(SIGN_SENDING_LIVE && person.user_id ? { type: 'member', id: person.member_id } : null)
+  const rows = (q.data ?? []).filter((e) => e.status !== 'draft')
+  return (
+    <ProfileCard
+      id="card-agreements"
+      title="Latest agreements"
+      icon={FileSignature}
+      tone="blue"
+      aside={
+        rows.length > 0 ? (
+          <Button variant="ghost" size="sm" className="bg-[#F1F0EC]" onClick={onSeeAll}>
+            See all ({rows.length})
+          </Button>
+        ) : undefined
+      }
+    >
+      {!person.user_id ? (
+        <p className="font-inter text-[12.5px] text-[#6B7080]">Agreements can be sent once they accept their invitation.</p>
+      ) : q.isLoading ? (
+        <RowsSkeleton rows={3} />
+      ) : q.isError ? (
+        <LoadError what={self ? 'your agreements' : 'their agreements'} compact onRetry={() => void q.refetch()} />
+      ) : rows.length === 0 ? (
+        <p className="font-inter text-[12.5px] text-[#6B7080]">
+          {self ? 'Nothing yet. Agreements Virgilio sends you to sign show up here.' : 'Nothing sent yet. Send one from Agreements.'}
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {rows.slice(0, 4).map((e) => (
+            <li key={e.id} className="rounded-[10px] bg-[#F7F6F2] px-3.5 [&>div]:py-2.5">
+              <AgreementLine e={e} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </ProfileCard>
+  )
+}
+
+/** Apps and roles, read-only: what they can open today. Manage opens the Access section (admins). */
+export function AccessSummaryCard({ person, onManage }: { person: Person; onManage?: () => void }) {
+  const grants = effectiveGrants(person)
+  return (
+    <ProfileCard
+      id="card-access"
+      title="Apps and roles"
+      icon={ShieldCheck}
+      tone="purple"
+      aside={
+        onManage ? (
+          <Button variant="ghost" size="sm" className="bg-[#F1F0EC]" onClick={onManage}>
+            Manage
+          </Button>
+        ) : undefined
+      }
+    >
+      <InfoRows>
+        {APPS.map((app) => {
+          const g = grants.find((x) => x.app === app.key)
+          return (
+            <InfoRow key={app.key} label={app.name} empty="No access">
+              {g && (
+                <span className="inline-flex items-center gap-2">
+                  {roleLabel(app.key, g.role)}
+                  {g.status === 'pending' && (
+                    <Badge tone="orange" size="xs" dot>
+                      Sending
+                    </Badge>
+                  )}
+                  {g.status === 'error' && (
+                    <Badge tone="red" size="xs" dot>
+                      Not applied
+                    </Badge>
+                  )}
+                </span>
+              )}
+            </InfoRow>
+          )
+        })}
+      </InfoRows>
     </ProfileCard>
   )
 }

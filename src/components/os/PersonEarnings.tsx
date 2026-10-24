@@ -7,7 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LoadError } from '@/components/empty/LoadError'
 import { JobPreview } from '@/components/previews/EntityPreview'
 import { ProfileCard } from '@/components/os/ProfileParts'
-import { BankDetailsCard } from '@/components/os/BankDetailsCard'
 import { maskedAccount, useBankDetails } from '@/lib/os/bank'
 import { rateFor, useCommissionRates } from '@/lib/os/commissions'
 import {
@@ -83,14 +82,11 @@ export function PersonEarnings({
   jobs,
   jobsLoading,
   self = false,
-  name,
 }: {
   userId: string | null
   tenantId: string | undefined
   jobs: PersonJob[]
   jobsLoading: boolean
-  /** The person's first name, for the bank details copy. */
-  name?: string
   /** My profile: the copy speaks to the person ("you") instead of about them. */
   self?: boolean
 }) {
@@ -149,7 +145,6 @@ export function PersonEarnings({
         </div>
       )}
 
-      <BankDetailsCard tenantId={tenantId} userId={userId} self={self} name={name} />
 
       <ProfileCard title="Invoices" icon={ReceiptText} flush>
         {earnings.isLoading ? (

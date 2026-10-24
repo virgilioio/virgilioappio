@@ -13,30 +13,57 @@ import { cn } from '@/lib/utils'
  * turns into its form only when someone presses Edit.
  */
 
+export type CardTone = 'purple' | 'yellow' | 'green' | 'blue' | 'pink' | 'neutral'
+
+/** The same tinted chips as the MetricStrip, so a card's icon and a strip's icon read as one family. */
+const CARD_TONE: Record<CardTone, { bg: string; fg: string }> = {
+  purple: { bg: '#EDE4FF', fg: '#6F3FF5' },
+  yellow: { bg: '#FEF3C7', fg: '#B45309' },
+  green: { bg: '#D1FAE5', fg: '#0F9F74' },
+  blue: { bg: '#DBEAFE', fg: '#2563EB' },
+  pink: { bg: '#FCE7F3', fg: '#BE185D' },
+  neutral: { bg: '#F1F0EC', fg: '#1F2230' },
+}
+
 export function ProfileCard({
   title,
   icon: Icon,
+  tone = 'purple',
   aside,
   children,
   flush,
+  id,
 }: {
   title: string
   icon?: LucideIcon
+  /** The icon chip's tint. */
+  tone?: CardTone
   aside?: React.ReactNode
   children: React.ReactNode
   /** No inner padding: for tables and lists that run edge to edge. */
   flush?: boolean
+  /** An anchor, so a link can land on the card. */
+  id?: string
 }) {
+  const t = CARD_TONE[tone]
   return (
-    <section className="rounded-[12px] border border-[#E7E8EE] bg-white">
-      <header className="flex min-h-[52px] items-center justify-between gap-3 border-b border-[#EFEEEA] px-4 py-2.5">
-        <h2 className="flex min-w-0 items-center gap-2 font-poppins text-[13.5px] font-semibold tracking-[-0.02em] text-[#1F2230]">
-          {Icon && <Icon className="h-4 w-4 shrink-0 text-[#6B7080]" strokeWidth={2} aria-hidden />}
+    <section id={id} className="scroll-mt-24 overflow-clip rounded-[16px] border border-[#E7E8EE] bg-white">
+      <header className="flex min-h-[64px] items-center justify-between gap-3 px-5 pb-3 pt-4">
+        <h2 className="flex min-w-0 items-center gap-3 font-poppins text-[15px] font-semibold tracking-[-0.02em] text-[#1F2230]">
+          {Icon && (
+            <span
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              style={{ background: t.bg, color: t.fg }}
+              aria-hidden
+            >
+              <Icon className="h-[17px] w-[17px]" strokeWidth={2} />
+            </span>
+          )}
           <span className="truncate">{title}</span>
         </h2>
         {aside}
       </header>
-      <div className={flush ? '' : 'px-4 py-3'}>{children}</div>
+      <div className={flush ? 'border-t border-[#EFEEEA]' : 'px-5 pb-5'}>{children}</div>
     </section>
   )
 }
@@ -48,15 +75,22 @@ export function EditToggle({ editing, onChange, label }: { editing: boolean; onC
       Done
     </Button>
   ) : (
-    <Button variant="ghost" size="sm" icon={Pencil} onClick={() => onChange(true)} aria-label={`Edit ${label}`}>
+    <Button variant="ghost" size="sm" icon={Pencil} className="bg-[#F1F0EC]" onClick={() => onChange(true)} aria-label={`Edit ${label}`}>
       Edit
     </Button>
   )
 }
 
-/** Label → value rows, one hairline between them. */
+/** Label → value rows, each on its own soft grey tile. */
 export function InfoRows({ children }: { children: React.ReactNode }) {
-  return <dl className="-my-1 divide-y divide-[#F1F0EC]">{children}</dl>
+  return <dl className="flex flex-col gap-1.5">{children}</dl>
+}
+
+/** A darker tile that names the rows under it ("Apps", "Seats"). */
+export function InfoGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-[10px] bg-[#ECEAE2] px-3.5 py-2.5 font-inter text-[12.5px] font-medium text-[#1F2230]">{children}</div>
+  )
 }
 
 export function InfoRow({
@@ -76,13 +110,18 @@ export function InfoRow({
 }) {
   const hasValue = children !== null && children !== undefined && children !== '' && children !== false
   return (
-    <div className={cn('py-2.5 font-inter text-[12.5px]', stack ? 'space-y-1.5' : 'flex items-baseline justify-between gap-4')}>
-      <dt className="shrink-0 text-[#6B7080]">
+    <div
+      className={cn(
+        'min-h-[44px] rounded-[10px] bg-[#F7F6F2] px-3.5 py-2.5 font-inter text-[12.5px]',
+        stack ? 'space-y-1.5' : 'flex items-center justify-between gap-4',
+      )}
+    >
+      <dt className="shrink-0 text-[#5A6072]">
         {label}
         {hint && <span className="block text-[11.5px] text-[#8B8F9E]">{hint}</span>}
       </dt>
-      <dd className={cn('min-w-0 text-[#1F2230]', !stack && 'text-right')}>
-        {hasValue ? children : <span className="text-[#8B8F9E]">{empty ?? 'Not set'}</span>}
+      <dd className={cn('min-w-0 font-medium text-[#1F2230]', !stack && 'text-right')}>
+        {hasValue ? children : <span className="font-normal text-[#8B8F9E]">{empty ?? 'Not set'}</span>}
       </dd>
     </div>
   )
