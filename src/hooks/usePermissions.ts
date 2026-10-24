@@ -59,6 +59,8 @@ export interface PermissionsState {
   isWorkspaceOwner: boolean
   isPlatformAdmin: boolean
   isMember: boolean
+  /** A customer (hiring manager or interviewer) in Virgilio's workspace: the ATS only. */
+  isExternal: boolean
   isAdmin: boolean
   isSalesUser: boolean
   hasOrganizationContext: boolean
@@ -72,7 +74,9 @@ export function usePermissions(): PermissionsState {
   // memberRole now returns 'admin', 'member', or 'sales' from resolve_org_context (system_role)
   const isPlatformAdmin = userType === 'platform_admin'
   const isWorkspaceOwner = userType === 'workspace_owner'
-  const isMember = userType === 'member' && hasOrganizationContext
+  // External users (2026-10-24) are members too, limited to the ATS jobs they're on.
+  const isExternal = userType === 'external' && hasOrganizationContext
+  const isMember = (userType === 'member' || userType === 'external') && hasOrganizationContext
   
   // System role classification
   const isAdmin = isMember && memberRole === 'admin'
@@ -104,13 +108,14 @@ export function usePermissions(): PermissionsState {
     
     // Candidate permissions — Sales has NO ATS access
     canViewCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
-    canCreateCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
+    canCreateCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || (isAtsMember && !isExternal),
     canEditCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
     canDeleteCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canManageCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
     
-    canViewCandidatesNavigation: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
-    canViewReferences: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
+    canViewCandidatesNavigation: isPlatformAdmin || isWorkspaceOwner || isAdmin || (isAtsMember && !isExternal),
+    // Reference checks are Virgilio's own work: never for externals.
+    canViewReferences: isPlatformAdmin || isWorkspaceOwner || isAdmin || (isAtsMember && !isExternal),
     // Cancelling stops outbound contact — any ATS member may do it.
     canCancelReferences: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
     // Deleting destroys evidence others may rely on — held tighter.
@@ -132,6 +137,7 @@ export function usePermissions(): PermissionsState {
     isWorkspaceOwner,
     isPlatformAdmin,
     isMember,
+    isExternal,
     isAdmin,
     isSalesUser,
     hasOrganizationContext,
@@ -166,7 +172,7 @@ export function useCanUseChat(): boolean {
   })
 
   if (baseAllowed) return true
-  if (perms.isSalesUser) return false
+  if (perms.isSalesUser || perms.isExternal) return false
   return !!isRecruiterAnywhere
 }
 

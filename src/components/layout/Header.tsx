@@ -74,6 +74,7 @@ export function Header() {
     isWorkspaceOwner,
     isAdmin,
     isMember,
+    isExternal,
     canViewReferences,
   } = usePermissions()
   const navigate = useNavigate()
@@ -308,9 +309,11 @@ export function Header() {
 
           <GlobalCreateButton />
 
-          <div className="[&_*]:!text-white/85">
-            <SourcingCreditIndicator />
-          </div>
+          {!isExternal && (
+            <div className="[&_*]:!text-white/85">
+              <SourcingCreditIndicator />
+            </div>
+          )}
 
           <div className="[&_button]:text-white/85 [&_button:hover]:bg-white/[0.08] [&_button:hover]:text-white [&_svg]:text-white/85 [&_button]:h-7 [&_button]:w-7">
             <NotificationCenter />

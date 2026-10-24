@@ -38,8 +38,8 @@ const SECTIONS: Record<ModuleId, Section[]> = {
   ],
   ats: [
     { id: 'jobs', href: '/jobs', label: 'Jobs', match: p => p === '/jobs', show: perm => perm.canViewJobs },
-    { id: 'candidates', href: '/candidates', label: 'Candidates', match: p => p === '/candidates', show: perm => perm.canViewCandidates && perm.talentPool },
-    { id: 'calendar', href: '/calendar', label: 'Calendar', match: p => p === '/calendar', show: () => true },
+    { id: 'candidates', href: '/candidates', label: 'Candidates', match: p => p === '/candidates', show: perm => perm.canViewCandidates && perm.talentPool && !perm.isExternal },
+    { id: 'calendar', href: '/calendar', label: 'Calendar', match: p => p === '/calendar', show: perm => !perm.isExternal },
   ],
 }
 

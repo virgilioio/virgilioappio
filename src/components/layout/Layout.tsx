@@ -1,7 +1,7 @@
 import { AuthGate } from '@/components/auth/AuthGate'
 import { OrgGate } from '@/components/auth/OrgGate'
 import { Header } from './Header'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useToast } from '@/components/ui/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
@@ -11,12 +11,18 @@ import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUpload
 import { PhoneShell } from '@/components/phone/PhoneShell'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { HeaderContextBands } from '@/components/layout/HeaderContextBands'
+import { usePermissions } from '@/hooks/usePermissions'
+
+// External users (2026-10-24) use the ATS only: these addresses send them to Jobs.
+const EXTERNAL_BLOCKED = ['/analytics', '/insights', '/talent-intelligence', '/references', '/candidates', '/find', '/calendar', '/chat', '/billing', '/os', '/sign']
+const blockedForExternal = (path: string) => EXTERNAL_BLOCKED.some((p) => path === p || path.startsWith(p + '/'))
 
 export function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { isExternal } = usePermissions()
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -63,6 +69,8 @@ export function Layout() {
       navigate({ pathname: location.pathname, search: next.toString() }, { replace: true })
     }
   }, [location.pathname, location.search, navigate, toast, queryClient])
+
+  if (isExternal && blockedForExternal(location.pathname)) return <Navigate to="/jobs" replace />
 
   const isReview = /^\/jobs\/[^/]+\/review(\/|$|\?)/.test(location.pathname + (location.search || ''))
 

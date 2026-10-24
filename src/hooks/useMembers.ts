@@ -15,7 +15,7 @@ export interface Member {
   organization_id: string
   system_role: 'admin' | 'member' | 'sales'
   user_status: 'active' | 'inactive' | 'invited'
-  user_type?: 'member' | 'workspace_owner' | 'platform_admin'
+  user_type?: 'member' | 'external' | 'workspace_owner' | 'platform_admin'
   created_at: string
   updated_at: string
   invite_token?: string | null
@@ -37,6 +37,7 @@ export interface CreateMemberData {
   organization_id: string
   system_role: 'admin' | 'member' | 'sales'
   user_status?: 'active' | 'inactive' | 'invited'
+  // External is never asked for: in Virgilio's workspace the database sets it from the email.
   user_type?: 'member' | 'workspace_owner' | 'platform_admin'
   email?: string
 }
@@ -161,7 +162,7 @@ export function useMembers(includeHierarchy: boolean = false) {
           ...member,
           system_role: (member.system_role || 'member') as 'admin' | 'member' | 'sales',
           user_status: member.user_status as 'active' | 'inactive' | 'invited',
-          user_type: member.user_type as 'member' | 'workspace_owner' | 'platform_admin',
+          user_type: member.user_type as 'member' | 'external' | 'workspace_owner' | 'platform_admin',
           organization_name: organizationsMap[member.organization_id] || null,
           user_first_name: profile?.first_name || null,
           user_last_name: profile?.last_name || null,
