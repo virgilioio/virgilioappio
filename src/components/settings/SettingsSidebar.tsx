@@ -1,6 +1,6 @@
 import {
   Zap, Mail, Clock, Bell,
-  Building2, Users, Folder, Plug, CreditCard,
+  Building2, Users, Folder, Plug,
   GitBranch, ListChecks, FileText, Globe, Megaphone, Sparkles,
   Handshake, Building, ShieldCheck,
 } from 'lucide-react'
@@ -15,7 +15,6 @@ interface SettingsNavItem {
   icon: any
   show: boolean
   badge?: React.ReactNode
-  ownerBadge?: boolean
 }
 
 interface SettingsNavSection {
@@ -75,7 +74,6 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
         { id: 'members', label: 'Members', icon: Users, show: permissions.canViewMembers },
         { id: 'workspace-departments', label: 'Departments', icon: Folder, show: isAdminOrOwner },
         { id: 'integrations', label: 'Integrations', icon: Plug, show: true },
-        { id: 'billing', label: 'Billing', icon: CreditCard, show: isOwner, ownerBadge: true },
       ],
     },
     {
@@ -159,17 +157,6 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
                   <Icon className="w-[14px] h-[14px] shrink-0" strokeWidth={2} />
                   <span className="truncate flex-1">{item.label}</span>
                   {item.badge}
-                  {item.ownerBadge && (
-                    <span
-                      className={cn(
-                        'inline-flex items-center px-1.5 h-[16px] rounded-md text-[9px] font-semibold uppercase tracking-wider',
-                        isActive ? 'bg-white/10 text-[#fffcf9]/80' : 'bg-[#F1F0EC] text-[#8B8F9E]'
-                      )}
-                      style={{ letterSpacing: '0.06em' }}
-                    >
-                      Owners
-                    </span>
-                  )}
                 </button>
               )
             })}

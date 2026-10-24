@@ -1,16 +1,13 @@
-import { Shield, AlertTriangle, X, Loader2 } from 'lucide-react'
+import { Shield, X } from 'lucide-react'
 import { IconTip } from '@/components/ui/tooltip'
-import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useBillingStatus } from '@/hooks/useBillingStatus'
-import { useOpenBillingPortal } from '@/hooks/useBillingPortal'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 /**
  * Stackable context bands rendered directly under the top Header.
- * Priority (top → bottom): Impersonation → Trial / Billing.
+ * Today only the Platform admin band (Gio ATS is no longer sold, so the trial
+ * and billing bands are gone, 2026-10-24).
  * Each band is dismissible; dismissal persists for the session.
  */
 
@@ -37,22 +34,12 @@ function useDismissed() {
 
 export function HeaderContextBands() {
   const { userType } = useAuth()
-  const { data: billing } = useBillingStatus()
   const { isDismissed, dismiss } = useDismissed()
-  const openPortal = useOpenBillingPortal()
 
   const isPlatformAdmin = userType === 'platform_admin'
 
-  const trialing = billing?.billing_status === 'trialing'
-  const gracePeriod = billing?.billing_status === 'grace_period'
-  const pastDue = billing?.billing_status === 'past_due'
-  const fraudReview = billing?.billing_status === 'fraud_review'
-
   const showAdmin = isPlatformAdmin && !isDismissed('admin')
-  // past_due and fraud_review are not dismissible.
-  const showBilling = (trialing || gracePeriod) ? !isDismissed('billing') : (pastDue || fraudReview)
-
-  if (!showAdmin && !showBilling) return null
+  if (!showAdmin) return null
 
   return (
     <div className="hidden sm:flex flex-col gap-2 fixed top-[3.75rem] left-[5.5rem] right-3 z-40 pointer-events-none">
@@ -68,50 +55,6 @@ export function HeaderContextBands() {
         </Band>
       )}
 
-      {showBilling && (
-        <Band
-          tone="amber"
-          onDismiss={(pastDue || fraudReview) ? undefined : () => dismiss('billing')}
-          className="pointer-events-auto"
-        >
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[#B86E00]" />
-          <span className="font-poppins font-medium text-[12.5px] tracking-[-0.01em] text-[#5c3a00]">
-            {trialing && billing?.days_until_trial_end != null && (
-              <>
-                {billing.days_until_trial_end > 0
-                  ? `${billing.days_until_trial_end} day${billing.days_until_trial_end === 1 ? '' : 's'} left in your trial`
-                  : 'Your trial ends today'}
-              </>
-            )}
-            {gracePeriod && (
-              <>Trial ended — {billing?.days_until_lockout ?? 0} days until lockout</>
-            )}
-            {pastDue && <>Payment past due — update your payment method to keep access</>}
-            {fraudReview && <>Account under fraud review — contact support to restore access</>}
-          </span>
-          <div className="ml-auto flex items-center gap-1">
-            {fraudReview ? (
-              <Button variant="purple" size="xs" asChild>
-                <a href="mailto:support@gio.app">Contact support</a>
-              </Button>
-            ) : pastDue ? (
-              <Button
-                variant="purple"
-                size="xs"
-                onClick={() => openPortal.mutate()}
-                disabled={openPortal.isPending}
-              >
-                {openPortal.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                Update payment method
-              </Button>
-            ) : (
-              <Button variant="purple" size="xs" asChild>
-                <Link to="/settings?tab=subscription">Upgrade</Link>
-              </Button>
-            )}
-          </div>
-        </Band>
-      )}
     </div>
   )
 }

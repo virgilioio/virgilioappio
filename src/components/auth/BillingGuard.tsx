@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { Outlet, Navigate } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { useBillingStatus } from '@/hooks/useBillingStatus'
 import { useAuth } from '@/contexts/AuthContext'
 import { BrandDot } from '@/components/ui/BrandDot'
@@ -36,9 +36,9 @@ export function BillingGuard({
     )
   }
 
-  // Redirect pending_trial users to trial activation page (CC wall)
+  // Gio ATS is no longer sold (2026-10-24): a workspace that never started its trial is closed too.
   if (billing?.billing_status === 'pending_trial') {
-    return <Navigate to="/trial-activation" replace />
+    return <LockedScreen status="locked" />
   }
 
   // Determine if user is blocked.

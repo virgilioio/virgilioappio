@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, Navigate } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import OrganizationTab from '@/components/settings/OrganizationTab'
 import { MembersTab } from '@/components/settings/MembersTab'
@@ -8,7 +8,6 @@ import { PlatformCustomers } from '@/components/settings/platform/PlatformCustom
 
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab'
 import { CustomersTab } from '@/components/settings/tabs/CustomersTab'
-import { Billing } from '@/pages/settings/Billing'
 import { JobStagesManager } from '@/components/settings/JobStagesManager'
 import { ApplicationFieldsManager } from '@/components/settings/ApplicationFieldsManager'
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
@@ -64,14 +63,12 @@ function ComingSoonCard({ title, description }: { title: string; description: st
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const location = useLocation()
   const { organizationId, userType } = useAuth()
   const { tenant } = useTenant()
   const { isExternal } = usePermissions()
 
   const { essentialsRemaining, essentialsTotal, configuredCount } = useSetupProgress()
 
-  const isBillingRoute = location.pathname === '/billing'
   const pickDefaultTab = () => {
     if (essentialsRemaining > 0) return 'setup'
     if (userType === 'workspace_owner' && organizationId) return 'organization'
@@ -79,7 +76,8 @@ export default function Settings() {
   }
 
   const rawTab = searchParams.get('tab')
-  const resolved = isBillingRoute ? 'billing' : (rawTab ? (LEGACY_TAB_MAP[rawTab] || rawTab) : pickDefaultTab())
+  // Gio ATS is no longer sold (2026-10-24): an old Billing link opens the usual first tab.
+  const resolved = rawTab && rawTab !== 'billing' ? LEGACY_TAB_MAP[rawTab] || rawTab : pickDefaultTab()
   const [currentTab, setCurrentTab] = useState(resolved)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -89,10 +87,10 @@ export default function Settings() {
 
   // A link to another tab while Settings is open (Setup's rows, the account menu) switches to it.
   useEffect(() => {
-    if (isBillingRoute || !rawTab) return
+    if (!rawTab || rawTab === 'billing') return
     const next = LEGACY_TAB_MAP[rawTab] || rawTab
     setCurrentTab((cur) => (cur === next ? cur : next))
-  }, [rawTab, isBillingRoute])
+  }, [rawTab])
 
   // Redirect legacy tab keys in the URL once
   useEffect(() => {
@@ -135,8 +133,6 @@ export default function Settings() {
         return <DepartmentsManager />
       case 'integrations':
         return <IntegrationsTab />
-      case 'billing':
-        return <Billing />
       case 'pipeline-stages':
         return <JobStagesManager />
       case 'gio':

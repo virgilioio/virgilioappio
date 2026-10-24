@@ -5,12 +5,9 @@ import { BrandDot } from '@/components/ui/BrandDot'
 import { LockedScreen } from './LockedScreen'
 
 /**
- * Wraps the few routes (/billing, /settings, /settings/platform/saas-customers/:id)
- * that sit OUTSIDE BillingGuard so users can normally reach billing to recover.
- *
- * When a tenant is in the `locked` state, those routes must also render the
- * LockedScreen — otherwise a locked user could press "Back" in Stripe Checkout
- * and land on a fully usable Settings shell.
+ * Wraps the routes that sit outside BillingGuard (/settings and
+ * /settings/platform/saas-customers/:id). A closed (locked) workspace sees the
+ * LockedScreen here too, so Settings never opens on its own.
  */
 export function SettingsLockGuard() {
   const { memberRole, userType } = useAuth()

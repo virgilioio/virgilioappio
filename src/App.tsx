@@ -70,7 +70,6 @@ const PublicReferenceSubmit = lazy(() => import('./pages/PublicReferenceSubmit')
 const PublicReferenceAnswer = lazy(() => import('./pages/PublicReferenceAnswer'))
 const PublicReferenceReport = lazy(() => import('./pages/PublicReferenceReport'))
 const OnboardingPreview = lazy(() => import('./pages/dev/OnboardingPreview'))
-const TrialActivation = lazy(() => import('./pages/TrialActivation'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Terms = lazy(() => import('./pages/Terms'))
 const PrivacyChoice = lazy(() => import('./pages/PrivacyChoice'))
@@ -198,15 +197,13 @@ function AppContent() {
 
         
         
-        {/* Trial activation route - requires auth but accessible without org context */}
-        <Route path="/trial-activation" element={<RequireAuth><TrialActivation /></RequireAuth>} />
 
         {/* Authenticated routes wrapped with RequireAuth and Layout */}
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
-          {/* Always accessible routes - users need access to manage billing.
-              SettingsLockGuard still locks them out when billing_status === 'locked'. */}
+          {/* Settings sits outside BillingGuard; SettingsLockGuard still shows a closed workspace's LockedScreen.
+              Gio ATS is no longer sold (2026-10-24): /billing goes to Settings. */}
+          <Route path="/billing" element={<Navigate to="/settings" replace />} />
           <Route element={<SettingsLockGuard />}>
-            <Route path="/billing" element={<Settings />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/platform/saas-customers/:id" element={<SaaSCustomerDetail />} />
           </Route>

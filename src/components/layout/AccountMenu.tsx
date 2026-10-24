@@ -166,11 +166,6 @@ export function AccountMenu({ children }: AccountMenuProps) {
     setTimeout(() => navigate('/auth', { replace: true }), 100)
   }
 
-  const handleBuyMore = () => {
-    close()
-    navigate('/billing')
-  }
-
   const bookingDisplay = bookingUrl
     ? bookingUrl.replace(/^https?:\/\//, '')
     : null
@@ -321,14 +316,6 @@ export function AccountMenu({ children }: AccountMenuProps) {
                 AI sourcing & enrichment
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleBuyMore}
-              className="inline-flex items-center h-[24px] px-2.5 rounded-full bg-[#0d0d09] text-[#FFFCF9] font-poppins font-semibold text-[11px] hover:bg-[#1a1a15] transition-colors shrink-0"
-              style={{ letterSpacing: '-0.005em' }}
-            >
-              Buy more
-            </button>
           </div>
         </div>
         )}

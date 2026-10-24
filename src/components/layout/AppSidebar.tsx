@@ -31,7 +31,7 @@ export function getActiveSection(pathname: string, search = ''): AppSection {
   if (CHAT_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'chat'
   if (CRM_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'crm'
   if (ATS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'ats'
-  if (pathname === '/settings' || pathname === '/billing') return 'settings'
+  if (pathname === '/settings') return 'settings'
   return null
 }
 
