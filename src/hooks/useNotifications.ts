@@ -15,6 +15,7 @@ export type NotificationCategory =
   | 'candidate_update'
   | 'sign'
   | 'account'
+  | 'team'
 
 export interface NotificationRow {
   id: string

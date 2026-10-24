@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Bell, Check, CheckCheck, SlidersHorizontal, ArrowLeft, ChevronRight,
   AtSign, Users2, ClipboardCheck, CalendarCheck2, FileCheck2, Briefcase,
-  CalendarDays, Filter, Inbox, MessageSquare, UserPlus, PenLine, Volume2, Landmark,
+  CalendarDays, Filter, Inbox, MessageSquare, UserPlus, PenLine, Volume2, Landmark, CalendarHeart,
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -41,6 +41,7 @@ const CATEGORY_META: Record<NotificationCategory, { label: string; icon: any; to
   candidate_update:    { label: 'JOB CHANGE',        icon: Briefcase,      tone: 'blue',   bg: '#DBEAFE', fg: '#1D4ED8' },
   sign:                { label: 'SIGN',              icon: PenLine,        tone: 'purple', bg: '#EDE4FF', fg: '#6F3FF5' },
   account:             { label: 'YOUR ACCOUNT',      icon: Landmark,       tone: 'grey',   bg: '#F1F0EC', fg: '#5A6072' },
+  team:                { label: 'TEAM',              icon: CalendarHeart,  tone: 'pink',   bg: '#FCE7F3', fg: '#BE185D' },
 }
 
 function relTime(iso: string): string {
