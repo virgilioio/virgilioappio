@@ -507,6 +507,13 @@ export function useArchiveBundle(tenantId: string | undefined) {
 }
 
 /** One line of history in plain words. */
+/** "mx_rfc" → "RFC (Mexico)": the history keeps the kind, never the number. */
+function taxIdName(key: string) {
+  const [cc, ...rest] = key.split('_')
+  const label = rest.join(' ').toUpperCase() || key
+  return cc.length === 2 ? `${label} (${cc.toUpperCase()})` : label
+}
+
 export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => string): string {
   const d = row.detail
   const app = row.app_key ? appName(row.app_key) : ''
@@ -539,6 +546,7 @@ export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => 
         country: 'country',
         region: 'state or province',
         city: 'city',
+        birthday: 'birthday',
       }
       const fields = Array.isArray(d.fields) ? (d.fields as string[]).map((f) => names[f] ?? f) : []
       const list = fields.length ? `: ${fields.join(', ')}` : ''
@@ -569,6 +577,20 @@ export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => 
     }
     case 'person.bank_revealed':
       return `${who}'s ${typeof d.field === 'string' ? d.field : 'account number'} was shown in full`
+    case 'person.tax_id_updated':
+      return `${who}'s ${typeof d.type === 'string' ? taxIdName(d.type) : 'tax ID'} was ${d.added ? 'added' : 'changed'}`
+    case 'person.tax_id_removed':
+      return `${who}'s ${typeof d.type === 'string' ? taxIdName(d.type) : 'tax ID'} was removed`
+    case 'person.tax_id_revealed':
+      return `${who}'s ${typeof d.type === 'string' ? taxIdName(d.type) : 'tax ID'} was shown in full`
+    case 'link.added':
+      return `Useful link "${String(d.title ?? '')}" was added`
+    case 'link.updated':
+      return `Useful link "${String(d.title ?? '')}" was edited`
+    case 'link.archived':
+      return `Useful link "${String(d.title ?? '')}" was archived`
+    case 'link.restored':
+      return `Useful link "${String(d.title ?? '')}" was restored`
     case 'person.work_updated': {
       const parts: string[] = []
       if (Array.isArray(d.segments))

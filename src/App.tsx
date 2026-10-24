@@ -90,6 +90,7 @@ const OsJobRoles = lazy(() => import('./pages/os/JobRoles'))
 const OsHistory = lazy(() => import('./pages/os/History'))
 const OsCommissionRules = lazy(() => import('./pages/os/CommissionRules'))
 const OsUsefulLinks = lazy(() => import('./pages/os/UsefulLinks'))
+const OsDashboard = lazy(() => import('./pages/os/Dashboard'))
 const SignEnvelopes = lazy(() => import('./pages/sign/Envelopes'))
 const SignTemplates = lazy(() => import('./pages/sign/Templates'))
 const SigningPage = lazy(() => import('./pages/sign/SigningPage'))
@@ -244,7 +245,7 @@ function AppContent() {
             <Route path="/references/templates" element={<ReferenceTemplates />} />
             <Route path="/references/templates/:id" element={<ReferenceTemplateEditor />} />
             {/* Gio OS: People & Access (admins and platform admins) */}
-            <Route path="/os" element={<Navigate to="/os/people" replace />} />
+            <Route path="/os" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsDashboard /></OsAdminOnly></PhoneSwitch>} />
             <Route path="/os/people" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsPeople /></OsAdminOnly></PhoneSwitch>} />
             <Route path="/me" element={<MyProfile />} />
             <Route path="/me/details" element={<MeDetailsRedirect />} />

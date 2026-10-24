@@ -144,7 +144,7 @@ export function AppSidebar() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
-                  to="/os/people"
+                  to="/os"
                   aria-current={active === 'people' ? 'page' : undefined}
                   aria-label="People & Access"
                   className={cn(tileBase, active === 'people' ? tileActive : tileInactive)}

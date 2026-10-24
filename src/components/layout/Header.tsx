@@ -34,6 +34,7 @@ import {
   Percent,
   Link2,
   MoreHorizontal,
+  LayoutDashboard,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -186,6 +187,7 @@ export function Header() {
       section: 'references',
       matchPrefix: true,
     },
+    { href: '/os', icon: LayoutDashboard, label: 'Dashboard', show: isPlatformAdmin || isAdmin, section: 'people' },
     { href: '/os/people', icon: Contact, label: 'People', show: isPlatformAdmin || isAdmin, section: 'people', matchPrefix: true },
     { href: '/os/job-roles', icon: BadgeCheck, label: 'Job roles', show: isPlatformAdmin || isAdmin, section: 'people' },
     { href: '/os/commissions', icon: Percent, label: 'Commission rules', show: isPlatformAdmin || isAdmin, section: 'people' },
