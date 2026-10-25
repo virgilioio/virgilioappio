@@ -1976,613 +1976,6 @@ export type Database = {
           },
         ]
       }
-      chat_access_tokens: {
-        Row: {
-          candidate_id: string
-          created_at: string
-          expires_at: string
-          id: string
-          issued_at: string
-          jti_hash: string
-          last_used_at: string | null
-          revoked_at: string | null
-          tenant_id: string
-          thread_id: string
-          use_count: number
-        }
-        Insert: {
-          candidate_id: string
-          created_at?: string
-          expires_at: string
-          id?: string
-          issued_at?: string
-          jti_hash: string
-          last_used_at?: string | null
-          revoked_at?: string | null
-          tenant_id: string
-          thread_id: string
-          use_count?: number
-        }
-        Update: {
-          candidate_id?: string
-          created_at?: string
-          expires_at?: string
-          id?: string
-          issued_at?: string
-          jti_hash?: string
-          last_used_at?: string | null
-          revoked_at?: string | null
-          tenant_id?: string
-          thread_id?: string
-          use_count?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_access_tokens_thread_id_fkey"
-            columns: ["thread_id"]
-            isOneToOne: false
-            referencedRelation: "chat_threads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      chat_ai_token_usage: {
-        Row: {
-          request_count: number
-          tenant_id: string
-          tokens_used: number
-          updated_at: string
-          usage_date: string
-        }
-        Insert: {
-          request_count?: number
-          tenant_id: string
-          tokens_used?: number
-          updated_at?: string
-          usage_date?: string
-        }
-        Update: {
-          request_count?: number
-          tenant_id?: string
-          tokens_used?: number
-          updated_at?: string
-          usage_date?: string
-        }
-        Relationships: []
-      }
-      chat_audit_log: {
-        Row: {
-          actor_id: string | null
-          actor_type: string
-          created_at: string
-          event: string
-          id: string
-          ip_address: unknown
-          metadata: Json
-          tenant_id: string
-          thread_id: string | null
-        }
-        Insert: {
-          actor_id?: string | null
-          actor_type: string
-          created_at?: string
-          event: string
-          id?: string
-          ip_address?: unknown
-          metadata?: Json
-          tenant_id: string
-          thread_id?: string | null
-        }
-        Update: {
-          actor_id?: string | null
-          actor_type?: string
-          created_at?: string
-          event?: string
-          id?: string
-          ip_address?: unknown
-          metadata?: Json
-          tenant_id?: string
-          thread_id?: string | null
-        }
-        Relationships: []
-      }
-      chat_messages: {
-        Row: {
-          body: string | null
-          created_at: string
-          direction: string
-          email_opened_at: string | null
-          external_message_id: string | null
-          id: string
-          parts: Json
-          read_by_recipient_at: string | null
-          redacted_at: string | null
-          sender_type: string
-          sender_user_id: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          direction: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type: string
-          sender_user_id?: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          direction?: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type?: string
-          sender_user_id?: string | null
-          tenant_id?: string
-          thread_id?: string
-        }
-        Relationships: []
-      }
-      chat_messages_2026_06: {
-        Row: {
-          body: string | null
-          created_at: string
-          direction: string
-          email_opened_at: string | null
-          external_message_id: string | null
-          id: string
-          parts: Json
-          read_by_recipient_at: string | null
-          redacted_at: string | null
-          sender_type: string
-          sender_user_id: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          direction: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type: string
-          sender_user_id?: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          direction?: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type?: string
-          sender_user_id?: string | null
-          tenant_id?: string
-          thread_id?: string
-        }
-        Relationships: []
-      }
-      chat_messages_2026_07: {
-        Row: {
-          body: string | null
-          created_at: string
-          direction: string
-          email_opened_at: string | null
-          external_message_id: string | null
-          id: string
-          parts: Json
-          read_by_recipient_at: string | null
-          redacted_at: string | null
-          sender_type: string
-          sender_user_id: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          direction: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type: string
-          sender_user_id?: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          direction?: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type?: string
-          sender_user_id?: string | null
-          tenant_id?: string
-          thread_id?: string
-        }
-        Relationships: []
-      }
-      chat_messages_2026_08: {
-        Row: {
-          body: string | null
-          created_at: string
-          direction: string
-          email_opened_at: string | null
-          external_message_id: string | null
-          id: string
-          parts: Json
-          read_by_recipient_at: string | null
-          redacted_at: string | null
-          sender_type: string
-          sender_user_id: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          direction: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type: string
-          sender_user_id?: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          direction?: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type?: string
-          sender_user_id?: string | null
-          tenant_id?: string
-          thread_id?: string
-        }
-        Relationships: []
-      }
-      chat_messages_2026_09: {
-        Row: {
-          body: string | null
-          created_at: string
-          direction: string
-          email_opened_at: string | null
-          external_message_id: string | null
-          id: string
-          parts: Json
-          read_by_recipient_at: string | null
-          redacted_at: string | null
-          sender_type: string
-          sender_user_id: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          direction: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type: string
-          sender_user_id?: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          direction?: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type?: string
-          sender_user_id?: string | null
-          tenant_id?: string
-          thread_id?: string
-        }
-        Relationships: []
-      }
-      chat_messages_2026_10: {
-        Row: {
-          body: string | null
-          created_at: string
-          direction: string
-          email_opened_at: string | null
-          external_message_id: string | null
-          id: string
-          parts: Json
-          read_by_recipient_at: string | null
-          redacted_at: string | null
-          sender_type: string
-          sender_user_id: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          direction: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type: string
-          sender_user_id?: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          direction?: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type?: string
-          sender_user_id?: string | null
-          tenant_id?: string
-          thread_id?: string
-        }
-        Relationships: []
-      }
-      chat_messages_2026_11: {
-        Row: {
-          body: string | null
-          created_at: string
-          direction: string
-          email_opened_at: string | null
-          external_message_id: string | null
-          id: string
-          parts: Json
-          read_by_recipient_at: string | null
-          redacted_at: string | null
-          sender_type: string
-          sender_user_id: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          direction: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type: string
-          sender_user_id?: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          direction?: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type?: string
-          sender_user_id?: string | null
-          tenant_id?: string
-          thread_id?: string
-        }
-        Relationships: []
-      }
-      chat_messages_2026_12: {
-        Row: {
-          body: string | null
-          created_at: string
-          direction: string
-          email_opened_at: string | null
-          external_message_id: string | null
-          id: string
-          parts: Json
-          read_by_recipient_at: string | null
-          redacted_at: string | null
-          sender_type: string
-          sender_user_id: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          direction: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type: string
-          sender_user_id?: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          direction?: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type?: string
-          sender_user_id?: string | null
-          tenant_id?: string
-          thread_id?: string
-        }
-        Relationships: []
-      }
-      chat_messages_2027_01: {
-        Row: {
-          body: string | null
-          created_at: string
-          direction: string
-          email_opened_at: string | null
-          external_message_id: string | null
-          id: string
-          parts: Json
-          read_by_recipient_at: string | null
-          redacted_at: string | null
-          sender_type: string
-          sender_user_id: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          direction: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type: string
-          sender_user_id?: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          direction?: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type?: string
-          sender_user_id?: string | null
-          tenant_id?: string
-          thread_id?: string
-        }
-        Relationships: []
-      }
-      chat_notification_queue: {
-        Row: {
-          attempts: number
-          created_at: string
-          error: string | null
-          id: string
-          kind: Database["public"]["Enums"]["chat_notification_kind"]
-          last_message_at: string
-          last_message_id: string | null
-          message_count: number
-          recipient_email: string | null
-          recipient_user_id: string | null
-          scheduled_for: string
-          sent_at: string | null
-          status: Database["public"]["Enums"]["chat_notification_status"]
-          tenant_id: string
-          thread_id: string
-          updated_at: string
-        }
-        Insert: {
-          attempts?: number
-          created_at?: string
-          error?: string | null
-          id?: string
-          kind: Database["public"]["Enums"]["chat_notification_kind"]
-          last_message_at?: string
-          last_message_id?: string | null
-          message_count?: number
-          recipient_email?: string | null
-          recipient_user_id?: string | null
-          scheduled_for: string
-          sent_at?: string | null
-          status?: Database["public"]["Enums"]["chat_notification_status"]
-          tenant_id: string
-          thread_id: string
-          updated_at?: string
-        }
-        Update: {
-          attempts?: number
-          created_at?: string
-          error?: string | null
-          id?: string
-          kind?: Database["public"]["Enums"]["chat_notification_kind"]
-          last_message_at?: string
-          last_message_id?: string | null
-          message_count?: number
-          recipient_email?: string | null
-          recipient_user_id?: string | null
-          scheduled_for?: string
-          sent_at?: string | null
-          status?: Database["public"]["Enums"]["chat_notification_status"]
-          tenant_id?: string
-          thread_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_notification_queue_thread_id_fkey"
-            columns: ["thread_id"]
-            isOneToOne: false
-            referencedRelation: "chat_threads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       chat_rate_limits: {
         Row: {
           count: number
@@ -2607,116 +2000,6 @@ export type Database = {
           scope?: string
           scope_key?: string
           window_start?: string
-        }
-        Relationships: []
-      }
-      chat_thread_reads: {
-        Row: {
-          last_read_at: string
-          tenant_id: string
-          thread_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          last_read_at?: string
-          tenant_id: string
-          thread_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          last_read_at?: string
-          tenant_id?: string
-          thread_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_thread_reads_thread_id_fkey"
-            columns: ["thread_id"]
-            isOneToOne: false
-            referencedRelation: "chat_threads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      chat_threads: {
-        Row: {
-          ai_reply_lock_until: string | null
-          archived_at: string | null
-          assigned_recruiter_id: string | null
-          association_id: string | null
-          candidate_id: string
-          candidate_visible_message_count: number
-          channel: string
-          context_summary: string | null
-          created_at: string
-          deleted_at: string | null
-          email_subject: string | null
-          external_thread_ref: string | null
-          id: string
-          job_id: string
-          last_candidate_read_at: string | null
-          last_message_at: string | null
-          last_message_preview: string | null
-          last_recruiter_read_at: string | null
-          message_count: number
-          mode: string
-          status: string
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          ai_reply_lock_until?: string | null
-          archived_at?: string | null
-          assigned_recruiter_id?: string | null
-          association_id?: string | null
-          candidate_id: string
-          candidate_visible_message_count?: number
-          channel?: string
-          context_summary?: string | null
-          created_at?: string
-          deleted_at?: string | null
-          email_subject?: string | null
-          external_thread_ref?: string | null
-          id?: string
-          job_id: string
-          last_candidate_read_at?: string | null
-          last_message_at?: string | null
-          last_message_preview?: string | null
-          last_recruiter_read_at?: string | null
-          message_count?: number
-          mode?: string
-          status?: string
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          ai_reply_lock_until?: string | null
-          archived_at?: string | null
-          assigned_recruiter_id?: string | null
-          association_id?: string | null
-          candidate_id?: string
-          candidate_visible_message_count?: number
-          channel?: string
-          context_summary?: string | null
-          created_at?: string
-          deleted_at?: string | null
-          email_subject?: string | null
-          external_thread_ref?: string | null
-          id?: string
-          job_id?: string
-          last_candidate_read_at?: string | null
-          last_message_at?: string | null
-          last_message_preview?: string | null
-          last_recruiter_read_at?: string | null
-          message_count?: number
-          mode?: string
-          status?: string
-          tenant_id?: string
-          updated_at?: string
         }
         Relationships: []
       }
@@ -4790,8 +4073,6 @@ export type Database = {
       }
       job_postings: {
         Row: {
-          chat_enabled: boolean
-          chat_mode: string
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -4811,8 +4092,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          chat_enabled?: boolean
-          chat_mode?: string
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -4832,8 +4111,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          chat_enabled?: boolean
-          chat_mode?: string
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -5488,10 +4765,6 @@ export type Database = {
           application_batch_email: boolean
           application_batch_in_app: boolean
           application_batch_push: boolean
-          chat_email_enabled: boolean
-          chat_message_email: boolean
-          chat_message_in_app: boolean
-          chat_message_push: boolean
           daily_digest_email: boolean
           daily_digest_in_app: boolean
           daily_digest_push: boolean
@@ -5522,10 +4795,6 @@ export type Database = {
           application_batch_email?: boolean
           application_batch_in_app?: boolean
           application_batch_push?: boolean
-          chat_email_enabled?: boolean
-          chat_message_email?: boolean
-          chat_message_in_app?: boolean
-          chat_message_push?: boolean
           daily_digest_email?: boolean
           daily_digest_in_app?: boolean
           daily_digest_push?: boolean
@@ -5556,10 +4825,6 @@ export type Database = {
           application_batch_email?: boolean
           application_batch_in_app?: boolean
           application_batch_push?: boolean
-          chat_email_enabled?: boolean
-          chat_message_email?: boolean
-          chat_message_in_app?: boolean
-          chat_message_push?: boolean
           daily_digest_email?: boolean
           daily_digest_in_app?: boolean
           daily_digest_push?: boolean
@@ -11140,11 +10405,6 @@ export type Database = {
       tenants: {
         Row: {
           about: string | null
-          chat_ai_daily_token_cap: number
-          chat_hard_delete_days: number
-          chat_inactivity_soft_delete_days: number
-          chat_paused: boolean
-          chat_retention_days_after_close: number
           created_at: string
           id: string
           metadata: Json | null
@@ -11164,11 +10424,6 @@ export type Database = {
         }
         Insert: {
           about?: string | null
-          chat_ai_daily_token_cap?: number
-          chat_hard_delete_days?: number
-          chat_inactivity_soft_delete_days?: number
-          chat_paused?: boolean
-          chat_retention_days_after_close?: number
           created_at?: string
           id?: string
           metadata?: Json | null
@@ -11188,11 +10443,6 @@ export type Database = {
         }
         Update: {
           about?: string | null
-          chat_ai_daily_token_cap?: number
-          chat_hard_delete_days?: number
-          chat_inactivity_soft_delete_days?: number
-          chat_paused?: boolean
-          chat_retention_days_after_close?: number
           created_at?: string
           id?: string
           metadata?: Json | null
@@ -11548,10 +10798,6 @@ export type Database = {
         }[]
       }
       backfill_default_stages_to_all_jobs: { Args: never; Returns: number }
-      can_access_chat_thread: {
-        Args: { _job_id: string; _tenant_id: string }
-        Returns: boolean
-      }
       can_access_job_pipeline: { Args: { p_job_id: string }; Returns: boolean }
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
       can_change_hire: { Args: { _job_id: string }; Returns: boolean }
@@ -11564,7 +10810,6 @@ export type Database = {
         Returns: boolean
       }
       can_see_job: { Args: { _job_id: string }; Returns: boolean }
-      can_use_chat_module: { Args: never; Returns: boolean }
       can_view_eeo: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
@@ -11647,20 +10892,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      chat_bell_enqueue: {
-        Args: {
-          p_action_url: string
-          p_candidate_id: string
-          p_kind: string
-          p_preview: string
-          p_subtitle: string
-          p_tenant: string
-          p_thread: string
-          p_title: string
-          p_user: string
-        }
-        Returns: string
-      }
       chat_bump_rate_limit: {
         Args: {
           p_max: number
@@ -11672,75 +10903,6 @@ export type Database = {
           allowed: boolean
           current_count: number
         }[]
-      }
-      chat_consume_ai_tokens: {
-        Args: { p_tenant_id: string; p_tokens: number }
-        Returns: {
-          allowed: boolean
-          cap: number
-          tokens_after: number
-        }[]
-      }
-      chat_drop_expired_message_partitions: {
-        Args: { months_to_keep?: number }
-        Returns: {
-          dropped: boolean
-          partition_name: string
-        }[]
-      }
-      chat_hard_delete_threads: {
-        Args: never
-        Returns: {
-          hard_deleted_messages: number
-          hard_deleted_threads: number
-          tenant_id: string
-        }[]
-      }
-      chat_notif_enqueue: {
-        Args: {
-          p_delay_seconds?: number
-          p_email: string
-          p_kind: Database["public"]["Enums"]["chat_notification_kind"]
-          p_message_id?: string
-          p_tenant: string
-          p_thread: string
-          p_throttle_seconds?: number
-          p_user: string
-        }
-        Returns: string
-      }
-      chat_notif_recruiter_targets: {
-        Args: { p_thread: string }
-        Returns: {
-          user_id: string
-        }[]
-      }
-      chat_refund_ai_tokens: {
-        Args: { p_tenant_id: string; p_tokens: number }
-        Returns: undefined
-      }
-      chat_release_thread_ai_lock: {
-        Args: { p_thread_id: string }
-        Returns: undefined
-      }
-      chat_retention_sweep: {
-        Args: never
-        Returns: {
-          audit_deleted: number
-          rate_limits_deleted: number
-          tokens_deleted: number
-        }[]
-      }
-      chat_soft_delete_inactive_threads: {
-        Args: never
-        Returns: {
-          archived_threads: number
-          tenant_id: string
-        }[]
-      }
-      chat_try_lock_thread_for_ai: {
-        Args: { p_seconds?: number; p_thread_id: string }
-        Returns: boolean
       }
       check_application_limits:
         | {
@@ -11853,10 +11015,6 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: string
-      }
-      create_chat_message_partitions: {
-        Args: { months_ahead?: number }
-        Returns: undefined
       }
       debug_user_permissions: {
         Args: never
@@ -12748,13 +11906,6 @@ export type Database = {
         Returns: number
       }
       provenance_source_for: { Args: { p_source: string }; Returns: string }
-      purge_expired_chat_threads: {
-        Args: never
-        Returns: {
-          purged_threads: number
-          tenant_id: string
-        }[]
-      }
       reassign_candidates_for_stage: {
         Args: { stage_id_param: string }
         Returns: undefined
@@ -13383,11 +12534,6 @@ export type Database = {
       automation_type: "single_email" | "email_sequence"
       candidate_list_access: "view" | "comment" | "comment_score"
       candidate_list_reviewer_status: "pending" | "active" | "removed"
-      chat_notification_kind:
-        | "recruiter_new_message"
-        | "recruiter_handoff"
-        | "candidate_recruiter_reply"
-      chat_notification_status: "pending" | "sent" | "cancelled" | "failed"
       contract_status_enum:
         | "active"
         | "pending"
@@ -13803,12 +12949,6 @@ export const Constants = {
       automation_type: ["single_email", "email_sequence"],
       candidate_list_access: ["view", "comment", "comment_score"],
       candidate_list_reviewer_status: ["pending", "active", "removed"],
-      chat_notification_kind: [
-        "recruiter_new_message",
-        "recruiter_handoff",
-        "candidate_recruiter_reply",
-      ],
-      chat_notification_status: ["pending", "sent", "cancelled", "failed"],
       contract_status_enum: [
         "active",
         "pending",

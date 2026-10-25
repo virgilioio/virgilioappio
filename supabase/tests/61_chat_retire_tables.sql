@@ -1,4 +1,4 @@
--- Run after 20261025170000_chat_retire_tables inside a transaction that is rolled back.
+-- Run after 20261025224945_chat_retire_tables inside a transaction that is rolled back.
 -- Chat's tables, functions, enums and columns are gone; the reference-check
 -- rate limiter and Ask Gio's tables stay; platform_remove_workspace no longer
 -- reads Chat and still answers. Every row's ok is true.
