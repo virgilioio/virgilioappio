@@ -148,7 +148,7 @@ function Conversation({
               </CandidatePreview>
               {thread.job_id && thread.job_title && (
                 <span className="flex min-w-0 items-center gap-2">
-                  <span aria-hidden className="text-[#B5B9C4]">·</span>
+                  <span aria-hidden className="hidden text-[#B5B9C4] sm:inline">·</span>
                   <JobPreview jobId={thread.job_id}>
                     <Link to={`/jobs/${thread.job_id}`} className="hover:underline truncate max-w-[260px]">
                       {thread.job_title}
