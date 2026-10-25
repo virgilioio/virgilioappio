@@ -200,7 +200,6 @@ verify_jwt = true
 [functions.analyze-candidate-fit]
 verify_jwt = true
 
-
 [functions.get-suggested-candidates]
 verify_jwt = true
 
@@ -213,8 +212,6 @@ verify_jwt = true
 [functions.sourcing-search]
 verify_jwt = true
 
-
-
 [functions.candidates-nl-search]
 verify_jwt = true
 
@@ -225,38 +222,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.job-ask-gio]
-verify_jwt = true
-
-[functions.chat-token-verify]
-verify_jwt = false
-
-[functions.chat-candidate-send]
-verify_jwt = false
-
-[functions.chat-candidate-fetch]
-verify_jwt = false
-
-[functions.chat-candidate-handoff]
-verify_jwt = false
-
-[functions.chat-token-revoke]
-verify_jwt = true
-
-[functions.chat-agent-reply]
-verify_jwt = false
-
-
-[functions.chat-notification-processor]
-verify_jwt = true
-
-
-[functions.chat-send-email]
-verify_jwt = true
-
-[functions.chat-email-pixel]
-verify_jwt = false
-
-[functions.chat-send-whatsapp]
 verify_jwt = true
 
 [functions.send-reference-request]
