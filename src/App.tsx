@@ -44,7 +44,6 @@ const ApplicationReviewPage = lazy(() => import('./pages/ApplicationReview'))
 
 const Members = lazy(() => import('./pages/Members'))
 const Candidates = lazy(() => import('./pages/Candidates'))
-const Chat = lazy(() => import('./pages/Chat'))
 const Inbox = lazy(() => import('./pages/Inbox'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Login = lazy(() => import('./pages/Login'))
@@ -66,7 +65,6 @@ const VirgilioCareersPage = lazy(() => import('./pages/VirgilioCareersPage'))
 const LegacyPostingRedirect = lazy(() => import('./pages/LegacyPostingRedirect'))
 const PublicBookingPage = lazy(() => import('./pages/PublicBookingPage'))
 const BookingConfirmed = lazy(() => import('./pages/BookingConfirmed'))
-const CandidateChat = lazy(() => import('./pages/CandidateChat'))
 const PublicReferenceSubmit = lazy(() => import('./pages/PublicReferenceSubmit'))
 const PublicReferenceAnswer = lazy(() => import('./pages/PublicReferenceAnswer'))
 const PublicReferenceReport = lazy(() => import('./pages/PublicReferenceReport'))
@@ -126,8 +124,6 @@ if (typeof window !== 'undefined') {
 }
 
 
-// Step 1.2 — gate /chat behind canUseChat
-import { useCanUseChat } from '@/hooks/usePermissions'
 import { useInboxAccess } from '@/lib/inbox'
 /** /me/details was My profile's second page until 2026-10-24: its links (bell, emails) land on /me. */
 function MeDetailsRedirect() {
@@ -140,12 +136,6 @@ function InboxRouteGuard({ children }: { children: React.ReactNode }) {
   const { data: allowed, isLoading } = useInboxAccess()
   if (isLoading) return null
   if (!allowed) return <NotFound />
-  return <>{children}</>
-}
-
-function ChatRouteGuard({ children }: { children: React.ReactNode }) {
-  const canUseChat = useCanUseChat()
-  if (!canUseChat) return <NotFound />
   return <>{children}</>
 }
 
@@ -184,7 +174,6 @@ function AppContent() {
         <Route path="/chrome-oauth/start" element={<ChromeOAuthStart />} />
         {/* Google Workspace consent returns here; public — the sealed state identifies the user. */}
         <Route path="/mail/oauth/callback" element={<MailOAuthCallback />} />
-        <Route path="/c/chat/:token" element={<CandidateChat />} />
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
         {/* Public reference-check pages — token-resolved, no account.
             The static /references app routes still win by static-over-dynamic ranking. */}
@@ -246,8 +235,8 @@ function AppContent() {
             <Route path="/organizations" element={<Navigate to="/settings" replace />} />
             <Route path="/inbox" element={<InboxRouteGuard><Inbox /></InboxRouteGuard>} />
             <Route path="/inbox/:threadId" element={<InboxRouteGuard><Inbox /></InboxRouteGuard>} />
-            <Route path="/chat" element={<PhoneSwitch phone={<DesktopOnly what="Chat" />}><ChatRouteGuard><Chat /></ChatRouteGuard></PhoneSwitch>} />
-            <Route path="/chat/:threadId" element={<PhoneSwitch phone={<DesktopOnly what="Chat" />}><ChatRouteGuard><Chat /></ChatRouteGuard></PhoneSwitch>} />
+            {/* Chat was replaced by the Inbox (2026-10-25). */}
+            <Route path="/chat/*" element={<Navigate to="/inbox" replace />} />
             <Route path="/references" element={<TalentPoolOnly what="Reference checks"><References /></TalentPoolOnly>} />
             <Route path="/references/requests/:requestId" element={<ReferenceRequestDetail />} />
             <Route path="/candidates/:candidateId/references" element={<CandidateReferences />} />

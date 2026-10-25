@@ -40,7 +40,7 @@ import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
 import { normalizeToTemplateString } from '@/utils/templateStringNormalizer';
 import { AIDraftPopover } from './AIDraftPopover';
 import { useAIDraftEmail } from '@/hooks/useAIDraftEmail';
-import { BookingLinkPopover, type BookingCardPayload } from '@/components/chat/BookingLinkPopover';
+import { BookingLinkPopover, type BookingCardPayload } from '@/components/candidates/BookingLinkPopover';
 import { cn } from '@/lib/utils';
 import { motionToken, prefersReducedMotion } from '@/lib/motion';
 
