@@ -1,4 +1,4 @@
--- Run after 20261025120000_chat_retire_jobs inside a transaction that is rolled back.
+-- Run after 20261025153549_chat_retire_jobs inside a transaction that is rolled back.
 -- Chat's three scheduled jobs are gone, the Gmail sync and other jobs stay,
 -- the retention check no longer reads Chat and still finds the same people,
 -- and the reference-check rate limiter is untouched. Every row's ok is true.
