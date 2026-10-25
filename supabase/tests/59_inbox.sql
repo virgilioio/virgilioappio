@@ -1,4 +1,4 @@
--- Run after 20261025090000_inbox inside a transaction that is rolled back.
+-- Run after 20261025030939_inbox inside a transaction that is rolled back.
 -- The Inbox shows only your own mailbox and only candidate conversations;
 -- folders, the job label, search, unread (Gmail or Gio), Done and a reply
 -- after Done behave like a mail client; nobody reads another person's

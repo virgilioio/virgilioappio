@@ -3896,6 +3896,33 @@ export type Database = {
           },
         ]
       }
+      inbox_thread_state: {
+        Row: {
+          done_at: string | null
+          marked_unread: boolean
+          read_at: string | null
+          thread_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          done_at?: string | null
+          marked_unread?: boolean
+          read_at?: string | null
+          thread_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          done_at?: string | null
+          marked_unread?: boolean
+          read_at?: string | null
+          thread_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       integration_inbox: {
         Row: {
           created_at: string
@@ -12125,6 +12152,61 @@ export type Database = {
       iban_valid: { Args: { _iban: string }; Returns: boolean }
       identity_email: { Args: { p: string }; Returns: string }
       identity_phone: { Args: { p: string }; Returns: string }
+      inbox_access: { Args: never; Returns: boolean }
+      inbox_base: {
+        Args: { _uid: string }
+        Returns: {
+          candidate_email: string
+          candidate_id: string
+          candidate_name: string
+          done_at: string
+          has_attachments: boolean
+          has_received: boolean
+          has_sent: boolean
+          job_id: string
+          job_title: string
+          last_at: string
+          last_direction: string
+          last_received_at: string
+          message_count: number
+          snippet: string
+          subject: string
+          thread_id: string
+          unread: boolean
+        }[]
+      }
+      inbox_counts: { Args: never; Returns: Json }
+      inbox_mark: {
+        Args: { _action: string; _thread_ids: string[] }
+        Returns: number
+      }
+      inbox_thread: { Args: { _thread_id: string }; Returns: Json }
+      inbox_threads: {
+        Args: {
+          _before_at?: string
+          _before_thread?: string
+          _folder?: string
+          _job_id?: string
+          _limit?: number
+          _search?: string
+        }
+        Returns: {
+          candidate_email: string
+          candidate_id: string
+          candidate_name: string
+          done: boolean
+          has_attachments: boolean
+          job_id: string
+          job_title: string
+          last_at: string
+          last_direction: string
+          message_count: number
+          snippet: string
+          subject: string
+          thread_id: string
+          unread: boolean
+        }[]
+      }
       increment_sourcing_usage: {
         Args: {
           p_billing_cycle_start: string
