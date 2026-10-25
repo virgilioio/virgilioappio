@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
-import { issueCandidateChatToken } from "../_shared/chat-token.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 import { applyCandidateUpdate } from "../_shared/candidateUpdate.ts";
 
@@ -449,124 +448,6 @@ serve(withRequestCors(async (req) => {
     } else {
       console.log("ℹ️ Candidate already associated with this job, skipping duplicate association insert.");
     }
-
-    // Phase 2.2 — Issue a candidate chat magic-link token if the posting
-    // has Candidate chat enabled. Best-effort: failures must NOT block the
-    // application submission, since chat is an opt-in enhancement.
-    let chatMagicLinkPath: string | null = null;
-    try {
-      const issued = await issueCandidateChatToken({
-        tenantId: posting.tenant_id,
-        candidateId: globalCandidateId!,
-        jobId: posting.job_id,
-        // Application submission is a fresh entry point — mint a new token
-        // and revoke any prior one so the email always contains a valid link.
-        forceRotate: true,
-      });
-      chatMagicLinkPath = issued.magicLinkPath;
-      console.log(
-        "💬 Issued candidate chat token — thread",
-        issued.threadId,
-        "expires",
-        issued.expiresAt,
-        issued.reused ? "(reused)" : "(new)",
-      );
-
-      // Send the candidate magic-link email via Resend using the branded
-      // Gio chat-invite template. Best-effort: a delivery failure must not
-      // roll back the application.
-      try {
-        const resendKey = Deno.env.get("RESEND_API_KEY");
-        if (!resendKey || !chatMagicLinkPath) {
-          if (!resendKey) console.warn("⚠️ RESEND_API_KEY missing — skipping chat magic-link email");
-        } else {
-          const appBase =
-            Deno.env.get("PUBLIC_APP_URL")?.replace(/\/$/, "") ||
-            "https://app.gogio.io";
-          const magicUrl = `${appBase}${chatMagicLinkPath}`;
-          const jobTitle = (posting as any).job?.title ?? "the role";
-
-          // Look up the recruiter that owns this job so the invite can carry
-          // a real face + title. Falls back to a friendly "hiring team" voice.
-          let recruiterFullName = "The hiring team";
-          let recruiterTitle = "Talent Partner";
-          let recruiterAvatar: string | null = null;
-          try {
-            const { data: jobRow } = await supabase
-              .from("jobs")
-              .select("created_by")
-              .eq("id", posting.job_id)
-              .maybeSingle();
-            if (jobRow?.created_by) {
-              const { data: prof } = await supabase
-                .from("profiles")
-                .select("first_name, last_name, title, avatar_url")
-                .eq("user_id", jobRow.created_by)
-                .maybeSingle();
-              if (prof) {
-                const full = `${prof.first_name ?? ""} ${prof.last_name ?? ""}`.trim();
-                if (full) recruiterFullName = full;
-                if (prof.title) recruiterTitle = prof.title;
-                recruiterAvatar = prof.avatar_url ?? null;
-              }
-            }
-          } catch (lookupErr) {
-            console.warn("[chat-invite] recruiter lookup failed", lookupErr);
-          }
-
-          const recruiterFirstName =
-            recruiterFullName.split(/\s+/)[0] ?? "The hiring team";
-          const candidateFirstName =
-            (candidateName || candidateEmail).split(/\s+/)[0] ?? "there";
-
-          const { Resend } = await import("npm:resend@2.0.0");
-          const {
-            renderChatInviteEmail,
-            initialsFor,
-            colorForName,
-          } = await import("../_shared/chatInviteEmail.ts");
-          const resend = new Resend(resendKey);
-          const emailFrom =
-            Deno.env.get("EMAIL_DEFAULT_FROM") || "Gio <noreply@app.gogio.io>";
-
-          const rendered = renderChatInviteEmail({
-            recruiter_first_name: recruiterFirstName,
-            recruiter_full_name: recruiterFullName,
-            recruiter_title: recruiterTitle,
-            recruiter_initials: initialsFor(recruiterFullName),
-            recruiter_color: colorForName(recruiterFullName),
-            recruiter_avatar: recruiterAvatar,
-            candidate_first_name: candidateFirstName,
-            job_title: jobTitle,
-            recruiter_message: `Hi ${candidateFirstName} 👋 Thanks for applying to ${jobTitle}. I'll be your point of contact — feel free to send any questions here and I'll get right back to you.`,
-            chat_url: magicUrl,
-            link_expiry: "14 days",
-          });
-
-          const emailRes = await resend.emails.send({
-            from: emailFrom,
-            to: [candidateEmail],
-            subject: rendered.subject,
-            html: rendered.html,
-            text: rendered.text,
-          });
-          console.log("💌 Candidate chat magic-link email queued:", emailRes?.data?.id ?? "(no id)");
-        }
-      } catch (emailErr) {
-        console.warn(
-          "⚠️ Chat magic-link email failed (non-fatal):",
-          emailErr instanceof Error ? emailErr.message : String(emailErr),
-        );
-      }
-    } catch (chatErr) {
-      const msg = chatErr instanceof Error ? chatErr.message : String(chatErr);
-      if (msg.includes("disabled")) {
-        console.log("💬 Chat not enabled for this posting — skipping token issuance");
-      } else {
-        console.warn("⚠️ Chat token issuance failed (non-fatal):", msg);
-      }
-    }
-
 
     // Track application in limits system
     console.log('📊 Recording application for limits tracking');
