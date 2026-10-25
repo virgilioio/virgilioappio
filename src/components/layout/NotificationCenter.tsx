@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconTip } from '@/components/ui/tooltip'
 import { motionToken, prefersReducedMotion } from '@/lib/motion'
-import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
   Bell, Check, CheckCheck, SlidersHorizontal, ArrowLeft, ChevronRight,
@@ -300,7 +299,6 @@ export function NotificationCenter() {
   const [tab, setTab] = useState<Tab>('all')
   const tabSegRef = useSegmentLayer<HTMLDivElement>()
   const navigate = useNavigate()
-  const qc = useQueryClient()
   const { data: notificationRows, markAsRead, markAllAsRead } = useNotifications()
   const notifications = useMemo(() => notificationRows ?? [], [notificationRows])
   useNotificationSound(notificationRows)
@@ -354,16 +352,7 @@ export function NotificationCenter() {
 
   const handleClick = (n: NotificationRow) => {
     setOpen(false)
-    if (n.category === 'chat_message') {
-      qc.invalidateQueries({ queryKey: ['chat-threads'] })
-      qc.invalidateQueries({ queryKey: ['chat-unread-count'] })
-    }
-    if (n.action_url) {
-      navigate(
-        n.action_url,
-        n.category === 'chat_message' ? { state: { chatNotificationOpen: true } } : undefined,
-      )
-    }
+    if (n.action_url) navigate(n.action_url)
   }
 
   return (

@@ -9,7 +9,6 @@ export interface Tenant {
   tenant_type: string;
   status: string;
   about?: string | null;
-  chat_paused?: boolean;
   created_at: string;
 }
 
