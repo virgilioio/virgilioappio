@@ -22,10 +22,9 @@ export interface BookingCardPayload {
 }
 
 interface Props {
-  threadId?: string
-  /** Alternative to threadId — pass known IDs directly (e.g., from the email composer). */
+  /** The candidate, job and stage the link is for (the email composer passes what it knows). */
   source?: { candidateId?: string | null; jobId?: string | null; associationId?: string | null; jhsId?: string | null }
-  /** Absolute positioning overrides (defaults suit the chat composer). */
+  /** Absolute positioning overrides. */
   anchorStyle?: React.CSSProperties
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -44,7 +43,6 @@ interface ThreadCtx {
 }
 
 function useBookingCtx(
-  threadId: string | undefined,
   source: Props['source'] | undefined,
   enabled: boolean,
 ) {
@@ -52,25 +50,13 @@ function useBookingCtx(
   useEffect(() => {
     let alive = true
     if (!enabled) return
-    if (!threadId && !source) return
+    if (!source) return
     ;(async () => {
       const sb = supabase as any
 
-      let candidateId: string | null = source?.candidateId ?? null
-      let jobId: string | null = source?.jobId ?? null
-      let associationId: string | null = source?.associationId ?? null
-
-      if (threadId) {
-        const { data: row } = await sb
-          .from('chat_threads')
-          .select('candidate_id, job_id, association_id')
-          .eq('id', threadId)
-          .maybeSingle()
-        if (!row || !alive) return
-        candidateId = row.candidate_id ?? null
-        jobId = row.job_id ?? null
-        associationId = row.association_id ?? null
-      }
+      const candidateId: string | null = source?.candidateId ?? null
+      const jobId: string | null = source?.jobId ?? null
+      const associationId: string | null = source?.associationId ?? null
 
       const [cand, job, assoc] = await Promise.all([
         candidateId
@@ -121,19 +107,19 @@ function useBookingCtx(
     return () => {
       alive = false
     }
-  }, [threadId, source?.candidateId, source?.jobId, source?.associationId, source?.jhsId, enabled])
+  }, [source?.candidateId, source?.jobId, source?.associationId, source?.jhsId, enabled])
   return ctx
 }
 
 /**
  * BookingLinkPopover — anchored above the composer. Shows the candidate's
  * current-stage job link (if configured) + the signed-in recruiter's personal
- * link. Selecting a row inserts a booking-link card into the thread.
+ * link. Selecting a row inserts a booking-link card into the email.
  */
-export function BookingLinkPopover({ threadId, source, anchorStyle, open, onOpenChange, onPick }: Props) {
+export function BookingLinkPopover({ source, anchorStyle, open, onOpenChange, onPick }: Props) {
   const navigate = useNavigate()
   const rootRef = useRef<HTMLDivElement>(null)
-  const ctx = useBookingCtx(threadId, source, open)
+  const ctx = useBookingCtx(source, open)
   const { config } = useBookingConfig()
   const { eventTypes } = useBookingEventTypes(config?.id)
   const { profile } = useUserProfile()

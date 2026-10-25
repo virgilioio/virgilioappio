@@ -179,8 +179,8 @@ export async function forgetCandidate(sb: SupabaseClient, candidateId: string, r
     .filter((p): p is string => Boolean(p));
   if (paths.length) await sb.storage.from("candidate-attachments").remove(paths);
 
-  // Their emails (with the attachment files Gmail sync saved) and chat
-  // (not removed by the candidate row's cascade).
+  // Their emails, with the attachment files Gmail sync saved (not removed by
+  // the candidate row's cascade).
   const { data: mails } = await sb.from("email_logs").select("attachments").eq("candidate_id", candidateId);
   const mailFiles = [...new Set(
     (mails ?? [])
@@ -192,12 +192,6 @@ export async function forgetCandidate(sb: SupabaseClient, candidateId: string, r
     await sb.storage.from("email-attachments").remove(mailFiles.slice(i, i + 100));
   }
   await sb.from("email_logs").delete().eq("candidate_id", candidateId);
-  const { data: threads } = await sb.from("chat_threads").select("id").eq("candidate_id", candidateId);
-  const threadIds = (threads ?? []).map((t: { id: string }) => t.id);
-  if (threadIds.length) {
-    await sb.from("chat_messages").delete().in("thread_id", threadIds);
-    await sb.from("chat_threads").delete().in("id", threadIds);
-  }
 
   // The candidate; pipelines, scorecards, work history, bookings and the rest cascade.
   const { error } = await sb.from("candidates").delete().eq("id", candidateId);
