@@ -4,18 +4,18 @@ import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
-import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
+import { usePermissions } from '@/hooks/usePermissions'
 import { useTalentPoolAccess } from '@/hooks/useTalentPoolAccess'
-import { useChatUnreadCount } from '@/hooks/chat/useChatUnreadCount'
-import { AnalyticsGlyph, AtsGlyph, ChatGlyph, DashboardGlyph, PeopleGlyph, ReferencesModuleGlyph, SignGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
+import { useInboxAccess, useInboxCounts, useInboxLive } from '@/lib/inbox'
+import { AnalyticsGlyph, AtsGlyph, DashboardGlyph, InboxGlyph, PeopleGlyph, ReferencesModuleGlyph, SignGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
 import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
 
 
-export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'references' | 'analytics' | 'people' | 'sign' | 'settings' | 'my-profile' | null
+export type AppSection = 'home' | 'ats' | 'crm' | 'inbox' | 'references' | 'analytics' | 'people' | 'sign' | 'settings' | 'my-profile' | null
 
 const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/calendar']
 const CRM_PREFIXES = ['/crm']
-const CHAT_PREFIXES = ['/chat']
+const INBOX_PREFIXES = ['/inbox']
 const REFERENCES_PREFIXES = ['/references']
 const ANALYTICS_PREFIXES = ['/analytics', '/talent-intelligence', '/insights']
 const PEOPLE_PREFIXES = ['/os']
@@ -28,7 +28,7 @@ export function getActiveSection(pathname: string, search = ''): AppSection {
   if (PEOPLE_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'people'
   if (SIGN_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'sign'
   if (REFERENCES_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'references'
-  if (CHAT_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'chat'
+  if (INBOX_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'inbox'
   if (CRM_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'crm'
   if (ATS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'ats'
   if (pathname === '/settings') return 'settings'
@@ -41,7 +41,8 @@ const ReferencesGlyph = ReferencesModuleGlyph
 const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings' | 'sign'>; label: string; Icon: IconRenderer; href: string; show: (p: ReturnType<typeof usePermissions>) => boolean }> = [
   { id: 'home', label: 'Dashboard', Icon: DashboardGlyph, href: '/dashboard', show: (p) => !p.isSalesUser },
   { id: 'ats', label: 'ATS', Icon: AtsGlyph, href: '/jobs', show: (p) => p.canViewJobs },
-  { id: 'chat', label: 'Chat', Icon: ChatGlyph, href: '/chat', show: () => false }, // gated via useCanUseChat below
+  // Inbox: admins and Recruiter/Sourcer seats on open jobs (inbox_access), checked below.
+  { id: 'inbox', label: 'Inbox', Icon: InboxGlyph, href: '/inbox', show: () => false },
   { id: 'references', label: 'Reference checks', Icon: ReferencesGlyph, href: '/references', show: (p) => p.canViewReferences },
   { id: 'analytics', label: 'Analytics', Icon: AnalyticsGlyph, href: '/analytics', show: (p) => !p.isSalesUser && !p.isExternal },
 ]
@@ -61,13 +62,16 @@ export function AppSidebar() {
   const active = getActiveSection(pathname, search)
   const { profile } = useUserProfile()
   const permissions = usePermissions()
-  const canUseChat = useCanUseChat()
+  const { data: canUseInbox = false } = useInboxAccess()
   const talentPool = useTalentPoolAccess() !== false
   const items = allItems
-    .filter((item) => (item.id === 'chat' ? canUseChat : item.show(permissions)))
+    .filter((item) => (item.id === 'inbox' ? canUseInbox : item.show(permissions)))
     // Job-based access: references and analytics work on the talent pool.
     .filter((item) => talentPool || (item.id !== 'references' && item.id !== 'analytics'))
-  const { data: chatUnread = 0 } = useChatUnreadCount()
+  // The unread number on the Inbox glyph stays live on every page.
+  useInboxLive(canUseInbox)
+  const { data: inboxCounts } = useInboxCounts(canUseInbox)
+  const inboxUnread = inboxCounts?.inbox_unread ?? 0
 
   const initials = (() => {
     const f = profile?.first_name?.trim()?.[0] ?? ''
@@ -100,16 +104,16 @@ export function AppSidebar() {
                   <Link
                     to={item.href}
                     aria-current={isActive ? 'page' : undefined}
-                    aria-label={item.id === 'chat' && chatUnread > 0 ? `${item.label} (${chatUnread} unread)` : item.label}
+                    aria-label={item.id === 'inbox' && inboxUnread > 0 ? `${item.label}, ${inboxUnread} unread` : item.label}
                     className={cn(tileBase, isActive ? tileActive : tileInactive, 'relative')}
                   >
                     <Icon className="h-6 w-6" />
-                    {item.id === 'chat' && chatUnread > 0 && (
+                    {item.id === 'inbox' && inboxUnread > 0 && (
                       <span
                         aria-hidden
-                        className="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-[#D7C5FB] text-[#0d0d09] font-poppins font-semibold text-[10px] leading-none flex items-center justify-center ring-2 ring-[#0d0d09]"
+                        className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-[#D7C5FB] text-[#0d0d09] font-poppins font-semibold text-[10px] leading-none tabular-nums flex items-center justify-center ring-2 ring-[#0d0d09]"
                       >
-                        {chatUnread > 99 ? '99+' : chatUnread}
+                        {inboxUnread > 99 ? '99+' : inboxUnread}
                       </span>
                     )}
                   </Link>

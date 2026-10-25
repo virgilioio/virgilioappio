@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { IconTip } from '@/components/ui/tooltip'
 import { SearchResultsDialog } from '@/components/search/SearchResultsDialog'
-import { AtsGlyph, DashboardGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
+import { AtsGlyph, DashboardGlyph, InboxGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
 import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -13,6 +13,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { cn } from '@/lib/utils'
 import { BookingLinkCard } from './BookingLinkCard'
 import { useTalentPoolAccess } from '@/hooks/useTalentPoolAccess'
+import { useInboxAccess, useInboxCounts } from '@/lib/inbox'
 
 /**
  * The phone shell (2026-10-12), in Gio Docs' phone frame so the two products
@@ -27,8 +28,8 @@ import { useTalentPoolAccess } from '@/hooks/useTalentPoolAccess'
  * Analytics, Intelligence and chat stay on the computer.
  */
 
-type Perm = ReturnType<typeof usePermissions> & { talentPool: boolean }
-type ModuleId = 'home' | 'ats'
+type Perm = ReturnType<typeof usePermissions> & { talentPool: boolean; inbox: boolean }
+type ModuleId = 'home' | 'ats' | 'inbox'
 
 interface Section { id: string; href: string; label: string; match: (p: string) => boolean; show: (perm: Perm) => boolean }
 
@@ -41,11 +42,15 @@ const SECTIONS: Record<ModuleId, Section[]> = {
     { id: 'candidates', href: '/candidates', label: 'Candidates', match: p => p === '/candidates', show: perm => perm.canViewCandidates && perm.talentPool && !perm.isExternal },
     { id: 'calendar', href: '/calendar', label: 'Calendar', match: p => p === '/calendar', show: perm => !perm.isExternal },
   ],
+  inbox: [
+    { id: 'inbox', href: '/inbox', label: 'Inbox', match: p => p === '/inbox', show: perm => perm.inbox },
+  ],
 }
 
 const MODULES: { id: ModuleId; label: string; Glyph: ModuleGlyph }[] = [
   { id: 'home', label: 'Dashboard', Glyph: DashboardGlyph },
   { id: 'ats', label: 'ATS', Glyph: AtsGlyph },
+  { id: 'inbox', label: 'Inbox', Glyph: InboxGlyph },
 ]
 
 const ATS_PREFIXES = ['/jobs', '/candidates', '/calendar', '/pipeline', '/find']
@@ -53,6 +58,7 @@ const ATS_PREFIXES = ['/jobs', '/candidates', '/calendar', '/pipeline', '/find']
 function moduleOf(pathname: string): ModuleId | null {
   if (pathname === '/' || pathname === '/dashboard') return 'home'
   if (ATS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'ats'
+  if (pathname === '/inbox' || pathname.startsWith('/inbox/')) return 'inbox'
   return null
 }
 
@@ -73,7 +79,10 @@ export function PhoneShell() {
   const navigate = useNavigate()
   // Job-based access: Candidates needs the talent pool.
   const talentPool = useTalentPoolAccess() !== false
-  const perm = { ...usePermissions(), talentPool }
+  const { data: inbox = false } = useInboxAccess()
+  const perm = { ...usePermissions(), talentPool, inbox }
+  const { data: inboxCounts } = useInboxCounts(inbox)
+  const inboxUnread = inboxCounts?.inbox_unread ?? 0
   const me = useMe()
   const [searchOpen, setSearchOpen] = useState(false)
   const [youOpen, setYouOpen] = useState(false)
@@ -84,7 +93,7 @@ export function PhoneShell() {
   const modules = MODULES.filter(m => SECTIONS[m.id].some(s => s.show(perm)))
   const back = () => {
     // Opened straight from a link (no history inside the app): go to the module.
-    if (key === 'default') navigate(mod === 'ats' ? (pathname.startsWith('/candidates') ? '/candidates' : '/jobs') : '/dashboard')
+    if (key === 'default') navigate(mod === 'inbox' ? '/inbox' : mod === 'ats' ? (pathname.startsWith('/candidates') ? '/candidates' : '/jobs') : '/dashboard')
     else navigate(-1)
   }
 
@@ -109,14 +118,22 @@ export function PhoneShell() {
               <IconTip key={id} label={label}>
                 <Link
                   to={href}
-                  aria-label={label}
+                  aria-label={id === 'inbox' && inboxUnread > 0 ? `${label}, ${inboxUnread} unread` : label}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'gio-pressable gio-phone-float pointer-events-auto grid h-14 w-14 shrink-0 place-items-center rounded-full transition-colors duration-150',
+                    'gio-pressable gio-phone-float pointer-events-auto relative grid h-14 w-14 shrink-0 place-items-center rounded-full transition-colors duration-150',
                     active ? 'gio-phone-float-active text-[#fffcf9] [&_.accent]:fill-[#D7C5FB]' : 'text-[#0d0d09]',
                   )}
                 >
                   <Glyph className="h-[34px] w-[34px]" />
+                  {id === 'inbox' && inboxUnread > 0 && (
+                    <span
+                      aria-hidden
+                      className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#D7C5FB] text-[#0d0d09] font-poppins font-semibold text-[10.5px] leading-none tabular-nums flex items-center justify-center ring-2 ring-white"
+                    >
+                      {inboxUnread > 99 ? '99+' : inboxUnread}
+                    </span>
+                  )}
                 </Link>
               </IconTip>
             )

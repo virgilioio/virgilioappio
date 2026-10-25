@@ -41,6 +41,17 @@ export const ChatGlyph: ModuleGlyph = ({ className }) => (
   </svg>
 )
 
+/** Inbox: a tray with a dip; the letter dropping into it is the signal. */
+export const InboxGlyph: ModuleGlyph = ({ className }) => (
+  <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
+    <path
+      d="M8 26.5a2.5 2.5 0 0 1 2.5-2.5H17a7 7 0 0 0 14 0h6.5a2.5 2.5 0 0 1 2.5 2.5V32a8 8 0 0 1-8 8H16a8 8 0 0 1-8-8z"
+      fill="currentColor"
+    />
+    <circle className="accent" cx="24" cy="12.5" r="4.5" fill="currentColor" />
+  </svg>
+)
+
 export const AnalyticsGlyph: ModuleGlyph = ({ className }) => (
   <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
     <rect x="9" y="25" width="9" height="14" rx="4.5" fill="currentColor" />
@@ -135,6 +146,7 @@ export const MODULE_GLYPHS = {
   ats: AtsGlyph,
   crm: CrmGlyph,
   chat: ChatGlyph,
+  inbox: InboxGlyph,
   references: ReferencesModuleGlyph,
   analytics: AnalyticsGlyph,
   people: PeopleGlyph,

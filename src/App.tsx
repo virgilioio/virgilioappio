@@ -45,6 +45,7 @@ const ApplicationReviewPage = lazy(() => import('./pages/ApplicationReview'))
 const Members = lazy(() => import('./pages/Members'))
 const Candidates = lazy(() => import('./pages/Candidates'))
 const Chat = lazy(() => import('./pages/Chat'))
+const Inbox = lazy(() => import('./pages/Inbox'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Login = lazy(() => import('./pages/Login'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
@@ -127,10 +128,19 @@ if (typeof window !== 'undefined') {
 
 // Step 1.2 — gate /chat behind canUseChat
 import { useCanUseChat } from '@/hooks/usePermissions'
+import { useInboxAccess } from '@/lib/inbox'
 /** /me/details was My profile's second page until 2026-10-24: its links (bell, emails) land on /me. */
 function MeDetailsRedirect() {
   const { search } = useLocation()
   return <Navigate to={`/me${search}`} replace />
+}
+
+/** The Inbox: admins and Recruiter/Sourcer seats on open jobs (inbox_access). */
+function InboxRouteGuard({ children }: { children: React.ReactNode }) {
+  const { data: allowed, isLoading } = useInboxAccess()
+  if (isLoading) return null
+  if (!allowed) return <NotFound />
+  return <>{children}</>
 }
 
 function ChatRouteGuard({ children }: { children: React.ReactNode }) {
@@ -234,6 +244,8 @@ function AppContent() {
             <Route path="/members" element={<Members />} />
             <Route path="/crm/*" element={<Navigate to="/" replace />} />
             <Route path="/organizations" element={<Navigate to="/settings" replace />} />
+            <Route path="/inbox" element={<InboxRouteGuard><Inbox /></InboxRouteGuard>} />
+            <Route path="/inbox/:threadId" element={<InboxRouteGuard><Inbox /></InboxRouteGuard>} />
             <Route path="/chat" element={<PhoneSwitch phone={<DesktopOnly what="Chat" />}><ChatRouteGuard><Chat /></ChatRouteGuard></PhoneSwitch>} />
             <Route path="/chat/:threadId" element={<PhoneSwitch phone={<DesktopOnly what="Chat" />}><ChatRouteGuard><Chat /></ChatRouteGuard></PhoneSwitch>} />
             <Route path="/references" element={<TalentPoolOnly what="Reference checks"><References /></TalentPoolOnly>} />

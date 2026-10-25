@@ -10,7 +10,7 @@ import { HeaderContextBands } from '@/components/layout/HeaderContextBands'
 import { usePermissions } from '@/hooks/usePermissions'
 
 // External users (2026-10-24) use the ATS only: these addresses send them to Jobs.
-const EXTERNAL_BLOCKED = ['/analytics', '/insights', '/talent-intelligence', '/references', '/candidates', '/find', '/calendar', '/chat', '/billing', '/os', '/sign']
+const EXTERNAL_BLOCKED = ['/analytics', '/insights', '/talent-intelligence', '/references', '/candidates', '/find', '/calendar', '/chat', '/inbox', '/billing', '/os', '/sign']
 const blockedForExternal = (path: string) => EXTERNAL_BLOCKED.some((p) => path === p || path.startsWith(p + '/'))
 
 export function Layout() {
