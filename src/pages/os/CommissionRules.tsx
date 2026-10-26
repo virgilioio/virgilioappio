@@ -14,7 +14,7 @@ import { RoleDialog, RuleDialog } from '@/components/os/CommissionDialogs'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { useTenant } from '@/hooks/useTenant'
 import { personName, usePeople } from '@/lib/os/peopleAccess'
-import { sendRatesNow, useCommissionRates, type CommissionRate } from '@/lib/os/commissions'
+import { sendRatesNow, useCommissionRates } from '@/lib/os/commissions'
 import {
   dayText,
   payableText,
@@ -26,13 +26,12 @@ import {
   useSetRoleActive,
   type CommissionRole,
   type CommissionRule,
+  type SyncStatus,
 } from '@/lib/os/commissionRules'
 
-/** Where a built-in role's rate got to in Gio Sales. */
-function Delivery({ rate, builtIn }: { rate: CommissionRate | undefined; builtIn: boolean }) {
-  // A built-in role's version always has its rate (the database copies it); until the list catches up it is on its way.
-  if (!rate && !builtIn) return <span className="text-[#8B8F9E]">Not used by Gio Sales yet</span>
-  if (rate?.sync_status === 'done') {
+/** Where a rule version (and, for built-in roles, its rate) got to in Gio Sales. */
+function Delivery({ status, error }: { status: SyncStatus; error: string | null }) {
+  if (status === 'done') {
     return (
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[#0B7A52]">
         <span className="h-1.5 w-1.5 rounded-full bg-[#12B886]" aria-hidden />
@@ -40,11 +39,11 @@ function Delivery({ rate, builtIn }: { rate: CommissionRate | undefined; builtIn
       </span>
     )
   }
-  if (rate?.sync_status === 'refused') {
+  if (status === 'refused') {
     return (
       <span className="block text-[#B91C1C]">
         Gio Sales refused it
-        {rate?.sync_error && <span className="block text-[11.5px] text-[#6B7080]">{rate.sync_error}</span>}
+        {error && <span className="block text-[11.5px] text-[#6B7080]">{error}</span>}
       </span>
     )
   }
@@ -53,6 +52,13 @@ function Delivery({ rate, builtIn }: { rate: CommissionRate | undefined; builtIn
       <span className="gio-spinner h-3 w-3" aria-hidden />
       Sending to Gio Sales
     </span>
+  )
+}
+
+/** A refusal wins over waiting, waiting over done. */
+function worst(...items: { status: SyncStatus; error: string | null }[]) {
+  return (
+    items.find((i) => i.status === 'refused') ?? items.find((i) => i.status === 'pending') ?? { status: 'done' as SyncStatus, error: null }
   )
 }
 
@@ -107,7 +113,17 @@ export default function CommissionRulesPage() {
     if (!role?.built_in) return undefined
     return (rates.data ?? []).find((r) => r.role_key === role.key && r.effective_from === v.effective_from)
   }
-  const waiting = (rates.data ?? []).filter((r) => r.sync_status === 'pending').length
+  // A built-in version travels twice: as a rule, and as the rate today's invoices use.
+  const deliveryOf = (v: CommissionRule) => {
+    const own = { status: v.sync_status, error: v.sync_error }
+    if (!roleById.get(v.role_id)?.built_in) return own
+    const rate = rateOf(v)
+    return worst(own, rate ? { status: rate.sync_status as SyncStatus, error: rate.sync_error } : { status: 'pending', error: null })
+  }
+  const waiting =
+    (rates.data ?? []).filter((r) => r.sync_status === 'pending').length +
+    roleRows.filter((r) => r.sync_status === 'pending').length +
+    all.filter((v) => v.sync_status === 'pending').length
 
   const toggle = async (role: CommissionRole) => {
     try {
@@ -128,6 +144,8 @@ export default function CommissionRulesPage() {
     } finally {
       setSending(false)
       void rates.refetch()
+      void roles.refetch()
+      void versions.refetch()
     }
   }
 
@@ -181,6 +199,17 @@ export default function CommissionRulesPage() {
                             {sourceLabel(role.person_source)}
                             {role.description ? ` · ${role.description}` : ''}
                           </p>
+                          {role.sync_status === 'pending' && (
+                            <p className="mt-1 inline-flex items-center gap-1.5 font-inter text-[12px] text-[#B45309]">
+                              <span className="gio-spinner h-3 w-3" aria-hidden />
+                              Sending to Gio Sales
+                            </p>
+                          )}
+                          {role.sync_status === 'refused' && (
+                            <p className="mt-1 font-inter text-[12px] text-[#B91C1C]">
+                              Gio Sales refused this role{role.sync_error ? `: ${role.sync_error}` : '.'}
+                            </p>
+                          )}
                         </div>
                         <DropdownMenu>
                           <IconTip label={`${role.label} actions`}>
@@ -318,7 +347,7 @@ export default function CommissionRulesPage() {
                         </TableCell>
                         <TableCell className="hidden max-w-[150px] truncate text-[#5A6072] md:table-cell">{nameOf(v.created_by)}</TableCell>
                         <TableCell className="text-[12.5px]">
-                          <Delivery rate={rateOf(v)} builtIn={!!roleById.get(v.role_id)?.built_in} />
+                          <Delivery {...deliveryOf(v)} />
                         </TableCell>
                       </TableRow>
                     ))}

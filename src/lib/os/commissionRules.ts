@@ -13,6 +13,7 @@ import { sendRatesNow } from '@/lib/os/commissions'
  */
 
 export type PersonSource = 'deal_sales' | 'deal_es' | 'deal_sdr' | 'partner_owner' | 'hire_sourcer' | 'hire_recruiter'
+export type SyncStatus = 'pending' | 'done' | 'refused'
 export type FeeKey = 'engagement' | 'success' | 'ta-other' | 'consulting' | 'c-other'
 
 export interface CommissionRole {
@@ -24,6 +25,9 @@ export interface CommissionRole {
   built_in: boolean
   active: boolean
   position: number
+  /** Where it got to in Gio Sales. */
+  sync_status: SyncStatus
+  sync_error: string | null
 }
 
 export interface CommissionRule {
@@ -45,6 +49,8 @@ export interface CommissionRule {
   note: string | null
   created_by: string | null
   created_at: string
+  sync_status: SyncStatus
+  sync_error: string | null
 }
 
 /** Where a role's person comes from, grouped by the app that knows it. */
@@ -119,7 +125,7 @@ export function useCommissionRoles(tenantId: string | undefined) {
     queryFn: async (): Promise<CommissionRole[]> => {
       const { data, error } = await supabase
         .from('os_commission_roles')
-        .select('id, key, label, description, person_source, built_in, active, position')
+        .select('id, key, label, description, person_source, built_in, active, position, sync_status, sync_error')
         .eq('tenant_id', tenantId!)
         .order('position')
         .order('label')
@@ -137,7 +143,7 @@ export function useCommissionRuleVersions(tenantId: string | undefined) {
     queryFn: async (): Promise<CommissionRule[]> => {
       const { data, error } = await supabase
         .from('os_commission_rules')
-        .select('id, role_id, series_id, effective_from, stopped, basis, pct, amount, currency, payable_on, applies_to, fees, client, partner_items, months, note, created_by, created_at')
+        .select('id, role_id, series_id, effective_from, stopped, basis, pct, amount, currency, payable_on, applies_to, fees, client, partner_items, months, note, created_by, created_at, sync_status, sync_error')
         .eq('tenant_id', tenantId!)
         .order('effective_from', { ascending: false })
         .order('created_at', { ascending: false })
