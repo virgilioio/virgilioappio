@@ -118,12 +118,6 @@ export function useProfileChecks(tenantId: string | undefined, userId: string | 
   }
 }
 
-/**
- * Who gets the invitation to fill in My profile (Allan, 2026-10-26): the
- * dialog (`ProfileInviteDialog`) and the band in HeaderContextBands.
- * Virgilio's own people only: never externals, never on /me itself, and gone
- * once nothing is missing.
- */
 const seenKey = (userId: string) => `gio:profile-invite-seen:${userId}`
 const SEEN_EVENT = 'gio:profile-invite-seen'
 
@@ -158,6 +152,12 @@ function useInviteSeen(userId: string | null | undefined) {
   return seen
 }
 
+/**
+ * Who gets the invitation to fill in My profile (Allan, 2026-10-26): the
+ * dialog (`ProfileInviteDialog`) and the band in HeaderContextBands.
+ * Virgilio's own people only: never externals, never on /me itself, and gone
+ * once nothing is missing.
+ */
 export function useProfileInvite() {
   const { userId } = useAuth()
   const { tenant } = useTenant()
