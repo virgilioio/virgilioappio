@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, RotateCcw, Search } from 'lucide-react'
+import { Package, Plus, RotateCcw, Search } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +25,9 @@ import {
 import { AccessChips, GoogleStatus, JobCounts, PersonAvatar, PersonStateBadge } from '@/components/os/PeopleBits'
 import { AddPersonDialog } from '@/components/os/AddPersonDialog'
 import { MetaDot, ListPage } from '@/components/layout/ListPage'
+import { downloadCsv } from '@/lib/csv'
+import { countryName } from '@/lib/places'
+import { fetchAllShipping } from '@/lib/os/shipping'
 
 const NO_ROLE = '__none__'
 const COLS = 6
@@ -103,6 +107,46 @@ export default function PeoplePage() {
 
   const open = (p: Person) => navigate(`/os/people/${p.member_id}`)
 
+  // Shipping addresses for swag and mail: every active person at Virgilio, with
+  // or without one, so the file also shows who still has to add theirs.
+  const [exporting, setExporting] = useState(false)
+  const exportAddresses = async () => {
+    if (!tenant?.id || exporting) return
+    setExporting(true)
+    try {
+      const rows = await fetchAllShipping(tenant.id)
+      const byUser = new Map(rows.map((r) => [r.user_id, r]))
+      const team = all
+        .filter((p) => p.user_id && personState(p) === 'active' && p.user_type !== 'external')
+        .sort((a, b) => personName(a).localeCompare(personName(b)))
+      const header = ['Name', 'Work email', 'Recipient', 'Street and number', 'Apartment, suite or floor', 'City', 'State or province', 'Postal code', 'Country', 'Phone', 'Delivery notes', 'Updated']
+      const lines = team.map((p) => {
+        const a = byUser.get(p.user_id!)
+        return [
+          personName(p),
+          p.email,
+          a?.recipient_name || (a ? personName(p) : ''),
+          a?.line1,
+          a?.line2,
+          a?.city,
+          a?.region,
+          a?.postal_code,
+          countryName(a?.country_code),
+          a?.phone,
+          a?.notes,
+          a?.updated_at ? a.updated_at.slice(0, 10) : '',
+        ]
+      })
+      downloadCsv('Shipping addresses', header, lines)
+      const withOne = team.filter((p) => byUser.get(p.user_id!)?.line1).length
+      toast(`Addresses exported · ${withOne} of ${team.length} ${team.length === 1 ? 'person has' : 'people have'} one`)
+    } catch {
+      toast.error("Couldn't export the addresses. Try again.")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <ListPage
       title="People"
@@ -115,9 +159,14 @@ export default function PeoplePage() {
         </>
       }
       actions={
-        <Button variant="primary" size="md" icon={Plus} onClick={() => setAdding(true)}>
-          Add person
-        </Button>
+        <>
+          <Button variant="secondary" size="md" icon={Package} loading={exporting} onClick={() => void exportAddresses()}>
+            Export addresses
+          </Button>
+          <Button variant="primary" size="md" icon={Plus} onClick={() => setAdding(true)}>
+            Add person
+          </Button>
+        </>
       }
     >
       <div className="space-y-4">

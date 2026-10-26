@@ -1,4 +1,5 @@
 import { ArrowRight, Briefcase, Copy, Download, Mail, Tag, UserX } from 'lucide-react'
+import { downloadCsv } from '@/lib/csv'
 import type { SelectionAction } from '@/components/shared/SelectionBar'
 import { AddToJobPopover } from '@/components/candidates/bulk/AddToJobPopover'
 import { AddTagPopover } from '@/components/candidates/tags/AddTagPopover'
@@ -169,16 +170,6 @@ async function copyEmails(ids: string[]) {
   })
 }
 
-/**
- * One CSV cell: quoted, and text starting with = + - @ can't run as a spreadsheet
- * formula (a plain number such as a phone number is left as it is).
- */
-function cell(v: unknown): string {
-  let s = v == null ? '' : String(v)
-  if (/^[=+\-@\t\r]/.test(s) && !/^[+-]?[\d\s().-]+$/.test(s)) s = `'${s}`
-  return `"${s.replace(/"/g, '""')}"`
-}
-
 const day = (iso?: string | null) => (iso ? iso.slice(0, 10) : '')
 
 async function exportCsv(o: JobBulkMenuOptions) {
@@ -206,18 +197,8 @@ async function exportCsv(o: JobBulkMenuOptions) {
       c?.current_job_title || a?.current_role,
       c?.company_current || a?.current_company,
       c?.linkedin_url || a?.linkedin_url,
-    ].map(cell).join(',')
+    ]
   })
-  const csv = '﻿' + [header.map(cell).join(','), ...lines].join('\r\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  const base = (o.jobTitle || 'Candidates').replace(/[\\/:*?"<>|]+/g, ' ').trim()
-  link.href = url
-  link.download = `${base} - ${new Date().toISOString().slice(0, 10)}.csv`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadCsv(o.jobTitle || 'Candidates', header, lines)
   toast({ title: `${plural(o.candidateIds.length, 'candidate')} exported` })
 }
