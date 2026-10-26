@@ -1,4 +1,4 @@
--- Run after 20261026150000_places_and_shipping inside a transaction that is rolled back.
+-- Run after 20261026060729_places_and_shipping inside a transaction that is rolled back.
 -- Places: anyone reads them (the careers pages too), only the server writes,
 -- and the city search folds accents and ranks by size. Shipping addresses:
 -- the person and People & Access admins only, never an external, history by

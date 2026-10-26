@@ -3179,6 +3179,60 @@ export type Database = {
           },
         ]
       }
+      geo_cities: {
+        Row: {
+          ascii_name: string | null
+          country_code: string
+          id: number
+          name: string
+          population: number
+          region_code: string | null
+          search_name: string | null
+        }
+        Insert: {
+          ascii_name?: string | null
+          country_code: string
+          id: number
+          name: string
+          population?: number
+          region_code?: string | null
+          search_name?: string | null
+        }
+        Update: {
+          ascii_name?: string | null
+          country_code?: string
+          id?: number
+          name?: string
+          population?: number
+          region_code?: string | null
+          search_name?: string | null
+        }
+        Relationships: []
+      }
+      geo_regions: {
+        Row: {
+          ascii_name: string | null
+          code: string
+          country_code: string
+          geoname_id: number | null
+          name: string
+        }
+        Insert: {
+          ascii_name?: string | null
+          code: string
+          country_code: string
+          geoname_id?: number | null
+          name: string
+        }
+        Update: {
+          ascii_name?: string | null
+          code?: string
+          country_code?: string
+          geoname_id?: number | null
+          name?: string
+        }
+        Relationships: []
+      }
       inbox_thread_state: {
         Row: {
           done_at: string | null
@@ -6571,6 +6625,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "os_person_rating_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_person_shipping: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          created_at: string
+          line1: string | null
+          line2: string | null
+          notes: string | null
+          phone: string | null
+          postal_code: string | null
+          recipient_name: string | null
+          region: string | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          line1?: string | null
+          line2?: string | null
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          recipient_name?: string | null
+          region?: string | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          line1?: string | null
+          line2?: string | null
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          recipient_name?: string | null
+          region?: string | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_person_shipping_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -11127,6 +11240,22 @@ export type Database = {
       fit_queue_acquire_lease: { Args: { _seconds: number }; Returns: boolean }
       fit_queue_wake: { Args: never; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
+      geo_cities_search: {
+        Args: {
+          _country: string
+          _limit?: number
+          _q?: string
+          _region?: string
+        }
+        Returns: {
+          id: number
+          name: string
+          population: number
+          region_code: string
+          region_name: string
+        }[]
+      }
+      geo_fold: { Args: { _t: string }; Returns: string }
       get_all_feature_flags: {
         Args: never
         Returns: {
