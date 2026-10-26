@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Cake, Camera, IdCard, Landmark, MapPin, type LucideIcon } from 'lucide-react'
+import { Cake, Camera, IdCard, Landmark, MapPin, Package, type LucideIcon } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 
 import { useAuth } from '@/contexts/AuthContext'
@@ -11,15 +11,16 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useBankDetails } from '@/lib/os/bank'
 import { usePersonDetails } from '@/lib/os/peopleAccess'
 import { useTaxIds } from '@/lib/os/taxIds'
+import { shippingComplete, useShipping } from '@/lib/os/shipping'
 
 /**
  * What a complete profile has (Allan, 2026-10-26): photo and title, country
- * and contact, birthday, a tax ID and bank details. My profile's To do card,
- * the welcome dialog and the banner all read this one list, so they always
- * agree. Each check links to the card that fixes it.
+ * and contact, birthday, a tax ID, bank details and a shipping address. My
+ * profile's To do card, the welcome dialog and the banner all read this one
+ * list, so they always agree. Each check links to the card that fixes it.
  */
 export interface ProfileCheck {
-  key: 'you' | 'personal' | 'birthday' | 'tax' | 'bank'
+  key: 'you' | 'personal' | 'birthday' | 'tax' | 'bank' | 'shipping'
   icon: LucideIcon
   /** Short name, for the checklist ("Photo and title"). */
   label: string
@@ -37,7 +38,8 @@ export function useProfileChecks(tenantId: string | undefined, userId: string | 
   const details = usePersonDetails(tenantId, userId)
   const tax = useTaxIds(tenantId, userId)
   const bank = useBankDetails(tenantId, userId)
-  const queries = [details, tax, bank]
+  const shipping = useShipping(tenantId, userId)
+  const queries = [details, tax, bank, shipping]
   const loading = !profile || queries.some((q) => q.isLoading)
   const failed = queries.some((q) => q.isError)
 
@@ -102,6 +104,16 @@ export function useProfileChecks(tenantId: string | undefined, userId: string | 
         body: 'Where Virgilio pays your commissions.',
         to: '/me?focus=card-bank',
         done: !bank.data || bank.data.has_details,
+      },
+      {
+        key: 'shipping',
+        icon: Package,
+        label: 'Shipping address',
+        inline: 'shipping address',
+        title: 'Add your shipping address',
+        body: 'Where Virgilio sends you swag and mail.',
+        to: '/me?focus=card-shipping',
+        done: shippingComplete(shipping.data),
       },
     )
   }

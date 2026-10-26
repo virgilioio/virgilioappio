@@ -554,6 +554,23 @@ export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => 
         ? `${who} updated their personal details${list}`
         : `${who}'s personal details were updated${list}`
     }
+    case 'person.shipping_updated': {
+      const names: Record<string, string> = {
+        recipient: 'recipient',
+        street: 'street',
+        city: 'city',
+        region: 'state or province',
+        postal_code: 'postal code',
+        country: 'country',
+        phone: 'phone',
+        notes: 'delivery notes',
+      }
+      const fields = Array.isArray(d.fields) ? (d.fields as string[]).map((f) => names[f] ?? f) : []
+      const list = fields.length ? `: ${fields.join(', ')}` : ''
+      return row.actor_id && row.actor_id === row.subject_user_id
+        ? `${who} updated their shipping address${list}`
+        : `${who}'s shipping address was updated${list}`
+    }
     case 'person.bank_updated': {
       const names: Record<string, string> = {
         bank_details: 'added',

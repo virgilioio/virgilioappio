@@ -54,6 +54,7 @@ import {
 } from '@/components/os/ProfileSections'
 import { BankDetailsCard } from '@/components/os/BankDetailsCard'
 import { TaxIdsCard } from '@/components/os/TaxIdsCard'
+import { ShippingAddressCard } from '@/components/os/ShippingAddressCard'
 import { AccountCard } from '@/components/os/AccountCard'
 import { ComingUpCard, ToDoCard, UsefulLinksCard } from '@/components/os/MyProfileCards'
 import { ProfileNav, TAB_META, type ProfileTab } from '@/components/os/ProfileNav'
@@ -399,6 +400,15 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
               <div className="min-w-0 space-y-4">
                 {self && <AccountCard />}
                 <PersonalCard tenantId={tenant.id} person={person} isSelf={isSelf} />
+                {joined && person.user_type !== 'external' && (
+                  <ShippingAddressCard
+                    tenantId={tenant.id}
+                    userId={person.user_id!}
+                    self={isSelf}
+                    name={person.first_name ?? undefined}
+                    fullName={[person.first_name, person.last_name].filter(Boolean).join(' ') || undefined}
+                  />
+                )}
                 <GeneralCard person={person} />
                 <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
                 {joined && <BankDetailsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}

@@ -37,7 +37,7 @@ export function ProfileInviteDialog() {
             Your profile is here<span className="text-virgilio-purple">.</span>
           </DialogTitle>
           <DialogDescription className="mt-2 font-inter text-[13.5px] leading-[1.55] text-[#5A6072]">
-            One place for what Virgilio needs from you: where your commissions are paid, your agreements, and what your team sees, like your
+            One place for what Virgilio needs from you: where your commissions are paid, where to send you swag, your agreements, and what your team sees, like your
             photo and your birthday. It takes about five minutes.
           </DialogDescription>
 
@@ -69,7 +69,7 @@ export function ProfileInviteDialog() {
   )
 }
 
-/** "2 of 5 done" over a bar that fills with scaleX (§8). */
+/** "2 of 6 done" over a bar that fills with scaleX (§8). */
 export function Progress({ done, total, className }: { done: number; total: number; className?: string }) {
   return (
     <div className={className}>
