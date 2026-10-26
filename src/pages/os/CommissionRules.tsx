@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { History as HistoryIcon, MoreHorizontal, Pencil, Plus, Power, RefreshCw, Users } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { ListPage } from '@/components/layout/ListPage'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -80,13 +79,13 @@ type Dialog =
   | null
 
 /**
- * /os/commissions — Commission rules (Allan, 2026-10-23; roles and rules as
+ * Roles › Commissions (/os/roles?tab=commissions; Allan, 2026-10-23, roles and rules as
  * configuration 2026-10-26). Each role says where its person comes from on a
  * deal; its rules say what it's paid, on what, when and for how long. Rules
  * are never edited: a change is a new version from a date, and every version
  * stays in the history.
  */
-export default function CommissionRulesPage() {
+export function CommissionsPanel() {
   const { tenant } = useTenant()
   const roles = useCommissionRoles(tenant?.id)
   const versions = useCommissionRuleVersions(tenant?.id)
@@ -150,15 +149,7 @@ export default function CommissionRulesPage() {
   }
 
   return (
-    <ListPage
-      title="Commission rules"
-      meta={<span>Who earns what, on what and when. Gio Sales works out each invoice's commissions from these.</span>}
-      actions={
-        <Button icon={Plus} onClick={() => setDialog({ kind: 'role', role: null })} disabled={!tenant?.id}>
-          Add role
-        </Button>
-      }
-    >
+    <>
       {failed ? (
         <div className="rounded-2xl border border-virgilio-border bg-white" style={{ padding: '56px 24px' }}>
           <LoadError
@@ -173,7 +164,7 @@ export default function CommissionRulesPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <ProfileCard title="Roles" icon={Users} flush>
+          <ProfileCard title="Commission roles" icon={Users} flush>
             {loading ? (
               <div className="space-y-2 px-5 pb-5">
                 {Array.from({ length: 5 }, (_, i) => (
@@ -370,6 +361,6 @@ export default function CommissionRulesPage() {
           )}
         </>
       )}
-    </ListPage>
+    </>
   )
 }
