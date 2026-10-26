@@ -14,7 +14,8 @@
 -- 3. sales_earnings_upsert keeps the new fields; sales_lead_earning_upsert
 --    takes one lead credit (sales-earnings, event earnings.lead).
 --
--- Swaps two checks and loosens three not-null columns: applied from a desktop chat.
+-- Swaps two checks and loosens three not-null columns: applied from a desktop chat
+-- (recorded as 20261026231125).
 
 -- ── 1 and 2. The table ────────────────────────────────────────────────────
 alter table public.os_earnings drop constraint os_earnings_role_key_check;

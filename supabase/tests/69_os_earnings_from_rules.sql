@@ -1,4 +1,4 @@
--- Run after 20261026225902_os_earnings_from_rules inside a transaction that is rolled back.
+-- Run after 20261026231125_os_earnings_from_rules inside a transaction that is rolled back.
 -- Gio Sales sends credits from the rules (any role, what each is on, a fixed
 -- amount in its own currency) and accepted-lead credits with no invoice.
 -- Every row's ok is true.

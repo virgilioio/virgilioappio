@@ -6369,29 +6369,36 @@ export type Database = {
       }
       os_earnings: {
         Row: {
+          base_amount: number | null
+          basis: string
           client_name: string | null
           collected_amount: number
           created_at: string
           currency: string
           deal_title: string | null
           earned_amount: number
+          earned_on: string | null
           id: string
-          invoice_amount: number
+          invoice_amount: number | null
           invoice_number: string | null
           issued_on: string | null
+          item_name: string | null
           job_id: string | null
           opening_id: string | null
           paid_on: string | null
+          partner_name: string | null
           pending_amount: number
           person_email: string | null
           person_name: string | null
-          request_number: string
+          request_number: string | null
+          role_id: string | null
           role_key: string
           role_label: string
           sales_credit_id: string
-          sales_request_id: string
+          sales_request_id: string | null
           sales_sent_at: string
           share_pct: number
+          source: string
           status: string
           tenant_id: string
           updated_at: string
@@ -6399,29 +6406,36 @@ export type Database = {
           void_reason: string | null
         }
         Insert: {
+          base_amount?: number | null
+          basis?: string
           client_name?: string | null
           collected_amount?: number
           created_at?: string
           currency: string
           deal_title?: string | null
           earned_amount?: number
+          earned_on?: string | null
           id?: string
-          invoice_amount: number
+          invoice_amount?: number | null
           invoice_number?: string | null
           issued_on?: string | null
+          item_name?: string | null
           job_id?: string | null
           opening_id?: string | null
           paid_on?: string | null
+          partner_name?: string | null
           pending_amount?: number
           person_email?: string | null
           person_name?: string | null
-          request_number: string
+          request_number?: string | null
+          role_id?: string | null
           role_key: string
           role_label: string
           sales_credit_id: string
-          sales_request_id: string
+          sales_request_id?: string | null
           sales_sent_at: string
           share_pct: number
+          source?: string
           status: string
           tenant_id: string
           updated_at?: string
@@ -6429,29 +6443,36 @@ export type Database = {
           void_reason?: string | null
         }
         Update: {
+          base_amount?: number | null
+          basis?: string
           client_name?: string | null
           collected_amount?: number
           created_at?: string
           currency?: string
           deal_title?: string | null
           earned_amount?: number
+          earned_on?: string | null
           id?: string
-          invoice_amount?: number
+          invoice_amount?: number | null
           invoice_number?: string | null
           issued_on?: string | null
+          item_name?: string | null
           job_id?: string | null
           opening_id?: string | null
           paid_on?: string | null
+          partner_name?: string | null
           pending_amount?: number
           person_email?: string | null
           person_name?: string | null
-          request_number?: string
+          request_number?: string | null
+          role_id?: string | null
           role_key?: string
           role_label?: string
           sales_credit_id?: string
-          sales_request_id?: string
+          sales_request_id?: string | null
           sales_sent_at?: string
           share_pct?: number
+          source?: string
           status?: string
           tenant_id?: string
           updated_at?: string
@@ -12361,6 +12382,7 @@ export type Database = {
       sales_company_upsert: { Args: { payload: Json }; Returns: Json }
       sales_deal_won: { Args: { _p: Json; _tenant_id: string }; Returns: Json }
       sales_earnings_upsert: { Args: { payload: Json }; Returns: Json }
+      sales_lead_earning_upsert: { Args: { payload: Json }; Returns: Json }
       sales_line_updated: {
         Args: {
           _fee: number
