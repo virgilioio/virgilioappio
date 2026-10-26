@@ -11,7 +11,11 @@
  *   Gio Docs:  GIO_DOCS_URL (defaults to its Supabase URL) + OS_PROVISION_SECRET_DOCS
  * An app whose URL or secret isn't set yet is skipped; its items wait.
  * It also delivers new commission rates (os_commission_rates) to Gio Sales,
- * kind 'commission_rate' on the same endpoint, settled by os_commission_rate_record.
+ * kind 'commission_rate' on the same endpoint, settled by os_commission_rate_record,
+ * then commission roles and rule versions (2026-10-26), kinds 'commission_role'
+ * and 'commission_rule' as { kind, item }, settled by os_commission_role_record
+ * (only the version that was sent) and os_commission_rule_record. Roles go first;
+ * a rule whose role Gio Sales doesn't have yet answers 409 and waits.
  * On the cron run it also emails people whose bank details or tax IDs someone
  * else changed (os_bank_alerts through os_account_alerts_claim, see bankAlert.ts).
  *
@@ -250,5 +254,63 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, processed: results.length, results, rates, alerts })
+  // Commission roles and rule versions (2026-10-26): roles first, so their rules find them.
+  const commissions: Array<{ kind: string; id: string; result: string; detail?: string | null }> = []
+  if (sales) {
+    const post = async (kind: string, item: Record<string, unknown>) => {
+      const body = JSON.stringify({ kind, item })
+      const ts = String(Math.floor(Date.now() / 1000))
+      try {
+        const res = await fetch(`${sales.url}/functions/v1/os-provision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-gio-timestamp': ts, 'x-gio-signature': await hmac(sales.secret, `${ts}.${body}`) },
+          body,
+          signal: AbortSignal.timeout(20_000),
+        })
+        const text = await res.text()
+        let parsed: Record<string, unknown> = {}
+        try { parsed = JSON.parse(text) } catch { parsed = { error: text.slice(0, 300) } }
+        if (res.ok && parsed.ok === true) return { ok: true, retry: false, detail: null, result: String(parsed.outcome ?? 'done') }
+        if (res.ok || res.status === 400) return { ok: false, retry: false, detail: refusalText('sales', parsed), result: 'refused' }
+        return { ok: false, retry: true, detail: `HTTP ${res.status}: ${refusalText('sales', parsed)}`.slice(0, 480), result: 'retry' }
+      } catch (e) {
+        return { ok: false, retry: true, detail: String(e).slice(0, 480), result: 'retry' }
+      }
+    }
+
+    let rq = admin
+      .from('os_commission_roles')
+      .select('id, key, label, description, person_source, built_in, active, position, updated_at, sync_attempts')
+      .eq('sync_status', 'pending')
+      .order('created_at')
+      .limit(50)
+    if (tenantId) rq = rq.eq('tenant_id', tenantId)
+    const { data: roles } = await rq
+    for (const role of (roles ?? []) as Array<Record<string, unknown> & { id: string; updated_at: string; sync_attempts: number }>) {
+      if (!isCron && role.sync_attempts >= 3) continue
+      const { sync_attempts: _attempts, ...item } = role
+      const r = await post('commission_role', item)
+      await admin.rpc('os_commission_role_record', { _id: role.id, _updated_at: role.updated_at, _ok: r.ok, _detail: r.detail, _retry: r.retry })
+      commissions.push({ kind: 'role', id: role.id, result: r.result, detail: r.detail })
+    }
+
+    let uq = admin
+      .from('os_commission_rules')
+      .select('id, role_id, series_id, effective_from, stopped, basis, pct, amount, currency, payable_on, applies_to, fees, client, partner_items, months, note, created_by, created_at, sync_attempts')
+      .eq('sync_status', 'pending')
+      .order('created_at')
+      .limit(100)
+    if (tenantId) uq = uq.eq('tenant_id', tenantId)
+    const { data: rules } = await uq
+    for (const rule of (rules ?? []) as Array<Record<string, unknown> & { id: string; created_by: string | null; sync_attempts: number }>) {
+      if (!isCron && rule.sync_attempts >= 3) continue
+      const { sync_attempts: _attempts, created_by, ...item } = rule
+      const actorEmail = created_by ? await emailOf(created_by) : null
+      const r = await post('commission_rule', { ...item, actor_email: actorEmail ?? '' })
+      await admin.rpc('os_commission_rule_record', { _id: rule.id, _ok: r.ok, _detail: r.detail, _retry: r.retry })
+      commissions.push({ kind: 'rule', id: rule.id, result: r.result, detail: r.detail })
+    }
+  }
+
+  return json({ ok: true, processed: results.length, results, rates, commissions, alerts })
 })
