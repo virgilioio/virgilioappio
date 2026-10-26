@@ -24,7 +24,7 @@ import { MetricStrip } from '@/components/ui/metric-strip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { IconTip } from '@/components/ui/tooltip'
 import { LoadError } from '@/components/empty/LoadError'
-import { MapChart } from '@/components/analytics/widgets/charts/MapChart'
+import { PeopleMap } from '@/components/os/PeopleMap'
 import { ProfileCard } from '@/components/os/ProfileParts'
 import { DayOffDialog } from '@/components/os/DayOffDialog'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
@@ -146,7 +146,7 @@ export default function PeopleDashboardPage() {
   const recent = (audit.data ?? []).slice(0, 10)
   const mapData = (d?.by_country ?? [])
     .filter((c) => c.country_code)
-    .map((c) => ({ label: c.country_code as string, value: c.people }))
+    .map((c) => ({ country_code: c.country_code as string, people: c.people }))
   const unknown = d?.by_country.find((c) => !c.country_code)?.people ?? 0
 
   return (
@@ -184,7 +184,7 @@ export default function PeopleDashboardPage() {
           ]}
         />
 
-        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           <ProfileCard title="Birthdays" icon={Cake} tone="pink">
             {first ? (
               <ListSkeleton />
@@ -272,7 +272,7 @@ export default function PeopleDashboardPage() {
                 <Quiet>Nobody has added the country they live in yet.</Quiet>
               ) : (
                 <>
-                  <MapChart data={mapData} />
+                  <PeopleMap byCountry={mapData} places={d?.places ?? []} />
                   {unknown > 0 && (
                     <p className="pt-2 font-inter text-[12px] text-[#6B7080]">
                       {unknown} {unknown === 1 ? 'person hasn’t' : 'people haven’t'} added their country yet.

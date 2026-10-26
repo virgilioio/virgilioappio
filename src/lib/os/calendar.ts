@@ -62,6 +62,22 @@ export interface LoadRow {
   load: 'near' | 'over'
 }
 
+export interface PlacePerson {
+  user_id: string
+  member_id: string
+  name: string
+  avatar_url: string | null
+}
+
+export interface PeoplePlace {
+  country_code: string
+  city: string | null
+  region: string | null
+  lat: number | null
+  lng: number | null
+  people: PlacePerson[]
+}
+
 export interface PeopleDashboard {
   today: string
   active: number
@@ -73,6 +89,8 @@ export interface PeopleDashboard {
   anniversaries: (Anniversary & { member_id: string })[]
   holidays: Holiday[]
   by_country: { country_code: string | null; people: number }[]
+  /** Where people live, city by city; lat/lng are null when the city isn't listed or isn't set. */
+  places?: PeoplePlace[]
   missing: MissingRow[]
   load: LoadRow[]
 }
