@@ -1,4 +1,4 @@
--- Run after 20261026210000_os_people_places inside a transaction that is rolled back.
+-- Run after 20261026154321_os_people_places inside a transaction that is rolled back.
 -- The dashboard places people city by city: the city of that name in their
 -- country, the one in their state when it says which, the biggest otherwise;
 -- an unlisted city or no city comes back without coordinates. Still admins

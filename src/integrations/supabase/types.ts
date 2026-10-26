@@ -3184,6 +3184,8 @@ export type Database = {
           ascii_name: string | null
           country_code: string
           id: number
+          latitude: number | null
+          longitude: number | null
           name: string
           population: number
           region_code: string | null
@@ -3193,6 +3195,8 @@ export type Database = {
           ascii_name?: string | null
           country_code: string
           id: number
+          latitude?: number | null
+          longitude?: number | null
           name: string
           population?: number
           region_code?: string | null
@@ -3202,6 +3206,8 @@ export type Database = {
           ascii_name?: string | null
           country_code?: string
           id?: number
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           population?: number
           region_code?: string | null
