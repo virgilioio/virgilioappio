@@ -168,7 +168,7 @@ export function MembersTable({
       >
         {/* Search + filters */}
         <div className="flex flex-wrap items-center gap-2" style={{ padding: '12px 18px', borderBottom: '1px solid #F1F0EC' }}>
-          <div className="relative flex-1 min-w-[180px] max-w-[280px]">
+          <div className="relative min-w-[180px] flex-1 basis-full sm:max-w-[280px] sm:basis-auto">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8B8F9E]" />
             <Input
               value={searchTerm}
@@ -234,7 +234,7 @@ export function MembersTable({
                     <button
                       type="button"
                       aria-label="Member actions"
-                      className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-md hover:bg-[#F1F0EC] text-[#8B8F9E]"
+                      className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-[#8B8F9E] hover:bg-[#F1F0EC] sm:h-6 sm:w-6"
                     >
                       <MoreHorizontal size={14} />
                     </button>

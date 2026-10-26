@@ -2,7 +2,8 @@
  * MetricStrip — single horizontal card with N MetricCells.
  * Strict spec: white card, radius 12, border #E7E8EE, padding 0, ~56h.
  * Cells flex-1, separated by 1px #F1F0EC vertical dividers (stacked, with
- * horizontal dividers, below 640px so values never cut off on phones).
+ * horizontal dividers, below 640px so values never cut off on phones; or two
+ * per line with `phoneColumns={2}` when the values are short counts).
  * One strip per page.
  */
 import { ArrowDown, ArrowUp, type LucideIcon } from 'lucide-react'
@@ -53,16 +54,36 @@ export interface MetricItem {
  * and blend on later changes. `loading` holds each value's place with a skeleton instead
  * of showing a misleading 0.
  */
-export function MetricStrip({ items, id, loading = false }: { items: MetricItem[]; id?: string; loading?: boolean }) {
+export function MetricStrip({
+  items,
+  id,
+  loading = false,
+  phoneColumns = 1,
+}: {
+  items: MetricItem[]
+  id?: string
+  loading?: boolean
+  /** Below 640px: one cell per line (default), or two side by side for short values like counts. */
+  phoneColumns?: 1 | 2
+}) {
+  const two = phoneColumns === 2
   return (
     <div
-      className="flex w-full flex-col overflow-hidden rounded-[12px] bg-white sm:flex-row"
+      className={cn(
+        'w-full overflow-hidden rounded-[12px] bg-white sm:flex sm:flex-row',
+        two ? 'grid grid-cols-2' : 'flex flex-col',
+      )}
       style={{ border: '1px solid #E7E8EE' }}
     >
       {items.map((it, i) => (
         <div
           key={i}
-          className={cn('flex-1 min-w-0', i > 0 && 'border-t border-[#F1F0EC] sm:border-l sm:border-t-0')}
+          className={cn(
+            'flex-1 min-w-0',
+            two
+              ? cn(i % 2 === 1 && 'border-l border-[#F1F0EC]', i >= 2 && 'border-t border-[#F1F0EC]', i > 0 && 'sm:border-l sm:border-t-0')
+              : i > 0 && 'border-t border-[#F1F0EC] sm:border-l sm:border-t-0',
+          )}
         >
           <MetricCell {...it} countId={id ? `${id}:${it.label}` : undefined} loading={loading} />
         </div>

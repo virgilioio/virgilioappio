@@ -126,6 +126,7 @@ export function MembersTab() {
   return (
     <div className="space-y-4">
       <MetricStrip
+        phoneColumns={2}
         items={[
           { icon: Users, tone: 'purple', label: 'Team', value: teamCount },
           { icon: Briefcase, tone: 'blue', label: 'External', value: externalCount },
