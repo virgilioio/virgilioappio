@@ -260,7 +260,8 @@ export function useMembers(includeHierarchy: boolean = false) {
     }
   }
 
-  const createMember = async (data: CreateMemberData) => {
+  /** `quiet`: the caller shows its own messages (People & Access › Add person); an email that failed comes back as `inviteEmailFailed`. */
+  const createMember = async (data: CreateMemberData, opts: { quiet?: boolean } = {}) => {
     if (!user) throw new Error('User not authenticated')
     
     if (!data.organization_id) {
@@ -401,10 +402,11 @@ export function useMembers(includeHierarchy: boolean = false) {
 
       // Send invitation email if creating a new invitation with email
       const emailToInvite = data.email;
+      let emailFailed = false
       if (!data.user_id && emailToInvite && newMember.invite_token) {
         try {
           const inviteData = await sendInvitationEmail(newMember.id, emailToInvite)
-          toast({
+          if (!opts.quiet) toast({
             title: 'Success',
             description: `Invitation sent to ${emailToInvite} successfully`
           })
@@ -412,13 +414,14 @@ export function useMembers(includeHierarchy: boolean = false) {
           return { ...newMember, inviteUrl: inviteData?.inviteUrl }
         } catch (emailError) {
           log.error('Failed to send invitation email:', emailError)
-          toast({
+          emailFailed = true
+          if (!opts.quiet) toast({
             title: 'Member Created',
             description: 'Member created but invitation email failed to send. You may need to resend the invitation.',
             variant: 'destructive'
           })
         }
-      } else {
+      } else if (!opts.quiet) {
         toast({
           title: 'Success',
           description: 'Member added successfully'
@@ -431,12 +434,12 @@ export function useMembers(includeHierarchy: boolean = false) {
       // Recompute onboarding progress
       refreshOnboardingProgress(queryClient, user?.id, tenantId);
       
-      return newMember
+      return emailFailed ? { ...newMember, inviteEmailFailed: true } : newMember
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
       log.error('Member creation error:', err)
       setError(errorMessage)
-      toast({
+      if (!opts.quiet) toast({
         title: 'Error',
         description: errorMessage,
         variant: 'destructive'
