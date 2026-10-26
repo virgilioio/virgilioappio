@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowLeft, Briefcase, CheckCheck, Forward, Inbox as InboxIcon, Mail, MailOpen, MoreHorizontal, Paperclip, Reply, ReplyAll, User,
+  ArrowLeft, Briefcase, CheckCheck, ChevronLeft, ChevronRight, Forward, Inbox as InboxIcon, Mail, MailOpen, MoreHorizontal, Paperclip, Reply, ReplyAll, User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconTip } from '@/components/ui/tooltip'
@@ -23,6 +23,14 @@ import {
 
 export type ReplyMode = 'reply' | 'reply_all' | 'forward'
 
+/** Where the open conversation sits in the list: "7 of 200", newer and older. */
+export interface ReaderPosition {
+  index: number
+  total: number
+  onNewer?: () => void
+  onOlder?: () => void
+}
+
 /**
  * One conversation, oldest first. Earlier messages fold to one line each and
  * open on a click; the latest is open. Reply, Reply all and Forward hand the
@@ -34,6 +42,7 @@ export function InboxReader({
   error,
   onRetry,
   onBack,
+  position,
   onReply,
   onDone,
   onMarkUnread,
@@ -43,8 +52,9 @@ export function InboxReader({
   loading: boolean
   error: boolean
   onRetry: () => void
-  /** Tablet and phone: back to the list. */
+  /** Back to the list (phones use the shell's own back button). */
   onBack?: () => void
+  position?: ReaderPosition
   onReply: (message: InboxMessage, mode: ReplyMode) => void
   /** Done, or back to the Inbox when it's done already. */
   onDone: () => void
@@ -82,6 +92,7 @@ export function InboxReader({
         <Conversation
           conversation={conversation}
           onBack={onBack}
+          position={position}
           onReply={onReply}
           onDone={onDone}
           onMarkUnread={onMarkUnread}
@@ -95,6 +106,7 @@ export function InboxReader({
 function Conversation({
   conversation,
   onBack,
+  position,
   onReply,
   onDone,
   onMarkUnread,
@@ -102,6 +114,7 @@ function Conversation({
 }: {
   conversation: InboxConversation
   onBack?: () => void
+  position?: ReaderPosition
   onReply: (message: InboxMessage, mode: ReplyMode) => void
   onDone: () => void
   onMarkUnread: () => void
@@ -126,82 +139,96 @@ function Conversation({
 
   return (
     <article aria-label={thread.subject ?? 'Conversation'} className="flex h-full min-h-0 flex-col">
-      <header className="shrink-0 border-b border-[#F1F0EC] px-5 pt-4 pb-3.5">
-        <div className="flex items-start gap-3">
+      <header className="shrink-0 border-b border-[#F1F0EC] px-5 pt-2.5 pb-3.5">
+        <div className="-ml-1.5 flex h-9 items-center gap-1">
           {onBack && (
-            <IconTip label="Back to the list">
-              <Button variant="ghost" size="sm" iconOnly icon={ArrowLeft} aria-label="Back to the list" onClick={onBack} className="-ml-1.5 mt-0.5" />
-            </IconTip>
-          )}
-          <div className="min-w-0 flex-1">
-            <h2
-              className="font-poppins font-semibold text-[#0d0d09] line-clamp-2"
-              style={{ fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.25 }}
-            >
-              {thread.subject?.trim() || '(No subject)'}
-            </h2>
-            <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-[#5A6072]">
-              <CandidatePreview candidateId={thread.candidate_id}>
-                <Link to={`/candidates/${thread.candidate_id}`} className="font-medium text-[#0d0d09] hover:underline truncate max-w-[260px]">
-                  {thread.candidate_name || 'Unnamed candidate'}
-                </Link>
-              </CandidatePreview>
-              {thread.job_id && thread.job_title && (
-                <span className="flex min-w-0 items-center gap-2">
-                  <span aria-hidden className="hidden text-[#B5B9C4] sm:inline">·</span>
-                  <JobPreview jobId={thread.job_id}>
-                    <Link to={`/jobs/${thread.job_id}`} className="hover:underline truncate max-w-[260px]">
-                      {thread.job_title}
-                    </Link>
-                  </JobPreview>
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <IconTip label={thread.done ? 'Move to Inbox' : 'Done (E)'}>
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
-                icon={thread.done ? InboxIcon : CheckCheck}
-                aria-label={thread.done ? 'Move to Inbox' : 'Done'}
-                onClick={onDone}
-              />
-            </IconTip>
-            <IconTip label="Mark unread (Shift+U)">
-              <Button variant="ghost" size="sm" iconOnly icon={Mail} aria-label="Mark unread" onClick={onMarkUnread} />
-            </IconTip>
-            <DropdownMenu>
-              <IconTip label="More">
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" iconOnly icon={MoreHorizontal} aria-label="More" />
-                </DropdownMenuTrigger>
+            <>
+              <IconTip label="Back to the list (Esc)">
+                <Button variant="ghost" size="sm" iconOnly icon={ArrowLeft} aria-label="Back to the list" onClick={onBack} />
               </IconTip>
-              <DropdownMenuContent align="end" sideOffset={6} className="w-[272px]">
+              <span aria-hidden className="mx-1 h-4 w-px bg-[#E7E8EE]" />
+            </>
+          )}
+          <IconTip label={thread.done ? 'Move to Inbox' : 'Done (E)'}>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              icon={thread.done ? InboxIcon : CheckCheck}
+              aria-label={thread.done ? 'Move to Inbox' : 'Done'}
+              onClick={onDone}
+            />
+          </IconTip>
+          <IconTip label="Mark unread (Shift+U)">
+            <Button variant="ghost" size="sm" iconOnly icon={Mail} aria-label="Mark unread" onClick={onMarkUnread} />
+          </IconTip>
+          <DropdownMenu>
+            <IconTip label="More">
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" iconOnly icon={MoreHorizontal} aria-label="More" />
+              </DropdownMenuTrigger>
+            </IconTip>
+            <DropdownMenuContent align="start" sideOffset={6} className="w-[272px]">
+              <DropdownMenuItem asChild>
+                <Link to={`/candidates/${thread.candidate_id}`}>
+                  <User aria-hidden />
+                  <span className="truncate">Open candidate profile</span>
+                </Link>
+              </DropdownMenuItem>
+              {thread.job_id && (
                 <DropdownMenuItem asChild>
-                  <Link to={`/candidates/${thread.candidate_id}`}>
-                    <User aria-hidden />
-                    <span className="truncate">Open candidate profile</span>
+                  <Link to={`/jobs/${thread.job_id}`}>
+                    <Briefcase aria-hidden />
+                    <span className="truncate">Open job</span>
                   </Link>
                 </DropdownMenuItem>
-                {thread.job_id && (
-                  <DropdownMenuItem asChild>
-                    <Link to={`/jobs/${thread.job_id}`}>
-                      <Briefcase aria-hidden />
-                      <span className="truncate">Open job</span>
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {last && (
-                  <DropdownMenuItem onSelect={() => onReply(last, 'forward')}>
-                    <Forward aria-hidden />
-                    <span className="truncate">Forward</span>
-                    <DropdownMenuShortcut>F</DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              )}
+              {last && (
+                <DropdownMenuItem onSelect={() => onReply(last, 'forward')}>
+                  <Forward aria-hidden />
+                  <span className="truncate">Forward</span>
+                  <DropdownMenuShortcut>F</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {position && (
+            <div className="ml-auto flex items-center gap-1">
+              <span className="mr-1 tabular-nums text-[12px] text-[#6B7080]">
+                {position.index} of {position.total}
+              </span>
+              <IconTip label="Newer (K)">
+                <Button variant="ghost" size="sm" iconOnly icon={ChevronLeft} aria-label="Newer conversation" onClick={position.onNewer} disabled={!position.onNewer} />
+              </IconTip>
+              <IconTip label="Older (J)">
+                <Button variant="ghost" size="sm" iconOnly icon={ChevronRight} aria-label="Older conversation" onClick={position.onOlder} disabled={!position.onOlder} />
+              </IconTip>
+            </div>
+          )}
+        </div>
+        <div className="mt-2 min-w-0">
+          <h2
+            className="font-poppins font-semibold text-[#0d0d09] line-clamp-2"
+            style={{ fontSize: 19, letterSpacing: '-0.025em', lineHeight: 1.25 }}
+          >
+            {thread.subject?.trim() || '(No subject)'}
+          </h2>
+          <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-[#5A6072]">
+            <CandidatePreview candidateId={thread.candidate_id}>
+              <Link to={`/candidates/${thread.candidate_id}`} className="font-medium text-[#0d0d09] hover:underline truncate max-w-[260px]">
+                {thread.candidate_name || 'Unnamed candidate'}
+              </Link>
+            </CandidatePreview>
+            {thread.job_id && thread.job_title && (
+              <span className="flex min-w-0 items-center gap-2">
+                <span aria-hidden className="hidden text-[#B5B9C4] sm:inline">·</span>
+                <JobPreview jobId={thread.job_id}>
+                  <Link to={`/jobs/${thread.job_id}`} className="hover:underline truncate max-w-[260px]">
+                    {thread.job_title}
+                  </Link>
+                </JobPreview>
+              </span>
+            )}
           </div>
         </div>
       </header>
@@ -350,23 +377,11 @@ function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex h-full flex-col items-center justify-center px-6 text-center">{children}</div>
 }
 
-/** Nothing open yet (desktop): a quiet note, not an illustration. */
-export function ReaderPlaceholder({ count }: { count: number }) {
-  return (
-    <Centered>
-      <MailOpen aria-hidden className="h-7 w-7 text-[#B5B9C4]" strokeWidth={1.8} />
-      <p className="mt-3 font-poppins text-[15px] font-semibold text-[#0d0d09]">Pick a conversation</p>
-      <p className="mt-1 text-[12.5px] text-[#5A6072]">
-        {count > 0 ? 'Open one from the list, or press J and K to move through it.' : 'Your candidate email shows here.'}
-      </p>
-    </Centered>
-  )
-}
-
 function ReaderSkeleton() {
   return (
-    <div aria-hidden className="px-5 pt-4">
-      <Skeleton className="h-5 w-2/3" />
+    <div aria-hidden className="px-5 pt-3">
+      <Skeleton className="h-7 w-48" />
+      <Skeleton className="mt-4 h-5 w-2/3" />
       <Skeleton className="mt-2.5 h-3.5 w-48" />
       <div className="mt-6 space-y-2.5">
         {[0, 1].map(i => (

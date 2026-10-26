@@ -19,15 +19,15 @@ import { floatingLayerOpen } from '@/lib/floatingLayer'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { formatForwardedMessage, formatQuotedReply, getForwardSubject, getReplySubject } from '@/utils/emailFormatUtils'
 import { InboxFolders, FOLDER_ICONS } from '@/components/inbox/InboxFolders'
-import { InboxList, InboxListSkeleton } from '@/components/inbox/InboxList'
-import { InboxReader, ReaderPlaceholder, type ReplyMode } from '@/components/inbox/InboxReader'
+import { InboxList, InboxListSkeleton, type RowActions } from '@/components/inbox/InboxList'
+import { InboxReader, type ReaderPosition, type ReplyMode } from '@/components/inbox/InboxReader'
 import { ComposePicker, type PickedCandidate } from '@/components/inbox/InboxCompose'
 import {
   FOLDERS, FOLDER_LABELS, MAX_ROWS, bareAddress, replyAllRecipients, useInboxConversation, useInboxCounts, useInboxMark,
   useInboxThreads, useRefreshInbox, type InboxAction, type InboxFolder, type InboxMessage, type InboxThread,
 } from '@/lib/inbox'
 
-/** xl: folders, list and reader side by side; lg: folders fold to icons; below: list or reader. */
+/** The list or one conversation, full width. From 1024px the folders sit beside it (icons below 1280px). */
 function useWidth() {
   const [w, setW] = React.useState(() => (typeof window === 'undefined' ? 1440 : window.innerWidth))
   React.useEffect(() => {
@@ -84,6 +84,8 @@ export default function InboxPage() {
   const width = useWidth()
   const wide = width >= 1280
   const split = width >= 1024
+  // From 640px the list is Gmail's, one line a conversation; phones keep three.
+  const layout = width >= 640 ? 'line' : 'stacked'
 
   const folderParam = params.get('folder') as InboxFolder | null
   const folder: InboxFolder = folderParam && FOLDERS.includes(folderParam) ? folderParam : 'inbox'
@@ -167,7 +169,7 @@ export default function InboxPage() {
     )
     setSelected(new Set())
     if (opts.advance && threadId && ids.includes(threadId)) {
-      if (next && split) openThread(next)
+      if (next && layout === 'line') openThread(next)
       else closeThread()
     }
     const n = ids.length
@@ -270,7 +272,7 @@ export default function InboxPage() {
       </div>
     )
   } else if (threads.isLoading) {
-    body = <InboxListSkeleton />
+    body = <InboxListSkeleton layout={layout} />
   } else if (rows.length === 0) {
     body = (
       <div className="px-6 py-12">
@@ -299,7 +301,7 @@ export default function InboxPage() {
   const header = (
     <div className="flex min-w-0 items-center gap-2">
       {split ? (
-        <h1 className="min-w-0 flex-1 truncate font-poppins text-[14.5px] font-semibold text-[#0d0d09]" style={{ letterSpacing: '-0.015em' }}>
+        <h1 className="m-0 min-w-0 flex-1 truncate font-poppins text-[14.5px] font-semibold text-[#0d0d09]" style={{ letterSpacing: '-0.015em' }}>
           {jobTitle ?? FOLDER_LABELS[folder]}
         </h1>
       ) : (
@@ -307,7 +309,7 @@ export default function InboxPage() {
       )}
       {!threads.isLoading && rows.length > 0 && (
         <span className="shrink-0 tabular-nums text-[11.5px] text-[#6B7080]">
-          {rows.length >= MAX_ROWS ? `Newest ${MAX_ROWS}` : rows.length}
+          {rows.length >= MAX_ROWS ? `Newest ${MAX_ROWS}` : `${rows.length} ${rows.length === 1 ? 'conversation' : 'conversations'}`}
         </span>
       )}
       {!split && (
@@ -332,8 +334,24 @@ export default function InboxPage() {
           { id: 'unread', label: 'Mark unread', icon: Mail, slot: 'secondary', onClick: () => act(selectedIds, 'unread') },
         ]
 
-  const showList = split || !threadId
-  const showReader = split || !!threadId
+  // The conversation you were in, so the list scrolls back to it.
+  const lastOpen = React.useRef<string | null>(null)
+  if (threadId) lastOpen.current = threadId
+  const at = threadId ? rows.findIndex(r => r.thread_id === threadId) : -1
+  const position: ReaderPosition | undefined =
+    at >= 0
+      ? {
+          index: at + 1,
+          total: rows.length,
+          onNewer: at > 0 ? () => openThread(rows[at - 1]) : undefined,
+          onOlder: at < rows.length - 1 ? () => openThread(rows[at + 1]) : undefined,
+        }
+      : undefined
+  const rowActions: RowActions = {
+    inDone: listFolder === 'done',
+    onDone: (t) => act([t.thread_id], listFolder === 'done' ? 'inbox' : 'done'),
+    onRead: (t) => act([t.thread_id], t.unread ? 'read' : 'unread'),
+  }
 
   return (
     <div className="flex h-[calc(100dvh-13rem)] gap-5 px-3 sm:h-[calc(100dvh-4rem)] sm:px-0 sm:pb-3 sm:pt-1">
@@ -362,54 +380,55 @@ export default function InboxPage() {
           </div>
         )}
         <div className="flex min-h-0 flex-1">
-          {showList && (
-            <div className={split ? 'w-[340px] shrink-0 border-r border-[#F1F0EC] xl:w-[380px]' : 'min-w-0 flex-1'}>
-              <InboxList
-                header={header}
-                rows={rows}
-                activeId={threadId}
-                selected={selected}
-                onOpen={openThread}
-                onToggle={(id) =>
-                  setSelected(prev => {
-                    const n = new Set(prev)
-                    if (n.has(id)) n.delete(id)
-                    else n.add(id)
-                    return n
-                  })
-                }
-                onToggleAll={() =>
-                  setSelected(prev => (rows.every(r => prev.has(r.thread_id)) ? new Set() : new Set(rows.map(r => r.thread_id))))
-                }
-                search={search}
-                onSearch={setSearch}
-                searching={search.trim() !== query || (threads.isFetching && !threads.isLoading && !!query)}
-                searchRef={searchRef}
-                body={body}
-              />
-            </div>
-          )}
-          {showReader && (
+          {/* The list stays mounted under an open conversation, so it comes back where you left it. */}
+          <div className={threadId ? 'hidden' : 'min-w-0 flex-1'}>
+            <InboxList
+              layout={layout}
+              header={header}
+              rows={rows}
+              scrollToId={threadId ? null : lastOpen.current}
+              selected={selected}
+              onOpen={openThread}
+              onToggle={(id) =>
+                setSelected(prev => {
+                  const n = new Set(prev)
+                  if (n.has(id)) n.delete(id)
+                  else n.add(id)
+                  return n
+                })
+              }
+              onToggleAll={() =>
+                setSelected(prev => (rows.every(r => prev.has(r.thread_id)) ? new Set() : new Set(rows.map(r => r.thread_id))))
+              }
+              search={search}
+              onSearch={setSearch}
+              searching={search.trim() !== query || (threads.isFetching && !threads.isLoading && !!query)}
+              searchRef={searchRef}
+              onRefresh={refresh}
+              refreshing={threads.isFetching && !threads.isLoading && !query}
+              rowActions={rowActions}
+              searchPlaceholder={layout === 'line' && !split ? 'Search mail' : undefined}
+              body={body}
+            />
+          </div>
+          {threadId && (
             <div className="min-w-0 flex-1">
-              {threadId ? (
-                <InboxReader
-                  conversation={conversation.data}
-                  loading={conversation.isLoading}
-                  error={conversation.isError}
-                  onRetry={() => conversation.refetch()}
-                  // On phones the shell's own back button does this.
-                  onBack={split || width < 640 ? undefined : closeThread}
-                  onReply={reply}
-                  onDone={() => act([threadId], conversation.data?.thread.done ? 'inbox' : 'done', { advance: true })}
-                  onMarkUnread={() => {
-                    act([threadId], 'unread')
-                    closeThread()
-                  }}
-                  mine={mine}
-                />
-              ) : (
-                <ReaderPlaceholder count={rows.length} />
-              )}
+              <InboxReader
+                conversation={conversation.data}
+                loading={conversation.isLoading}
+                error={conversation.isError}
+                onRetry={() => conversation.refetch()}
+                // On phones the shell's own back button does this.
+                onBack={width < 640 ? undefined : closeThread}
+                position={position}
+                onReply={reply}
+                onDone={() => act([threadId], conversation.data?.thread.done ? 'inbox' : 'done', { advance: true })}
+                onMarkUnread={() => {
+                  act([threadId], 'unread')
+                  closeThread()
+                }}
+                mine={mine}
+              />
             </div>
           )}
         </div>
