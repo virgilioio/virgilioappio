@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, Navigate } from 'react-router-dom'
-import { Menu } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import OrganizationTab from '@/components/settings/OrganizationTab'
 import { MembersTab } from '@/components/settings/MembersTab'
 import { DepartmentsManager } from '@/components/settings/DepartmentsManager'
@@ -13,18 +13,18 @@ import { ApplicationFieldsManager } from '@/components/settings/ApplicationField
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
 import { CareersPageTab } from '@/components/settings/CareersPageTab'
 import { JobBoardsTab } from '@/pages/settings/JobBoardsTab'
-import { SettingsSidebar } from '@/components/settings/SettingsSidebar'
+import { SettingsList, SettingsSidebar } from '@/components/settings/SettingsSidebar'
+import { settingsLabel, useSettingsSections } from '@/components/settings/settingsSections'
 import { SetupTab } from '@/components/settings/tabs/SetupTab'
 import { NotificationsTab } from '@/components/settings/tabs/NotificationsTab'
 import { EmailCalendarTab } from '@/components/settings/tabs/EmailCalendarTab'
 import { BookingTab } from '@/components/settings/tabs/BookingTab'
 import { GioRecruitingSettings } from '@/components/settings/GioRecruitingSettings'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useSetupProgress } from '@/hooks/useSetupProgress'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { scrollToHighlightedSection } from '@/utils/scrollToHighlight'
 
 // Map legacy tab keys to new ones so old links keep working.
@@ -79,7 +79,11 @@ export default function Settings() {
   // Gio ATS is no longer sold (2026-10-24): an old Billing link opens the usual first tab.
   const resolved = rawTab && rawTab !== 'billing' ? LEGACY_TAB_MAP[rawTab] || rawTab : pickDefaultTab()
   const [currentTab, setCurrentTab] = useState(resolved)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  // Below the sidebar's breakpoint (lg) Settings is a list of sections, and a
+  // section opens on its own page with "‹ Settings" to come back (Allan, 2026-10-26).
+  const narrow = useIsMobile(1024)
+  const sections = useSettingsSections(essentialsRemaining)
+  const showList = narrow && (!rawTab || rawTab === 'billing')
 
   useEffect(() => {
     scrollToHighlightedSection()
@@ -103,12 +107,15 @@ export default function Settings() {
     // Reference templates live in the Reference checks module — deep-link out.
     if (tab === 'reference-templates') {
       navigate('/references/templates')
-      setMobileOpen(false)
       return
     }
     setCurrentTab(tab)
     setSearchParams({ tab })
-    setMobileOpen(false)
+    if (narrow) window.scrollTo(0, 0)
+  }
+  const backToList = () => {
+    setSearchParams({})
+    window.scrollTo(0, 0)
   }
 
 
@@ -162,65 +169,56 @@ export default function Settings() {
 
   const workspaceName = tenant?.name || 'Workspace'
 
+  const title = showList || !narrow ? 'Settings' : settingsLabel(sections, shownTab) ?? 'Settings'
+
   return (
     <div className="min-h-screen bg-virgilio-cream">
-      <div style={{ padding: '24px 28px' }}>
-        {/* Page header */}
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1
-              className="font-poppins font-semibold text-[#0d0d09]"
-              style={{ fontSize: '28px', letterSpacing: '-0.04em', lineHeight: 1 }}
+      <div className="px-4 py-5 sm:px-7 sm:py-6">
+        {/* Page header; a section opened from the phone list has "‹ Settings" above its title. */}
+        <div className="mb-6">
+          {narrow && !showList && (
+            <button
+              type="button"
+              onClick={backToList}
+              className="-ml-1 mb-2 inline-flex min-h-[32px] items-center gap-0.5 rounded-md px-1 font-inter text-[13px] text-[#5A6072] transition-colors hover:text-[#0d0d09]"
             >
-              Settings<span className="text-[#6F3FF5]">.</span>
-            </h1>
+              <ChevronLeft className="h-4 w-4" strokeWidth={2} aria-hidden />
+              Settings
+            </button>
+          )}
+          <h1
+            className="font-poppins font-semibold text-[#0d0d09]"
+            style={{ fontSize: '28px', letterSpacing: '-0.04em', lineHeight: 1.1 }}
+          >
+            {title}<span className="text-[#6F3FF5]">.</span>
+          </h1>
+          {(showList || !narrow) && (
             <p className="mt-2 font-inter text-[12.5px] text-[#5A6072]">
               {workspaceName} workspace
               <span className="mx-2 text-[#B5B9C4]">·</span>
               {configuredCount} of {essentialsTotal} essentials done
             </p>
-          </div>
-          {/* Mobile menu trigger */}
-          <Button
-            variant="secondary"
-            size="sm"
-            className="lg:hidden"
-            icon={Menu}
-            iconOnly
-            aria-label="Open settings menu"
-            onClick={() => setMobileOpen(true)}
-          />
+          )}
         </div>
 
-        {/* Mobile sidebar sheet */}
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetContent side="left" className="w-[280px] p-4 bg-virgilio-cream">
-            <SettingsSidebar
-              currentTab={shownTab}
-              onTabChange={handleTabChange}
-              essentialsRemaining={essentialsRemaining}
-            />
-          </SheetContent>
-        </Sheet>
-
-        {/* Desktop grid */}
-        <div
-          className="grid"
-          style={{ gridTemplateColumns: '224px minmax(0, 1fr)', gap: 26 }}
-        >
-          <div className="hidden lg:block">
-            <SettingsSidebar
-              currentTab={shownTab}
-              onTabChange={handleTabChange}
-              essentialsRemaining={essentialsRemaining}
-            />
-          </div>
-          <div className="min-w-0">
-            <div className="max-w-[860px]">
-              {renderContent()}
+        {showList ? (
+          <SettingsList onTabChange={handleTabChange} essentialsRemaining={essentialsRemaining} />
+        ) : (
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-[26px] lg:grid-cols-[224px_minmax(0,1fr)]">
+            <div className="hidden lg:block">
+              <SettingsSidebar
+                currentTab={shownTab}
+                onTabChange={handleTabChange}
+                essentialsRemaining={essentialsRemaining}
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="max-w-[860px]">
+                {renderContent()}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

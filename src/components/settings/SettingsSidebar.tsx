@@ -1,29 +1,7 @@
-import {
-  Zap, Mail, Clock, Bell,
-  Building2, Users, Folder, Plug,
-  GitBranch, ListChecks, FileText, Globe, Megaphone, Sparkles,
-  Handshake, Building, ShieldCheck,
-} from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 
-import { usePermissions } from '@/hooks/usePermissions'
-import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
-
-interface SettingsNavItem {
-  id: string
-  label: string
-  icon: any
-  show: boolean
-  badge?: React.ReactNode
-}
-
-interface SettingsNavSection {
-  id: string
-  label?: string
-  show: boolean
-  items: SettingsNavItem[]
-  groupBadge?: React.ReactNode
-}
+import { useSettingsSections } from '@/components/settings/settingsSections'
 
 interface SettingsSidebarProps {
   currentTab: string
@@ -33,95 +11,7 @@ interface SettingsSidebarProps {
 }
 
 export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining = 0, className }: SettingsSidebarProps) {
-  const permissions = usePermissions()
-  const { organizationId, userType } = useAuth()
-
-  const isOwner = userType === 'workspace_owner' && !!organizationId
-  const isAdminOrOwner = permissions.isPlatformAdmin || permissions.isAdmin || isOwner
-  const isPlatform = permissions.isPlatformAdmin
-
-  const setupBadge =
-    essentialsRemaining > 0 ? (
-      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-semibold bg-[#EDE4FF] text-[#5B21B6] leading-none">
-        {essentialsRemaining}
-      </span>
-    ) : undefined
-
-  const sections: SettingsNavSection[] = [
-    {
-      id: 'top',
-      show: true,
-      items: [
-        { id: 'setup', label: 'Setup', icon: Zap, show: essentialsRemaining > 0, badge: setupBadge },
-      ],
-    },
-    {
-      id: 'you',
-      label: 'YOU',
-      show: true,
-      items: [
-        { id: 'email-calendar', label: 'Email & calendar', icon: Mail, show: true },
-        { id: 'booking', label: permissions.isExternal ? 'Availability' : 'Booking & event types', icon: Clock, show: true },
-        { id: 'notifications', label: 'Notifications', icon: Bell, show: true },
-      ],
-    },
-    {
-      id: 'workspace',
-      label: 'WORKSPACE',
-      show: isAdminOrOwner,
-      items: [
-        { id: 'organization', label: 'General', icon: Building2, show: permissions.canManageOrganization },
-        { id: 'members', label: 'Members', icon: Users, show: permissions.canViewMembers },
-        { id: 'workspace-departments', label: 'Departments', icon: Folder, show: isAdminOrOwner },
-        { id: 'integrations', label: 'Integrations', icon: Plug, show: true },
-      ],
-    },
-    {
-      id: 'recruiting',
-      label: 'RECRUITING',
-      show: isAdminOrOwner,
-      items: [
-        { id: 'gio', label: 'Gio', icon: Sparkles, show: true },
-        { id: 'pipeline-stages', label: 'Pipeline stages', icon: GitBranch, show: true },
-        { id: 'application-form', label: 'Application form', icon: ListChecks, show: true },
-        { id: 'templates', label: 'Templates', icon: FileText, show: true },
-        { id: 'reference-templates', label: 'Reference templates', icon: ShieldCheck, show: true },
-
-        { id: 'careers-page', label: 'Careers page', icon: Globe, show: true },
-        { id: 'job-boards', label: 'Job boards', icon: Megaphone, show: true },
-      ],
-    },
-    {
-      id: 'clients',
-      label: 'CLIENTS',
-      show: isAdminOrOwner,
-      items: [
-        { id: 'customers', label: 'Clients', icon: Building, show: isAdminOrOwner },
-      ],
-    },
-    {
-      id: 'platform',
-      label: 'PLATFORM',
-      show: isPlatform,
-      groupBadge: (
-        <span
-          title="Visible to platform admins"
-          className="inline-flex items-center font-inter font-semibold rounded-full"
-          style={{ fontSize: '8.5px', padding: '1px 5px', background: '#F1F0EC', color: '#8B8F9E', letterSpacing: '0.06em' }}
-        >
-          ADMIN
-        </span>
-      ),
-      items: [
-        { id: 'platform-customers', label: 'SaaS customers', icon: Building2, show: true },
-      ],
-    },
-  ]
-
-  const visibleSections = sections
-    .filter((s) => s.show)
-    .map((s) => ({ ...s, items: s.items.filter((i) => i.show) }))
-    .filter((s) => s.items.length > 0)
+  const visibleSections = useSettingsSections(essentialsRemaining)
 
   return (
     <nav className={cn('w-[224px] shrink-0', className)}>
@@ -163,6 +53,55 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
           </div>
         ))}
       </div>
+    </nav>
+  )
+}
+
+/**
+ * Settings on a phone or tablet (Allan, 2026-10-26): the sections as a
+ * full-width list, grouped in cards like a phone's own settings; a row opens
+ * its section, which has "‹ Settings" to come back.
+ */
+export function SettingsList({ onTabChange, essentialsRemaining = 0 }: { onTabChange: (tab: string) => void; essentialsRemaining?: number }) {
+  const visibleSections = useSettingsSections(essentialsRemaining)
+  return (
+    <nav aria-label="Settings sections" className="space-y-5">
+      {visibleSections.map((section) => (
+        <div key={section.id}>
+          {section.label && (
+            <div
+              className="mb-2 flex items-center gap-1.5 px-1 font-inter font-semibold uppercase text-[#8B8F9E]"
+              style={{ fontSize: '10.5px', letterSpacing: '0.08em' }}
+            >
+              <span>{section.label}</span>
+              {section.groupBadge}
+            </div>
+          )}
+          <div className="overflow-clip rounded-[14px] border border-[#E7E8EE] bg-white">
+            {section.items.map((item, i) => {
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onTabChange(item.id)}
+                  className={cn(
+                    'flex min-h-[52px] w-full items-center gap-3 px-4 text-left font-inter text-[15px] text-[#1F2230] transition-colors active:bg-[#F7F6F2] hover:bg-[#F7F6F2]',
+                    i > 0 && 'border-t border-[#F1F0EC]',
+                  )}
+                >
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#F1F0EC] text-[#1F2230]" aria-hidden>
+                    <Icon className="h-[16px] w-[16px]" strokeWidth={2} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  {item.badge}
+                  <ChevronRight className="h-4 w-4 shrink-0 text-[#B5B9C4]" strokeWidth={2} aria-hidden />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   )
 }
