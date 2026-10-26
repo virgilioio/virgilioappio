@@ -6209,6 +6209,164 @@ export type Database = {
           },
         ]
       }
+      os_commission_roles: {
+        Row: {
+          active: boolean
+          built_in: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          key: string
+          label: string
+          person_source: string
+          position: number
+          sync_attempts: number
+          sync_error: string | null
+          sync_status: string
+          synced_at: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          built_in?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          key: string
+          label: string
+          person_source: string
+          position?: number
+          sync_attempts?: number
+          sync_error?: string | null
+          sync_status?: string
+          synced_at?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          built_in?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          key?: string
+          label?: string
+          person_source?: string
+          position?: number
+          sync_attempts?: number
+          sync_error?: string | null
+          sync_status?: string
+          synced_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_commission_roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_commission_rules: {
+        Row: {
+          amount: number | null
+          applies_to: string
+          basis: string
+          client: string
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          effective_from: string
+          fees: string[] | null
+          id: string
+          months: number | null
+          note: string | null
+          partner_items: string
+          payable_on: string
+          pct: number | null
+          role_id: string
+          series_id: string
+          stopped: boolean
+          sync_attempts: number
+          sync_error: string | null
+          sync_status: string
+          synced_at: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount?: number | null
+          applies_to: string
+          basis: string
+          client?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          effective_from: string
+          fees?: string[] | null
+          id?: string
+          months?: number | null
+          note?: string | null
+          partner_items?: string
+          payable_on?: string
+          pct?: number | null
+          role_id: string
+          series_id: string
+          stopped?: boolean
+          sync_attempts?: number
+          sync_error?: string | null
+          sync_status?: string
+          synced_at?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount?: number | null
+          applies_to?: string
+          basis?: string
+          client?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          effective_from?: string
+          fees?: string[] | null
+          id?: string
+          months?: number | null
+          note?: string | null
+          partner_items?: string
+          payable_on?: string
+          pct?: number | null
+          role_id?: string
+          series_id?: string
+          stopped?: boolean
+          sync_attempts?: number
+          sync_error?: string | null
+          sync_status?: string
+          synced_at?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_commission_rules_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "os_commission_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_commission_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_earnings: {
         Row: {
           client_name: string | null
@@ -11853,6 +12011,44 @@ export type Database = {
       os_commission_rate_record: {
         Args: { _detail: string; _id: string; _ok: boolean; _retry: boolean }
         Returns: undefined
+      }
+      os_commission_role_key: {
+        Args: { _label: string; _tenant_id: string }
+        Returns: string
+      }
+      os_commission_rules_in_force: {
+        Args: { _on?: string; _tenant_id: string }
+        Returns: {
+          amount: number | null
+          applies_to: string
+          basis: string
+          client: string
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          effective_from: string
+          fees: string[] | null
+          id: string
+          months: number | null
+          note: string | null
+          partner_items: string
+          payable_on: string
+          pct: number | null
+          role_id: string
+          series_id: string
+          stopped: boolean
+          sync_attempts: number
+          sync_error: string | null
+          sync_status: string
+          synced_at: string | null
+          tenant_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "os_commission_rules"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       os_country_label: { Args: { _code: string }; Returns: string }
       os_holidays_between: {

@@ -1,4 +1,4 @@
--- Run after 20261026200000_os_commission_roles inside a transaction that is rolled back.
+-- Run after 20261026202658_os_commission_roles inside a transaction that is rolled back.
 -- Allan (an admin) adds a role, gives it rules, changes a built-in rate and is
 -- refused what the rules don't allow; a member reads but can't change anything.
 -- Every row's ok is true.
