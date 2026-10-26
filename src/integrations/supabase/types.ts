@@ -3889,6 +3889,7 @@ export type Database = {
           hired_association_id: string | null
           id: string
           job_id: string
+          opened_at: string | null
           position: number
           recruiter_user_id: string | null
           req_id: string
@@ -3909,6 +3910,7 @@ export type Database = {
           hired_association_id?: string | null
           id?: string
           job_id: string
+          opened_at?: string | null
           position?: number
           recruiter_user_id?: string | null
           req_id: string
@@ -3929,6 +3931,7 @@ export type Database = {
           hired_association_id?: string | null
           id?: string
           job_id?: string
+          opened_at?: string | null
           position?: number
           recruiter_user_id?: string | null
           req_id?: string

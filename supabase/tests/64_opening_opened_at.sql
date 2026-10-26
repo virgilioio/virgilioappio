@@ -1,4 +1,4 @@
--- Run after 20261026200000_opening_opened_at inside a transaction that is rolled back.
+-- Run after 20261026073011_opening_opened_at inside a transaction that is rolled back.
 -- Openings know when they started; time to fill is measured from then and is
 -- never negative; a browser can't move the start. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
