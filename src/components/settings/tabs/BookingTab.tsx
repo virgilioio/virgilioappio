@@ -356,7 +356,8 @@ export function BookingTab() {
                 return (
                   <li
                     key={et.id}
-                    className="group flex items-center gap-3 px-[18px] py-[13px] hover:bg-[#FAFAF7] transition-colors"
+                    // Phones: the controls wrap under the title, so the title keeps its width.
+                    className="group flex flex-wrap items-center gap-x-3 gap-y-2 px-[18px] py-[13px] hover:bg-[#FAFAF7] transition-colors sm:flex-nowrap"
                   >
                     {/* Color tile */}
                     <span
@@ -370,7 +371,7 @@ export function BookingTab() {
                     </span>
 
                     {/* Title + description */}
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1 basis-[calc(100%-42px)] sm:basis-auto">
                       <p
                         className="font-inter text-[12.5px] font-semibold text-[#0d0d09] truncate"
                         style={{ letterSpacing: '-0.005em' }}
@@ -390,58 +391,60 @@ export function BookingTab() {
                       {et.duration_minutes}m
                     </span>
 
-                    {/* Status chip */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateEventType({ id: et.id, is_active: !et.is_active } as any)
-                      }
-                      disabled={isUpdatingEventType}
-                      className="inline-flex items-center gap-1.5 px-2 h-[22px] rounded-md font-inter font-semibold text-[10.5px] transition-colors"
-                      style={{
-                        background: et.is_active ? '#E5F4EC' : '#F1F0EC',
-                        color: et.is_active ? '#0B7A57' : '#5A6072',
-                        letterSpacing: '0.02em',
-                      }}
-                      aria-label={et.is_active ? 'Deactivate' : 'Activate'}
-                    >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: et.is_active ? '#12B886' : '#8B8F9E' }}
-                      />
-                      {et.is_active ? 'Active' : 'Off'}
-                    </button>
+                    <div className="ml-[42px] flex items-center gap-3 sm:contents">
+                      {/* Status chip */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateEventType({ id: et.id, is_active: !et.is_active } as any)
+                        }
+                        disabled={isUpdatingEventType}
+                        className="inline-flex items-center gap-1.5 px-2 h-[22px] rounded-md font-inter font-semibold text-[10.5px] transition-colors"
+                        style={{
+                          background: et.is_active ? '#E5F4EC' : '#F1F0EC',
+                          color: et.is_active ? '#0B7A57' : '#5A6072',
+                          letterSpacing: '0.02em',
+                        }}
+                        aria-label={et.is_active ? 'Deactivate' : 'Activate'}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: et.is_active ? '#12B886' : '#8B8F9E' }}
+                        />
+                        {et.is_active ? 'Active' : 'Off'}
+                      </button>
 
-                    {/* Duplicate */}
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      iconOnly
-                      icon={Copy}
-                      aria-label="Duplicate event type"
-                      onClick={() => handleDuplicate(et)}
-                    />
-                    {/* Copy link */}
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      iconOnly
-                      icon={Link2}
-                      aria-label="Copy direct link"
-                      onClick={() => {
-                        navigator.clipboard.writeText(eventUrl)
-                        toast.success('Event type link copied')
-                      }}
-                    />
-                    {/* Edit */}
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      icon={Pencil}
-                      onClick={() => handleOpenEdit(et)}
-                    >
-                      Edit
-                    </Button>
+                      {/* Duplicate */}
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        iconOnly
+                        icon={Copy}
+                        aria-label="Duplicate event type"
+                        onClick={() => handleDuplicate(et)}
+                      />
+                      {/* Copy link */}
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        iconOnly
+                        icon={Link2}
+                        aria-label="Copy direct link"
+                        onClick={() => {
+                          navigator.clipboard.writeText(eventUrl)
+                          toast.success('Event type link copied')
+                        }}
+                      />
+                      {/* Edit */}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={Pencil}
+                        onClick={() => handleOpenEdit(et)}
+                      >
+                        Edit
+                      </Button>
+                    </div>
                   </li>
                 )
               })}

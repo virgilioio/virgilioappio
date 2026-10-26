@@ -120,7 +120,7 @@ export function CareersPageTab() {
         title="Brand"
         description="Logo and link shown on the careers page. PNG, JPG or SVG up to 2MB · ideal 200×60."
       >
-        <div style={{ padding: '14px 18px' }} className="flex items-start gap-4">
+        <div style={{ padding: '14px 18px' }} className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div
             className="flex items-center justify-center shrink-0"
             style={{ width: 180, height: 64, background: '#F6F5F1', borderRadius: 10 }}

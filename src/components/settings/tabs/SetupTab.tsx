@@ -191,9 +191,10 @@ export function SetupTab() {
               return (
                 <li
                   key={row.id}
-                  className="flex items-center"
+                  // Phones: the time and the button wrap under the text, so the text keeps the width.
+                  className="flex flex-wrap items-center sm:flex-nowrap"
                   style={{
-                    gap: 13,
+                    gap: '10px 13px',
                     padding: '12px 18px',
                     borderBottom: last ? 'none' : '1px solid #F1F0EC',
                     opacity: isDone ? 0.55 : 1,
@@ -215,7 +216,7 @@ export function SetupTab() {
                   </div>
 
                   {/* Main column */}
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1 basis-[calc(100%-43px)] sm:basis-auto">
                     <div className="flex items-center flex-wrap" style={{ gap: 8 }}>
                       <span
                         className="font-inter"
@@ -253,7 +254,7 @@ export function SetupTab() {
 
                   {/* Time */}
                   <div
-                    className="shrink-0 font-inter"
+                    className="ml-[43px] shrink-0 font-inter sm:ml-0"
                     style={{ fontSize: 10.5, color: '#B5B9C4' }}
                   >
                     {row.estimate}

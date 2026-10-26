@@ -56,26 +56,27 @@ export function CustomersTab() {
     return q ? rows.filter((o) => o.name.toLowerCase().includes(q)) : rows
   }, [data, search])
 
-  const gridCols: React.CSSProperties = { gridTemplateColumns: '1fr 140px 70px 90px' }
+  // Phones drop the Source column so the client's name keeps its room.
+  const grid = 'grid items-center gap-2 grid-cols-[minmax(0,1fr)_40px_92px] sm:gap-0 sm:grid-cols-[1fr_140px_70px_90px]'
   const head = 'font-inter text-[10px] font-semibold tracking-[0.07em] text-[#8B8F9E] uppercase'
 
   return (
     <section className="bg-white rounded-[12px] overflow-hidden mb-[14px]" style={{ border: '1px solid #E7E8EE' }}>
-      <header className="flex items-center justify-between gap-4" style={{ padding: '14px 18px', borderBottom: '1px solid #F1F0EC' }}>
-        <div className="min-w-0">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5" style={{ padding: '14px 18px', borderBottom: '1px solid #F1F0EC' }}>
+        <div className="min-w-0 flex-1 basis-[180px]">
           <h3 className="font-poppins font-semibold text-[#0d0d09] m-0" style={{ fontSize: 13.5, letterSpacing: '-0.01em' }}>
             Clients
           </h3>
           <ClientsManagedNote label="Managed in Gio Sales" />
         </div>
-        <div className="relative shrink-0">
+        <div className="relative w-full sm:w-auto sm:shrink-0">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8B8F9E] pointer-events-none" />
           <input
             type="text"
             placeholder="Search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="font-inter outline-none h-[30px] w-[180px] pl-[26px] pr-[10px] bg-[#F6F5F1] rounded-lg text-[12px] text-[#1F2230]"
+            className="font-inter outline-none h-[30px] w-full sm:w-[180px] pl-[26px] pr-[10px] bg-[#F6F5F1] rounded-lg text-[12px] text-[#1F2230]"
           />
         </div>
       </header>
@@ -86,9 +87,9 @@ export function CustomersTab() {
         <div className="font-inter text-center px-[18px] py-[28px] text-[12px] text-[#8B8F9E]">No clients here.</div>
       ) : (
         <>
-          <div className="grid items-center" style={{ ...gridCols, padding: '8px 18px 4px' }}>
+          <div className={grid} style={{ padding: '8px 18px 4px' }}>
             <div className={head}>Client</div>
-            <div className={head}>Source</div>
+            <div className={`${head} hidden sm:block`}>Source</div>
             <div className={`${head} text-right`}>Jobs</div>
             <div className={`${head} text-center`}>Gio Sales status</div>
           </div>
@@ -97,8 +98,8 @@ export function CustomersTab() {
             return (
               <div
                 key={org.id}
-                className="grid items-center"
-                style={{ ...gridCols, padding: '10px 18px', borderBottom: idx === filtered.length - 1 ? 'none' : '1px solid #F1F0EC' }}
+                className={grid}
+                style={{ padding: '10px 18px', borderBottom: idx === filtered.length - 1 ? 'none' : '1px solid #F1F0EC' }}
               >
                 <div className="flex items-center min-w-0 gap-[9px]">
                   <div className="shrink-0 inline-flex items-center justify-center font-inter w-6 h-6 rounded-md bg-[#F1F0EC] text-[#5A6072] text-[10px] font-semibold">
@@ -106,7 +107,7 @@ export function CustomersTab() {
                   </div>
                   <span className="truncate font-inter text-[12.5px] font-medium text-[#1F2230]">{org.name}</span>
                 </div>
-                <div className="font-inter text-[11.5px] text-[#8B8F9E]">
+                <div className="hidden font-inter text-[11.5px] text-[#8B8F9E] sm:block">
                   {org.is_internal ? 'Internal' : org.sales_company_id ? 'Managed in Gio Sales' : 'Legacy (not linked)'}
                 </div>
                 <div className="font-inter text-right tabular-nums text-[12px] text-[#8B8F9E]">{data?.jobCounts[org.id] ?? 0}</div>

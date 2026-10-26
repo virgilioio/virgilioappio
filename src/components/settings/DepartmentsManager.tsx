@@ -34,7 +34,8 @@ function useJobCountsByDepartment() {
   })
 }
 
-const GRID = '1fr 90px 90px 80px 60px'
+// Phones drop the Total column so the name keeps its room.
+const GRID = 'grid gap-2 grid-cols-[minmax(0,1fr)_44px_76px_60px] sm:gap-3 sm:grid-cols-[1fr_90px_90px_80px_60px]'
 
 export function DepartmentsManager() {
   const { departments, isLoading, createDepartment, updateDepartment } = useDepartments({ includeArchived: true })
@@ -106,10 +107,8 @@ export function DepartmentsManager() {
       >
         {/* Column header row */}
         <div
-          className="grid font-inter uppercase text-[#8B8F9E]"
+          className={`${GRID} font-inter uppercase text-[#8B8F9E]`}
           style={{
-            gridTemplateColumns: GRID,
-            gap: 12,
             padding: '8px 18px',
             borderBottom: '1px solid #F1F0EC',
             fontSize: 10,
@@ -119,7 +118,7 @@ export function DepartmentsManager() {
         >
           <div>Name</div>
           <div className="text-right">Open</div>
-          <div className="text-right">Total</div>
+          <div className="hidden text-right sm:block">Total</div>
           <div className="text-center">Status</div>
           <div />
         </div>
@@ -136,16 +135,14 @@ export function DepartmentsManager() {
             return (
               <div
                 key={d.id}
-                className="grid items-center group"
+                className={`${GRID} items-center group`}
                 style={{
-                  gridTemplateColumns: GRID,
-                  gap: 12,
                   padding: '9px 18px',
                   borderBottom: idx === sorted.length - 1 ? 'none' : '1px solid #F1F0EC',
                 }}
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-inter text-[#1F2230] truncate" style={{ fontSize: 12.5, fontWeight: 500 }}>{d.name}</span>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-nowrap">
+                  <span className="max-w-full font-inter text-[#1F2230] truncate" style={{ fontSize: 12.5, fontWeight: 500 }}>{d.name}</span>
                   {d.is_system && <SpecChip tone="purple">Default</SpecChip>}
                 </div>
                 <div
@@ -154,7 +151,7 @@ export function DepartmentsManager() {
                 >
                   {open}
                 </div>
-                <div className="text-right font-inter tabular-nums text-[#8B8F9E]" style={{ fontSize: 12 }}>
+                <div className="hidden text-right font-inter tabular-nums text-[#8B8F9E] sm:block" style={{ fontSize: 12 }}>
                   {total}
                 </div>
                 <div className="flex justify-center">

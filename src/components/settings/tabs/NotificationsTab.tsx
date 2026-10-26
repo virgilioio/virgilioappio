@@ -41,7 +41,7 @@ function SignPrefsCard() {
       description="Envelopes you sent: when people sign, decline or open them, and when they’re about to expire."
       bodyClassName="px-0 pb-0"
     >
-      <div className="grid grid-cols-[1fr_72px_72px_72px] items-center px-5 pb-2 pt-1">
+      <div className="hidden items-center px-5 pb-2 pt-1 sm:grid sm:grid-cols-[1fr_72px_72px_72px]">
         <div />
         {['In-app', 'Email'].map((l) => (
           <div key={l} className="text-center font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E]">
@@ -62,34 +62,38 @@ function SignPrefsCard() {
           {SIGN_PREF_EVENTS.map((row) => {
             const p = q.data?.[row.event]
             return (
-              <li key={row.event} className="grid grid-cols-[1fr_72px_72px_72px] items-center px-5 py-3.5">
-                <div className="min-w-0 pr-4">
+              <li key={row.event} className="grid grid-cols-1 items-center gap-3 px-5 py-3.5 sm:grid-cols-[1fr_72px_72px_72px] sm:gap-0">
+                <div className="min-w-0 sm:pr-4">
                   <div className="font-inter text-[13px] text-[#0d0d09]">{row.label}</div>
                   <div className="mt-0.5 font-inter text-[12px] text-[#8B8F9E]">{row.description}</div>
                 </div>
-                <div className="flex justify-center">
-                  <Switch
-                    aria-label={`${row.label}: in-app`}
-                    checked={p?.in_app ?? row.defaults.in_app}
-                    disabled={!p}
-                    onCheckedChange={(v) => p && set(row.event, { ...p, in_app: v })}
-                  />
-                </div>
-                <div className="flex justify-center">
-                  {row.email ? (
+                <div className="flex flex-wrap gap-x-5 gap-y-2 sm:contents">
+                  <label className="flex items-center gap-2 sm:justify-center">
+                    <span className="font-inter text-[12.5px] text-[#5A6072] sm:hidden">In-app</span>
                     <Switch
-                      aria-label={`${row.label}: email`}
-                      checked={p?.by_email ?? row.defaults.by_email}
+                      aria-label={`${row.label}: in-app`}
+                      checked={p?.in_app ?? row.defaults.in_app}
                       disabled={!p}
-                      onCheckedChange={(v) => p && set(row.event, { ...p, by_email: v })}
+                      onCheckedChange={(v) => p && set(row.event, { ...p, in_app: v })}
                     />
-                  ) : (
-                    <span className="font-inter text-[13px] text-[#B5B9C4]" aria-label="No email for this event">
-                      —
-                    </span>
-                  )}
+                  </label>
+                  <label className="flex items-center gap-2 sm:justify-center">
+                    <span className="font-inter text-[12.5px] text-[#5A6072] sm:hidden">Email</span>
+                    {row.email ? (
+                      <Switch
+                        aria-label={`${row.label}: email`}
+                        checked={p?.by_email ?? row.defaults.by_email}
+                        disabled={!p}
+                        onCheckedChange={(v) => p && set(row.event, { ...p, by_email: v })}
+                      />
+                    ) : (
+                      <span className="font-inter text-[13px] text-[#B5B9C4]" aria-label="No email for this event">
+                        —
+                      </span>
+                    )}
+                  </label>
                 </div>
-                <div />
+                <div className="hidden sm:block" />
               </li>
             )
           })}
@@ -128,7 +132,7 @@ export function NotificationsTab() {
         bodyClassName="px-0 pb-0"
       >
         {/* Column headers */}
-        <div className="grid grid-cols-[1fr_72px_72px_72px] items-center px-5 pb-2 pt-1">
+        <div className="hidden items-center px-5 pb-2 pt-1 sm:grid sm:grid-cols-[1fr_72px_72px_72px]">
           <div />
           {CHANNELS.map((c) => (
             <div
@@ -144,22 +148,27 @@ export function NotificationsTab() {
           {PREFS_CATEGORIES.map((row) => (
             <li
               key={row.key}
-              className="grid grid-cols-[1fr_72px_72px_72px] items-center px-5 py-3.5"
+              // Phones: the description takes the width and the switches sit under it, each labelled.
+              className="grid grid-cols-1 items-center gap-3 px-5 py-3.5 sm:grid-cols-[1fr_72px_72px_72px] sm:gap-0"
             >
-              <div className="min-w-0 pr-4">
+              <div className="min-w-0 sm:pr-4">
                 <div className="font-inter text-[13px] text-[#0d0d09]">{row.label}</div>
                 <div className="font-inter text-[12px] text-[#8B8F9E] mt-0.5">
                   {row.description}
                 </div>
               </div>
-              {CHANNELS.map((c) => (
-                <div key={c.key} className="flex justify-center">
-                  <Switch
-                    checked={get(row.key, c.key)}
-                    onCheckedChange={(v) => set(row.key, c.key, v)}
-                  />
-                </div>
-              ))}
+              <div className="flex flex-wrap gap-x-5 gap-y-2 sm:contents">
+                {CHANNELS.map((c) => (
+                  <label key={c.key} className="flex items-center gap-2 sm:justify-center">
+                    <span className="font-inter text-[12.5px] text-[#5A6072] sm:hidden">{c.label}</span>
+                    <Switch
+                      aria-label={`${row.label}: ${c.label}`}
+                      checked={get(row.key, c.key)}
+                      onCheckedChange={(v) => set(row.key, c.key, v)}
+                    />
+                  </label>
+                ))}
+              </div>
             </li>
           ))}
         </ul>
@@ -189,7 +198,7 @@ export function NotificationsTab() {
             </div>
 
             {prefs.quiet_hours_enabled && (
-              <div className="mt-3 grid grid-cols-[1fr_1fr_1.4fr] gap-3">
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1fr_1.4fr]">
                 <label className="block">
                   <span className="block font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E] mb-1">
                     Start
@@ -210,7 +219,7 @@ export function NotificationsTab() {
                     onChange={(e) => update({ quiet_hours_end: e.target.value })}
                   />
                 </label>
-                <label className="block">
+                <label className="col-span-2 block sm:col-span-1">
                   <span className="block font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E] mb-1">
                     Timezone
                   </span>
