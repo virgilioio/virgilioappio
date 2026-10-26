@@ -12016,6 +12016,20 @@ export type Database = {
         Args: { _label: string; _tenant_id: string }
         Returns: string
       }
+      os_commission_role_record: {
+        Args: {
+          _detail: string
+          _id: string
+          _ok: boolean
+          _retry: boolean
+          _updated_at: string
+        }
+        Returns: undefined
+      }
+      os_commission_rule_record: {
+        Args: { _detail: string; _id: string; _ok: boolean; _retry: boolean }
+        Returns: undefined
+      }
       os_commission_rules_in_force: {
         Args: { _on?: string; _tenant_id: string }
         Returns: {

@@ -1,4 +1,4 @@
--- Run after 20261026212737_os_commission_delivery inside a transaction that is rolled back.
+-- Run after 20261026213326_os_commission_delivery inside a transaction that is rolled back.
 -- os-sync records Gio Sales' answers for roles and rules; recording never sends
 -- a role again or writes the history, and an edit made mid-send still goes out.
 -- Every row's ok is true.
@@ -53,7 +53,7 @@ begin
   update public.os_commission_roles set label = ' SDR ' where id = sdr.id;
   perform set_config('role', 'postgres', true);
   insert into t_results values ('saving a role unchanged keeps it done',
-    (select sync_status = 'done' from public.os_commission_roles where id = sdr.id));
+    (select sync_status = 'done' and label = 'SDR' from public.os_commission_roles where id = sdr.id));
 
   -- 4. Rules: refused keeps the reason, a retry stays waiting, then done.
   perform public.os_commission_rule_record(rule_id, false, 'Gio Sales holds this rule version with other terms.', false);
