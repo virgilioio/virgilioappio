@@ -12,11 +12,16 @@ import type { PersonJob } from '@/lib/os/peopleAccess'
  * estimate for the openings still open on the jobs where they are a Sourcer or
  * a Recruiter: the job's salary x the opening's fee x today's rate for the seat.
  * A filled opening counts only when the hire credits them.
+ *
+ * Since the commission rules (2026-10-26) a row is either an invoice credit
+ * (`source = 'invoice'`) or a credit earned when a partner accepted a lead
+ * (`source = 'lead'`: no invoice, earned at once, e.g. the SDR's USD 100).
  */
 
 export interface Earning {
   id: string
-  request_number: string
+  source: 'invoice' | 'lead'
+  request_number: string | null
   invoice_number: string | null
   client_name: string | null
   deal_title: string | null
@@ -25,15 +30,20 @@ export interface Earning {
   role_key: string
   role_label: string
   share_pct: number
+  basis: 'percent' | 'fixed'
   currency: string
-  invoice_amount: number
+  invoice_amount: number | null
   collected_amount: number
   earned_amount: number
   pending_amount: number
-  status: 'issued' | 'partly_paid' | 'paid' | 'void'
+  status: 'issued' | 'partly_paid' | 'paid' | 'void' | 'earned'
   void_reason: string | null
   issued_on: string | null
   paid_on: string | null
+  partner_name: string | null
+  item_name: string | null
+  /** A lead credit: the day the partner accepted. */
+  earned_on: string | null
 }
 
 export function usePersonEarnings(userId: string | null | undefined) {
@@ -44,20 +54,23 @@ export function usePersonEarnings(userId: string | null | undefined) {
       const { data, error } = await supabase
         .from('os_earnings')
         .select(
-          'id, request_number, invoice_number, client_name, deal_title, opening_id, job_id, role_key, role_label, share_pct, currency, invoice_amount, collected_amount, earned_amount, pending_amount, status, void_reason, issued_on, paid_on',
+          'id, source, request_number, invoice_number, client_name, deal_title, opening_id, job_id, role_key, role_label, share_pct, basis, currency, invoice_amount, collected_amount, earned_amount, pending_amount, status, void_reason, issued_on, paid_on, partner_name, item_name, earned_on',
         )
         .eq('user_id', userId!)
         .order('issued_on', { ascending: false, nullsFirst: false })
         .order('request_number', { ascending: false })
       if (error) throw error
-      return (data ?? []).map((r) => ({
+      const rows = (data ?? []).map((r) => ({
         ...r,
         share_pct: Number(r.share_pct),
-        invoice_amount: Number(r.invoice_amount),
+        invoice_amount: r.invoice_amount == null ? null : Number(r.invoice_amount),
         collected_amount: Number(r.collected_amount),
         earned_amount: Number(r.earned_amount),
         pending_amount: Number(r.pending_amount),
       })) as Earning[]
+      // Newest first, an accepted lead by the day it was earned.
+      const when = (e: Earning) => e.issued_on ?? e.earned_on ?? ''
+      return rows.sort((a, b) => when(b).localeCompare(when(a)))
     },
   })
 }

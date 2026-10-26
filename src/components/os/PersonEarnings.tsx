@@ -34,10 +34,14 @@ const INVOICE_STATUS: Record<Earning['status'], { label: string; dot: string }> 
   partly_paid: { label: 'Partly paid', dot: '#F59E0B' },
   paid: { label: 'Paid', dot: '#12B886' },
   void: { label: 'Void', dot: '#9CA3AF' },
+  earned: { label: 'Earned', dot: '#12B886' },
 }
 
 function day(iso: string | null) {
-  return iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
+  if (!iso) return null
+  // A plain date is that day wherever you are, not midnight UTC.
+  const at = iso.length === 10 ? new Date(`${iso}T12:00:00Z`) : new Date(iso)
+  return at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', ...(iso.length === 10 ? { timeZone: 'UTC' } : {}) })
 }
 
 function Money({ amount, currency, muted }: { amount: number; currency: string; muted?: boolean }) {
@@ -149,7 +153,7 @@ export function PersonEarnings({
             ]}
           />
         <p className="px-1 pt-2 font-inter text-[12px] leading-[1.5] text-[#6B7080]">
-          Earned and pending come from Gio Sales invoices, for every role that credits {them}. Potential estimates the
+          Earned and pending come from Gio Sales invoices and the leads partners accept, for every role that credits {them}. Potential estimates the
           openings still open where {self ? "you're" : "they're"} a Sourcer or a Recruiter: the job's salary × the opening's fee × today's rate
           {sp != null && tap != null ? ` (Sourcer ${sp}%, Recruiter ${tap}%)` : ''}.
           {!loadingPotential && unestimated > 0
@@ -161,7 +165,7 @@ export function PersonEarnings({
       )}
 
 
-      <ProfileCard title="Invoices" icon={ReceiptText} flush>
+      <ProfileCard title="Invoices and leads" icon={ReceiptText} flush>
         {earnings.isLoading ? (
           <div className="space-y-2 p-4">
             {Array.from({ length: 3 }, (_, i) => (
@@ -173,13 +177,13 @@ export function PersonEarnings({
             <LoadError what={`${their} invoices`} compact onRetry={() => void earnings.refetch()} />
           </div>
         ) : rows.length === 0 ? (
-          <p className="p-4 font-inter text-[12.5px] text-[#6B7080]">No invoices credit {them} yet.</p>
+          <p className="p-4 font-inter text-[12.5px] text-[#6B7080]">No invoices or accepted leads credit {them} yet.</p>
         ) : (
           <div className="max-h-[520px] overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice</TableHead>
+                  <TableHead>Invoice or lead</TableHead>
                   <TableHead className="hidden md:table-cell">Role</TableHead>
                   <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="text-right">Earned</TableHead>
@@ -190,11 +194,14 @@ export function PersonEarnings({
                 {rows.map((e) => {
                   const s = INVOICE_STATUS[e.status]
                   const isVoid = e.status === 'void'
+                  const lead = e.source === 'lead'
                   return (
                     <TableRow key={e.id}>
                       <TableCell className="max-w-[190px] sm:max-w-[300px]">
                         <span className="block truncate font-medium text-[#1F2230]">
-                          {[e.request_number, e.invoice_number].filter(Boolean).join(' · ')}
+                          {lead
+                            ? [e.partner_name ? `Lead accepted by ${e.partner_name}` : 'Lead accepted', e.item_name].filter(Boolean).join(' · ')
+                            : [e.request_number, e.invoice_number].filter(Boolean).join(' · ')}
                         </span>
                         <span className="block truncate text-[11.5px] text-[#6B7080]">
                           {[e.client_name, e.deal_title].filter(Boolean).join(' · ') || '—'}
@@ -205,12 +212,20 @@ export function PersonEarnings({
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-[#5A6072]">
                         <span className="block whitespace-nowrap">{e.role_label}</span>
-                        <span className="block text-[11.5px] text-[#6B7080]">{e.share_pct}% share</span>
+                        <span className="block text-[11.5px] text-[#6B7080]">
+                          {e.basis === 'fixed' ? 'Fixed amount' : `${e.share_pct}% share`}
+                        </span>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Dot {...s} />
                         <span className="block text-[11.5px] text-[#6B7080]">
-                          {isVoid ? e.void_reason ?? 'Voided in Gio Sales' : e.status === 'paid' ? day(e.paid_on) : day(e.issued_on)}
+                          {isVoid
+                            ? e.void_reason ?? 'Voided in Gio Sales'
+                            : lead
+                              ? day(e.earned_on)
+                              : e.status === 'paid'
+                                ? day(e.paid_on)
+                                : day(e.issued_on)}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
