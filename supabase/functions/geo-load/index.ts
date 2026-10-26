@@ -2,7 +2,8 @@
  * Loads places from GeoNames (CC BY 4.0, https://www.geonames.org) into
  * geo_regions and geo_cities (Allan, 2026-10-26): every country's states and
  * provinces (admin1CodesASCII.txt) and every city of 5,000 people or more
- * (cities5000.zip, populated places only). Upserts by GeoNames' own codes, so
+ * (cities5000.zip, populated places only, with their coordinates for the
+ * People & Access map). Upserts by GeoNames' own codes, so
  * running it again refreshes names and populations and adds new places.
  *
  * Called by hand or by SQL (net.http_post) with x-internal-secret; nobody
@@ -84,6 +85,8 @@ Deno.serve(async (req) => {
         name: clean(f[1]).slice(0, 200),
         ascii_name: clean(f[2]) || null,
         population: Number(f[14]) || 0,
+        latitude: Number.isFinite(Number(f[4])) ? Number(f[4]) : null,
+        longitude: Number.isFinite(Number(f[5])) ? Number(f[5]) : null,
       })
       if (batch.length >= BATCH) await flush()
     }
