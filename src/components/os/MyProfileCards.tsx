@@ -1,14 +1,12 @@
 import { Link } from 'react-router-dom'
-import { Cake, Camera, Check, ChevronRight, FileSignature, IdCard, Landmark, Link2, ListTodo, MapPin, PartyPopper, Sparkles, type LucideIcon } from 'lucide-react'
+import { Cake, Check, ChevronRight, FileSignature, Link2, ListTodo, PartyPopper, Sparkles, type LucideIcon } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadError } from '@/components/empty/LoadError'
 import { ProfileCard } from '@/components/os/ProfileParts'
 import { UsefulLinksList } from '@/components/os/UsefulLinks'
-import { useUserProfile } from '@/hooks/useUserProfile'
-import { useBankDetails } from '@/lib/os/bank'
-import { usePersonDetails, type Person } from '@/lib/os/peopleAccess'
-import { useTaxIds } from '@/lib/os/taxIds'
+import { useProfileChecks } from '@/components/os/profileChecks'
+import { type Person } from '@/lib/os/peopleAccess'
 import { useUsefulLinks } from '@/lib/os/usefulLinks'
 import { useTeamCalendar, whenLabel } from '@/lib/os/calendar'
 import { countryLabel } from '@/lib/os/countries'
@@ -32,65 +30,15 @@ interface ToDo {
 /** What's still missing from My profile, each a link to the card that fixes it (or a tab). Nothing is counted until it has loaded. */
 export function ToDoCard({ tenantId, person }: { tenantId: string; person: Person }) {
   const userId = person.user_id
-  const { profile } = useUserProfile()
-  const details = usePersonDetails(tenantId, userId)
-  const tax = useTaxIds(tenantId, userId)
-  const bank = useBankDetails(tenantId, userId)
+  const profileChecks = useProfileChecks(tenantId, userId)
   const envelopes = useRecordEnvelopes(SIGN_SENDING_LIVE && userId ? { type: 'member', id: person.member_id } : null)
 
-  const queries = [details, tax, bank]
-  const loading = !profile || queries.some((q) => q.isLoading) || (SIGN_SENDING_LIVE && envelopes.isLoading)
-  const failed = queries.find((q) => q.isError)
+  const loading = profileChecks.loading || (SIGN_SENDING_LIVE && envelopes.isLoading)
+  const failed = profileChecks.failed
 
   const items: ToDo[] = []
   if (!loading) {
-    const d = details.data
-    const contact = [!d?.personal_email && 'a personal email', !d?.personal_phone && 'a phone'].filter(Boolean) as string[]
-    const contactText = contact.join(' and ')
-    if (!profile?.avatar_url || !profile?.title)
-      items.push({
-        key: 'you',
-        icon: Camera,
-        title: !profile?.avatar_url && !profile?.title ? 'Add your photo and title' : !profile?.avatar_url ? 'Add your photo' : 'Add your title',
-        body: `Candidates see ${!profile?.avatar_url && !profile?.title ? 'them' : 'it'} on every email you send.`,
-        to: `/me?focus=card-you`,
-      })
-    if (!d?.country_code || contact.length)
-      items.push({
-        key: 'personal',
-        icon: MapPin,
-        title: !d?.country_code ? 'Add the country you live in' : `Add ${contactText}`,
-        body: !d?.country_code
-          ? contact.length
-            ? `Then ${contactText}, so admins can reach you outside work.`
-            : 'It sets which tax IDs and bank details apply to you.'
-          : 'So admins can reach you outside work. Only they see it.',
-        to: `/me?focus=card-personal`,
-      })
-    if (!d?.birth_date)
-      items.push({
-        key: 'birthday',
-        icon: Cake,
-        title: 'Add your birthday',
-        body: 'Teammates see the day and month, never the year.',
-        to: `/me?focus=card-personal`,
-      })
-    if (tax.data && tax.data.ids.length === 0)
-      items.push({
-        key: 'tax',
-        icon: IdCard,
-        title: 'Add your tax ID',
-        body: 'Virgilio needs it to pay your commissions.',
-        to: `/me?focus=card-tax-ids`,
-      })
-    if (bank.data && !bank.data.has_details)
-      items.push({
-        key: 'bank',
-        icon: Landmark,
-        title: 'Add your bank details',
-        body: 'Where Virgilio pays your commissions.',
-        to: `/me?focus=card-bank`,
-      })
+    items.push(...profileChecks.missing)
     const waiting = (envelopes.data ?? []).filter((e) => e.status === 'sent' && signersOf(e).some((r) => r.status !== 'signed' && !r.removed_at))
     if (waiting.length)
       items.push({
@@ -123,7 +71,7 @@ export function ToDoCard({ tenantId, person }: { tenantId: string; person: Perso
           ))}
         </div>
       ) : failed ? (
-        <LoadError what="what's left to do" compact onRetry={() => queries.forEach((q) => void q.refetch())} />
+        <LoadError what="what's left to do" compact onRetry={profileChecks.refetch} />
       ) : items.length === 0 ? (
         <div className="flex items-center gap-3 rounded-[10px] bg-[#F7F6F2] px-3.5 py-3">
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#D1FAE5] text-[#0F9F74]" aria-hidden>

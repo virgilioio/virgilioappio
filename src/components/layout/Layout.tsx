@@ -7,6 +7,7 @@ import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUpload
 import { PhoneShell } from '@/components/phone/PhoneShell'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { HeaderContextBands } from '@/components/layout/HeaderContextBands'
+import { ProfileInviteDialog } from '@/components/os/ProfileInvite'
 import { usePermissions } from '@/hooks/usePermissions'
 
 // External users (2026-10-24) use the ATS only: these addresses send them to Jobs.
@@ -45,6 +46,7 @@ export function Layout() {
           </div>
           <GlobalBulkUploadWidget />
           {!isReview && <PhoneShell />}
+          {!isReview && <ProfileInviteDialog />}
         </BulkUploadProvider>
       </OrgGate>
     </AuthGate>

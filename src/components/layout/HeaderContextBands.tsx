@@ -1,13 +1,16 @@
-import { Shield, X } from 'lucide-react'
+import { ChevronRight, Shield, UserRound, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { IconTip } from '@/components/ui/tooltip'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
+import { useProfileInvite } from '@/components/os/profileChecks'
 
 /**
- * Stackable context bands rendered directly under the top Header.
- * Today only the Platform admin band (Gio ATS is no longer sold, so the trial
- * and billing bands are gone, 2026-10-24).
+ * Stackable context bands rendered directly under the top Header: the
+ * Platform admin band (desktop only) and, until your profile is complete, the
+ * My profile band (Allan, 2026-10-26). Gio ATS is no longer sold, so the
+ * trial and billing bands are gone (2026-10-24).
  * Each band is dismissible; dismissal persists for the session.
  */
 
@@ -39,12 +42,18 @@ export function HeaderContextBands() {
   const isPlatformAdmin = userType === 'platform_admin'
 
   const showAdmin = isPlatformAdmin && !isDismissed('admin')
-  if (!showAdmin) return null
+  const invite = useProfileInvite()
+  const showProfile = invite.showBand && !isDismissed('profile')
+  if (!showAdmin && !showProfile) return null
+
+  const first = invite.missing[0]
+  const still = invite.missing.map((c) => c.inline)
+  const stillText = still.length > 1 ? `${still.slice(0, -1).join(', ')} and ${still[still.length - 1]}` : still[0]
 
   return (
-    <div className="hidden sm:flex flex-col gap-2 fixed top-[3.75rem] left-[5.5rem] right-3 z-40 pointer-events-none">
+    <div className="flex flex-col gap-2 fixed top-[calc(env(safe-area-inset-top,0px)+66px)] left-3 right-3 sm:top-[3.75rem] sm:left-[5.5rem] sm:right-3 z-40 pointer-events-none">
       {showAdmin && (
-        <Band tone="lilac" onDismiss={() => dismiss('admin')} className="pointer-events-auto">
+        <Band tone="lilac" onDismiss={() => dismiss('admin')} className="pointer-events-auto hidden sm:flex">
           <Shield className="h-3.5 w-3.5 shrink-0" />
           <span className="font-poppins font-medium text-[12.5px] tracking-[-0.01em]">
             Platform Admin
@@ -54,7 +63,24 @@ export function HeaderContextBands() {
           </span>
         </Band>
       )}
-
+      {showProfile && first && (
+        <Band tone="lilac" onDismiss={() => dismiss('profile')} className="pointer-events-auto">
+          <UserRound className="h-3.5 w-3.5 shrink-0" />
+          <span className="font-poppins font-medium text-[12.5px] tracking-[-0.01em] whitespace-nowrap">
+            Your profile is <span className="tabular-nums">{invite.done} of {invite.total}</span> done
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[12px] text-virgilio-purple/80 hidden md:inline">
+            Still to add: {stillText}.
+          </span>
+          <Link
+            to={first.to}
+            className="gio-pressable ml-auto inline-flex h-7 shrink-0 items-center gap-1 rounded-lg bg-virgilio-purple pl-2.5 pr-1.5 font-inter text-[12px] font-medium text-white whitespace-nowrap transition-colors duration-hover hover:bg-virgilio-purple/90"
+          >
+            Finish profile
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        </Band>
+      )}
     </div>
   )
 }
