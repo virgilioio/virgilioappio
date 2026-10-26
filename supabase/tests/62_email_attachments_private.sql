@@ -1,4 +1,4 @@
--- Run after 20261026120000_email_attachments_private inside a transaction that is rolled back.
+-- Run after 20261026040715_email_attachments_private inside a transaction that is rolled back.
 -- No policy lets a signed-in user reach email-attachments any more, the public
 -- buckets keep theirs, and the bucket stays private. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
