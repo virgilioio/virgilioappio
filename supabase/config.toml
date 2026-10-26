@@ -345,3 +345,7 @@ verify_jwt = false
 
 [functions.job-daily-digest]
 verify_jwt = false
+
+[functions.geo-load]
+# Loads GeoNames places into geo_regions / geo_cities. Called by hand or SQL with x-internal-secret.
+verify_jwt = false
