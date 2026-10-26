@@ -21,11 +21,12 @@ export function SpecCard({ title, description, action, children, className, body
       style={{ border: '1px solid #E7E8EE' }}
     >
       {(title || action) && (
+        // The action wraps under the title when both don't fit (phones); a switch stays beside it.
         <header
-          className="flex items-start justify-between gap-4"
+          className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2.5"
           style={{ padding: '14px 18px', borderBottom: '1px solid #F1F0EC' }}
         >
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1 basis-[220px]">
             {title && (
               <h3
                 className="font-poppins font-semibold text-[#0d0d09] m-0"

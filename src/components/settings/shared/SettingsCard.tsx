@@ -32,8 +32,9 @@ export function SettingsCard({
       )}
     >
       {(title || action) && (
-        <header className="flex items-start justify-between gap-4 px-5 pt-4 pb-3">
-          <div className="min-w-0">
+        // The action wraps under the title when both don't fit (phones); a switch stays beside it.
+        <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2.5 px-5 pt-4 pb-3">
+          <div className="min-w-0 flex-1 basis-[220px]">
             {title && (
               <h3
                 className="font-poppins font-semibold text-[#0d0d09]"
