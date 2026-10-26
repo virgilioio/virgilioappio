@@ -41,13 +41,22 @@ const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
 
 const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & {
+    /** §12: while results load, the search icon becomes a 13px spinner. */
+    loading?: boolean
+  }
+>(({ className, loading, ...props }, ref) => (
   <div
     className="flex items-center border-b border-[hsl(var(--tbl-divider-color))] px-3"
     cmdk-input-wrapper=""
   >
-    <Search className="mr-2 h-4 w-4 shrink-0 text-[hsl(var(--menu-group-color))]" />
+    {loading ? (
+      <span className="mr-2 inline-flex h-4 w-4 shrink-0 items-center justify-center text-[hsl(var(--menu-group-color))]" aria-hidden>
+        <span className="gio-spinner gio-spinner-current" style={{ width: 13, height: 13 }} />
+      </span>
+    ) : (
+      <Search className="mr-2 h-4 w-4 shrink-0 text-[hsl(var(--menu-group-color))]" />
+    )}
     <CommandPrimitive.Input
       ref={ref}
       className={cn(

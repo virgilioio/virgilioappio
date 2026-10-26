@@ -14,7 +14,6 @@ import {
   Plus,
   Briefcase,
   Building2,
-  MapPin,
   Mail,
   AtSign,
   DollarSign,
@@ -53,6 +52,7 @@ import { FooterStatusLine } from './form/FooterStatusLine'
 import type { ParsedResumeData } from './EnhancedResumeDropzone'
 import { splitFullName, composeFullName } from '@/utils/nameSplit'
 import { UnsavedGuard } from '@/components/ui/unsaved-guard'
+import { PlaceFieldsByName } from '@/components/ui/place-picker'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
@@ -1035,16 +1035,21 @@ export function CandidateFormSheet({
                 </FormField>
               </div>
 
-              <FormField label="Location" htmlFor="location_city">
-                <IconInput
-                  id="location_city"
-                  icon={MapPin}
-                  {...form.register('location_city')}
-                  placeholder="Brooklyn, NY"
+              <FormField label="Location" htmlFor="candidate-location-country">
+                <PlaceFieldsByName
+                  idPrefix="candidate-location"
+                  value={{
+                    country: form.watch('location_country') || '',
+                    region: form.watch('location_state') || '',
+                    city: form.watch('location_city') || '',
+                  }}
+                  onChange={(next) => {
+                    form.setValue('location_country', next.country, { shouldDirty: true })
+                    form.setValue('location_state', next.region, { shouldDirty: true })
+                    form.setValue('location_city', next.city, { shouldDirty: true })
+                  }}
                 />
               </FormField>
-              <input type="hidden" {...form.register('location_state')} />
-              <input type="hidden" {...form.register('location_country')} />
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-virgilio-text">

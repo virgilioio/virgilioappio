@@ -3,10 +3,10 @@ import { useEffect, useRef, useState } from 'react'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { SearchableSelect } from '@/components/ui/searchable-select'
+import { CityPicker, CountryPicker, RegionPicker } from '@/components/ui/place-picker'
+import { placeChange } from '@/lib/places'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadError } from '@/components/empty/LoadError'
-import { COUNTRIES } from '@/constants/countries'
 import { motionToken } from '@/lib/motion'
 import {
   PERSONAL_EMAIL_RE,
@@ -18,8 +18,6 @@ import {
 import { fromIsoDay, toIsoDay } from '@/lib/isoDay'
 
 const EMPTY: PersonDetails = { personal_email: null, personal_phone: null, country_code: null, region: null, city: null, birth_date: null }
-const NO_COUNTRY = '__none__'
-const COUNTRY_OPTIONS = [{ value: NO_COUNTRY, label: 'Not set' }, ...COUNTRIES]
 
 type Draft = Record<keyof PersonDetails, string>
 const toDraft = (d: PersonDetails | null): Draft => ({
@@ -139,6 +137,14 @@ export function PersonalDetailsForm({
     setTouched((t) => ({ ...t, [key]: true }))
     if (draft) flush(draft)
   }
+  // A place is picked in one go too: the country clears its state and city.
+  const place = (key: 'country' | 'region' | 'city', value: string, regionOfCity?: string) => {
+    if (!draft) return
+    const p = placeChange({ country: draft.country_code, region: draft.region, city: draft.city }, key, value, regionOfCity)
+    const next = { ...draft, country_code: p.country, region: p.region, city: p.city }
+    setDraft(next)
+    flush(next)
+  }
   // A date is picked in one go, so it saves at once.
   const pick = (birth: string) => {
     if (!draft) return
@@ -222,37 +228,19 @@ export function PersonalDetailsForm({
           />
         </FormField>
         <FormField label="Country" htmlFor={id('country')}>
-          <SearchableSelect
-            options={COUNTRY_OPTIONS}
-            value={draft.country_code || NO_COUNTRY}
-            onValueChange={(v) => {
-              const next = { ...draft, country_code: v === NO_COUNTRY ? '' : v }
-              setDraft(next)
-              flush(next)
-            }}
-            placeholder="Choose a country"
-            searchPlaceholder="Search countries…"
-            emptyMessage="No country by that name."
-          />
+          <CountryPicker id={id('country')} value={draft.country_code} onChange={(v) => place('country', v)} placeholder="Not set" />
         </FormField>
         <FormField label="State or province" htmlFor={id('region')}>
-          <Input
-            id={id('region')}
-            autoComplete={self ? 'address-level1' : 'off'}
-            value={draft.region}
-            maxLength={100}
-            onChange={(e) => change('region', e.target.value)}
-            onBlur={() => blur('region')}
-          />
+          <RegionPicker id={id('region')} countryCode={draft.country_code} value={draft.region} onChange={(v) => place('region', v)} placeholder="Not set" />
         </FormField>
         <FormField label="City" htmlFor={id('city')}>
-          <Input
+          <CityPicker
             id={id('city')}
-            autoComplete={self ? 'address-level2' : 'off'}
+            countryCode={draft.country_code}
+            regionName={draft.region}
             value={draft.city}
-            maxLength={100}
-            onChange={(e) => change('city', e.target.value)}
-            onBlur={() => blur('city')}
+            onChange={(v, region) => place('city', v, region)}
+            placeholder="Not set"
           />
         </FormField>
       </div>

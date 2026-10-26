@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async'
 import { buildJobPostingJsonLd } from '@/lib/jobPostingJsonLd'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { PlaceFieldsByName } from '@/components/ui/place-picker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftFlag } from '@/components/ui/EmptyIllustrations'
@@ -1307,29 +1308,39 @@ export default function PublicJobPosting() {
                                           <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                                           <span className="text-xs text-green-600">Syncs to your candidate profile</span>
                                         </div>
-                                        <div className={`grid grid-cols-1 ${({ 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' } as Record<number, string>)[locationSubFields.length] || 'md:grid-cols-3'} gap-3`}>
-                                          {locationSubFields.includes('city') && (
-                                            <Input
-                                              placeholder="City"
-                                              value={locationValue.city || ''}
-                                              onChange={(e) => updateLocation('city', e.target.value)}
-                                            />
-                                          )}
-                                          {locationSubFields.includes('state') && (
-                                            <Input
-                                              placeholder="State / Province"
-                                              value={locationValue.state || ''}
-                                              onChange={(e) => updateLocation('state', e.target.value)}
-                                            />
-                                          )}
-                                          {locationSubFields.includes('country') && (
-                                            <Input
-                                              placeholder="Country"
-                                              value={locationValue.country || ''}
-                                              onChange={(e) => updateLocation('country', e.target.value)}
-                                            />
-                                          )}
-                                        </div>
+                                        {locationSubFields.includes('country') ? (
+                                          // Country → State → City from the places list; anything unlisted can be typed.
+                                          <PlaceFieldsByName
+                                            idPrefix={`apply-${field.id}`}
+                                            fields={(['country', 'state', 'city'] as const)
+                                              .filter((k) => locationSubFields.includes(k))
+                                              .map((k) => (k === 'state' ? 'region' : k))}
+                                            value={{ country: locationValue.country || '', region: locationValue.state || '', city: locationValue.city || '' }}
+                                            onChange={(next) =>
+                                              setCustomFieldResponses(prev => ({
+                                                ...prev,
+                                                [field.id]: JSON.stringify({ ...locationValue, country: next.country, state: next.region, city: next.city }),
+                                              }))
+                                            }
+                                          />
+                                        ) : (
+                                          <div className={`grid grid-cols-1 ${({ 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' } as Record<number, string>)[locationSubFields.length] || 'md:grid-cols-3'} gap-3`}>
+                                            {locationSubFields.includes('city') && (
+                                              <Input
+                                                placeholder="City"
+                                                value={locationValue.city || ''}
+                                                onChange={(e) => updateLocation('city', e.target.value)}
+                                              />
+                                            )}
+                                            {locationSubFields.includes('state') && (
+                                              <Input
+                                                placeholder="State / Province"
+                                                value={locationValue.state || ''}
+                                                onChange={(e) => updateLocation('state', e.target.value)}
+                                              />
+                                            )}
+                                          </div>
+                                        )}
                                         <p className="text-xs text-green-600">Syncs to your candidate profile</p>
                                       </div>
                                     )
