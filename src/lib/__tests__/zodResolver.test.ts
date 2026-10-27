@@ -9,13 +9,15 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 const options = { fields: {}, shouldUseNativeValidation: false } as never;
+type Errors = Record<string, { message?: string } | undefined>;
 
 describe('zodResolver (zod 4)', () => {
   it('returns field errors instead of throwing', async () => {
     const r = await zodResolver(schema)({ candidate_name: 'Steven Scott', candidate_email: '' }, undefined, options);
     expect(r.values).toEqual({});
-    expect(r.errors.candidate_email?.message).toBe('Invalid email address');
-    expect(r.errors.candidate_name).toBeUndefined();
+    const errors = r.errors as Errors;
+    expect(errors.candidate_email?.message).toBe('Invalid email address');
+    expect(errors.candidate_name).toBeUndefined();
   });
 
   it('gives each field its first message', async () => {
