@@ -1,90 +1,14 @@
-import { useState } from 'react'
-import { Badge } from '@/components/ui/badge'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { Unplug } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
 import { CATEGORY_LABELS, type IntegrationCategory } from './integrationRegistry'
-import { Check, Download, Trash2, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { StateLabel, type IntegrationState } from './IntegrationCard'
 
-interface IntegrationDetailDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  name: string
-  description: string
-  detailContent?: React.ReactNode
-  category: IntegrationCategory
-  logo: React.ReactNode
-  images?: string[]
-  isConnected: boolean
-  onInstall: () => void
-  /** Omitted when there's nothing to uninstall here (no Uninstall button). Resolves false if cancelled. */
-  onUninstall?: () => Promise<boolean>
-  onConfigure: () => void
-  isInstalling?: boolean
-}
-
-function ImageCarousel({ images, logo }: { images?: string[]; logo: React.ReactNode }) {
-  const [current, setCurrent] = useState(0)
-
-  if (!images || images.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full bg-muted/30 rounded-xl">
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-muted/60 border border-border">
-          {logo}
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="relative h-full flex flex-col">
-      <div className="relative flex-1 overflow-hidden rounded-xl bg-muted/20">
-        <img
-          src={images[current]}
-          alt={`Screenshot ${current + 1}`}
-          className="w-full h-full object-contain rounded-xl"
-        />
-        {images.length > 1 && (
-          <>
-            <button
-              onClick={() => setCurrent((p) => (p - 1 + images.length) % images.length)}
-              className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border flex items-center justify-center hover:bg-background transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setCurrent((p) => (p + 1) % images.length)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border flex items-center justify-center hover:bg-background transition-colors"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </>
-        )}
-      </div>
-      {images.length > 1 && (
-        <div className="flex items-center justify-center gap-1.5 pt-3">
-          {images.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrent(i)}
-              className={`h-1.5 rounded-full transition-all ${
-                i === current
-                  ? 'w-6 bg-virgilio-purple'
-                  : 'w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50'
-              }`}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
+/**
+ * An integration's details (2026-10-27), in the action-dialog frame: its logo,
+ * name, category and state; what it does (and a picture when there is one);
+ * Disconnect on the left of the footer, Close and the main action on the right.
+ */
 export function IntegrationDetailDialog({
   open,
   onOpenChange,
@@ -94,110 +18,97 @@ export function IntegrationDetailDialog({
   category,
   logo,
   images,
-  isConnected,
-  onInstall,
-  onUninstall,
-  onConfigure,
-  isInstalling,
-}: IntegrationDetailDialogProps) {
+  state,
+  primary,
+  onDisconnect,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  name: string
+  description: string
+  detailContent?: React.ReactNode
+  category: IntegrationCategory
+  logo: React.ReactNode
+  images?: string[]
+  state: IntegrationState
+  primary?: { label: string; onClick: () => void }
+  onDisconnect?: () => void
+}) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl p-0 gap-0 overflow-hidden">
-        {/* Header */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/60 border border-border">
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="gio-dialog-overlay fixed inset-0 z-[60]" style={{ background: 'rgba(13,13,9,0.34)' }} />
+        <DialogPrimitive.Content
+          className="gio-dialog fixed left-1/2 top-1/2 z-[70] flex flex-col overflow-hidden bg-white [translate:-50%_-50%] focus:outline-none"
+          style={{
+            width: 640,
+            maxWidth: 'calc(100vw - 32px)',
+            maxHeight: 'calc(100dvh - 48px)',
+            borderRadius: 18,
+            boxShadow: '0 28px 90px -14px rgba(13,13,9,0.42), 0 0 0 1px rgba(13,13,9,0.04)',
+          }}
+        >
+          <header className="flex shrink-0 items-start gap-[14px]" style={{ padding: '22px 24px 18px', borderBottom: '1px solid #F1F0EC' }}>
+            <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[#EFEEEA] bg-[#FAFAF7]">
               {logo}
-            </div>
-            <div className="flex-1 min-w-0">
-              <DialogTitle className="text-lg font-poppins font-semibold">
+            </span>
+            <div className="min-w-0 flex-1">
+              <DialogPrimitive.Title className="mt-0.5 line-clamp-2 font-poppins text-[17px] font-semibold leading-snug text-text-primary">
                 {name}
-              </DialogTitle>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider">
-                  {CATEGORY_LABELS[category]}
-                </Badge>
-                {isConnected ? (
-                  <Badge variant="outline" className="border-virgilio-success/30 text-virgilio-success gap-1 text-[11px] font-medium">
-                    <Check className="h-3 w-3" />
-                    Installed
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="border-border text-muted-foreground text-[11px] font-medium">
-                    Not Installed
-                  </Badge>
-                )}
+              </DialogPrimitive.Title>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-inter text-[12px] text-text-tertiary">{CATEGORY_LABELS[category]}</span>
+                <StateLabel state={state} />
               </div>
             </div>
-          </div>
-        </DialogHeader>
-
-        {/* Body: 3:3:1 ratio → 43% carousel | 43% content | 14% actions */}
-        <div className="flex flex-col sm:flex-row h-[441px]">
-          {/* Left — Carousel (4 parts) */}
-          <div className="sm:w-[50%] p-5">
-            <ImageCarousel images={images} logo={logo} />
-          </div>
-
-          {/* Center — Description (3 parts) */}
-          <div className="sm:w-[37.5%] p-5 sm:pl-0 overflow-y-auto">
+          </header>
+          <div className="min-h-0 flex-1 overflow-y-auto" style={{ padding: 24 }}>
+            {images && images.length > 0 && (
+              <img src={images[0]} alt="" className="mb-5 max-h-[220px] w-full rounded-xl bg-[#FAFAF7] object-contain" />
+            )}
             {detailContent ? (
-              <div className="text-sm text-muted-foreground leading-relaxed space-y-4">
-                {detailContent}
-              </div>
+              <div className="space-y-3 font-inter text-[13px] leading-[1.6] text-text-secondary">{detailContent}</div>
             ) : (
-              <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-                {description}
-              </DialogDescription>
+              <DialogPrimitive.Description className="font-inter text-[13px] leading-[1.6] text-text-secondary">{description}</DialogPrimitive.Description>
             )}
           </div>
-
-          {/* Right — Actions (1 part) */}
-          <div className="sm:w-[12.5%] p-4 sm:border-l border-border flex flex-col items-center justify-start gap-2">
-            {isConnected ? (
-              <>
-                {onUninstall && (
-                  <Button
-                    size="sm"
-                    className="w-full gap-1.5 bg-virgilio-rejected hover:bg-virgilio-rejected/90 text-white border-0 text-xs"
-                    onClick={async () => {
-                      if (await onUninstall()) onOpenChange(false)
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Uninstall
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-1.5 border-virgilio-purple text-virgilio-purple hover:bg-virgilio-purple/10 text-xs"
-                  onClick={() => {
-                    onOpenChange(false)
-                    onConfigure()
-                  }}
-                >
-                  <Settings className="h-3.5 w-3.5" />
-                  Configure
-                </Button>
-              </>
-            ) : (
+          <footer className="flex shrink-0 items-center gap-3" style={{ padding: '13px 24px', borderTop: '1px solid #F1F0EC', background: '#FAFAF7' }}>
+            {onDisconnect && (
               <Button
-                size="sm"
-                className="w-full gap-1.5 bg-virgilio-purple hover:bg-virgilio-purple/90 text-white border-0 text-xs"
+                type="button"
+                variant="danger"
+                size="md"
+                icon={Unplug}
                 onClick={() => {
-                  onInstall()
                   onOpenChange(false)
+                  onDisconnect()
                 }}
-                disabled={isInstalling}
               >
-                <Download className="h-3.5 w-3.5" />
-                {isInstalling ? 'Installing...' : 'Install'}
+                Disconnect
               </Button>
             )}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+            <span className="flex-1" />
+            <DialogPrimitive.Close asChild>
+              <Button type="button" variant="secondary" size="md">
+                Close
+              </Button>
+            </DialogPrimitive.Close>
+            {primary && (
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  onOpenChange(false)
+                  primary.onClick()
+                }}
+              >
+                {primary.label}
+              </Button>
+            )}
+          </footer>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }
