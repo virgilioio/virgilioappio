@@ -3,6 +3,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 import { applyCandidateUpdate } from "../_shared/candidateUpdate.ts";
+import {
+  extOf,
+  isMediaKind,
+  MEDIA_BUCKET,
+  mediaProblem,
+  readStaged,
+  stageDir,
+  type MediaKind,
+  type StagedMedia,
+} from "../_shared/applicationMedia.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
@@ -212,6 +222,47 @@ serve(withRequestCors(async (req) => {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+    }
+
+    // Audio, Video and File upload answers: the browser uploaded each file to
+    // this posting's staging folder; check it's really there, of the right
+    // kind and size, before anything is created.
+    const mediaAnswers: Array<{ fieldName: string; label: string; kind: MediaKind; staged: StagedMedia; size: number }> = [];
+    {
+      const { data: mediaFields } = await supabase
+        .from('job_posting_application_fields')
+        .select('id, field_name, field_label, field_type')
+        .eq('posting_id', postingId)
+        .in('field_type', ['audio', 'video', 'file']);
+      for (const f of mediaFields ?? []) {
+        const raw = body.custom_fields?.[f.field_name];
+        if (raw === undefined || raw === null || raw === '') continue;
+        const staged = readStaged(raw);
+        const dir = stageDir(postingId, f.id);
+        const kind = f.field_type as MediaKind;
+        let problem: string | null = null;
+        let size = 0;
+        if (!staged || !isMediaKind(kind) || !staged.path.startsWith(`${dir}/`) || staged.path.includes('..')) {
+          problem = 'missing';
+        } else {
+          const name = staged.path.slice(dir.length + 1);
+          const { data: found } = await supabase.storage.from(MEDIA_BUCKET).list(dir, { search: name, limit: 5 });
+          const obj = (found ?? []).find((o) => o.name === name);
+          size = Number((obj?.metadata as Record<string, unknown> | undefined)?.size ?? 0);
+          if (!obj) problem = 'missing';
+          else problem = mediaProblem(kind, staged.name, staged.type, size);
+        }
+        if (problem) {
+          const message = problem === 'missing'
+            ? `We couldn't find your file for "${f.field_label}". Upload it again, then apply.`
+            : `${f.field_label}: ${problem}`;
+          return new Response(JSON.stringify({ error: message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        mediaAnswers.push({ fieldName: f.field_name, label: f.field_label, kind, staged: staged!, size });
       }
     }
 
@@ -514,6 +565,50 @@ serve(withRequestCors(async (req) => {
       }
     }
 
+    // File each staged upload with the candidate's files; the answer keeps a
+    // pointer to the file (never the file itself).
+    const mediaUploadResults: FileUploadResult[] = [];
+    for (const m of mediaAnswers) {
+      const dest = `${globalCandidateId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${extOf(m.staged.name) || extOf(m.staged.path)}`;
+      const { error: moveErr } = await supabase.storage.from(MEDIA_BUCKET).move(m.staged.path, dest);
+      if (moveErr) {
+        console.error('Media move failed:', m.fieldName, moveErr);
+        mediaUploadResults.push({ fieldId: m.fieldName, fileName: m.staged.name, success: false, error: 'The file couldn\'t be saved.' });
+        if (body.custom_fields) body.custom_fields[m.fieldName] = null;
+        continue;
+      }
+      const { data: att, error: attErr } = await supabase
+        .from('candidate_attachments')
+        .insert({
+          candidate_id: globalCandidateId,
+          file_name: m.staged.name,
+          file_url: dest,
+          file_size_bytes: m.size,
+          file_type: m.staged.type || null,
+          is_resume: false,
+          uploaded_by: null,
+        })
+        .select('id')
+        .single();
+      if (attErr || !att) {
+        console.error('Media attachment insert failed:', m.fieldName, attErr);
+        await supabase.storage.from(MEDIA_BUCKET).remove([dest]);
+        mediaUploadResults.push({ fieldId: m.fieldName, fileName: m.staged.name, success: false, error: 'The file couldn\'t be saved.' });
+        if (body.custom_fields) body.custom_fields[m.fieldName] = null;
+        continue;
+      }
+      if (body.custom_fields) {
+        body.custom_fields[m.fieldName] = {
+          attachment_id: att.id,
+          name: m.staged.name,
+          type: m.staged.type,
+          size: m.size,
+          kind: m.kind,
+        };
+      }
+      mediaUploadResults.push({ fieldId: m.fieldName, fileName: m.staged.name, success: true });
+    }
+
     // Store custom field responses
     if (body.custom_fields && Object.keys(body.custom_fields).length > 0) {
       const { data: postingFields, error: fieldsErr } = await supabase
@@ -525,7 +620,7 @@ serve(withRequestCors(async (req) => {
       if (!fieldsErr && postingFields) {
         for (const field of postingFields) {
           const fieldValue = body.custom_fields[field.field_name];
-          if (fieldValue !== undefined) {
+          if (fieldValue !== undefined && fieldValue !== null) {
             coreResponseRows.push({
               candidate_id: globalCandidateId,
               job_id: posting.job_id,
@@ -554,7 +649,7 @@ serve(withRequestCors(async (req) => {
     }
 
     // Handle file uploads if any
-    const fileUploadResults: FileUploadResult[] = [];
+    const fileUploadResults: FileUploadResult[] = [...mediaUploadResults];
     const uploadedFiles = body.uploadedFiles;
     if (uploadedFiles) {
       console.log("Processing uploaded files...");
