@@ -44,7 +44,7 @@ import { confirmRemoveMember } from './confirmRemoveMember'
 import { useToast } from '@/hooks/use-toast'
 import { SectionCard } from './wizard/_parts'
 import { HiringPlanTab } from './HiringPlanTab'
-import { usePermissions } from '@/hooks/usePermissions'
+import { useJobManage } from '@/hooks/useJobManage'
 import { OfferApprovalChainConfig } from './OfferApprovalChainConfig'
 import { ClientViewSection } from './ClientViewSection'
 import { Eye } from 'lucide-react'
@@ -114,8 +114,10 @@ function getInitials(first?: string | null, last?: string | null, email?: string
 }
 
 export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }: JobSetupLayoutProps) {
-  const { isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
-  const isReadOnly = !(isAdmin || isWorkspaceOwner || isPlatformAdmin)
+  // Admins and the job's Recruiter run Setup; the offer approval chain, the
+  // Recruiter and Sourcer seats and closing the job stay with admins.
+  const { isJobAdmin, canManageJob, canManageSeat } = useJobManage(jobId)
+  const isReadOnly = !canManageJob
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -389,7 +391,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
             <NavGroupLabel>Configuration</NavGroupLabel>
             <nav className="flex flex-col gap-px">
-              {NAV_CONFIG.map((item) => (
+              {NAV_CONFIG.filter((item) => item.id !== 'offer-approval' || isJobAdmin).map((item) => (
                 <NavItem
                   key={item.id}
                   icon={item.icon}
@@ -564,7 +566,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                       roleLabel="Recruiter"
                       seatOf={seatOf}
                       onChange={(v) => updatePrimary('recruiter', v)}
-                      disabled={isReadOnly}
+                      disabled={!isJobAdmin}
                     />
                     <OwnerPickerRow
                       label="Hiring manager"
@@ -645,7 +647,8 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                           <TeamMemberRow
                             key={m.assignmentId}
                             member={m}
-                            readOnly={isReadOnly}
+                            readOnly={isReadOnly || !canManageSeat(m.role)}
+                            canSeatRecruiters={isJobAdmin}
                             onRoleChange={(v) => handleRoleChange(m.assignmentId, v)}
                             onRemove={() => void handleRemoveMember(m)}
                             onPromotePrimary={() => updatePrimary('recruiter', m.userId)}
@@ -660,10 +663,12 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
             </div>
 
 
-            {/* Offer approval */}
-            <div data-section="offer-approval" className="pt-2">
-              <OfferApprovalChainConfig jobId={jobId} jobTitle={jobTitle} />
-            </div>
+            {/* Offer approval (admins only) */}
+            {isJobAdmin && (
+              <div data-section="offer-approval" className="pt-2">
+                <OfferApprovalChainConfig jobId={jobId} jobTitle={jobTitle} />
+              </div>
+            )}
 
             {/* Client view */}
             <div data-section="client-view" className="pt-2">
@@ -675,8 +680,8 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
               <TeamNotificationsCard jobId={jobId} readOnly={isReadOnly} />
             </div>
 
-            {/* Danger */}
-            {!isReadOnly && (
+            {/* Danger (admins only) */}
+            {isJobAdmin && (
               <div data-section="danger">
                 <SectionCard title="Close or archive this job">
                   <div className="flex items-start gap-4">
@@ -1210,6 +1215,8 @@ interface TeamMemberRowProps {
     last?: string
   }
   readOnly: boolean
+  /** Admins also set Recruiter and Sourcer seats (hire credit). */
+  canSeatRecruiters: boolean
   onRoleChange: (role: 'sourcer' | 'recruiter' | 'hiring_manager' | 'interviewer') => void
   onRemove: () => void
   onPromotePrimary: () => void
@@ -1219,6 +1226,7 @@ interface TeamMemberRowProps {
 function TeamMemberRow({
   member: m,
   readOnly,
+  canSeatRecruiters,
   onRoleChange,
   onRemove,
   onPromotePrimary,
@@ -1291,8 +1299,8 @@ function TeamMemberRow({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="sourcer">Sourcer</SelectItem>
-            <SelectItem value="recruiter">Recruiter</SelectItem>
+            {(canSeatRecruiters || m.role === 'sourcer') && <SelectItem value="sourcer">Sourcer</SelectItem>}
+            {(canSeatRecruiters || m.role === 'recruiter') && <SelectItem value="recruiter">Recruiter</SelectItem>}
             <SelectItem value="hiring_manager">Hiring Manager</SelectItem>
             <SelectItem value="interviewer">Interviewer</SelectItem>
           </SelectContent>
@@ -1366,14 +1374,16 @@ function TeamMemberRow({
                 )
               }}
             />
-            <MenuItem
-              icon={Star}
-              label="Set as primary recruiter"
-              onClick={() => {
-                setMenuOpen(false)
-                onPromotePrimary()
-              }}
-            />
+            {canSeatRecruiters && (
+              <MenuItem
+                icon={Star}
+                label="Set as primary recruiter"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onPromotePrimary()
+                }}
+              />
+            )}
             <MenuItem
               icon={Crown}
               label="Set as hiring manager"

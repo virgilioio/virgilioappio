@@ -13,7 +13,7 @@ import {
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
-import { usePermissions } from '@/hooks/usePermissions'
+import { useJobManage } from '@/hooks/useJobManage'
 import { toast } from '@/hooks/use-toast'
 import { confirmRemoveMember } from './confirmRemoveMember'
 
@@ -47,11 +47,14 @@ export function HiringTeamManageDialog({
     isLoading: assignmentsLoading,
   } = useJobAssignments(jobId)
   const { members } = useMembers(true)
-  const permissions = usePermissions()
+  // Admins seat anyone; the job's Recruiter adds hiring managers and interviewers.
+  const { canManageJob, canManageSeat, assignableSeats } = useJobManage(jobId)
+  const roleOptions = ROLE_OPTIONS.filter((o) => canManageSeat(o.value))
+  const defaultRole: JobAssignmentRole = assignableSeats.includes('recruiter') ? 'recruiter' : 'interviewer'
 
   const [query, setQuery] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string>('')
-  const [role, setRole] = useState<JobAssignmentRole>('recruiter')
+  const [role, setRole] = useState<JobAssignmentRole>(defaultRole)
   const [searchOpen, setSearchOpen] = useState(false)
   // J13 (Block B §16, Pattern 1): Unassign asks first, with the shared copy.
   const handleUnassign = async (assignmentId: string, name: string) => {
@@ -69,7 +72,7 @@ export function HiringTeamManageDialog({
     if (open) {
       setQuery('')
       setSelectedUserId('')
-      setRole('recruiter')
+      setRole(defaultRole)
       setSearchOpen(false)
       setTimeout(() => searchRef.current?.focus(), 40)
     }
@@ -136,7 +139,7 @@ export function HiringTeamManageDialog({
       })
       setSelectedUserId('')
       setQuery('')
-      setRole('recruiter')
+      setRole(defaultRole)
       searchRef.current?.focus()
     } catch (e) {
       /* toast in hook */
@@ -159,7 +162,7 @@ export function HiringTeamManageDialog({
     }
   }
 
-  const canManage = permissions.canManageJobAssignments
+  const canManage = canManageJob
 
   return (
     <>
@@ -443,7 +446,7 @@ export function HiringTeamManageDialog({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {ROLE_OPTIONS.map((o) => (
+                          {roleOptions.map((o) => (
                             <SelectItem key={o.value} value={o.value}>
                               {o.label}
                             </SelectItem>
@@ -539,7 +542,7 @@ export function HiringTeamManageDialog({
                               onValueChange={(v) =>
                                 handleRoleChange(row.assignment.id, v as JobAssignmentRole)
                               }
-                              disabled={assignmentsLoading}
+                              disabled={assignmentsLoading || !canManageSeat(row.assignment.role)}
                             >
                               <SelectTrigger
                                 style={{
@@ -552,7 +555,7 @@ export function HiringTeamManageDialog({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {ROLE_OPTIONS.map((o) => {
+                                {ROLE_OPTIONS.filter((o) => canManageSeat(o.value) || o.value === row.assignment.role).map((o) => {
                                   const selected = o.value === row.assignment.role
                                   return (
                                     <SelectItem
@@ -580,7 +583,7 @@ export function HiringTeamManageDialog({
                             size="sm"
                             icon={UserMinus}
                             onClick={() => void handleUnassign(row.assignment.id, row.name)}
-                            disabled={assignmentsLoading}
+                            disabled={assignmentsLoading || !canManageSeat(row.assignment.role)}
                             className="text-[#5A6072] hover:text-[#B91C1C]"
                           >
                             Unassign
