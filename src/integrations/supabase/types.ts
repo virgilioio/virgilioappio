@@ -11922,6 +11922,10 @@ export type Database = {
           wants_email: boolean
         }[]
       }
+      offer_approval_decide: {
+        Args: { _decision: string; _notes?: string; _step_id: string }
+        Returns: Json
+      }
       offer_approval_finish_notice: {
         Args: { _error?: string; _id: string; _ok: boolean }
         Returns: undefined
@@ -11929,6 +11933,10 @@ export type Database = {
       offer_approval_finish_outcome: {
         Args: { _error?: string; _id: string; _ok: boolean }
         Returns: undefined
+      }
+      offer_approval_is_approver: {
+        Args: { _request_id: string }
+        Returns: boolean
       }
       offer_approval_queue_reminders: { Args: never; Returns: number }
       offer_approval_remind: { Args: { _request_id: string }; Returns: Json }
@@ -11939,7 +11947,12 @@ export type Database = {
       }
       offer_base_salary: { Args: { _fv: Json }; Returns: Json }
       offer_can_send: { Args: { _offer_id: string }; Returns: Json }
+      offer_chain_is_approver: { Args: { _chain_id: string }; Returns: boolean }
       offer_form_last_section: { Args: { _form_id: string }; Returns: string }
+      offer_letter_is_approver: {
+        Args: { _offer_id: string }
+        Returns: boolean
+      }
       offer_send_refusal: { Args: { _reason: string }; Returns: string }
       offer_trail_log: {
         Args: {

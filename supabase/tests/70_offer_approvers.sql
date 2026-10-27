@@ -1,4 +1,4 @@
--- Run after 20261027150000_offer_approvers_access inside a transaction that is rolled back.
+-- Run after 20261027184739_offer_approvers_access inside a transaction that is rolled back.
 -- Approvers see what they approve and decide it in one go; nobody else gains
 -- anything. Uses Leon Kiers' pending request (Sales Development
 -- Representative): Erik Veen (hiring manager, a plain member) is step 1,
