@@ -1,4 +1,4 @@
--- Run after 20261027231000_jobs_managed_by_recruiter inside a transaction that is rolled back.
+-- Run after 20261027212019_jobs_managed_by_recruiter inside a transaction that is rolled back.
 -- Admins and a job's Recruiter manage it: details, openings, hiring plan
 -- (stages and their interviewers), settings and the client view. A Sourcer
 -- keeps their own job's details. Nobody else changes any of it.

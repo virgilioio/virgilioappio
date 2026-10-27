@@ -240,7 +240,7 @@ BEGIN
   FROM matched m
   LEFT JOIN public.profiles p ON p.user_id = m.user_id
   WHERE NOT (
-      m.metadata->>'source' = 'offer_trail'
+      coalesce(m.metadata->>'source', '') = 'offer_trail'
       OR m.activity_type::text ~ '^(offer_|approval_|agreement_)'
     )
     OR (m.metadata->>'job_id' ~ '^[0-9a-f-]{36}$'

@@ -11103,6 +11103,8 @@ export type Database = {
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
       can_change_hire: { Args: { _job_id: string }; Returns: boolean }
       can_edit_job: { Args: { _job_id: string }; Returns: boolean }
+      can_manage_job: { Args: { _job_id: string }; Returns: boolean }
+      can_manage_job_stage: { Args: { _stage_id: string }; Returns: boolean }
       can_manage_job_team: {
         Args: {
           _job_id: string
@@ -11115,6 +11117,7 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_job_offers: { Args: { _job_id: string }; Returns: boolean }
       cancel_stage_automation_runs: {
         Args: {
           p_association_id: string
@@ -11706,6 +11709,7 @@ export type Database = {
       is_ats_admin: { Args: { _tenant_id: string }; Returns: boolean }
       is_email_suppressed: { Args: { p_email: string }; Returns: boolean }
       is_in_quiet_hours: { Args: { _user_id: string }; Returns: boolean }
+      is_job_sourcer: { Args: { _job_id: string }; Returns: boolean }
       is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
       is_os_admin: { Args: { _tenant_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
@@ -11940,6 +11944,10 @@ export type Database = {
       }
       offer_approval_queue_reminders: { Args: never; Returns: number }
       offer_approval_remind: { Args: { _request_id: string }; Returns: Json }
+      offer_approval_request_offer_team: {
+        Args: { _request_id: string }
+        Returns: boolean
+      }
       offer_approval_sync: { Args: { _request_id: string }; Returns: undefined }
       offer_approval_trail_complete: {
         Args: { _request_id: string }
@@ -12975,6 +12983,8 @@ export type Database = {
         | "work_location"
         | "linkedin"
         | "score"
+        | "audio"
+        | "video"
       interview_answer_type:
         | "text"
         | "yes_no"
@@ -13399,6 +13409,8 @@ export const Constants = {
         "work_location",
         "linkedin",
         "score",
+        "audio",
+        "video",
       ],
       interview_answer_type: [
         "text",

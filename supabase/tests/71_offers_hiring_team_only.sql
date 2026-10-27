@@ -1,4 +1,4 @@
--- Run after 20261027230000_offers_hiring_team_only inside a transaction that is rolled back.
+-- Run after 20261027211950_offers_hiring_team_only inside a transaction that is rolled back.
 -- Offers, their approvals and the job's agreements are for admins and the
 -- job's Recruiter and Hiring manager seats (plus the offer's approvers).
 -- Uses Leon Kiers' offer on Sales Development Representative:
@@ -88,6 +88,17 @@ begin
   sends := public.sign_can_send(ten, 'candidate', job);
   perform set_config('role', 'postgres', true);
   insert into t_results values ('the job''s Recruiter still sees the offer entries in the feed', n_trail > 0);
+  -- Everything else in the feed is untouched: the Recruiter sees every other entry.
+  perform set_config('request.jwt.claims', json_build_object('sub', victoria, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  select count(*) into n_offer from public.get_candidate_activities(cand, job) a
+  where not (coalesce(a.metadata->>'source', '') = 'offer_trail' or a.activity_type::text ~ '^(offer_|approval_|agreement_)');
+  perform set_config('role', 'postgres', true);
+  insert into t_results values ('the rest of the feed still shows (' || n_offer || ' entries)',
+    n_offer > 0 and n_offer >= (select count(*) from public.activities a
+      where ((a.entity_type = 'candidate' and a.entity_id = cand) or a.metadata @> jsonb_build_object('candidate_id', cand::text))
+        and a.metadata @> jsonb_build_object('job_id', job::text)
+        and not (coalesce(a.metadata->>'source', '') = 'offer_trail' or a.activity_type::text ~ '^(offer_|approval_|agreement_)')));
   insert into t_results values ('the job''s Recruiter can still send the candidate an agreement', sends);
 
   -- Changing an offer: Melissa (recruiter elsewhere) used to be able to; now nothing changes.
