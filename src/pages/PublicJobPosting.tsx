@@ -55,6 +55,9 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { sanitizeToE164 } from '@/utils/phoneUtils'
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
+import { MediaQuestionField } from '@/components/public/MediaQuestionField'
+import { StarScoreInput, type ScoreFieldConfig } from '@/components/forms/StarScoreInput'
+import { isMediaKind, type StagedMedia } from '@/lib/applicationMedia'
 
 function getViolationToast(violation: { type?: string; message?: string; cooldown_until?: string }) {
   const cooldownDate = violation.cooldown_until ? new Date(violation.cooldown_until) : null
@@ -90,7 +93,7 @@ function getViolationToast(violation: { type?: string; message?: string; cooldow
   }
 }
 
-type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location' | 'phone' | 'recruiter' | 'employment_type' | 'work_location' | 'linkedin'
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location' | 'phone' | 'recruiter' | 'employment_type' | 'work_location' | 'linkedin' | 'score' | 'audio' | 'video'
 
 interface Posting {
   id: string
@@ -152,6 +155,9 @@ export default function PublicJobPosting() {
     disability_status: string | null
   }>({ gender: null, race_ethnicity: null, veteran_status: null, disability_status: null })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Audio, Video and File answers still uploading (Apply waits for them).
+  const [mediaBusy, setMediaBusy] = useState<Record<string, boolean>>({})
+  const uploadsRunning = Object.values(mediaBusy).some(Boolean)
   const [submittedMeta, setSubmittedMeta] = useState<{
     firstName: string
     email: string
@@ -290,7 +296,7 @@ export default function PublicJobPosting() {
             // 'file' (resume) and core 'full_name'/'email'/'phone'/'linkedin' are already rendered
             // by the Basic Information section, so skip them here to avoid duplicates.
             .filter((it) => !['full_name', 'email', 'phone', 'linkedin', 'resume'].includes(it.id))
-            .filter((it) => it.type !== 'file')
+            .filter((it) => it.type !== 'file' && it.type !== 'audio' && it.type !== 'video')
             .map((it) => ({
               id: it.id,
               field_label: it.label || it.id,
@@ -462,6 +468,10 @@ export default function PublicJobPosting() {
 
   const handleSubmitApplication = async () => {
     if (!posting) return
+    if (uploadsRunning) {
+      toast({ title: 'Your upload is still going', description: 'Apply once it finishes.' })
+      return
+    }
     
     // Validate core fields
     const missingFields: string[] = []
@@ -626,7 +636,22 @@ export default function PublicJobPosting() {
         return
       }
 
-      if (error) throw new Error(error.message || 'Submission failed')
+      if (error) {
+        // The server says what's wrong (a missing upload, a field), so show that.
+        let serverMessage = ''
+        try {
+          const ctx = (error as { context?: Response }).context
+          const parsed = ctx ? await ctx.json() : null
+          serverMessage = typeof parsed?.error === 'string' ? parsed.error : ''
+        } catch {
+          /* fall back to the general message */
+        }
+        if (serverMessage) {
+          toast({ title: 'Unable to submit application', description: serverMessage, variant: 'destructive' })
+          return
+        }
+        throw new Error(error.message || 'Submission failed')
+      }
       if (response?.fileUploadResults) {
         const failedUploads = response.fileUploadResults.filter((result: any) => !result.success)
         if (failedUploads.length > 0) {
@@ -1189,8 +1214,29 @@ export default function PublicJobPosting() {
                                       placeholder="Pick a date"
                                     />
                                   )}
-                                  {field.field_type === 'file' && (
-                                    <Input type="file" />
+                                  {isMediaKind(field.field_type) && posting && (
+                                    <MediaQuestionField
+                                      postingId={posting.id}
+                                      fieldId={field.id}
+                                      kind={field.field_type}
+                                      label={field.field_label}
+                                      value={(customFieldResponses[field.id] as StagedMedia | undefined) ?? null}
+                                      onChange={(v) => setCustomFieldResponses(prev => {
+                                        const next = { ...prev }
+                                        if (v) next[field.id] = v
+                                        else delete next[field.id]
+                                        return next
+                                      })}
+                                      onBusyChange={(busy) => setMediaBusy(prev => ({ ...prev, [field.id]: busy }))}
+                                    />
+                                  )}
+                                  {field.field_type === 'score' && (
+                                    <StarScoreInput
+                                      value={customFieldResponses[field.id] ? Number(customFieldResponses[field.id]) : null}
+                                      onChange={(v) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: v == null ? '' : String(v) }))}
+                                      config={field.field_config as ScoreFieldConfig | null}
+                                      ariaLabel={field.field_label}
+                                    />
                                   )}
                                   {field.field_type === 'salary' && (() => {
                                     const config = field.field_config || {}
@@ -1397,7 +1443,7 @@ export default function PublicJobPosting() {
                         onClick={handleSubmitApplication} 
                         className="w-full sm:w-auto h-11 px-8 text-base font-semibold" 
                         aria-label="Submit application" 
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || uploadsRunning}
                       >
                         {isSubmitting ? (
                           <span className="inline-flex items-center gap-2">
@@ -1408,6 +1454,9 @@ export default function PublicJobPosting() {
                           'Submit Application'
                         )}
                       </Button>
+                      <p className="mt-2 min-h-[18px] font-inter text-[12px] text-text-tertiary" aria-live="polite">
+                        {uploadsRunning ? 'Waiting for your upload to finish…' : ''}
+                      </p>
                     </div>
                   </div>
                 </section>

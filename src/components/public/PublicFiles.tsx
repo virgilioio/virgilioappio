@@ -36,6 +36,11 @@ const TYPES: Record<string, TypeDef> = {
   other: { key: 'other', name: 'File', Icon: File, fg: '#5A6072', bg: '#F1F0EC', verb: '', verbIcon: null, viewer: null },
 }
 
+/** A type's tile colours and icon by key (audio, video, pdf, word, image, other…). */
+export function fileTypeFor(key: string): TypeDef {
+  return TYPES[key] ?? TYPES.other
+}
+
 const EXT: Record<string, string> = {
   pdf: 'pdf', doc: 'word', docx: 'word',
   mp3: 'audio', wav: 'audio', m4a: 'audio', ogg: 'audio', aac: 'audio',
