@@ -1011,6 +1011,16 @@ export function ScheduleInterviewSheet({
     },
   });
 
+  // The sheet is mounted before it opens and outlives edits to the profile, so
+  // the candidate's details come from the profile each time it opens (and if
+  // they change while it's open). The sheet never edits them itself.
+  useEffect(() => {
+    if (!open) return;
+    form.setValue('candidate_name', candidateName);
+    form.setValue('candidate_email', candidateEmail.trim());
+    form.setValue('candidate_phone', candidatePhone || '');
+  }, [open, candidateName, candidateEmail, candidatePhone, form]);
+
   const createBookingMutation = useMutation({
     mutationFn: async (bookingData: any) => {
       const { data, error } = await supabase.functions.invoke('create-booking', {
@@ -1161,7 +1171,8 @@ export function ScheduleInterviewSheet({
     onOpenChange(newOpen);
   };
 
-  const hasNoEmail = !candidateEmail;
+  const hasNoEmail = !candidateEmail.trim();
+  const emailInvalid = !hasNoEmail && !formSchema.shape.candidate_email.safeParse(candidateEmail.trim()).success;
   const andModeBlocked = isGroupMode && groupConfigIds.length < 2;
 
   const kicker = isReschedule ? `RESCHEDULE · ${stageName}` : `PIPELINE · ${stageName}`;
@@ -1209,6 +1220,14 @@ export function ScheduleInterviewSheet({
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 This candidate doesn't have an email address. Please add an email before scheduling.
+              </AlertDescription>
+            </Alert>
+          ) : emailInvalid ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                This candidate's email, <span className="break-all font-medium">{candidateEmail}</span>, isn't a valid
+                address, so the invite can't be sent. Correct it in their details, then schedule again.
               </AlertDescription>
             </Alert>
           ) : andModeBlocked ? (
@@ -1768,6 +1787,7 @@ export function ScheduleInterviewSheet({
               loading={createBookingMutation.isPending}
               disabled={
                 hasNoEmail ||
+                emailInvalid ||
                 andModeBlocked ||
                 !selectedSlot ||
                 (!isGroupMode && !selectedInterviewer)
