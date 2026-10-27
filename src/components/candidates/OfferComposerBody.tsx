@@ -28,6 +28,7 @@ import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { formSections, groupBySection, isWideField } from '@/lib/offerSections'
+import { PlaceFieldsByName } from '@/components/ui/place-picker'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -378,6 +379,23 @@ export function OfferComposerBody({
         const updateLocation = (key: string, val: string) => {
           const next = { ...locationValue, [key]: val }
           handleFieldChange(field.field_name, JSON.stringify(next))
+        }
+        if (locationFields.includes('country')) {
+          // Country → State or province → City from the places list, as on the
+          // careers page; anything unlisted can be typed. Saved as before:
+          // { city, state, country } with the country's name.
+          return (
+            <PlaceFieldsByName
+              idPrefix={`offer-${field.field_name}`}
+              fields={(['country', 'state', 'city'] as const)
+                .filter((k) => locationFields.includes(k))
+                .map((k) => (k === 'state' ? 'region' : k))}
+              value={{ country: locationValue.country || '', region: locationValue.state || '', city: locationValue.city || '' }}
+              onChange={(next) =>
+                handleFieldChange(field.field_name, JSON.stringify({ ...locationValue, country: next.country, state: next.region, city: next.city }))
+              }
+            />
+          )
         }
         const colsClass = ({ 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' } as Record<number, string>)[locationFields.length] || 'md:grid-cols-3'
         return (
