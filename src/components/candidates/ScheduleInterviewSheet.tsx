@@ -57,7 +57,7 @@ import {
 } from '@/components/ui/command';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import * as z from 'zod';
 import { Form } from '@/components/ui/form';
 import { cn } from '@/lib/utils';

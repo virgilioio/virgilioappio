@@ -20,7 +20,7 @@ import { InterviewDurationSelector } from '@/components/scheduling/InterviewDura
 import { ManualInterviewerSelector, TeamInterviewer } from '@/components/scheduling/ManualInterviewerSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';

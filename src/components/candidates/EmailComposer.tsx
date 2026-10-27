@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo, useLayoutEffect } from 'react';
 import { useChipMotion } from '@/lib/chipMotion';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@/lib/zodResolver';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
