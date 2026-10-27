@@ -75,7 +75,7 @@ serve(async (req) => {
     const [{ data: assoc }, { data: job }] = await Promise.all([
       supabase
         .from("job_candidate_associations")
-        .select("id, candidate_id, candidates!inner(first_name, last_name, candidate_name)")
+        .select("id, candidate_id, candidates!inner(candidate_name)")
         .eq("id", assocId)
         .maybeSingle(),
       supabase
@@ -84,14 +84,20 @@ serve(async (req) => {
         .eq("id", jobId)
         .maybeSingle(),
     ]);
+    // Never send a scorecard link that doesn't lead to the candidate.
+    if (!(assoc as any)?.candidate_id) {
+      return new Response(JSON.stringify({ ok: false, error: "candidate not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const candidate = (assoc as any)?.candidates;
     const candidateFullName =
-      candidate?.candidate_name ||
-      [candidate?.first_name, candidate?.last_name].filter(Boolean).join(" ") ||
+      (candidate?.candidate_name ? String(candidate.candidate_name).trim() : "") ||
       "the candidate";
     const candidateFirstName =
-      candidate?.first_name ||
-      (candidate?.candidate_name ? String(candidate.candidate_name).split(" ")[0] : "there");
+      (candidate?.candidate_name ? String(candidate.candidate_name).trim().split(/\s+/)[0] : "") ||
+      "the candidate";
     const jobTitle = (job as any)?.title || "this role";
 
     // Compute currently pending interviewers for this stage/assoc
