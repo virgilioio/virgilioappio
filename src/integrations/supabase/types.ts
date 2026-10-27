@@ -6209,31 +6209,196 @@ export type Database = {
           },
         ]
       }
+      os_commission_roles: {
+        Row: {
+          active: boolean
+          built_in: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          key: string
+          label: string
+          person_source: string
+          position: number
+          sync_attempts: number
+          sync_error: string | null
+          sync_status: string
+          synced_at: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          built_in?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          key: string
+          label: string
+          person_source: string
+          position?: number
+          sync_attempts?: number
+          sync_error?: string | null
+          sync_status?: string
+          synced_at?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          built_in?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          key?: string
+          label?: string
+          person_source?: string
+          position?: number
+          sync_attempts?: number
+          sync_error?: string | null
+          sync_status?: string
+          synced_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_commission_roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_commission_rules: {
+        Row: {
+          amount: number | null
+          applies_to: string
+          basis: string
+          client: string
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          effective_from: string
+          fees: string[] | null
+          id: string
+          months: number | null
+          note: string | null
+          partner_items: string
+          payable_on: string
+          pct: number | null
+          role_id: string
+          series_id: string
+          stopped: boolean
+          sync_attempts: number
+          sync_error: string | null
+          sync_status: string
+          synced_at: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount?: number | null
+          applies_to: string
+          basis: string
+          client?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          effective_from: string
+          fees?: string[] | null
+          id?: string
+          months?: number | null
+          note?: string | null
+          partner_items?: string
+          payable_on?: string
+          pct?: number | null
+          role_id: string
+          series_id: string
+          stopped?: boolean
+          sync_attempts?: number
+          sync_error?: string | null
+          sync_status?: string
+          synced_at?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount?: number | null
+          applies_to?: string
+          basis?: string
+          client?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          effective_from?: string
+          fees?: string[] | null
+          id?: string
+          months?: number | null
+          note?: string | null
+          partner_items?: string
+          payable_on?: string
+          pct?: number | null
+          role_id?: string
+          series_id?: string
+          stopped?: boolean
+          sync_attempts?: number
+          sync_error?: string | null
+          sync_status?: string
+          synced_at?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_commission_rules_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "os_commission_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_commission_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_earnings: {
         Row: {
+          base_amount: number | null
+          basis: string
           client_name: string | null
           collected_amount: number
           created_at: string
           currency: string
           deal_title: string | null
           earned_amount: number
+          earned_on: string | null
           id: string
-          invoice_amount: number
+          invoice_amount: number | null
           invoice_number: string | null
           issued_on: string | null
+          item_name: string | null
           job_id: string | null
           opening_id: string | null
           paid_on: string | null
+          partner_name: string | null
           pending_amount: number
           person_email: string | null
           person_name: string | null
-          request_number: string
+          request_number: string | null
+          role_id: string | null
           role_key: string
           role_label: string
           sales_credit_id: string
-          sales_request_id: string
+          sales_request_id: string | null
           sales_sent_at: string
           share_pct: number
+          source: string
           status: string
           tenant_id: string
           updated_at: string
@@ -6241,29 +6406,36 @@ export type Database = {
           void_reason: string | null
         }
         Insert: {
+          base_amount?: number | null
+          basis?: string
           client_name?: string | null
           collected_amount?: number
           created_at?: string
           currency: string
           deal_title?: string | null
           earned_amount?: number
+          earned_on?: string | null
           id?: string
-          invoice_amount: number
+          invoice_amount?: number | null
           invoice_number?: string | null
           issued_on?: string | null
+          item_name?: string | null
           job_id?: string | null
           opening_id?: string | null
           paid_on?: string | null
+          partner_name?: string | null
           pending_amount?: number
           person_email?: string | null
           person_name?: string | null
-          request_number: string
+          request_number?: string | null
+          role_id?: string | null
           role_key: string
           role_label: string
           sales_credit_id: string
-          sales_request_id: string
+          sales_request_id?: string | null
           sales_sent_at: string
           share_pct: number
+          source?: string
           status: string
           tenant_id: string
           updated_at?: string
@@ -6271,29 +6443,36 @@ export type Database = {
           void_reason?: string | null
         }
         Update: {
+          base_amount?: number | null
+          basis?: string
           client_name?: string | null
           collected_amount?: number
           created_at?: string
           currency?: string
           deal_title?: string | null
           earned_amount?: number
+          earned_on?: string | null
           id?: string
-          invoice_amount?: number
+          invoice_amount?: number | null
           invoice_number?: string | null
           issued_on?: string | null
+          item_name?: string | null
           job_id?: string | null
           opening_id?: string | null
           paid_on?: string | null
+          partner_name?: string | null
           pending_amount?: number
           person_email?: string | null
           person_name?: string | null
-          request_number?: string
+          request_number?: string | null
+          role_id?: string | null
           role_key?: string
           role_label?: string
           sales_credit_id?: string
-          sales_request_id?: string
+          sales_request_id?: string | null
           sales_sent_at?: string
           share_pct?: number
+          source?: string
           status?: string
           tenant_id?: string
           updated_at?: string
@@ -11854,6 +12033,58 @@ export type Database = {
         Args: { _detail: string; _id: string; _ok: boolean; _retry: boolean }
         Returns: undefined
       }
+      os_commission_role_key: {
+        Args: { _label: string; _tenant_id: string }
+        Returns: string
+      }
+      os_commission_role_record: {
+        Args: {
+          _detail: string
+          _id: string
+          _ok: boolean
+          _retry: boolean
+          _updated_at: string
+        }
+        Returns: undefined
+      }
+      os_commission_rule_record: {
+        Args: { _detail: string; _id: string; _ok: boolean; _retry: boolean }
+        Returns: undefined
+      }
+      os_commission_rules_in_force: {
+        Args: { _on?: string; _tenant_id: string }
+        Returns: {
+          amount: number | null
+          applies_to: string
+          basis: string
+          client: string
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          effective_from: string
+          fees: string[] | null
+          id: string
+          months: number | null
+          note: string | null
+          partner_items: string
+          payable_on: string
+          pct: number | null
+          role_id: string
+          series_id: string
+          stopped: boolean
+          sync_attempts: number
+          sync_error: string | null
+          sync_status: string
+          synced_at: string | null
+          tenant_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "os_commission_rules"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       os_country_label: { Args: { _code: string }; Returns: string }
       os_holidays_between: {
         Args: {
@@ -12151,6 +12382,7 @@ export type Database = {
       sales_company_upsert: { Args: { payload: Json }; Returns: Json }
       sales_deal_won: { Args: { _p: Json; _tenant_id: string }; Returns: Json }
       sales_earnings_upsert: { Args: { payload: Json }; Returns: Json }
+      sales_lead_earning_upsert: { Args: { payload: Json }; Returns: Json }
       sales_line_updated: {
         Args: {
           _fee: number

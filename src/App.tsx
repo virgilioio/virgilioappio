@@ -84,9 +84,8 @@ const References = lazy(() => import('./pages/References'))
 const OsPeople = lazy(() => import('./pages/os/People'))
 const OsPersonDetail = lazy(() => import('./pages/os/PersonDetail'))
 const MyProfile = lazy(() => import('./pages/os/MyProfile'))
-const OsJobRoles = lazy(() => import('./pages/os/JobRoles'))
+const OsRoles = lazy(() => import('./pages/os/Roles'))
 const OsHistory = lazy(() => import('./pages/os/History'))
-const OsCommissionRules = lazy(() => import('./pages/os/CommissionRules'))
 const OsUsefulLinks = lazy(() => import('./pages/os/UsefulLinks'))
 const OsDashboard = lazy(() => import('./pages/os/Dashboard'))
 const SignEnvelopes = lazy(() => import('./pages/sign/Envelopes'))
@@ -248,9 +247,10 @@ function AppContent() {
             <Route path="/me" element={<MyProfile />} />
             <Route path="/me/details" element={<MeDetailsRedirect />} />
             <Route path="/os/people/:memberId" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsPersonDetail /></OsAdminOnly></PhoneSwitch>} />
-            <Route path="/os/job-roles" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsJobRoles /></OsAdminOnly></PhoneSwitch>} />
+            <Route path="/os/roles" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsRoles /></OsAdminOnly></PhoneSwitch>} />
+            <Route path="/os/job-roles" element={<Navigate to="/os/roles" replace />} />
             <Route path="/os/history" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsHistory /></OsAdminOnly></PhoneSwitch>} />
-            <Route path="/os/commissions" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsCommissionRules /></OsAdminOnly></PhoneSwitch>} />
+            <Route path="/os/commissions" element={<Navigate to="/os/roles?tab=commissions" replace />} />
             <Route path="/os/links" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsUsefulLinks /></OsAdminOnly></PhoneSwitch>} />
             <Route path="/sign" element={<PhoneSwitch phone={<DesktopOnly what="Sign" />}><OsAdminOnly><SignEnvelopes /></OsAdminOnly></PhoneSwitch>} />
             <Route path="/sign/templates" element={<PhoneSwitch phone={<DesktopOnly what="Sign" />}><OsAdminOnly><SignTemplates /></OsAdminOnly></PhoneSwitch>} />

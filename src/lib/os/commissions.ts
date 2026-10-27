@@ -75,22 +75,3 @@ export function rateFor(rates: CommissionRate[], role: CommissionRoleKey, on = t
 export async function sendRatesNow(tenantId: string) {
   await supabase.functions.invoke('os-sync', { body: { tenant_id: tenantId } })
 }
-
-export function useAddCommissionRate(tenantId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (r: { role_key: CommissionRoleKey; pct: number; effective_from: string; note: string | null }) => {
-      const { error } = await supabase.from('os_commission_rates').insert({ tenant_id: tenantId!, ...r })
-      if (error) {
-        if (error.code === '23505') throw new Error(`There's already a ${commissionRoleLabel(r.role_key)} rate from that date. Pick another date.`)
-        throw new Error("Couldn't add the rate. Try again.")
-      }
-    },
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: key(tenantId) })
-      void qc.invalidateQueries({ queryKey: ['os-audit', tenantId] })
-      // Deliver it now in the background, then show where it got to.
-      void sendRatesNow(tenantId!).finally(() => qc.invalidateQueries({ queryKey: key(tenantId) }))
-    },
-  })
-}

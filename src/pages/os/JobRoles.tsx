@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MoreHorizontal, Pencil, Plus, Archive } from 'lucide-react'
 
-import { ListPage } from '@/components/layout/ListPage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -48,7 +47,7 @@ import {
 
 const NO_ACCESS = '__none__'
 
-function BundleDialog({
+export function BundleDialog({
   open,
   onOpenChange,
   bundle,
@@ -201,10 +200,10 @@ function BundleDialog({
   )
 }
 
-/** /os/job-roles — the bundles that decide a new person's apps and roles. */
+/** Roles › Job roles (/os/roles): the bundles that decide a new person's apps and roles. */
 const COLS = APPS.length + 3
 
-export default function JobRolesPage() {
+export function JobRolesPanel() {
   const { tenant } = useTenant()
   const bundles = useBundles(tenant?.id)
   const [retry, setRetry] = useState(0)
@@ -233,25 +232,7 @@ export default function JobRolesPage() {
   }
 
   return (
-    <ListPage
-        title="Job roles"
-        count={bundles.data?.length}
-        meta={<span>Each job role grants a set of apps. Apply one to a person from their page.</span>}
-        actions={
-          <Button
-            variant="primary"
-            size="md"
-            icon={Plus}
-            onClick={() => {
-              setEditing(null)
-              setOpen(true)
-            }}
-          >
-            New job role
-          </Button>
-        }
-      >
-
+    <>
       <div className="rounded-2xl border border-virgilio-border bg-white overflow-clip">
         <Table density="comfortable">
           <TableHeader>
@@ -359,6 +340,6 @@ export default function JobRolesPage() {
       </div>
 
       <BundleDialog open={open} onOpenChange={setOpen} bundle={editing} tenantId={tenant?.id} />
-    </ListPage>
+    </>
   )
 }
