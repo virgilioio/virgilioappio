@@ -44,6 +44,13 @@ export interface ApprovalRequest {
   steps: ApprovalRequestStep[]
 }
 
+/** The database's own words for a refused decision (GOA01–GOA04), else a plain retry line. */
+function decisionMessage(error: unknown): string {
+  const e = error as { code?: string; message?: string } | null
+  if (e?.code && /^GOA0\d$/.test(e.code) && e.message) return e.message
+  return 'Something went wrong. Try again.'
+}
+
 export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) {
   const { user, organizationId } = useAuth()
   const queryClient = useQueryClient()
@@ -208,51 +215,15 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
     },
   })
 
+  // One decision, all its effects, in the database (offer_approval_decide):
+  // it checks it's the approver's turn, moves the request to the next
+  // approver or approves it and the offer, and on a decline sends the offer
+  // back to draft. Approvers who aren't recruiters (a hiring manager) can't
+  // write the request or the offer themselves.
   const approveStepMutation = useMutation({
     mutationFn: async ({ stepId, notes }: { stepId: string; notes?: string }) => {
-      if (!approvalRequest) throw new Error('No approval request')
-
-      // Update the step
-      const { error: stepError } = await supabase
-        .from('offer_approval_request_steps')
-        .update({
-          status: 'approved',
-          notes: notes || null,
-          decided_at: new Date().toISOString(),
-        })
-        .eq('id', stepId)
-
-      if (stepError) throw stepError
-
-      const currentStep = approvalRequest.steps.find(s => s.id === stepId)
-      if (!currentStep) throw new Error('Step not found')
-
-      const remaining = approvalRequest.steps
-        .filter(s => s.id !== stepId && s.status === 'pending')
-        .sort((a, b) => a.step_order - b.step_order)
-      const nextStep = remaining[0]
-
-      if (!nextStep) {
-        // All approved → finalize
-        const { error: reqError } = await supabase
-          .from('offer_approval_requests')
-          .update({ status: 'approved', current_step_order: currentStep.step_order })
-          .eq('id', approvalRequest.id)
-        if (reqError) throw reqError
-
-        const { error: offerError } = await supabase
-          .from('offer_letters')
-          .update({ status: 'approved' })
-          .eq('id', approvalRequest.offer_letter_id)
-        if (offerError) throw offerError
-      } else {
-        // Advance to next step
-        const { error: reqError } = await supabase
-          .from('offer_approval_requests')
-          .update({ current_step_order: nextStep.step_order })
-          .eq('id', approvalRequest.id)
-        if (reqError) throw reqError
-      }
+      const { error } = await supabase.rpc('offer_approval_decide', { _step_id: stepId, _decision: 'approved', _notes: notes ?? null })
+      if (error) throw error
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey })
@@ -264,39 +235,14 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
     },
     onError: (error) => {
       console.error('Approve step error:', error)
-      toast({ title: 'Error', description: 'Failed to approve', variant: 'destructive' })
+      toast({ title: "Couldn't approve", description: decisionMessage(error), variant: 'destructive' })
     },
   })
 
   const declineStepMutation = useMutation({
     mutationFn: async ({ stepId, notes }: { stepId: string; notes: string }) => {
-      if (!approvalRequest) throw new Error('No approval request')
-
-      // Update the step
-      const { error: stepError } = await supabase
-        .from('offer_approval_request_steps')
-        .update({
-          status: 'declined',
-          notes,
-          decided_at: new Date().toISOString(),
-        })
-        .eq('id', stepId)
-
-      if (stepError) throw stepError
-
-      // Mark the entire request as declined
-      const { error: reqError } = await supabase
-        .from('offer_approval_requests')
-        .update({ status: 'declined' })
-        .eq('id', approvalRequest.id)
-      if (reqError) throw reqError
-
-      // Revert offer to draft
-      const { error: offerError } = await supabase
-        .from('offer_letters')
-        .update({ status: 'draft' })
-        .eq('id', approvalRequest.offer_letter_id)
-      if (offerError) throw offerError
+      const { error } = await supabase.rpc('offer_approval_decide', { _step_id: stepId, _decision: 'declined', _notes: notes || null })
+      if (error) throw error
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey })
@@ -308,7 +254,7 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
     },
     onError: (error) => {
       console.error('Decline step error:', error)
-      toast({ title: 'Error', description: 'Failed to decline', variant: 'destructive' })
+      toast({ title: "Couldn't decline", description: decisionMessage(error), variant: 'destructive' })
     },
   })
 
