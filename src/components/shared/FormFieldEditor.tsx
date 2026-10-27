@@ -12,7 +12,7 @@ import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldTyp
 
 export const ALL_FIELD_TYPES: FieldType[] = [
   'text', 'number', 'email', 'url', 'textarea', 'select', 'score',
-  'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'linkedin', 'recruiter', 'employment_type', 'work_location'
+  'checkbox', 'checkbox_group', 'date', 'file', 'audio', 'video', 'salary', 'location', 'phone', 'linkedin', 'recruiter', 'employment_type', 'work_location'
 ]
 
 export const SMART_FIELD_TYPES: FieldType[] = ['salary', 'location', 'phone', 'linkedin', 'recruiter', 'employment_type', 'work_location']
@@ -23,6 +23,9 @@ export function fieldTypeLabel(t: string) {
   switch (t) {
     case 'checkbox_group': return 'Checkbox Group'
     case 'score': return 'Score (stars)'
+    case 'file': return 'File upload'
+    case 'audio': return 'Audio'
+    case 'video': return 'Video'
     case 'salary': return 'Salary'
     case 'location': return 'Location'
     case 'phone': return 'Phone'

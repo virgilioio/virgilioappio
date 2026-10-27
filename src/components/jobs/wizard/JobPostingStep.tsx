@@ -4,6 +4,7 @@ import {
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare, Puzzle,
   Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type, MapPin, Linkedin, Users, Building2,
   ListChecks,
+  AudioLines, Clapperboard,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -64,6 +65,7 @@ const BRAND_SWATCHES = ['#6F3FF5', '#3B82F6', '#10B981', '#F59E0B', '#EC4899', '
 type FieldType =
   | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'multiselect' | 'number' | 'longtext' | 'date'
   | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location' | 'score'
+  | 'audio' | 'video'
 
 interface SmartFieldDef {
   id: string
@@ -115,7 +117,7 @@ const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   text: Type, longtext: AlignLeft, number: Hash, email: Mail, url: Link2,
   date: CalendarIcon, select: List, multiselect: ListChecks, yesno: ToggleLeft, file: FileText, phone: Phone,
   linkedin: Linkedin, location: MapPin, salary: DollarSign, employment_type: Briefcase,
-  work_location: Building2, recruiter: Users,
+  work_location: Building2, recruiter: Users, audio: AudioLines, video: Clapperboard,
 }
 const iconForType = (t: string) => TYPE_ICON[t] || MessageSquare
 

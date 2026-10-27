@@ -24,6 +24,8 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'checkbox', label: 'Checkbox' },
   { value: 'date', label: 'Date' },
   { value: 'file', label: 'File Upload' },
+  { value: 'audio', label: 'Audio' },
+  { value: 'video', label: 'Video' },
 ]
 
 const FILE_TYPES = [
