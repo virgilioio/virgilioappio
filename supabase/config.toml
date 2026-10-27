@@ -349,3 +349,7 @@ verify_jwt = false
 [functions.geo-load]
 # Loads GeoNames places into geo_regions / geo_cities. Called by hand or SQL with x-internal-secret.
 verify_jwt = false
+
+[functions.public-application-upload]
+# One-time upload links for Audio / Video / File questions on public application forms; daily sweep with x-internal-secret.
+verify_jwt = false
