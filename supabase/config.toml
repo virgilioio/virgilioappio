@@ -353,3 +353,11 @@ verify_jwt = false
 [functions.public-application-upload]
 # One-time upload links for Audio / Video / File questions on public application forms; daily sweep with x-internal-secret.
 verify_jwt = false
+
+[functions.slack]
+# Slack connect (and Slack's sign-in redirect, which carries no Gio token), pickers, test, disconnect; checks the signed-in person itself.
+verify_jwt = false
+
+[functions.slack-deliver]
+# Sends queued Slack messages; called by the database with x-internal-secret.
+verify_jwt = false
