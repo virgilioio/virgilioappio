@@ -60,6 +60,7 @@ import { uploadLimit } from '@/lib/candidateFiles'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
+import { useCanViewOffers } from '@/hooks/useCanViewOffers'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 
@@ -242,6 +243,10 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   } | null>(null)
   // Single source of truth for the offer approval run + canMarkHired
   const offerApproval = useOfferApprovalSummary(candidateId, jobId)
+  // Offers are for admins, the job's Recruiter and Hiring manager (and its
+  // approvers); everyone else sees the stage, never the offer.
+  const { canViewOffers, isLoading: canViewOffersLoading } = useCanViewOffers(jobId)
+  const tabFromLink = useRef(false)
   const [hiredDetails, setHiredDetails] = useState<{
     hiredAt: string | null;
     hiredByName: string | null;
@@ -700,6 +705,8 @@ const stageHasAutomation = useMemo(() => {
         else if (tabParam === 'comments') initialTab = 'job'
         else if (tabParam === 'offer') initialTab = 'offer'
         focusMine = params.get('focus') === 'my-scorecard'
+        // A link that names a tab (a scorecard email) keeps it, whatever the status.
+        tabFromLink.current = !!tabParam
       }
       setActiveTab(initialTab)
       if (focusMine) {
@@ -752,12 +759,20 @@ const stageHasAutomation = useMemo(() => {
     load()
   }, [open, candidateId])
 
-  // Auto-select status-specific tab when status changes
+  // Auto-select status-specific tab when status changes (not when a link chose the tab)
   useEffect(() => {
-    if (associationStatus === 'offer') setActiveTab('offer')
+    if (tabFromLink.current) return
+    if (associationStatus === 'offer') {
+      if (canViewOffers) setActiveTab('offer')
+    }
     else if (associationStatus === 'hired') setActiveTab('onboarding')
     else if (associationStatus === 'rejected') setActiveTab('rejection-details')
-  }, [associationStatus])
+  }, [associationStatus, canViewOffers])
+
+  // Someone outside the offer team never lands on the Offer tab.
+  useEffect(() => {
+    if (activeTab === 'offer' && jobId && !canViewOffersLoading && !canViewOffers) setActiveTab('job')
+  }, [activeTab, jobId, canViewOffers, canViewOffersLoading])
 
   useEffect(() => {
     if (!open || !jobId) return
@@ -1516,7 +1531,7 @@ const stageHasAutomation = useMemo(() => {
                           activeTab={activeTab}
                           onTabChange={(v) => setActiveTab(v as typeof activeTab)}
                           tabs={[
-                            ...(associationStatus === 'offer'
+                            ...(associationStatus === 'offer' && canViewOffers
                               ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
                               : []),
                             ...(associationStatus === 'rejected'
@@ -1525,7 +1540,7 @@ const stageHasAutomation = useMemo(() => {
                             ...(associationStatus === 'hired'
                               ? [
                                   { value: 'onboarding', label: 'Onboarding', Icon: CheckCircle2 },
-                                  { value: 'offer', label: 'Offer', Icon: FileText },
+                                  ...(canViewOffers ? [{ value: 'offer', label: 'Offer', Icon: FileText }] : []),
                                 ]
                               : []),
                             { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
@@ -1608,7 +1623,7 @@ const stageHasAutomation = useMemo(() => {
                         ]
 
                         const other: ActionMenuItem[] = []
-                        if (!isRejectedNow && !isHiredNow) {
+                        if (!isRejectedNow && !isHiredNow && canViewOffers) {
                           other.push({ id: 'offer', label: 'Create offer', icon: FileText, onClick: () => setOfferFormOpen(true) })
                         }
                         other.push({ id: 'download', label: 'Download profile', icon: Download, onClick: () => setDownloadOpen(true) })
@@ -1651,6 +1666,15 @@ const stageHasAutomation = useMemo(() => {
                           setCurrentStageId(jhsId)
                           onStageChanged?.()
                         }}
+                      />
+                    ) : associationStatus === 'offer' && candidateId && !canViewOffers ? (
+                      <StatusBanner
+                        tone="offer"
+                        icon={Hourglass}
+                        eyebrow="Offer stage"
+                        meta={offerDetails?.offeredAt ? `Moved here ${formatMovedHere(offerDetails.offeredAt)}` : undefined}
+                        title={<><strong className="font-semibold">{candidate?.first_name || 'This candidate'}</strong> is at the offer stage</>}
+                        sub="The offer is with the job's recruiter and hiring manager."
                       />
                     ) : associationStatus === 'offer' && candidateId ? (
                       <OfferBannerSmart
@@ -1968,7 +1992,7 @@ const stageHasAutomation = useMemo(() => {
                     )}
 
                     {/* Offer Tab */}
-                    {activeTab === 'offer' && candidateId && (
+                    {activeTab === 'offer' && candidateId && canViewOffers && (
                       <Tabs defaultValue="offer-details" className="w-full">
                         <TabsList
                           className="inline-flex w-auto p-1 rounded-[10px] h-auto bg-transparent gap-1"
@@ -2050,7 +2074,7 @@ const stageHasAutomation = useMemo(() => {
                         const isTerminal = associationStatus === 'rejected' || associationStatus === 'hired' || associationStatus === 'offer'
 
                         // Terminal-status sidebar — keep existing OfferTimeline / HireSummary cards
-                        if (associationStatus === 'offer' && candidateId) {
+                        if (associationStatus === 'offer' && candidateId && canViewOffers) {
                           return (
                             <>
                               <OfferTimelineCard
@@ -2072,7 +2096,7 @@ const stageHasAutomation = useMemo(() => {
                           return (
                             <>
                               <HireSummaryCard candidateId={candidateId} jobId={jobId} />
-                              {jobId && (
+                              {jobId && canViewOffers && (
                                 <AgreementsCard
                                   source={{ type: 'candidate', id: candidateId, jobId }}
                                   recordLabel={[candidate?.candidate_name?.trim(), job?.title].filter(Boolean).join(' · ')}
