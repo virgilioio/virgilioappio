@@ -42,6 +42,13 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Built 2026-10-27 (ATS) — Slack automations — waiting for Apply!
+
+- **What it is:** connect Virgilio's Slack once (admins, Settings › Integrations), then "when X, send Y to Z": hires, applicants, stage moves, rejections, interviews, scorecards, offer approvals and signing (offers admins only), job opened/closed, to channels, Slack people or a job's Recruiter / Sourcer / Hiring manager / interviewer by DM, with `{details}` and @tags. Workspace-wide (admins) or per job (admins and the job's Recruiter, Setup › Slack). The Integrations page is redesigned (tabs with counts, cards by category, Connect dialog, Details dialog, Disconnect in ⋯).
+- **Database (`20261028000000_slack_automations`, not applied):** dry-run on live data rolled back; test 73 passes (a filter bug with empty filters was caught and fixed in the dry run).
+- **Functions (not deployed):** `slack` (connect, lists, test, disconnect; `verify_jwt` false, it checks the person itself) and `slack-deliver` (internal secret). Unit tests `_shared/__tests__/slack.test.ts` (10).
+- **Allan, before it can send:** create the Slack app from `docs/slack-app-manifest.yml` and put `SLACK_CLIENT_ID` and `SLACK_CLIENT_SECRET` in Supabase › Edge Functions › Secrets. Then Connect in Settings › Integrations and Send test.
+
 ## Done 2026-10-23 (ATS) — Part B: My profile for every member — applied
 
 - **What it is:** `/me`, the member profile page in self mode (`MyProfile` → `PersonDetail self`), reached from the avatar menu ("My profile · Role, work, earnings & agreements", which used to open Settings › Profile), the sidebar avatar and the phone account sheet. Tabs Overview · Work · Earnings · Agreements (Current work and Earnings counters in the `MetricStrip`, Allan 2026-10-23); no Rating, Access or History, and those are never even requested. Role card read-only, Personal editable (their own `os_person_details`), Agreements read-only (`AgreementsCard readOnly`: status only, no Send or actions), Earnings in the second person. A "Name, photo and signature" button opens Settings › Profile, which keeps the account settings. Works on phones (not behind the desktop-only People & Access wrapper).

@@ -157,7 +157,7 @@ export function SlackAutomationSheet({
   const payload = () => ({
     job_id: jobId,
     event,
-    message: encodeSlackMessage(draft, picked),
+    message: encodeSlackMessage(draft, picked).trim(),
     destinations,
   })
 

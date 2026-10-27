@@ -1,0 +1,36 @@
+# The Gio Slack app (Gio ATS, 2026-10-27).
+# At https://api.slack.com/apps choose Create New App > From a manifest, pick
+# Virgilio's Slack workspace and paste this file. Then copy the Client ID and
+# Client Secret (Basic Information > App Credentials) into Supabase > Edge
+# Functions > Secrets as SLACK_CLIENT_ID and SLACK_CLIENT_SECRET. Never paste
+# them anywhere else. Gio asks Slack for nothing more than these scopes.
+display_information:
+  name: Gio
+  description: Gio ATS sends your hiring news to Slack.
+  long_description: Gio ATS posts what happens in hiring (hires, new applicants, stage moves, interviews, scorecards, offers) to the channels and people your team picks, with the details and @mentions they choose. It never reads your messages and never sends pay or salary.
+  background_color: "#0d0d09"
+features:
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: true
+  bot_user:
+    display_name: Gio
+    always_online: true
+oauth_config:
+  redirect_urls:
+    - https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/slack
+  scopes:
+    bot:
+      - chat:write
+      - chat:write.public
+      - channels:read
+      - groups:read
+      - users:read
+      - users:read.email
+      - im:write
+      - team:read
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
