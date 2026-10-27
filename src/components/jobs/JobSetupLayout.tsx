@@ -27,6 +27,7 @@ import {
   ListChecks,
   Hash,
   Lock,
+  MessageSquare,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { missingForPublish, isPublishGateError, type SalesTeam } from '@/lib/jobTeam'
@@ -43,6 +44,7 @@ import { archiveJob, closeJob } from './jobStatusActions'
 import { confirmRemoveMember } from './confirmRemoveMember'
 import { useToast } from '@/hooks/use-toast'
 import { SectionCard } from './wizard/_parts'
+import { JobSlackSection } from './settings/JobSlackSection'
 import { HiringPlanTab } from './HiringPlanTab'
 import { useJobManage } from '@/hooks/useJobManage'
 import { OfferApprovalChainConfig } from './OfferApprovalChainConfig'
@@ -89,6 +91,7 @@ type SectionId =
   | 'offer-approval'
   | 'client-view'
   | 'notifications'
+  | 'slack'
   | 'danger'
 
 const NAV_CONFIG: Array<{ id: SectionId; label: string; icon: any }> = [
@@ -97,6 +100,7 @@ const NAV_CONFIG: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'hiring-team', label: 'Hiring team', icon: Users },
   { id: 'offer-approval', label: 'Offer approval', icon: ListChecks },
   { id: 'client-view', label: 'Client view', icon: Eye },
+  { id: 'slack', label: 'Slack', icon: MessageSquare },
 ]
 
 const NAV_QUICK = [
@@ -678,6 +682,11 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
             {/* Notifications */}
             <div data-section="notifications">
               <TeamNotificationsCard jobId={jobId} readOnly={isReadOnly} />
+            </div>
+
+            {/* Slack */}
+            <div data-section="slack">
+              <JobSlackSection jobId={jobId} jobTitle={jobTitle} readOnly={isReadOnly} />
             </div>
 
             {/* Danger (admins only) */}

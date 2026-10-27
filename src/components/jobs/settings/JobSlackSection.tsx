@@ -1,0 +1,122 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Loadable } from '@/components/ui/loadable'
+import { LoadError } from '@/components/empty/LoadError'
+import { SlackLogo } from '@/components/icons/SlackLogo'
+import { SectionCard } from '@/components/jobs/wizard/_parts'
+import { SlackAutomationList } from '@/components/settings/slack/SlackAutomationList'
+import { SlackAutomationSheet, type AutomationDraftSeed } from '@/components/settings/slack/SlackAutomationSheet'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { useTenant } from '@/hooks/useTenant'
+import { useSlackAutomations, useSlackStatus } from '@/lib/slack'
+
+/**
+ * A job's Slack (Setup › Slack, 2026-10-27): its own automations, which its
+ * Recruiter and admins add, edit and remove, and the workspace-wide ones that
+ * also fire for it ("From workspace", read here, changed in Settings).
+ */
+export function JobSlackSection({ jobId, jobTitle, readOnly }: { jobId: string; jobTitle: string; readOnly: boolean }) {
+  const { tenant } = useTenant()
+  const tenantId = tenant?.id
+  const status = useSlackStatus(tenantId)
+  const connected = !!status.data?.connected
+  const working = connected && status.data?.status !== 'broken'
+  const list = useSlackAutomations(tenantId, jobId, connected && !readOnly)
+  const timedOut = useLoadTimeout(list.isLoading, list.dataUpdatedAt)
+  const [seed, setSeed] = useState<AutomationDraftSeed | null>(null)
+
+  const rows = list.data ?? []
+  const own = rows.filter((r) => r.job_id === jobId)
+  const fromWorkspace = rows.filter((r) => !r.job_id)
+
+  return (
+    <SectionCard
+      title="Slack"
+      trailing={
+        connected && !readOnly ? (
+          <Button size="sm" variant="secondary" icon={Plus} disabled={!working} onClick={() => setSeed({ id: null, row: null })}>
+            New automation
+          </Button>
+        ) : null
+      }
+    >
+      {!connected ? (
+        <div className="flex items-start gap-3">
+          <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EFEEEA] bg-[#FAFAF7]">
+            <SlackLogo size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-poppins text-[13.5px] font-medium text-text-primary">Slack isn&rsquo;t connected</p>
+            <p className="mt-0.5 font-inter text-[12.5px] text-text-tertiary">
+              {status.data?.is_admin ? (
+                <>
+                  Connect it in{' '}
+                  <Link to="/settings?tab=integrations" className="text-[#6F3FF5] hover:underline">
+                    Settings › Integrations
+                  </Link>{' '}
+                  to send this job&rsquo;s news to your channels and people.
+                </>
+              ) : (
+                'An admin connects Slack in Settings › Integrations; then you can send this job’s news there.'
+              )}
+            </p>
+          </div>
+        </div>
+      ) : readOnly ? (
+        <p className="font-inter text-[12.5px] text-text-tertiary">Admins and this job&rsquo;s Recruiter set up its Slack messages.</p>
+      ) : list.isError || timedOut ? (
+        <LoadError what="Slack automations" compact timedOut={timedOut && !list.isError} onRetry={() => void list.refetch()} />
+      ) : (
+        <Loadable
+          loading={list.isLoading}
+          skeleton={<div className="flex flex-col gap-1.5">{[0, 1].map((i) => <Skeleton key={i} className="h-[64px] rounded-[10px]" />)}</div>}
+        >
+          <div className="flex flex-col gap-4">
+            {own.length > 0 ? (
+              <SlackAutomationList
+                tenantId={tenantId!}
+                rows={own}
+                connected={working}
+                inJob
+                onEdit={(row) => setSeed({ id: row.id, row })}
+                onDuplicate={(row) => setSeed({ id: null, row })}
+              />
+            ) : (
+              <p className="font-inter text-[12.5px] text-text-tertiary">
+                Nothing from this job goes to Slack on its own yet. Add an automation to tell a channel or the job&rsquo;s people when something happens.
+              </p>
+            )}
+            {fromWorkspace.length > 0 && (
+              <div>
+                <p className="mb-1.5 font-inter text-[11.5px] font-medium text-text-tertiary">Also sent for this job, from Settings › Integrations</p>
+                <SlackAutomationList
+                  tenantId={tenantId!}
+                  rows={fromWorkspace}
+                  connected={working}
+                  inJob
+                  onEdit={(row) => setSeed({ id: row.id, row })}
+                  onDuplicate={(row) => setSeed({ id: null, row: { ...row, job_id: jobId, job_title: jobTitle, filters: {} } })}
+                />
+              </div>
+            )}
+          </div>
+        </Loadable>
+      )}
+      {tenantId && (
+        <SlackAutomationSheet
+          open={!!seed}
+          onOpenChange={(o) => !o && setSeed(null)}
+          tenantId={tenantId}
+          jobId={seed?.row?.job_id === null && seed?.id ? null : jobId}
+          jobTitle={jobTitle}
+          isAdmin={!!status.data?.is_admin}
+          connected={working}
+          seed={seed}
+        />
+      )}
+    </SectionCard>
+  )
+}

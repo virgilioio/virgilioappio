@@ -15,6 +15,8 @@ import { JOB_DATA_KEYS } from '@/lib/jobDraft'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 import { supabase } from '@/integrations/supabase/client'
 import { insertOpenings } from '@/hooks/useJobOpenings'
+import { useTenant } from '@/hooks/useTenant'
+import { addHiringTeamPresets, useSlackStatus } from '@/lib/slack'
 import type { OpeningRow } from '@/lib/jobOpenings'
 
 interface JobWizardProps {
@@ -123,6 +125,9 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
   const [autoSource, setAutoSource] = useState(true)
   const [publishImmediately, setPublishImmediately] = useState(true)
   const [notifySlack, setNotifySlack] = useState(false)
+  const { tenant } = useTenant()
+  const slackStatus = useSlackStatus(tenant?.id)
+  const slackConnected = !!slackStatus.data?.connected && slackStatus.data.status !== 'broken'
   const [createdPostingId, setCreatedPostingId] = useState<string | null>(null)
   const { ensureProject: ensureSourcingProject } = useJobSourcingProject(
     wizardState.createdJobId && wizardState.createdJobId !== 'created'
@@ -405,6 +410,17 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
         console.error('Failed to create sourcing project', e)
       }
     }
+    if (notifySlack && slackConnected && tenant?.id && wizardState.createdJobId && wizardState.createdJobId !== 'created') {
+      try {
+        await addHiringTeamPresets(tenant.id, wizardState.createdJobId)
+      } catch (e) {
+        toast({
+          title: 'Job created, but Slack messages weren\u2019t added',
+          description: e instanceof Error ? `${e.message} Add them in the job\u2019s Setup › Slack.` : 'Add them in the job\u2019s Setup › Slack.',
+          variant: 'destructive',
+        })
+      }
+    }
     toast({
       title: 'Job Created Successfully!',
       description:
@@ -513,6 +529,7 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
             publishImmediately={publishImmediately}
             onPublishImmediatelyChange={setPublishImmediately}
             notifySlack={notifySlack}
+            slackConnected={slackConnected}
             onNotifySlackChange={setNotifySlack}
           />
         )

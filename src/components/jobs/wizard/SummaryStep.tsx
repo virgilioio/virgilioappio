@@ -53,6 +53,8 @@ interface SummaryStepProps {
   onPublishImmediatelyChange?: (v: boolean) => void
   notifySlack?: boolean
   onNotifySlackChange?: (v: boolean) => void
+  /** Slack is connected (and working) for this workspace. */
+  slackConnected?: boolean
   openings?: Array<{ req_id: string; target_hire_date: string }>
 }
 
@@ -192,6 +194,7 @@ export function SummaryStep({
   onPublishImmediatelyChange,
   notifySlack = false,
   onNotifySlackChange,
+  slackConnected = false,
   openings,
 }: SummaryStepProps) {
   const { settings } = useJobSettings(jobId)
@@ -682,11 +685,15 @@ export function SummaryStep({
             onChange={(v) => onAutoSourceChange?.(v)}
           />
           <ToggleRow
-            title="Notify hiring team in Slack (coming soon)"
-            helper={`Send a '${hasPosting ? 'job is live' : 'job created'}' message to #hiring-${(dept || 'general').toLowerCase().replace(/\s+/g, '-')}.`}
-            checked={notifySlack}
+            title="Tell the hiring team in Slack"
+            helper={
+              slackConnected
+                ? 'Gio DMs the Recruiter and Hiring manager when someone applies, and the team when someone is hired. Change it in the job\u2019s Setup › Slack.'
+                : 'Connect Slack in Settings › Integrations to use this.'
+            }
+            checked={slackConnected && notifySlack}
             onChange={(v) => onNotifySlackChange?.(v)}
-            disabled
+            disabled={!slackConnected}
           />
         </div>
       </section>
