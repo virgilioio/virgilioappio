@@ -55,7 +55,9 @@ function ConflictCard({
     btn?.focus()
   }
 
-  const Option = ({ side, text, tag, topBorder }: { side: Resolution; text: string; tag: string; topBorder?: boolean }) => {
+  // A plain function, not a component, so the chosen button isn't remounted
+  // (and doesn't lose keyboard focus) when the choice changes.
+  const option = (side: Resolution, text: string, tag: string, topBorder?: boolean) => {
     const selected = value === side
     return (
       <button
@@ -111,8 +113,8 @@ function ConflictCard({
         </span>
       </div>
       <div role="radiogroup" aria-label={field.label} ref={groupRef} onKeyDown={onKeyDown}>
-        <Option side="existing" text={show(field.existing)} tag="On file" />
-        <Option side="incoming" text={show(field.incoming)} tag="Incoming" topBorder />
+        {option('existing', show(field.existing), 'On file')}
+        {option('incoming', show(field.incoming), 'Incoming', true)}
       </div>
       {footnote && (
         <div

@@ -372,7 +372,9 @@ export function SourcingCandidateTable({
   const initials = (name: string) =>
     name.split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]).join('').toUpperCase().replace(/[^A-Z0-9]/g, '') || '?'
 
-  const RowMenu = ({ c }: { c: MatchedCandidate }) => {
+  // Row parts are plain functions, not components: defined in here they would
+  // be new component types on every render, so an open menu would close.
+  const rowMenu = (c: MatchedCandidate) => {
     const lane = laneOf(c)
     const hidden = isHidden(c)
     if (!projectId || !canKeep(c)) return null
@@ -403,7 +405,7 @@ export function SourcingCandidateTable({
     )
   }
 
-  const AddCell = ({ c, compact }: { c: MatchedCandidate; compact?: boolean }) => {
+  const addCell = (c: MatchedCandidate, compact?: boolean) => {
     const k = rowKey(c)
     const done = addedTo.get(k)
     const lane = laneOf(c)
@@ -435,7 +437,7 @@ export function SourcingCandidateTable({
     )
   }
 
-  const Identity = ({ c }: { c: MatchedCandidate }) => {
+  const identity = (c: MatchedCandidate) => {
     const name = (c.apollo_id && collectedName.get(c.apollo_id)) || getDisplayName(c)
     const sub = [c.current_role || c.headline, c.current_company].filter(Boolean).join(' · ')
     return (
@@ -549,15 +551,15 @@ export function SourcingCandidateTable({
                           aria-label={`Select ${getDisplayName(c)}`}
                         />
                       </TableCell>
-                      <TableCell className="max-w-0 py-0"><Identity c={c} /></TableCell>
+                      <TableCell className="max-w-0 py-0">{identity(c)}</TableCell>
                       <TableCell className="max-w-0 truncate py-0 text-[12.5px] text-text-secondary">
                         {lane === 'preview' ? <span className="text-text-tertiary">—</span> : getLocation(c) || <span className="text-text-tertiary">—</span>}
                       </TableCell>
                       <TableCell className="max-w-0 overflow-hidden py-0"><FindMatch row={c} /></TableCell>
                       <TableCell className="py-0 pr-3">
                         <div className="flex items-center justify-end gap-1">
-                          <AddCell c={c} />
-                          <RowMenu c={c} />
+                          {addCell(c)}
+                          {rowMenu(c)}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -598,10 +600,10 @@ export function SourcingCandidateTable({
                   <Checkbox checked={selected.has(k)} onCheckedChange={() => toggle(c)} disabled={!selectable(c)} aria-label={`Select ${getDisplayName(c)}`} />
                 </div>
                 <div className="min-w-0 flex-1 space-y-1.5">
-                  <Identity c={c} />
+                  {identity(c)}
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <FindMatch row={c} />
-                    <div className="flex items-center gap-1"><AddCell c={c} compact /><RowMenu c={c} /></div>
+                    <div className="flex items-center gap-1">{addCell(c, true)}{rowMenu(c)}</div>
                   </div>
                 </div>
               </div>

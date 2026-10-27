@@ -105,11 +105,13 @@ export function PlaceholderHelper({ onInsert, offerFormFields, showFormSelector 
     }
   }
 
-  const PlaceholderSection = ({ 
-    title, 
-    icon: Icon, 
-    placeholders 
-  }: { 
+  // A plain function, not a component defined in here (which React would
+  // remount on every render).
+  const placeholderSection = ({
+    title,
+    icon: Icon,
+    placeholders
+  }: {
     title: string
     icon: LucideIcon
     placeholders: Array<{ key: string; description: string }>
@@ -184,43 +186,18 @@ export function PlaceholderHelper({ onInsert, offerFormFields, showFormSelector 
               </div>
             )}
 
-            <PlaceholderSection
-              title="Job Information"
-              icon={Briefcase}
-              placeholders={jobPlaceholders}
-            />
+            {placeholderSection({ title: 'Job Information', icon: Briefcase, placeholders: jobPlaceholders })}
 
-            <PlaceholderSection
-              title="Organization"
-              icon={Building}
-              placeholders={organizationPlaceholders}
-            />
+            {placeholderSection({ title: 'Organization', icon: Building, placeholders: organizationPlaceholders })}
 
-            <PlaceholderSection
-              title="Sender Information"
-              icon={User}
-              placeholders={senderPlaceholders}
-            />
+            {placeholderSection({ title: 'Sender Information', icon: User, placeholders: senderPlaceholders })}
 
-            <PlaceholderSection
-              title="Candidate"
-              icon={User}
-              placeholders={candidatePlaceholders}
-            />
+            {placeholderSection({ title: 'Candidate', icon: User, placeholders: candidatePlaceholders })}
 
-            <PlaceholderSection
-              title="Stage"
-              icon={CalendarClock}
-              placeholders={stagePlaceholders}
-            />
+            {placeholderSection({ title: 'Stage', icon: CalendarClock, placeholders: stagePlaceholders })}
 
-            {dynamicPlaceholders.length > 0 && (
-              <PlaceholderSection
-                title="Offer Form Fields"
-                icon={FileText}
-                placeholders={dynamicPlaceholders}
-              />
-            )}
+            {dynamicPlaceholders.length > 0 &&
+              placeholderSection({ title: 'Offer Form Fields', icon: FileText, placeholders: dynamicPlaceholders })}
 
             {dynamicPlaceholders.length === 0 && showFormSelector && (
               <div className="text-center py-6">
