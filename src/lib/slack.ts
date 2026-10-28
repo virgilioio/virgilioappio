@@ -25,9 +25,9 @@ export type SlackEvent =
 export type SlackDetail =
   | 'who' | 'candidate' | 'job' | 'client' | 'department' | 'stage' | 'previous_stage'
   | 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'interview_time'
-  | 'rating' | 'reason' | 'opening'
+  | 'rating' | 'reason' | 'opening' | 'approver' | 'approval_step'
 
-export type SlackRole = 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer'
+export type SlackRole = 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'approver'
 
 export interface SlackEventDef {
   key: SlackEvent
@@ -74,8 +74,9 @@ export const SLACK_EVENTS: SlackEventDef[] = [
     details: [...CANDIDATE, 'rating'], roles: TEAM, stages: true,
     message: '{who} submitted a scorecard for {candidate}: {rating}.' },
   { key: 'offer.approval_requested', group: 'Offers', label: 'An offer needs approval', when: 'When an offer is sent for approval', icon: FileCheck2, offer: true,
-    details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE], roles: TEAM,
-    message: "{who} sent {candidate}'s offer for {job} for approval." },
+    details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE, 'approver', 'approval_step'],
+    roles: [...TEAM, 'approver'],
+    message: "{who} sent {candidate}'s offer for {job} for approval. Next to approve: {approver}." },
   { key: 'offer.approved', group: 'Offers', label: 'An offer is approved', when: 'When an offer is approved', icon: CheckCircle2, offer: true,
     details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE], roles: TEAM,
     message: "{candidate}'s offer for {job} is approved." },
@@ -114,16 +115,24 @@ export const SLACK_DETAILS: Record<SlackDetail, { label: string; example: string
   rating: { label: 'Rating', example: 'Strong yes' },
   reason: { label: 'Rejection reason', example: 'Not enough experience' },
   opening: { label: 'Opening (Req ID)', example: 'REQ-0042' },
+  approver: { label: 'Approver (whose turn)', example: 'Erik Veen' },
+  approval_step: { label: 'Approval step', example: 'Step 2 of 3' },
 }
 
 /** Details a person may click that become an @mention in Slack. */
-export const PERSON_DETAILS = new Set<SlackDetail>(['who', 'recruiter', 'sourcer', 'hiring_manager', 'interviewer'])
+export const PERSON_DETAILS = new Set<SlackDetail>(['who', 'recruiter', 'sourcer', 'hiring_manager', 'interviewer', 'approver'])
 
 export const ROLE_LABEL: Record<SlackRole, string> = {
   recruiter: 'Recruiter',
   sourcer: 'Sourcer',
   hiring_manager: 'Hiring manager',
   interviewer: 'Interviewer',
+  approver: 'Offer approver',
+}
+
+/** A second line for a role in the Send to menu, when it needs one. */
+export const ROLE_HINT: Partial<Record<SlackRole, string>> = {
+  approver: 'Whoever’s turn it is, one at a time',
 }
 
 // ---------- Shapes ----------
@@ -263,10 +272,10 @@ export function destinationLabel(d: SlackDestination): string {
 
 /** One line for a list row: "#hiring, Allan Bravo and the recruiter". */
 export function destinationsSentence(list: SlackDestination[]): string {
-  const names = list.map((d, i) => {
-    const s = destinationLabel(d)
-    return i === 0 ? s : s.replace(/^The /, 'the ')
-  })
+  // Always mid-sentence ("Sends to …", "Check … in Slack"), so "the recruiter".
+  const names = list.map((d) =>
+    (destinationLabel(d) + (d.type === 'role' && d.role === 'approver' ? ' on their turn' : '')).replace(/^The /, 'the '),
+  )
   if (names.length <= 1) return names[0] ?? ''
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }

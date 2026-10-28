@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { PersonAvatar } from '@/components/candidates/comments/PersonAvatar'
 import { IconTip } from '@/components/ui/tooltip'
 import {
+  ROLE_HINT,
   ROLE_LABEL,
   destinationLabel,
   type SlackDestination,
@@ -109,9 +110,24 @@ export function SlackDestinationsField({
                     {roles.map((r) => {
                       const d: SlackDestination = { type: 'role', role: r }
                       return (
-                        <CommandItem key={r} value={`role ${ROLE_LABEL[r]}`} disabled={picked.has(keyOf(d))} onSelect={() => add(d)}>
+                        <CommandItem
+                          key={r}
+                          value={`role ${ROLE_LABEL[r]}`}
+                          disabled={picked.has(keyOf(d))}
+                          onSelect={() => add(d)}
+                          className={cn(ROLE_HINT[r] && 'items-start')}
+                        >
                           <Users />
-                          <span className="truncate">The {ROLE_LABEL[r].toLowerCase()}</span>
+                          {ROLE_HINT[r] ? (
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate">The {ROLE_LABEL[r].toLowerCase()}</span>
+                              <span className="block truncate text-[12px] leading-4 [color:hsl(var(--menu-group-color))]">
+                                {ROLE_HINT[r]}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="truncate">The {ROLE_LABEL[r].toLowerCase()}</span>
+                          )}
                         </CommandItem>
                       )
                     })}

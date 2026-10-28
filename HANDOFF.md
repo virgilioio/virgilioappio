@@ -42,6 +42,11 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Waiting for Apply 2026-10-28 (ATS) — Slack: Offer approver
+
+- **What it is:** Send to › "The offer approver" on "An offer needs approval": a DM to whoever's turn it is in the approval chain, one at a time (approver 1 when it goes out, approver 2 once 1 approves; everyone at once only in a parallel chain). A decline or closed request stops it; a turn that's over is skipped, never sent late. The request's message still goes once to the automation's channels and people. New details `{approver}` and `{approval_step}`.
+- **On Apply:** migration `20261028120000_slack_offer_approver.sql` (rename to the recorded version), test 73 live, types, then redeploy `slack` and `slack-deliver` (both read `_shared/slack.ts`). Dry run: test 73 all ok (42 checks).
+
 ## Done 2026-10-28 (ATS) — Slack automations — applied
 
 - **What it is:** connect Virgilio's Slack once (admins, Settings › Integrations), then "when X, send Y to Z": hires, applicants, stage moves, rejections, interviews, scorecards, offer approvals and signing (offers admins only), job opened/closed, to channels, Slack people or a job's Recruiter / Sourcer / Hiring manager / interviewer by DM, with `{details}` and @tags. Workspace-wide (admins) or per job (admins and the job's Recruiter, Setup › Slack). The Integrations page is redesigned (tabs with counts, cards by category, Connect dialog, Details dialog, Disconnect in ⋯).
