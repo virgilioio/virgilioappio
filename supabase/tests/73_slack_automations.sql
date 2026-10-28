@@ -1,4 +1,4 @@
--- Run after 20261028000000_slack_automations inside a transaction that is rolled back.
+-- Run after 20261027235342_slack_automations inside a transaction that is rolled back.
 -- Slack: who sets up automations, which events queue a message (once), and
 -- that the token and the queue stay server-side.
 -- Jobs: Sales Development Representative (SDR) and the open job where

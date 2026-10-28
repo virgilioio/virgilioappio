@@ -42,11 +42,11 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Built 2026-10-27 (ATS) — Slack automations — waiting for Apply!
+## Done 2026-10-28 (ATS) — Slack automations — applied
 
 - **What it is:** connect Virgilio's Slack once (admins, Settings › Integrations), then "when X, send Y to Z": hires, applicants, stage moves, rejections, interviews, scorecards, offer approvals and signing (offers admins only), job opened/closed, to channels, Slack people or a job's Recruiter / Sourcer / Hiring manager / interviewer by DM, with `{details}` and @tags. Workspace-wide (admins) or per job (admins and the job's Recruiter, Setup › Slack). The Integrations page is redesigned (tabs with counts, cards by category, Connect dialog, Details dialog, Disconnect in ⋯).
-- **Database (`20261028000000_slack_automations`, not applied):** dry-run on live data rolled back; test 73 passes (a filter bug with empty filters was caught and fixed in the dry run).
-- **Functions (not deployed):** `slack` (connect, lists, test, disconnect; `verify_jwt` false, it checks the person itself) and `slack-deliver` (internal secret). Unit tests `_shared/__tests__/slack.test.ts` (10).
+- **Database (`20261027235342_slack_automations`, applied 2026-10-28):** all 27 function bodies match the file (md5), test 73 33 of 33 on live data rolled back, nothing left behind, types regenerated; pg_cron `slack-deliver` every minute (posts only while something is due).
+- **Functions (deployed v1, hand-deployed from git):** `slack` (connect, lists, test, disconnect; `verify_jwt` false, it checks the person itself) and `slack-deliver` (internal secret). Smoke-tested: the worker answers `{sent:0,failed:0}`, an unsigned call gets 401, a bad Slack return lands on Settings › Integrations with `slack=error`. Unit tests `_shared/__tests__/slack.test.ts` (10).
 - **Allan, before it can send:** create the Slack app from `docs/slack-app-manifest.yml` and put `SLACK_CLIENT_ID` and `SLACK_CLIENT_SECRET` in Supabase › Edge Functions › Secrets. Then Connect in Settings › Integrations and Send test.
 
 ## Done 2026-10-23 (ATS) — Part B: My profile for every member — applied

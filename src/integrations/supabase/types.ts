@@ -9329,6 +9329,218 @@ export type Database = {
           },
         ]
       }
+      slack_automations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          destinations: Json
+          event: string
+          filters: Json
+          id: string
+          is_active: boolean
+          job_id: string | null
+          last_error: string | null
+          last_error_at: string | null
+          last_sent_at: string | null
+          message: string
+          name: string | null
+          preset: string | null
+          removed_at: string | null
+          removed_by: string | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          destinations: Json
+          event: string
+          filters?: Json
+          id?: string
+          is_active?: boolean
+          job_id?: string | null
+          last_error?: string | null
+          last_error_at?: string | null
+          last_sent_at?: string | null
+          message: string
+          name?: string | null
+          preset?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          destinations?: Json
+          event?: string
+          filters?: Json
+          id?: string
+          is_active?: boolean
+          job_id?: string | null
+          last_error?: string | null
+          last_error_at?: string | null
+          last_sent_at?: string | null
+          message?: string
+          name?: string | null
+          preset?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_automations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slack_automations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slack_connections: {
+        Row: {
+          app_id: string | null
+          bot_user_id: string
+          connected_at: string
+          connected_by: string | null
+          id: string
+          removed_at: string | null
+          removed_by: string | null
+          scopes: string[]
+          status: string
+          status_detail: string | null
+          team_domain: string | null
+          team_icon: string | null
+          team_id: string
+          team_name: string
+          tenant_id: string
+          token_enc: string
+        }
+        Insert: {
+          app_id?: string | null
+          bot_user_id: string
+          connected_at?: string
+          connected_by?: string | null
+          id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          scopes?: string[]
+          status?: string
+          status_detail?: string | null
+          team_domain?: string | null
+          team_icon?: string | null
+          team_id: string
+          team_name: string
+          tenant_id: string
+          token_enc: string
+        }
+        Update: {
+          app_id?: string | null
+          bot_user_id?: string
+          connected_at?: string
+          connected_by?: string | null
+          id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          scopes?: string[]
+          status?: string
+          status_detail?: string | null
+          team_domain?: string | null
+          team_icon?: string | null
+          team_id?: string
+          team_name?: string
+          tenant_id?: string
+          token_enc?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_connections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slack_deliveries: {
+        Row: {
+          attempts: number
+          automation_id: string
+          claimed_at: string | null
+          context: Json
+          created_at: string
+          error: string | null
+          event: string
+          event_key: string
+          id: string
+          next_attempt_at: string
+          results: Json | null
+          sent_at: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          attempts?: number
+          automation_id: string
+          claimed_at?: string | null
+          context?: Json
+          created_at?: string
+          error?: string | null
+          event: string
+          event_key: string
+          id?: string
+          next_attempt_at?: string
+          results?: Json | null
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          attempts?: number
+          automation_id?: string
+          claimed_at?: string | null
+          context?: Json
+          created_at?: string
+          error?: string | null
+          event?: string
+          event_key?: string
+          id?: string
+          next_attempt_at?: string
+          results?: Json | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_deliveries_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "slack_automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slack_deliveries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sourcing_credits_usage: {
         Row: {
           billing_cycle_start: string
@@ -12751,6 +12963,90 @@ export type Database = {
         }[]
       }
       skill_priorities_valid: { Args: { p: Json }; Returns: boolean }
+      slack_automations_list: {
+        Args: { _job?: string; _tenant: string }
+        Returns: {
+          can_edit: boolean
+          created_by_name: string
+          destinations: Json
+          event: string
+          filters: Json
+          id: string
+          is_active: boolean
+          job_id: string
+          job_title: string
+          last_error: string
+          last_error_at: string
+          last_sent_at: string
+          message: string
+          name: string
+          preset: string
+          updated_at: string
+        }[]
+      }
+      slack_check_destinations: { Args: { _d: Json }; Returns: boolean }
+      slack_check_edit: {
+        Args: { _event: string; _job: string; _tenant: string }
+        Returns: boolean
+      }
+      slack_check_filters: { Args: { _f: Json }; Returns: boolean }
+      slack_connection_broken: {
+        Args: { _detail: string; _tenant: string }
+        Returns: undefined
+      }
+      slack_connection_remove: {
+        Args: { _tenant: string; _user: string }
+        Returns: undefined
+      }
+      slack_connection_save: {
+        Args: { _team: Json; _tenant: string; _token: string; _user: string }
+        Returns: string
+      }
+      slack_connection_token: { Args: { _tenant: string }; Returns: Json }
+      slack_deliveries_claim: { Args: { _limit?: number }; Returns: Json }
+      slack_delivery_finish: {
+        Args: {
+          _error?: string
+          _id: string
+          _ok: boolean
+          _results?: Json
+          _retry?: boolean
+        }
+        Returns: undefined
+      }
+      slack_emit: {
+        Args: { _ctx: Json; _event: string; _key: string; _tenant: string }
+        Returns: undefined
+      }
+      slack_filter_ok: {
+        Args: { _filters: Json; _key: string; _value: string }
+        Returns: boolean
+      }
+      slack_is_admin: { Args: { _tenant: string }; Returns: boolean }
+      slack_is_member: { Args: { _tenant: string }; Returns: boolean }
+      slack_message_context: { Args: { _ctx: Json }; Returns: Json }
+      slack_person: { Args: { _user: string }; Returns: Json }
+      slack_save_automation: {
+        Args: {
+          _destinations: Json
+          _event: string
+          _filters: Json
+          _id: string
+          _is_active?: boolean
+          _job: string
+          _message: string
+          _name: string
+          _preset?: string
+          _tenant: string
+        }
+        Returns: string
+      }
+      slack_set_automation: {
+        Args: { _active?: boolean; _id: string; _removed?: boolean }
+        Returns: undefined
+      }
+      slack_status: { Args: { _tenant: string }; Returns: Json }
+      slack_token_key: { Args: never; Returns: string }
       soft_delete_job_stage: {
         Args: { stage_id_param: string }
         Returns: undefined

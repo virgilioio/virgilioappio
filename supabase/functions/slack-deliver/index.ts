@@ -72,7 +72,7 @@ serve(async (req) => {
           const msg = err instanceof Error ? err.message : String(err)
           console.error('slack-deliver', d.id, msg)
           await db.rpc('slack_delivery_finish', {
-            _id: d.id, _ok: false, _error: 'Gio couldn’t reach Slack; it will try again.', _retry: true,
+            _id: d.id, _ok: false, _error: "Gio couldn't reach Slack; it will try again.", _retry: true,
           })
         }
       }))

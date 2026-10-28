@@ -1,7 +1,7 @@
 // Slack for Gio ATS: the Web API, the sealed OAuth state, and how a message is
 // written from an automation's template (Allan, 2026-10-27).
 //
-// A template is the person's text with {details} and Slack tags (<@U…>). The
+// A template is the person's text with {details} and Slack tags (<@U...>). The
 // details come from slack_message_context (names only, never pay); people
 // become real Slack @mentions when Slack knows their email. Everything a
 // person typed is escaped for Slack, except the tags themselves.
@@ -64,12 +64,12 @@ export function slackProblem(code: string | undefined, where?: string): string {
     case 'token_revoked':
     case 'account_inactive':
     case 'not_authed':
-      return 'Slack disconnected Gio. Reconnect it in Settings › Integrations.'
+      return 'Slack disconnected Gio. Reconnect it in Settings > Integrations.'
     case 'user_not_found':
     case 'users_not_found':
       return 'That person is no longer in your Slack.'
     case 'cannot_dm_bot':
-      return 'Gio can’t message a bot.'
+      return "Gio can't message a bot."
     case 'ratelimited':
       return 'Slack asked Gio to slow down; it will try again.'
     case 'msg_too_long':
@@ -228,12 +228,16 @@ export function detailValues(ctx: MessageContext, mention: MentionOf): Record<st
   }
 }
 
+// Typographic marks without non-ASCII source (Edge Function files stay ASCII).
+const DOT = String.fromCharCode(183)
+const DASH = String.fromCharCode(8212)
+
 const TAG = /<(@[UW][A-Z0-9]+|#[CG][A-Z0-9]+(?:\|[^>]*)?|!here|!channel)>/g
 const DETAIL = /\{\s*([a-z_]+)\s*\}/g
 
 /**
  * The person's template as Slack mrkdwn: their text escaped, Slack tags kept,
- * {details} filled ("—" when there's nothing to say).
+ * {details} filled (a dash when there's nothing to say).
  */
 export function renderTemplate(template: string, values: Record<string, string | null>): string {
   const parts: string[] = []
@@ -250,7 +254,7 @@ export function renderTemplate(template: string, values: Record<string, string |
 function fillDetails(text: string, values: Record<string, string | null>): string {
   return text.replace(DETAIL, (whole, key: string) => {
     if (!(key in values)) return whole
-    return values[key] ?? '—'
+    return values[key] ?? DASH
   })
 }
 
@@ -269,14 +273,14 @@ export function plainText(mrkdwn: string): string {
 /** The message: the text, then a quiet line with where it came from. */
 export function messageBlocks(text: string, ctx: MessageContext, test = false): unknown[] {
   const link = candidateUrl(ctx) ?? jobUrl(ctx) ?? APP_URL
-  const where = [ctx.job?.title, ctx.job?.client].filter(Boolean).map((s) => esc(String(s))).join(' · ')
+  const where = [ctx.job?.title, ctx.job?.client].filter(Boolean).map((s) => esc(String(s))).join(` ${DOT} `)
   return [
     { type: 'section', text: { type: 'mrkdwn', text: text.slice(0, 3000) } },
     {
       type: 'context',
       elements: [{
         type: 'mrkdwn',
-        text: `${test ? 'Test from Gio · example details · ' : 'Gio ATS · '}${where ? `${where} · ` : ''}<${link}|Open in Gio>`,
+        text: `${test ? `Test from Gio ${DOT} example details ${DOT} ` : `Gio ATS ${DOT} `}${where ? `${where} ${DOT} ` : ''}<${link}|Open in Gio>`,
       }],
     },
   ]

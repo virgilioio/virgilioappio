@@ -12,6 +12,7 @@ import {
   FileX2, Inbox, MoveRight, PartyPopper, Send, UserX, XCircle, type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
+import type { Json } from '@/integrations/supabase/types'
 
 // ---------- Events ----------
 
@@ -386,8 +387,8 @@ export function useSaveSlackAutomation(tenantId: string | undefined) {
         _job: input.job_id,
         _name: input.name,
         _event: input.event,
-        _filters: input.filters,
-        _destinations: input.destinations,
+        _filters: input.filters as Json,
+        _destinations: input.destinations as unknown as Json,
         _message: input.message,
         _is_active: input.is_active ?? true,
         _preset: input.preset ?? null,
@@ -512,7 +513,7 @@ export async function addHiringTeamPresets(tenantId: string, jobId: string) {
       _name: null,
       _event: p.event,
       _filters: {},
-      _destinations: p.destinations,
+      _destinations: p.destinations as unknown as Json,
       _message: SLACK_EVENT[p.event].message,
       _is_active: true,
       _preset: p.preset,

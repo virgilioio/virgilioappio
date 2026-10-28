@@ -8,7 +8,7 @@
 //               details; "the job's people" go to the sender by DM -> { results }
 //   disconnect  admins: Slack forgets the token, Gio removes it.
 // GET ?code&state   Slack's redirect after sign-in: saves the connection and
-//                   sends the person back to Settings › Integrations.
+//                   sends the person back to Settings > Integrations.
 //
 // Who may do what is the database's call (slack_status, slack_check_edit run
 // as the signed-in person); the token is only read with the service role.
@@ -168,14 +168,14 @@ serve(withRequestCors(async (req) => {
   if (!UUID_RE.test(tenantId)) return json(400, { error: 'Missing workspace.' })
 
   const { data: status, error: statusError } = await user.rpc('slack_status', { _tenant: tenantId })
-  if (statusError || !status) return json(403, { error: dbMessage(statusError, 'You can’t see this workspace’s Slack.') })
+  if (statusError || !status) return json(403, { error: dbMessage(statusError, "You can't see this workspace's Slack.") })
 
   const db = admin()
 
   if (action === 'start') {
     if (!status.is_admin) return json(403, { error: 'Only admins connect Slack.' })
     const clientId = Deno.env.get('SLACK_CLIENT_ID')
-    if (!clientId) return json(503, { error: 'Slack isn’t set up for Gio yet. Ask Allan to add the Slack app keys.' })
+    if (!clientId) return json(503, { error: "Slack isn't set up for Gio yet. Ask Allan to add the Slack app keys." })
     const origin = String(body.return_origin ?? req.headers.get('Origin') ?? APP_URL)
     const state = await sealState({
       tenant_id: tenantId,
@@ -202,7 +202,7 @@ serve(withRequestCors(async (req) => {
     const dir = await directory(token)
     if ('error' in dir) {
       if (AUTH_GONE.has(String(dir.error))) await db.rpc('slack_connection_broken', { _tenant: tenantId, _detail: String(dir.error) })
-      return json(502, { error: 'Slack didn’t send the list. Try again.', code: dir.error })
+      return json(502, { error: "Slack didn't send the list. Try again.", code: dir.error })
     }
     return json(200, dir)
   }
@@ -211,7 +211,7 @@ serve(withRequestCors(async (req) => {
     const jobId = body.job_id && UUID_RE.test(String(body.job_id)) ? String(body.job_id) : null
     const event = String(body.event ?? '')
     const { error: checkError } = await user.rpc('slack_check_edit', { _tenant: tenantId, _job: jobId, _event: event })
-    if (checkError) return json(403, { error: dbMessage(checkError, 'You can’t send this.') })
+    if (checkError) return json(403, { error: dbMessage(checkError, "You can't send this.") })
     const message = String(body.message ?? '').slice(0, 3000)
     const destinations = (Array.isArray(body.destinations) ? body.destinations : []).slice(0, 10) as Destination[]
     if (!message.trim() || destinations.length === 0) return json(400, { error: 'Write a message and pick where it goes.' })
@@ -257,7 +257,7 @@ serve(withRequestCors(async (req) => {
     if (!status.is_admin) return json(403, { error: 'Only admins disconnect Slack.' })
     await slackApi(token, 'auth.revoke', {}).catch(() => null)
     const { error } = await db.rpc('slack_connection_remove', { _tenant: tenantId, _user: auth.user.id })
-    if (error) return json(500, { error: 'Couldn’t disconnect Slack. Try again.' })
+    if (error) return json(500, { error: "Couldn't disconnect Slack. Try again." })
     return json(200, { ok: true })
   }
 
