@@ -36,6 +36,12 @@ const STARTERS: Array<{ event: SlackEvent; title: string; body: string }> = [
   { event: 'scorecard.submitted', title: 'Scorecards in', body: 'Tell the Recruiter when an interviewer submits.' },
 ]
 
+/** People (2026-10-28): for Virgilio's own team. */
+const PEOPLE_STARTERS: Array<{ event: SlackEvent; title: string; body: string }> = [
+  { event: 'member.joined', title: 'Welcome new teammates', body: 'DM them a welcome the day they join Gio.' },
+  { event: 'member.profile_incomplete', title: 'Profile reminders', body: 'Nudge them every few days until their profile is complete.' },
+]
+
 /** Disconnect Slack? (the card's ⋯ and the sheet's Settings ask the same). */
 export function askDisconnectSlack(status: SlackStatus | undefined) {
   const n = status?.automations ?? 0
@@ -51,8 +57,8 @@ export function askDisconnectSlack(status: SlackStatus | undefined) {
 function starterRow(event: SlackEvent): SlackAutomation {
   const def = SLACK_EVENT[event]
   return {
-    id: '', job_id: null, job_title: null, name: null, event, filters: {},
-    destinations: event === 'candidate.hired' ? [] : [{ type: 'role', role: 'recruiter' }],
+    id: '', job_id: null, job_title: null, name: null, event, filters: def.repeats ? { every_days: 7 } : {},
+    destinations: def.people ? [{ type: 'role', role: 'member' }] : event === 'candidate.hired' ? [] : [{ type: 'role', role: 'recruiter' }],
     message: def.message, is_active: true, preset: null, created_by_name: null, updated_at: '',
     last_sent_at: null, last_error: null, last_error_at: null, can_edit: true,
   }
@@ -80,7 +86,8 @@ export function SlackSheet({
   const working = connected && status?.status !== 'broken'
   const isAdmin = !!status?.is_admin
   const rows = list.data ?? []
-  const workspace = rows.filter((r) => !r.job_id)
+  const people = rows.filter((r) => SLACK_EVENT[r.event]?.people)
+  const workspace = rows.filter((r) => !r.job_id && !SLACK_EVENT[r.event]?.people)
   const onJobs = rows.filter((r) => r.job_id)
 
   const reconnect = async () => {
@@ -202,6 +209,39 @@ export function SlackSheet({
                           onEdit={(row) => setSeed({ id: row.id, row })}
                           onDuplicate={(row) => newOne(row)}
                         />
+                      </FormSection>
+                    )}
+                    {(people.length > 0 || (isAdmin && working)) && (
+                      <FormSection title="People" subtitle="Virgilio’s own team, never external users: welcomes and profile reminders." bare>
+                        {people.length > 0 ? (
+                          <SlackAutomationList
+                            tenantId={tenantId}
+                            rows={people}
+                            connected={working}
+                            onEdit={(row) => setSeed({ id: row.id, row })}
+                            onDuplicate={(row) => newOne(row)}
+                          />
+                        ) : (
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {PEOPLE_STARTERS.map((s) => {
+                              const Icon = SLACK_EVENT[s.event].icon
+                              return (
+                                <button
+                                  key={s.event}
+                                  type="button"
+                                  onClick={() => newOne(starterRow(s.event))}
+                                  className="gio-pressable flex flex-col items-start gap-1.5 rounded-xl border border-[#E7E8EE] bg-white p-3 text-left transition-colors duration-hover hover:border-[#C9C7BF]"
+                                >
+                                  <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-[#EDE4FF] text-[#6F3FF5]">
+                                    <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+                                  </span>
+                                  <span className="font-inter text-[13px] font-medium text-text-primary">{s.title}</span>
+                                  <span className="font-inter text-[12px] leading-snug text-text-secondary">{s.body}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
                       </FormSection>
                     )}
                     {onJobs.length > 0 && (

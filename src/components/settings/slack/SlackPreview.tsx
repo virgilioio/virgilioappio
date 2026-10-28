@@ -37,10 +37,13 @@ export function SlackPreview({
   message,
   picked,
   details,
+  people = false,
 }: {
   message: string
   picked: SlackTag[]
   details: SlackDetail[]
+  /** A People message: about a team member, no job line. */
+  people?: boolean
 }) {
   const body = parts(message, picked, details)
   return (
@@ -71,7 +74,8 @@ export function SlackPreview({
             )}
           </p>
           <p className="mt-1 font-inter text-[11.5px] text-[#616061]">
-            Gio ATS · {SLACK_DETAILS.job.example} · {SLACK_DETAILS.client.example} · <span className="text-[#1264A3]">Open in Gio</span>
+            Gio ATS · {people ? null : <>{SLACK_DETAILS.job.example} · {SLACK_DETAILS.client.example} · </>}
+            <span className="text-[#1264A3]">Open in Gio</span>
           </p>
         </div>
       </div>

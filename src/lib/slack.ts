@@ -9,7 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Briefcase, CalendarClock, CalendarX2, CheckCircle2, ClipboardCheck, FileCheck2, FileSignature,
-  FileX2, Inbox, MoveRight, PartyPopper, Send, UserX, XCircle, type LucideIcon,
+  FileX2, Inbox, ListTodo, MoveRight, PartyPopper, Send, UserPlus, UserX, XCircle, type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import type { Json } from '@/integrations/supabase/types'
@@ -21,17 +21,19 @@ export type SlackEvent =
   | 'interview.scheduled' | 'interview.cancelled' | 'scorecard.submitted'
   | 'offer.approval_requested' | 'offer.approved' | 'offer.sent' | 'offer.signed' | 'offer.declined'
   | 'job.opened' | 'job.closed'
+  | 'member.joined' | 'member.profile_incomplete'
 
 export type SlackDetail =
   | 'who' | 'candidate' | 'job' | 'client' | 'department' | 'stage' | 'previous_stage'
   | 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'interview_time'
   | 'rating' | 'reason' | 'opening' | 'approver' | 'approval_step'
+  | 'member' | 'missing' | 'progress'
 
-export type SlackRole = 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'approver'
+export type SlackRole = 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'approver' | 'member'
 
 export interface SlackEventDef {
   key: SlackEvent
-  group: 'Candidates' | 'Interviews' | 'Offers' | 'Jobs'
+  group: 'Candidates' | 'Interviews' | 'Offers' | 'Jobs' | 'People'
   label: string
   /** "When …" */
   when: string
@@ -44,6 +46,13 @@ export interface SlackEventDef {
   roles: SlackRole[]
   /** The stage filter applies. */
   stages?: boolean
+  /** People (2026-10-28): Virgilio's own team members, workspace-wide, admins
+   * only, no job filters. */
+  people?: boolean
+  /** Goes only to the team member, by DM. */
+  dmOnly?: boolean
+  /** Repeats every `filters.every_days` until it no longer applies. */
+  repeats?: boolean
   message: string
 }
 
@@ -95,6 +104,13 @@ export const SLACK_EVENTS: SlackEventDef[] = [
   { key: 'job.closed', group: 'Jobs', label: 'A job closes', when: 'When a job closes', icon: XCircle,
     details: ['who', 'job', 'client', 'department', ...JOB_PEOPLE], roles: TEAM,
     message: '{job} for {client} is closed.' },
+  { key: 'member.joined', group: 'People', label: 'Someone joins Gio ATS', when: 'When someone joins Gio ATS', icon: UserPlus, people: true,
+    details: ['member'], roles: ['member'],
+    message: 'Welcome to Gio, {member}! 👋🎉 We’re so happy you’re here. Start with your profile: it only takes a few minutes ✨' },
+  { key: 'member.profile_incomplete', group: 'People', label: 'A profile is still incomplete', when: 'When a profile is still incomplete', icon: ListTodo,
+    people: true, dmOnly: true, repeats: true,
+    details: ['member', 'missing', 'progress'], roles: ['member'],
+    message: 'Hey {member}! 👋 Your Gio profile is {progress}. Still to add: {missing}. It only takes a few minutes, and it helps the whole team ✨' },
 ]
 
 export const SLACK_EVENT = Object.fromEntries(SLACK_EVENTS.map((e) => [e.key, e])) as Record<SlackEvent, SlackEventDef>
@@ -117,10 +133,13 @@ export const SLACK_DETAILS: Record<SlackDetail, { label: string; example: string
   opening: { label: 'Opening (Req ID)', example: 'REQ-0042' },
   approver: { label: 'Approver (whose turn)', example: 'Erik Veen' },
   approval_step: { label: 'Approval step', example: 'Step 2 of 3' },
+  member: { label: 'Team member', example: 'Sofía Ramírez' },
+  missing: { label: 'What’s missing', example: 'birthday, tax ID and bank details' },
+  progress: { label: 'Progress', example: '3 of 6 done' },
 }
 
 /** Details a person may click that become an @mention in Slack. */
-export const PERSON_DETAILS = new Set<SlackDetail>(['who', 'recruiter', 'sourcer', 'hiring_manager', 'interviewer', 'approver'])
+export const PERSON_DETAILS = new Set<SlackDetail>(['who', 'recruiter', 'sourcer', 'hiring_manager', 'interviewer', 'approver', 'member'])
 
 export const ROLE_LABEL: Record<SlackRole, string> = {
   recruiter: 'Recruiter',
@@ -128,12 +147,17 @@ export const ROLE_LABEL: Record<SlackRole, string> = {
   hiring_manager: 'Hiring manager',
   interviewer: 'Interviewer',
   approver: 'Offer approver',
+  member: 'Team member',
 }
 
 /** A second line for a role in the Send to menu, when it needs one. */
 export const ROLE_HINT: Partial<Record<SlackRole, string>> = {
   approver: 'Whoever’s turn it is, one at a time',
+  member: 'The person it’s about, by DM',
 }
+
+/** How often a profile reminder repeats (`filters.every_days`). */
+export const REMIND_EVERY = [3, 5, 7, 14] as const
 
 // ---------- Shapes ----------
 
@@ -147,6 +171,8 @@ export interface SlackFilters {
   department_ids?: string[]
   client_ids?: string[]
   stage_ids?: string[]
+  /** Profile reminders: every 3, 5, 7 or 14 days. */
+  every_days?: number
 }
 
 export interface SlackStatus {

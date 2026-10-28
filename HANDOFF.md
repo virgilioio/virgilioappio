@@ -42,6 +42,14 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Waiting for Apply 2026-10-28 (ATS) — Slack: People (welcome + profile reminders)
+
+- **What it is:** a People group in Settings › Integrations › Slack, for Virgilio's own team (never external users), admins only: "Someone joins Gio ATS" (a welcome once, to the team member by DM and any channel) and "A profile is still incomplete" (only to the team member, by DM, every 3/5/7/14 days from the day they join, until the six profile checks are done or they leave). Details `{member}`, `{missing}` ("birthday, tax ID and bank details"), `{progress}` ("3 of 6 done"); the link opens their profile.
+- **On Apply, in this order:**
+  1. **Desktop chat (Allan):** `supabase/migrations/20261028130000_slack_event_rule.sql` swaps the table's event check for `slack_event_known()` (needs `drop constraint`, so not from a cloud chat). Apply the file exactly, keep the version prefix.
+  2. **Cloud:** `20261028130100_slack_people.sql` (rename to the recorded version), test 73 live, types, redeploy `slack` and `slack-deliver`.
+- **Dry run:** all People checks pass. Four older offer-approver checks miscounted because a real approver automation now listens too; they count only the test's own automations now (to be confirmed in the live run).
+
 ## Done 2026-10-28 (ATS) — Slack: Offer approver — applied
 
 - **What it is:** Send to › "The offer approver" on "An offer needs approval": a DM to whoever's turn it is in the approval chain, one at a time (approver 1 when it goes out, approver 2 once 1 approves; everyone at once only in a parallel chain). A decline or closed request stops it; a turn that's over is skipped, never sent late. The request's message still goes once to the automation's channels and people. New details `{approver}` and `{approval_step}`.

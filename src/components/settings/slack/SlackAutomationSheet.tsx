@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Send } from 'lucide-react'
+import { Check, Lock, Send, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import FormSheet from '@/components/references/FormSheet'
 import FormSection from '@/components/references/FormSection'
@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input'
 import { CharCounterLine } from '@/components/ui/char-counter'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { UnsavedGuard } from '@/components/ui/unsaved-guard'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { shakeFirstInvalid } from '@/lib/motion'
 import {
+  REMIND_EVERY,
   SLACK_DETAILS,
   SLACK_EVENT,
   SLACK_EVENTS,
@@ -40,6 +42,9 @@ import { SlackPreview } from './SlackPreview'
  * the Message with {details} and @tags, a live Slack preview and an optional
  * name. Send test posts it once with example details; Save keeps it. A dirty
  * sheet asks before it closes (§13). Workspace-wide when `jobId` is null.
+ * People events (2026-10-28) are workspace-wide and admins' only: no job
+ * filters, the team member in Send to, and a profile reminder goes only to
+ * them, every 3, 5, 7 or 14 days.
  */
 
 export interface AutomationDraftSeed {
@@ -49,7 +54,8 @@ export interface AutomationDraftSeed {
 }
 
 const MAX = 3000
-const GROUPS = ['Candidates', 'Interviews', 'Offers', 'Jobs'] as const
+const GROUPS = ['Candidates', 'Interviews', 'Offers', 'Jobs', 'People'] as const
+const MEMBER: SlackDestination = { type: 'role', role: 'member' }
 
 export function SlackAutomationSheet({
   open,
@@ -126,7 +132,10 @@ export function SlackAutomationSheet({
   const dirty = open && !!baseline && baseline !== snapshot
 
   const def = SLACK_EVENT[event]
-  const events = SLACK_EVENTS.filter((e) => isAdmin || !e.offer || e.key === event)
+  // People events are the workspace's, set up by admins.
+  const events = SLACK_EVENTS.filter(
+    (e) => e.key === event || (!(e.people && jobId) && (isAdmin || (!e.offer && !e.people))),
+  )
   const unknown = unknownDetails(draft, event)
   const pay = asksForPay(draft)
 
@@ -148,9 +157,17 @@ export function SlackAutomationSheet({
   const changeEvent = (next: SlackEvent) => {
     // A message still at the old default follows the new event.
     if (draft.trim() === SLACK_EVENT[event].message || !draft.trim()) setDraft(SLACK_EVENT[next].message)
-    // Roles the new event can't DM go; stage filters only where stages apply.
-    setDestinations((ds) => ds.filter((d) => d.type !== 'role' || SLACK_EVENT[next].roles.includes(d.role)))
-    if (!SLACK_EVENT[next].stages) setFilters(({ stage_ids: _drop, ...rest }) => rest)
+    const to = SLACK_EVENT[next]
+    // Roles the new event can't DM go; a DM-only event goes to the team member.
+    setDestinations((ds) => (to.dmOnly ? [MEMBER] : ds.filter((d) => d.type !== 'role' || to.roles.includes(d.role))))
+    // People events have no job filters; only reminders repeat; stage filters
+    // only where stages apply.
+    setFilters((f) => {
+      if (to.people) return to.repeats ? { every_days: f.every_days ?? 7 } : {}
+      const { every_days: _every, ...rest } = f
+      if (!to.stages) delete rest.stage_ids
+      return rest
+    })
     setEvent(next)
   }
 
@@ -203,7 +220,8 @@ export function SlackAutomationSheet({
   }
 
   const stageOptions = jobId ? jobStages.data ?? [] : options.data?.stages ?? []
-  const hasFilters = !jobId || def.stages
+  const hasFilters = !def.people && (!jobId || def.stages)
+  const every = filters.every_days ?? 7
   const showError = tried ? problem : null
 
   return (
@@ -211,9 +229,15 @@ export function SlackAutomationSheet({
       open={open}
       onOpenChange={(o) => (o ? onOpenChange(true) : close())}
       width={680}
-      eyebrow={jobId ? `Slack · ${jobTitle ?? 'this job'}` : 'Slack · whole workspace'}
+      eyebrow={jobId ? `Slack · ${jobTitle ?? 'this job'}` : def.people ? 'Slack · People' : 'Slack · whole workspace'}
       title={seed?.id ? 'Edit automation' : 'New automation'}
-      subtitle={jobId ? 'Runs for this job only.' : 'Runs for every job, unless you narrow it below.'}
+      subtitle={
+        def.people
+          ? 'For Virgilio’s own team, never external users.'
+          : jobId
+            ? 'Runs for this job only.'
+            : 'Runs for every job, unless you narrow it below.'
+      }
       footer={
         <div className="relative flex w-full items-center gap-2.5">
           <Button variant="ghost" onClick={close} disabled={save.isPending}>
@@ -319,20 +343,50 @@ export function SlackAutomationSheet({
         </FormSection>
       )}
 
-      <FormSection title="Send to" subtitle="Channels, people in your Slack, or the job's people by DM.">
-        <SlackDestinationsField
-          value={destinations}
-          onChange={setDestinations}
-          directory={directory.data}
-          loading={directory.isLoading}
-          error={directory.isError ? (directory.error as Error).message : null}
-          onRetry={() => void directory.refetch()}
-          roles={def.roles}
-          invalid={!!showError && destinations.length === 0}
-        />
-        <p className="mt-2 font-inter text-[12px] text-text-tertiary">
-          A private channel isn&rsquo;t listed? In Slack, type <span className="font-medium text-text-secondary">/invite @Gio</span> in it, then reopen this.
-        </p>
+      {def.repeats && (
+        <FormSection title="Remind every" subtitle="From the day they join, until their profile is complete.">
+          <RemindEvery value={every} onChange={(d) => setFilters((f) => ({ ...f, every_days: d }))} />
+        </FormSection>
+      )}
+
+      <FormSection
+        title="Send to"
+        subtitle={
+          def.dmOnly
+            ? 'Only the team member, by DM.'
+            : def.people
+              ? 'The team member by DM, or channels and people in your Slack.'
+              : 'Channels, people in your Slack, or the job\'s people by DM.'
+        }
+      >
+        {def.dmOnly ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#F1F0EC] px-2.5 font-inter text-[13px] text-text-primary">
+              <Users className="h-3.5 w-3.5 text-[#5A6072]" aria-hidden />
+              The team member
+            </span>
+            <span className="inline-flex items-center gap-1 font-inter text-[12px] text-text-tertiary">
+              <Lock className="h-3 w-3" aria-hidden />
+              Profile reminders only go to the person, by DM.
+            </span>
+          </div>
+        ) : (
+          <SlackDestinationsField
+            value={destinations}
+            onChange={setDestinations}
+            directory={directory.data}
+            loading={directory.isLoading}
+            error={directory.isError ? (directory.error as Error).message : null}
+            onRetry={() => void directory.refetch()}
+            roles={def.roles}
+            invalid={!!showError && destinations.length === 0}
+          />
+        )}
+        {!def.dmOnly && (
+          <p className="mt-2 font-inter text-[12px] text-text-tertiary">
+            A private channel isn&rsquo;t listed? In Slack, type <span className="font-medium text-text-secondary">/invite @Gio</span> in it, then reopen this.
+          </p>
+        )}
       </FormSection>
 
       <FormSection title="Message" subtitle="Type { for details and @ to tag someone. People in details are tagged when Slack knows them.">
@@ -373,7 +427,7 @@ export function SlackAutomationSheet({
       </FormSection>
 
       <FormSection title="Preview" subtitle="With example details." bare>
-        <SlackPreview message={draft} picked={picked} details={def.details} />
+        <SlackPreview message={draft} picked={picked} details={def.details} people={def.people} />
       </FormSection>
 
       <FormSection title="Name" subtitle={`Optional. Shown in the list instead of “${def.when}”.`}>
@@ -385,10 +439,57 @@ export function SlackAutomationSheet({
 
 function cleanFilters(f: SlackFilters): SlackFilters {
   const out: SlackFilters = {}
-  for (const [k, v] of Object.entries(f) as Array<[keyof SlackFilters, string[] | undefined]>) {
+  for (const k of ['job_ids', 'department_ids', 'client_ids', 'stage_ids'] as const) {
+    const v = f[k]
     if (v && v.length) out[k] = v
   }
+  if (f.every_days) out.every_days = f.every_days
   return out
+}
+
+/** Every 3, 5, 7 or 14 days: one layer slides between them (§14). */
+function RemindEvery({ value, onChange }: { value: number; onChange: (days: number) => void }) {
+  const segRef = useSegmentLayer<HTMLDivElement>()
+  return (
+    <div
+      ref={segRef}
+      role="radiogroup"
+      aria-label="Remind every"
+      className="gio-seg inline-flex"
+      style={{ gap: 4, padding: 4, background: '#ECEAE2', borderRadius: 10 }}
+    >
+      {REMIND_EVERY.map((d) => {
+        const active = d === value
+        return (
+          <button
+            key={d}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            data-seg-option
+            data-active={active || undefined}
+            onClick={() => onChange(d)}
+            className="inline-flex items-center font-poppins tabular-nums"
+            style={{
+              padding: '7px 13px',
+              borderRadius: 7,
+              border: 'none',
+              fontSize: 12,
+              letterSpacing: '-0.01em',
+              fontWeight: active ? 600 : 500,
+              color: active ? '#1F2230' : '#5A6072',
+              background: 'transparent',
+              transition: 'color var(--dur-hover) ease',
+              cursor: 'pointer',
+            }}
+          >
+            {d} days
+          </button>
+        )
+      })}
+      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,.12)" />
+    </div>
+  )
 }
 
 function filterSentence(f: SlackFilters, jobId: string | null): string {

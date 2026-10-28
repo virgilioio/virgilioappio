@@ -106,7 +106,7 @@ export function SlackDestinationsField({
               <CommandInput placeholder="Search channels and people" />
               <CommandList className="h-[300px] overflow-y-auto">
                 {roles.length > 0 && (
-                  <CommandGroup heading="The job's people, by DM">
+                  <CommandGroup heading={roles.every((r) => r === 'member') ? 'The team member, by DM' : "The job's people, by DM"}>
                     {roles.map((r) => {
                       const d: SlackDestination = { type: 'role', role: r }
                       return (

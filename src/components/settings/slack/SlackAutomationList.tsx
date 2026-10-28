@@ -131,6 +131,7 @@ export function SlackAutomationList({
               <p className="mt-0.5 truncate font-inter text-[12.5px] text-text-secondary">
                 <span className="text-text-tertiary">Sends to </span>
                 {destinationsSentence(row.destinations)}
+                {row.filters.every_days ? <span className="text-text-tertiary"> · every {row.filters.every_days} days</span> : null}
               </p>
               <StatusLine row={row} connected={connected} />
             </div>
