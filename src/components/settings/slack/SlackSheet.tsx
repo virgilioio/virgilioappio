@@ -23,6 +23,7 @@ import {
 } from '@/lib/slack'
 import { SlackAutomationList } from './SlackAutomationList'
 import { SlackAutomationSheet, type AutomationDraftSeed } from './SlackAutomationSheet'
+import { SendNowDialog } from './SlackHistory'
 
 /**
  * Slack's own sheet (Settings › Integrations › Slack › Configure, 2026-10-27).
@@ -83,6 +84,7 @@ export function SlackSheet({
 }) {
   const [tab, setTab] = useState<'automations' | 'settings'>('automations')
   const [seed, setSeed] = useState<AutomationDraftSeed | null>(null)
+  const [sendNow, setSendNow] = useState<SlackAutomation | null>(null)
   const list = useSlackAutomations(tenantId, null, open)
   const timedOut = useLoadTimeout(list.isLoading, list.dataUpdatedAt)
   const disconnect = useDisconnectSlack(tenantId)
@@ -201,6 +203,8 @@ export function SlackSheet({
                           rows={workspace}
                           connected={working}
                           onEdit={(row) => setSeed({ id: row.id, row })}
+                          onHistory={(row) => setSeed({ id: row.id, row, tab: 'history' })}
+                          onSendNow={setSendNow}
                           onDuplicate={(row) => newOne(row)}
                         />
                       </FormSection>
@@ -213,6 +217,8 @@ export function SlackSheet({
                             rows={reminders}
                             connected={working}
                             onEdit={(row) => setSeed({ id: row.id, row })}
+                            onHistory={(row) => setSeed({ id: row.id, row, tab: 'history' })}
+                            onSendNow={setSendNow}
                             onDuplicate={(row) => newOne(row)}
                           />
                         ) : (
@@ -228,6 +234,8 @@ export function SlackSheet({
                             rows={people}
                             connected={working}
                             onEdit={(row) => setSeed({ id: row.id, row })}
+                            onHistory={(row) => setSeed({ id: row.id, row, tab: 'history' })}
+                            onSendNow={setSendNow}
                             onDuplicate={(row) => newOne(row)}
                           />
                         ) : (
@@ -242,6 +250,8 @@ export function SlackSheet({
                           rows={onJobs}
                           connected={working}
                           onEdit={(row) => setSeed({ id: row.id, row })}
+                          onHistory={(row) => setSeed({ id: row.id, row, tab: 'history' })}
+                          onSendNow={setSendNow}
                           onDuplicate={(row) => setSeed({ id: null, row })}
                         />
                       </FormSection>
@@ -312,6 +322,9 @@ export function SlackSheet({
         connected={working}
         seed={seed}
       />
+      {sendNow && tenantId && (
+        <SendNowDialog open onOpenChange={(o) => !o && setSendNow(null)} tenantId={tenantId} automation={sendNow} />
+      )}
     </>
   )
 }

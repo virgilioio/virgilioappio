@@ -1,5 +1,5 @@
 import { formatDistanceToNowStrict } from 'date-fns'
-import { Copy, MoreHorizontal, Pencil, Send, Trash2 } from 'lucide-react'
+import { Copy, History, MoreHorizontal, Pencil, Send, SendHorizontal, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   DropdownMenu,
@@ -14,6 +14,8 @@ import { collapseRows, restoreRows, rowsById } from '@/lib/motion'
 import { undoToast } from '@/lib/undoToast'
 import {
   SLACK_EVENT,
+  canSeeHistory,
+  canSendNow,
   destinationsSentence,
   useSetSlackAutomation,
   useSlackTest,
@@ -29,7 +31,8 @@ const ICON_BTN =
  * of 52px rows, "When a candidate is hired" over where it goes and when it
  * last went out (or why it didn't). On/off is a switch; Edit, Duplicate,
  * Send test and Remove (with Undo) sit in the ⋯ menu, shown on hover with a
- * mouse and always on touch. Rows someone can't change read the same,
+ * mouse and always on touch. The status opens what it sent (History), and
+ * reminders have Send now (2026-10-28). Rows someone can't change read the same,
  * without the controls (a job's Recruiter sees the workspace-wide ones).
  */
 export function SlackAutomationList({
@@ -39,6 +42,8 @@ export function SlackAutomationList({
   inJob,
   more,
   onEdit,
+  onHistory,
+  onSendNow,
   onDuplicate,
 }: {
   tenantId: string
@@ -49,6 +54,10 @@ export function SlackAutomationList({
   /** A second group in the same card, under its own header. */
   more?: { label: string; rows: SlackAutomation[] }
   onEdit: (row: SlackAutomation) => void
+  /** What it sent (the sheet's History tab). */
+  onHistory?: (row: SlackAutomation) => void
+  /** Reminders: send to everyone waiting now. */
+  onSendNow?: (row: SlackAutomation) => void
   onDuplicate: (row: SlackAutomation) => void
 }) {
   const set = useSetSlackAutomation(tenantId)
@@ -128,7 +137,18 @@ export function SlackAutomationList({
           <p className="truncate font-inter text-[12px] leading-[18px] text-text-tertiary tabular-nums">
             Sends to <span className="text-text-secondary">{destinationsSentence(row.destinations)}</span>
             <span aria-hidden> · </span>
-            <Status row={row} connected={connected} />
+            {onHistory && canSeeHistory(row) ? (
+              <button
+                type="button"
+                onClick={() => onHistory(row)}
+                className="rounded-sm underline-offset-2 transition-colors duration-hover hover:text-text-primary hover:underline"
+                aria-label={`What ${title(row)} sent`}
+              >
+                <Status row={row} connected={connected} />
+              </button>
+            ) : (
+              <Status row={row} connected={connected} />
+            )}
           </p>
         </div>
         {row.can_edit ? (
@@ -162,10 +182,22 @@ export function SlackAutomationList({
                   <Copy />
                   <span className="truncate">Duplicate</span>
                 </DropdownMenuItem>
+                {onSendNow && canSendNow(row) && (
+                  <DropdownMenuItem disabled={!connected || !row.is_active} onSelect={() => onSendNow(row)}>
+                    <SendHorizontal />
+                    <span className="truncate">Send now</span>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem disabled={!connected} onSelect={() => sendTest(row)}>
                   <Send />
                   <span className="truncate">Send test</span>
                 </DropdownMenuItem>
+                {onHistory && (
+                  <DropdownMenuItem onSelect={() => onHistory(row)}>
+                    <History />
+                    <span className="truncate">History</span>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem data-danger onSelect={() => void remove(row)}>
                   <Trash2 />

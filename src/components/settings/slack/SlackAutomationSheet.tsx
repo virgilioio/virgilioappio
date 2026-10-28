@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Link2, Lock, Send, Users } from 'lucide-react'
+import { Check, Link2, Lock, Send, SendHorizontal, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import FormSheet from '@/components/references/FormSheet'
 import FormSection from '@/components/references/FormSection'
@@ -9,6 +9,7 @@ import { CharCounterLine } from '@/components/ui/char-counter'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { UnsavedGuard } from '@/components/ui/unsaved-guard'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { shakeFirstInvalid } from '@/lib/motion'
 import {
   LINK_DETAILS,
@@ -16,6 +17,7 @@ import {
   SLACK_EVENT,
   SLACK_EVENTS,
   asksForPay,
+  canSendNow,
   decodeSlackMessage,
   destinationsSentence,
   encodeSlackMessage,
@@ -33,7 +35,9 @@ import {
   type SlackTag,
 } from '@/lib/slack'
 import { cn } from '@/lib/utils'
+import { title as automationTitle } from './SlackAutomationList'
 import { SlackDestinationsField } from './SlackDestinationsField'
+import { SendNowDialog, SlackHistoryPanel } from './SlackHistory'
 import { SlackMessageBox } from './SlackMessageBox'
 import { SlackPreview } from './SlackPreview'
 
@@ -45,13 +49,17 @@ import { SlackPreview } from './SlackPreview'
  * sheet asks before it closes (§13). Workspace-wide when `jobId` is null.
  * People events (2026-10-28) are workspace-wide and admins' only: no job
  * filters, the team member in Send to, and a profile reminder goes only to
- * them, every 3, 5, 7 or 14 days.
+ * them, every 3, 5, 7 or 14 days. An existing one has a History tab
+ * (2026-10-28): what it sent, Send again, and Send now for reminders; someone
+ * who can't change it (a job's Recruiter on a workspace one) sees History only.
  */
 
 export interface AutomationDraftSeed {
   /** Editing this one (null: a new one, maybe a copy). */
   id: string | null
   row?: SlackAutomation | null
+  /** Open on its History. */
+  tab?: 'automation' | 'history'
 }
 
 const MAX = 3000
@@ -99,6 +107,8 @@ export function SlackAutomationSheet({
   const [asking, setAsking] = useState(false)
   const [baseline, setBaseline] = useState('')
   const [settled, setSettled] = useState(false)
+  const [tab, setTab] = useState<'automation' | 'history'>('automation')
+  const [sendingNow, setSendingNow] = useState(false)
   const insertRef = useRef<((text: string) => void) | null>(null)
 
   // A fresh draft each time the sheet opens.
@@ -117,6 +127,8 @@ export function SlackAutomationSheet({
     setAsking(false)
     setSettled(false)
     setBaseline('')
+    setTab(seed?.tab ?? 'automation')
+    setSendingNow(false)
   }, [open, seed])
 
   // Saved tags (<@U…>) read as "@Name" once your Slack's people are here.
@@ -153,6 +165,11 @@ export function SlackAutomationSheet({
     if (pay) return 'Slack messages can’t include pay'
     return null
   }, [connected, destinations.length, draft, pay])
+
+  const saved = seed?.id && seed.row ? seed.row : null
+  // Someone who can't change it reads its History only.
+  const readOnly = !!saved && !saved.can_edit
+  const onHistory = readOnly || tab === 'history'
 
   const close = () => {
     if (save.isPending) return
@@ -239,7 +256,7 @@ export function SlackAutomationSheet({
       onOpenChange={(o) => (o ? onOpenChange(true) : close())}
       width={680}
       eyebrow={jobId ? `Slack · ${jobTitle ?? 'this job'}` : def.people ? 'Slack · People' : 'Slack · whole workspace'}
-      title={seed?.id ? 'Edit automation' : 'New automation'}
+      title={readOnly && saved ? automationTitle(saved) : seed?.id ? 'Edit automation' : 'New automation'}
       subtitle={
         def.people
           ? 'For Virgilio’s own team, never external users.'
@@ -247,7 +264,29 @@ export function SlackAutomationSheet({
             ? 'Runs for this job only.'
             : 'Runs for every job, unless you narrow it below.'
       }
-      footer={
+      footer={onHistory && saved ? (
+        <div className="relative flex w-full items-center gap-2.5">
+          <Button variant="ghost" onClick={close}>
+            Close
+          </Button>
+          <p className="min-w-0 flex-1 truncate font-inter text-[11.5px] text-text-tertiary">
+            {canSendNow(saved) ? 'Reminders go out on their schedule; Send now reaches everyone waiting.' : 'Messages show here as they go out.'}
+          </p>
+          {canSendNow(saved) && (
+            <Button icon={SendHorizontal} onClick={() => setSendingNow(true)} disabled={!connected || !saved.is_active}>
+              Send now
+            </Button>
+          )}
+          <UnsavedGuard
+            open={asking}
+            onKeep={() => setAsking(false)}
+            onDiscard={() => {
+              setAsking(false)
+              onOpenChange(false)
+            }}
+          />
+        </div>
+      ) : (
         <div className="relative flex w-full items-center gap-2.5">
           <Button variant="ghost" onClick={close} disabled={save.isPending}>
             Cancel
@@ -273,8 +312,20 @@ export function SlackAutomationSheet({
             }}
           />
         </div>
-      }
+      )}
     >
+      {saved && (
+        <Tabs value={onHistory ? 'history' : 'automation'} onValueChange={(v) => setTab(v as typeof tab)}>
+          <TabsList indicator="pill" className="mb-4">
+            {!readOnly && <TabsTrigger value="automation">Automation</TabsTrigger>}
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+      {onHistory && saved ? (
+        <SlackHistoryPanel automationId={saved.id} />
+      ) : (
+      <>
       <FormSection title="When" subtitle={isAdmin ? undefined : 'Offer events are for admins.'} bare>
         <div className="flex flex-col gap-3">
           {GROUPS.map((g) => {
@@ -458,6 +509,11 @@ export function SlackAutomationSheet({
       <FormSection title="Name" subtitle={`Optional. Shown in the list instead of “${def.when}”.`}>
         <Input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder={def.when} aria-label="Name" />
       </FormSection>
+      </>
+      )}
+      {saved && canSendNow(saved) && (
+        <SendNowDialog open={sendingNow} onOpenChange={setSendingNow} tenantId={tenantId} automation={saved} />
+      )}
     </FormSheet>
   )
 }

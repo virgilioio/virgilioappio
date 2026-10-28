@@ -620,3 +620,158 @@ export async function addHiringTeamPresets(tenantId: string, jobId: string) {
     if (error) throw dbError(error, 'Couldn’t add the Slack messages.')
   }
 }
+
+// ---------- History, Send now and Send again (2026-10-28) ----------
+
+export type SlackDeliveryStatus = 'queued' | 'sending' | 'sent' | 'failed' | 'skipped'
+/** What started a message. */
+export type SlackTrigger = 'event' | 'schedule' | 'send_now' | 'remind' | 'request'
+
+export interface SlackRecipient {
+  to: string
+  ok: boolean
+  problem?: string
+}
+
+/** One message of an automation, names only (never the text or pay). */
+export interface SlackHistoryRow {
+  id: string
+  created_at: string
+  sent_at: string | null
+  status: SlackDeliveryStatus
+  attempts: number
+  next_attempt_at: string | null
+  error: string | null
+  trigger: SlackTrigger
+  by: string | null
+  candidate_id: string | null
+  candidate: string | null
+  job_id: string | null
+  job: string | null
+  member: string | null
+  recipients: SlackRecipient[]
+  can_retry: boolean
+}
+
+export interface SlackHistory {
+  rows: SlackHistoryRow[]
+  can_change: boolean
+  /** Send now is waiting until then (10 minutes after the last one). */
+  next_send_now: string | null
+}
+
+/** Someone a reminder is waiting on right now. */
+export interface SlackWaiting {
+  to?: string
+  candidate?: string
+  job?: string
+  stage?: string
+  waiting?: string
+  progress?: string
+}
+
+export interface SlackSendNowPreview {
+  waiting: SlackWaiting[]
+  count: number
+  active: boolean
+  next_at: string | null
+}
+
+export const TRIGGER_LABEL: Record<SlackTrigger, string | null> = {
+  event: null,
+  schedule: 'Reminder',
+  send_now: 'Sent now',
+  remind: 'Remind',
+  request: 'Request scorecard',
+}
+
+/** A message's outcome in words, and how it reads. */
+export function deliveryOutcome(row: Pick<SlackHistoryRow, 'status' | 'attempts' | 'recipients'>): {
+  label: string
+  tone: 'ok' | 'warn' | 'bad' | 'muted' | 'busy'
+} {
+  switch (row.status) {
+    case 'sent':
+      return row.recipients.some((r) => r.problem) ? { label: 'Partly sent', tone: 'warn' } : { label: 'Sent', tone: 'ok' }
+    case 'failed':
+      return { label: 'Didn’t go out', tone: 'bad' }
+    case 'skipped':
+      return { label: 'Skipped', tone: 'muted' }
+    case 'sending':
+      return { label: 'Sending', tone: 'busy' }
+    default:
+      return row.attempts > 0 ? { label: 'Retrying', tone: 'busy' } : { label: 'Waiting', tone: 'busy' }
+  }
+}
+
+/** Reminders can be sent now; everything else only as it happens. */
+export function canSendNow(row: Pick<SlackAutomation, 'event' | 'can_edit'>) {
+  return !!SLACK_EVENT[row.event]?.repeats && row.can_edit
+}
+
+/** Offer and People messages are admins' to read; a Recruiter sees the rest
+ * for their own jobs. */
+export function canSeeHistory(row: Pick<SlackAutomation, 'event' | 'can_edit'>) {
+  return row.can_edit || !(row.event.startsWith('offer.') || row.event.startsWith('member.'))
+}
+
+const historyKey = (automationId?: string | null) => ['slack-history', automationId ?? null] as const
+const sendNowKey = (automationId?: string | null) => ['slack-send-now', automationId ?? null] as const
+
+/** An automation's last 50 messages; checks again while one is on its way. */
+export function useSlackHistory(automationId: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: historyKey(automationId),
+    enabled: !!automationId && enabled,
+    refetchInterval: (query) =>
+      (query.state.data as SlackHistory | undefined)?.rows.some((r) => r.status === 'queued' || r.status === 'sending') ? 10_000 : false,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('slack_automation_history', { _automation: automationId!, _limit: 50 })
+      if (error) throw dbError(error, 'Couldn’t load what this automation sent.')
+      return data as unknown as SlackHistory
+    },
+  })
+}
+
+/** Who a reminder would go to if it were sent now (nothing is sent). */
+export function useSendNowPreview(automationId: string | null | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: sendNowKey(automationId),
+    enabled: !!automationId && enabled,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('slack_send_now', { _automation: automationId!, _dry: true })
+      if (error) throw dbError(error, 'Couldn’t check who’s waiting.')
+      return data as unknown as SlackSendNowPreview
+    },
+  })
+}
+
+export function useSendNow(tenantId: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (automationId: string) => {
+      const { data, error } = await supabase.rpc('slack_send_now', { _automation: automationId, _dry: false })
+      if (error) throw dbError(error, 'Couldn’t send the reminders. Try again.')
+      return data as unknown as { queued: number; next_at: string }
+    },
+    onSettled: (_d, _e, automationId) => {
+      qc.invalidateQueries({ queryKey: historyKey(automationId) })
+      qc.invalidateQueries({ queryKey: sendNowKey(automationId) })
+      qc.invalidateQueries({ queryKey: ['slack-automations', tenantId] })
+    },
+  })
+}
+
+export function useRetrySlackDelivery() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { deliveryId: string; automationId: string }) => {
+      const { error } = await supabase.rpc('slack_retry_delivery', { _delivery: input.deliveryId })
+      if (error) throw dbError(error, 'Couldn’t send it again. Try again.')
+    },
+    onSettled: (_d, _e, input) => {
+      qc.invalidateQueries({ queryKey: historyKey(input.automationId) })
+    },
+  })
+}

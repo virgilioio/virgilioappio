@@ -9,6 +9,7 @@ import { SlackLogo } from '@/components/icons/SlackLogo'
 import { SectionCard } from '@/components/jobs/wizard/_parts'
 import { SlackAutomationList } from '@/components/settings/slack/SlackAutomationList'
 import { SlackAutomationSheet, type AutomationDraftSeed } from '@/components/settings/slack/SlackAutomationSheet'
+import { SendNowDialog } from '@/components/settings/slack/SlackHistory'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { useTenant } from '@/hooks/useTenant'
 import { SLACK_EVENT, useSlackAutomations, useSlackStatus, type SlackAutomation } from '@/lib/slack'
@@ -27,6 +28,7 @@ export function JobSlackSection({ jobId, jobTitle, readOnly }: { jobId: string; 
   const list = useSlackAutomations(tenantId, jobId, connected && !readOnly)
   const timedOut = useLoadTimeout(list.isLoading, list.dataUpdatedAt)
   const [seed, setSeed] = useState<AutomationDraftSeed | null>(null)
+  const [sendNow, setSendNow] = useState<SlackAutomation | null>(null)
 
   const rows = list.data ?? []
   const own = rows.filter((r) => r.job_id === jobId)
@@ -88,6 +90,8 @@ export function JobSlackSection({ jobId, jobTitle, readOnly }: { jobId: string; 
                 inJob
                 more={{ label: 'Also sent for this job, from Settings › Integrations', rows: fromWorkspace }}
                 onEdit={(row) => setSeed({ id: row.id, row })}
+                onHistory={(row) => setSeed({ id: row.id, row, tab: 'history' })}
+                onSendNow={setSendNow}
                 onDuplicate={(row) =>
                   setSeed({
                     id: null,
@@ -125,6 +129,9 @@ export function JobSlackSection({ jobId, jobTitle, readOnly }: { jobId: string; 
           connected={working}
           seed={seed}
         />
+      )}
+      {tenantId && sendNow && (
+        <SendNowDialog open onOpenChange={(o) => !o && setSendNow(null)} tenantId={tenantId} automation={sendNow} />
       )}
     </SectionCard>
   )
