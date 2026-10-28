@@ -56,6 +56,7 @@ import { BankDetailsCard } from '@/components/os/BankDetailsCard'
 import { TaxIdsCard } from '@/components/os/TaxIdsCard'
 import { ShippingAddressCard } from '@/components/os/ShippingAddressCard'
 import { AccountCard } from '@/components/os/AccountCard'
+import { GoogleWorkspaceCard } from '@/components/os/GoogleWorkspaceCard'
 import { ComingUpCard, ToDoCard, UsefulLinksCard } from '@/components/os/MyProfileCards'
 import { ProfileNav, TAB_META, type ProfileTab } from '@/components/os/ProfileNav'
 import { COUNTRIES } from '@/constants/countries'
@@ -399,6 +400,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
               </div>
               <div className="min-w-0 space-y-4">
                 {self && <AccountCard />}
+                {self && <GoogleWorkspaceCard />}
                 <PersonalCard tenantId={tenant.id} person={person} isSelf={isSelf} />
                 {joined && person.user_type !== 'external' && (
                   <ShippingAddressCard

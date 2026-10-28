@@ -1,6 +1,5 @@
 import { AlertTriangle, Lock, Unplug } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { SettingsCard } from '@/components/settings/shared/SettingsCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -10,22 +9,9 @@ import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
 import { toast } from 'sonner'
+import { hasTokenFailure } from '@/lib/googleConnection'
 
 type WorkspaceState = 'disconnected' | 'connected' | 'reconnect'
-
-function hasTokenFailure(identity: { sync_status?: string | null; sync_error?: string | null; sync_error_message?: string | null; is_active?: boolean }) {
-  const status = (identity.sync_status || '').toLowerCase()
-  const message = `${identity.sync_error || ''} ${identity.sync_error_message || ''}`.toLowerCase()
-  return (
-    identity.is_active === false ||
-    status === 'expired' ||
-    status === 'error' ||
-    message.includes('token') ||
-    message.includes('revoked') ||
-    message.includes('refresh') ||
-    message.includes('invalid_grant')
-  )
-}
 
 function getIdentityErrorMessage(identity: { sync_error?: string | null; sync_error_message?: string | null } | undefined) {
   return identity?.sync_error_message || identity?.sync_error || null
@@ -44,6 +30,8 @@ interface ProviderRowProps {
   action: React.ReactNode
   state: WorkspaceState
   statusMessage?: string | null
+  /** The buttons go under the details (a narrow card). */
+  stacked?: boolean
 }
 
 function ProviderRow({
@@ -56,6 +44,7 @@ function ProviderRow({
   action,
   state,
   statusMessage,
+  stacked,
 }: ProviderRowProps) {
   const badge = state === 'connected'
     ? <Badge tone="green" size="xs" dot>Connected</Badge>
@@ -64,7 +53,7 @@ function ProviderRow({
       : null
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-[#E7E8EE] bg-white p-4">
+    <div className={`flex items-start gap-3 rounded-lg border border-[#E7E8EE] bg-white p-4${stacked ? ' flex-wrap' : ''}`}>
       <div className="shrink-0 mt-0.5">{logo}</div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
@@ -98,13 +87,13 @@ function ProviderRow({
           </div>
         )}
       </div>
-      <div className="shrink-0 self-center">{action}</div>
+      <div className={stacked ? 'basis-full pl-[34px]' : 'shrink-0 self-center'}>{action}</div>
     </div>
   )
 }
 
-/** The one Google Workspace connect/reconnect/disconnect card, shared by Email & calendar and Integrations. */
-export function GoogleWorkspaceConnection() {
+/** The one Google Workspace connect/reconnect/disconnect control, shared by My profile's card and Integrations. */
+export function GoogleWorkspaceConnection({ stacked }: { stacked?: boolean } = {}) {
   const queryClient = useQueryClient()
   const {
     identities: mailIdentities,
@@ -181,6 +170,7 @@ export function GoogleWorkspaceConnection() {
               capabilities={googleCapabilities}
               state={workspaceState}
               statusMessage={statusMessage}
+              stacked={stacked}
               action={
                 googleConnected ? (
                   <div className="flex items-center gap-2">
@@ -217,16 +207,5 @@ export function GoogleWorkspaceConnection() {
           </>
         )}
       </div>
-  )
-}
-
-export function EmailCalendarTab() {
-  return (
-    <SettingsCard
-      title="Email & calendar"
-      description="One connection powers both — candidate replies from your address, and scheduling against your real calendar."
-    >
-      <GoogleWorkspaceConnection />
-    </SettingsCard>
   )
 }

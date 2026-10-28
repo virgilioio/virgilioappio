@@ -375,7 +375,7 @@ export default function InboxPage() {
             <Plug aria-hidden className="h-4 w-4 shrink-0 text-[#6B7080]" />
             <span className="min-w-0 flex-1">Connect your Gmail to see and send candidate email here.</span>
             <Button variant="secondary" size="sm" asChild>
-              <Link to="/settings?tab=email-calendar">Connect Gmail</Link>
+              <Link to="/me?focus=card-google">Connect Gmail</Link>
             </Button>
           </div>
         )}

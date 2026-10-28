@@ -69,7 +69,7 @@ export function ProfileInviteDialog() {
   )
 }
 
-/** "2 of 6 done" over a bar that fills with scaleX (§8). */
+/** "2 of 7 done" over a bar that fills with scaleX (§8). */
 export function Progress({ done, total, className }: { done: number; total: number; className?: string }) {
   return (
     <div className={className}>

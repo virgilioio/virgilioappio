@@ -115,7 +115,7 @@ export function useOnboardingProgress() {
       description: 'Enable Gmail and Google Calendar integration',
       completed: progress?.task_google_connected || false,
       manuallyCompleted: progress?.task_google_manual || false,
-      route: '/settings?tab=email-calendar'
+      route: '/me?focus=card-google'
     },
     {
       id: 'organization',

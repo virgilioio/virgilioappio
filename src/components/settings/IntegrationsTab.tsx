@@ -24,7 +24,7 @@ import { SlackSheet, askDisconnectSlack } from './slack/SlackSheet'
 
 // Detail components
 import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
-import { GoogleWorkspaceConnection } from './tabs/EmailCalendarTab'
+import { GoogleWorkspaceConnection } from './GoogleWorkspaceConnection'
 import { WhatsAppIntegrationDetail } from './WhatsAppIntegrationDetail'
 
 // Logos
