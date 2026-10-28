@@ -1,4 +1,4 @@
--- Run after 20261028220000_slack_google_broken inside a transaction that is rolled back.
+-- Run after 20261028183821_slack_google_broken inside a transaction that is rolled back.
 -- "Someone's Google stops working": a DM to the person when their Gmail or
 -- Calendar goes from working to needing a reconnect, once a day, only to
 -- them, skipped if they reconnected before it went out.
