@@ -1,4 +1,4 @@
--- Run after 20261028210000_profile_google inside a transaction that is rolled back.
+-- Run after 20261028182744_profile_google inside a transaction that is rolled back.
 -- Google Workspace on My profile: a profile misses 'google' (right after
 -- 'you') when the person has no Gmail or Calendar connection, or one that
 -- needs reconnecting; a healthy one counts as done; a profile reminder's

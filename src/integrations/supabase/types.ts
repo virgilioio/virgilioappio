@@ -12330,6 +12330,10 @@ export type Database = {
         }
       }
       os_country_label: { Args: { _code: string }; Returns: string }
+      os_google_broken: {
+        Args: { _active: boolean; _message: string; _status: string }
+        Returns: boolean
+      }
       os_holidays_between: {
         Args: {
           _countries: string[]

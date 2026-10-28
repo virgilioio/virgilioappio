@@ -42,18 +42,17 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Waiting for Apply 2026-10-28 (ATS) — Google Workspace on My profile
+## Done 2026-10-28 (ATS) — Google Workspace on My profile — applied
 
 - **What it is:** Settings › Email & calendar is gone; connecting Google lives in a Google Workspace card on My profile (and on an external user's profile), with Reconnect when it stopped working. Integrations keeps its Google card. For Virgilio's own people it is the seventh profile check, right after photo and title: To do, the welcome dialog and the banner read "N of 7 done", and the Slack profile reminder names "Google Workspace" and opens the card. Old links to Email & calendar, Setup's email and calendar rows, the onboarding task and the Inbox's Connect Gmail all open the card.
-- **Written, not applied:** `20261028210000_profile_google` (`os_google_broken`, `os_profile_missing` adds 'google', `slack_message_context` counts 7). Test 77 dry-ran 8 of 8; test 73 (updated to "4 of 7 done") 59 of 59 on top of it. Functions changed, not deployed: `slack`, `slack-deliver` (`_shared/slack.ts` label and card). Unit tests 64 of 64.
-- **On Apply:** apply, rename to the recorded version, test 77 live, md5, types, deploy `slack` and `slack-deliver` (401 check), then main.
+- **Applied:** `20261028182744_profile_google` (`os_google_broken`, `os_profile_missing` adds 'google', `slack_message_context` counts 7); the three function bodies match the file (md5); test 77 live 8 of 8 (rolled back); test 73 (updated to "4 of 7 done") 59 of 59 dry-ran on top of it; types regenerated. Unit tests 64 of 64.
 - **Live data:** of 13 active internal people, 7 have a healthy Google connection, 1 needs to reconnect and 5 have none, so 6 gain the new item. The People & Access dashboard's "Profiles complete" keeps its own count (country, tax ID, bank) and doesn't move.
 
-## Waiting for Apply 2026-10-28 (ATS) — Slack log: History, Send now, Send again, Activity
+## Done 2026-10-28 (ATS) — Slack log: History, Send now, Send again, Activity — applied
 
 - **What it is:** see whether Slack automations work. Each saved automation has Automation · History: its last 50 messages with the outcome (Sent, Partly sent, Didn't go out, Skipped, Waiting, Retrying), who it was about, who it reached by name and Slack's reason for anyone it didn't, and what started it (an event, the schedule, Send now, Remind, Request scorecard, with who pressed it). A message that didn't go out has Send again. Reminders (approval waiting, scorecard due, profile incomplete) have Send now: who's waiting right now, then one button for all of them, at most once every 10 minutes; the schedule counts from it. Every message about a candidate that went out or failed for good is a line in the candidate's Activity, in a Slack group; offer ones only for the offer team.
 - **Database, applied with Allan's Apply:** `20261028175419_slack_log` (12 function bodies match the file, md5). Test 76 live 26 of 26 (rolled back); tests 75 (28/28) and 73 (59/59) dry-ran on top of it (the schedule now goes through `slack_reminders_waiting` / `slack_queue_due`). Types regenerated.
-- **Screens, waiting for Apply (branch only):** History tab, Send now dialog, Send again, Slack in the Activity feed; checked in the browser with fake data. No Edge Function changes.
+- **Screens (on main 2026-10-28):** History tab, Send now dialog, Send again, Slack in the Activity feed; checked in the browser with fake data. No Edge Function changes.
 - **Live data to know:** one real offer approval is waiting (about a day); 12 active teammates have something missing on their profile, so Send now on those reminders messages them.
 
 ## Done 2026-10-28 (ATS) — Slack reminders + compact automation list — applied
