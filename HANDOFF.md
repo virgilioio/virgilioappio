@@ -42,10 +42,11 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Waiting for Apply 2026-10-28 (ATS) — Job posts: the URL slug saves
+## Done 2026-10-28 (ATS) — Job posts: the URL slug saves — on main
 
 - **What it is:** the posting editor (job › Postings) and the Create job wizard kept a typed URL slug but never sent it, so a posting's address never changed. Both now save it, cleaned as you type (`typedSlug` / `finishSlug` in `src/lib/postingUrl.ts`). A taken address (slugs are unique across every workspace, `job_postings_slug_key`) shows "That URL is taken. Try another." under the field and keeps the sheet open (`isSlugTaken`, `onSlugTaken` on `useJobPostings` create/update). A failed save no longer reads as Saved. Changing a live posting's slug warns "The old link stops working once you save." A new posting left empty keeps the title + random ending. Screens only, no database change.
 - **Checked:** unit tests 3 of 3; editor in the browser with fake data (live change and warning, save sends the slug, taken, empty, draft without the warning, new with and without a slug, new and taken). The wizard's field shares the same code but wasn't clicked through.
+- **On main 2026-10-28.**
 - **Not done:** old addresses don't redirect to the new one (would need a table of old slugs; offered as a follow-up).
 
 ## Done 2026-10-28 (ATS) — Slack: Someone's Google stops working — applied
