@@ -42,11 +42,11 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Waiting for Apply 2026-10-28 (ATS) — Slack: Someone's Google stops working
+## Done 2026-10-28 (ATS) — Slack: Someone's Google stops working — applied
 
 - **What it is:** a People automation (admins, Settings › Integrations › Slack › People, "Google alerts" starter) that DMs only the person when Gio notices their Gmail or Calendar needs reconnecting, with "Reconnect Google" opening their Google Workspace card. Once a day per person (Gmail and Calendar breaking together send one), never repeats, Virgilio's own people only, skipped if they reconnect before it goes out ("Google works again" in its History). Default message: "Hi {member}! 👋 Your Google Workspace stopped working in Gio, so emails to candidates and your calendar are on hold. Reconnecting takes a minute."
-- **Written, not applied:** `20261028183821_slack_google_broken` (event, save rule, trigger `google_identities_z_slack` on both connection tables, claim skip). Test 78 dry-ran 13 of 13; tests 73 (59/59) and 75 (28/28) on top of it. Functions changed, not deployed: `slack`, `slack-deliver` (link). Unit tests 67 of 67; builder checked in the browser with fake data.
-- **On Apply:** apply, rename to the recorded version, test 78 live, md5, types, deploy `slack` and `slack-deliver` (401 check), then main.
+- **Applied:** `20261028183821_slack_google_broken` (event, save rule, trigger `google_identities_z_slack` on `user_mail_identities` and `calendar_identities`, claim skip); the four function bodies match the file (md5); test 78 live 13 of 13 (rolled back). Types unchanged (no new signatures). `slack` and `slack-deliver` redeployed (v10 each, files checked byte for byte against git); both answer an unsigned call with 401. Unit tests 67 of 67. On main 2026-10-28.
+- **To turn it on:** an admin adds "Google alerts" in Settings › Integrations › Slack › People; nothing sends until then.
 - **When it fires:** when Gio's sync or a send marks the connection broken, not the instant someone revokes access in Google.
 
 ## Done 2026-10-28 (ATS) — Google Workspace on My profile — applied
