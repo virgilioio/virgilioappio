@@ -42,7 +42,7 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Waiting for Apply 2026-10-28 (ATS) — Job setup: side menu links
+## Done 2026-10-28 (ATS) — Job setup: side menu links — applied
 
 - **What it is:** on a job's Setup page the side menu measured each section from the page instead of from the scroller, so a link scrolled a header's height too far (the Slack heading went under) and nothing lit up. Now each link lands its section 16px from the top and lights at once, stays lit while the scroll settles (so Slack, at the bottom, lights too), and scrolling by hand lights the menu section you're in (Screening and AI screen count as Hiring plan, Notifications as Client view). The active link carries `aria-current`; reduced motion jumps instead of gliding. `/jobs/:id/setup#slack` (or any menu section) deep-links. Code only (`JobSetupLayout`), checked in the browser with fake data.
 
