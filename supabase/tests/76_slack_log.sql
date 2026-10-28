@@ -99,17 +99,19 @@ begin
 
   -- Send now: who's waiting, then all at once.
   perform pg_temp.as_user(allan);
+  -- Real offers may be waiting too; this one waited 3 days.
   r := public.slack_send_now(wait_auto, true);
-  insert into t_results values ('Send now lists who''s waiting (' || (r ->> 'count') || ': ' || coalesce(r -> 'waiting' -> 0 ->> 'to', '?')
-    || ', ' || coalesce(r -> 'waiting' -> 0 ->> 'waiting', '?') || ')',
-    (r ->> 'count')::int = 1 and r -> 'waiting' -> 0 ->> 'to' is not null and r -> 'waiting' -> 0 ->> 'waiting' = '3 days'
-    and r -> 'waiting' -> 0 ->> 'candidate' is not null);
+  n0 := (r ->> 'count')::int;
+  insert into t_results values ('Send now lists who''s waiting (' || n0 || ')',
+    exists (select 1 from jsonb_array_elements(r -> 'waiting') x
+            where x ->> 'waiting' = '3 days' and x ->> 'to' is not null and x ->> 'candidate' is not null)
+    and not exists (select 1 from jsonb_array_elements(r -> 'waiting') x where x ->> 'to' is null));
   select count(*) into n from public.slack_deliveries where automation_id = wait_auto;
   insert into t_results values ('the list sends nothing', n = 0);
   insert into t_results values ('Send now is only for reminders',
     pg_temp.err_of(format('select public.slack_send_now(%L, false)', hire_auto)) = 'GSL04');
   r := public.slack_send_now(wait_auto, false);
-  insert into t_results values ('Send now sends to everyone waiting', (r ->> 'queued')::int = 1);
+  insert into t_results values ('Send now sends to everyone waiting', (r ->> 'queued')::int = n0);
   insert into t_results values ('and not twice in 10 minutes',
     pg_temp.err_of(format('select public.slack_send_now(%L, false)', wait_auto)) = 'GSL05');
   r := public.slack_send_now(wait_auto, true);
@@ -123,7 +125,8 @@ begin
     pg_temp.err_of(format('select public.slack_send_now(%L, true)', wait_auto)) = 'GSL01');
   perform set_config('role', 'postgres', true);
 
-  select id into dl from public.slack_deliveries where automation_id = wait_auto and event_key like 'send_now:%';
+  select id into dl from public.slack_deliveries
+  where automation_id = wait_auto and event_key like 'send_now:%' and context ->> 'turn_step_id' = s1::text;
   insert into t_results values ('the manual one carries who pressed it',
     (select context ->> 'sent_by' = allan::text and context ->> 'turn_step_id' = s1::text from public.slack_deliveries where id = dl));
   perform public.slack_due_reminders();
@@ -156,10 +159,10 @@ begin
   h := public.slack_automation_history(wait_auto, 50);
   perform set_config('role', 'postgres', true);
   insert into t_results values ('History shows the message, what started it, who and who it reached',
-    jsonb_array_length(h -> 'rows') = 1 and h -> 'rows' -> 0 ->> 'trigger' = 'send_now'
-    and h -> 'rows' -> 0 ->> 'status' = 'sent' and h -> 'rows' -> 0 ->> 'by' is not null
-    and h -> 'rows' -> 0 -> 'recipients' -> 0 ->> 'to' = 'Erik Veen' and h -> 'rows' -> 0 ->> 'candidate' is not null
-    and not (h -> 'rows' -> 0) ? 'message');
+    jsonb_array_length(h -> 'rows') = n0 and exists (
+      select 1 from jsonb_array_elements(h -> 'rows') x
+      where x ->> 'id' = dl::text and x ->> 'trigger' = 'send_now' and x ->> 'status' = 'sent' and x ->> 'by' is not null
+        and x -> 'recipients' -> 0 ->> 'to' = 'Erik Veen' and x ->> 'candidate' is not null and not x ? 'message'));
   perform pg_temp.as_user(victoria);
   insert into t_results values ('a Recruiter can''t read an offer automation''s History',
     pg_temp.err_of(format('select public.slack_automation_history(%L)', wait_auto)) = 'GSL01');
