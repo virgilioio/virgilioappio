@@ -12387,6 +12387,10 @@ export type Database = {
         }
         Returns: Json
       }
+      os_profile_missing: {
+        Args: { _tenant: string; _user: string }
+        Returns: string[]
+      }
       os_reactivate_ats: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: Json
@@ -13022,6 +13026,7 @@ export type Database = {
         Args: { _ctx: Json; _event: string; _key: string; _tenant: string }
         Returns: undefined
       }
+      slack_event_known: { Args: { _event: string }; Returns: boolean }
       slack_filter_ok: {
         Args: { _filters: Json; _key: string; _value: string }
         Returns: boolean
@@ -13030,6 +13035,7 @@ export type Database = {
       slack_is_member: { Args: { _tenant: string }; Returns: boolean }
       slack_message_context: { Args: { _ctx: Json }; Returns: Json }
       slack_person: { Args: { _user: string }; Returns: Json }
+      slack_profile_reminders: { Args: never; Returns: number }
       slack_save_automation: {
         Args: {
           _destinations: Json
