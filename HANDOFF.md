@@ -42,6 +42,10 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Waiting for Apply 2026-10-28 (ATS) — Job setup: side menu links
+
+- **What it is:** on a job's Setup page the side menu measured each section from the page instead of from the scroller, so a link scrolled a header's height too far (the Slack heading went under) and nothing lit up. Now each link lands its section 16px from the top and lights at once, stays lit while the scroll settles (so Slack, at the bottom, lights too), and scrolling by hand lights the menu section you're in (Screening and AI screen count as Hiring plan, Notifications as Client view). The active link carries `aria-current`; reduced motion jumps instead of gliding. `/jobs/:id/setup#slack` (or any menu section) deep-links. Code only (`JobSetupLayout`), checked in the browser with fake data.
+
 ## Done 2026-10-28 (ATS) — Slack: People (welcome + profile reminders) — applied
 
 - **What it is:** a People group in Settings › Integrations › Slack, for Virgilio's own team (never external users), admins only: "Someone joins Gio ATS" (a welcome once, to the team member by DM and any channel) and "A profile is still incomplete" (only to the team member, by DM, every 3/5/7/14 days from the day they join, until the six profile checks are done or they leave). Details `{member}`, `{missing}` ("birthday, tax ID and bank details"), `{progress}` ("3 of 6 done"); the link opens their profile.
