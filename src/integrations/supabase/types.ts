@@ -12160,6 +12160,10 @@ export type Database = {
         Args: { _request_id: string }
         Returns: boolean
       }
+      offer_approval_slack_turns: {
+        Args: { _request: string }
+        Returns: undefined
+      }
       offer_approval_sync: { Args: { _request_id: string }; Returns: undefined }
       offer_approval_trail_complete: {
         Args: { _request_id: string }
