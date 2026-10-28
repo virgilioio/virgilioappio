@@ -1,6 +1,7 @@
--- Run after 20261027235342_slack_automations inside a transaction that is rolled back.
--- Slack: who sets up automations, which events queue a message (once), and
--- that the token and the queue stay server-side.
+-- Run after 20261028120000_slack_offer_approver inside a transaction that is rolled back.
+-- Slack: who sets up automations, which events queue a message (once), that
+-- the token and the queue stay server-side, and that the offer approver hears
+-- only when it's their turn.
 -- Jobs: Sales Development Representative (SDR) and the open job where
 -- Melissa Perez is Recruiter (OTHER).
 --   Allan Bravo     admin                       workspace-wide and offer automations
@@ -52,10 +53,24 @@ declare
   claimed jsonb;
   st jsonb;
   e text;
+  appr_auto uuid;
+  appr_only uuid;
+  ol uuid;
+  req uuid;
+  s1 uuid;
+  s2 uuid;
+  s3 uuid;
+  mc jsonb;
+  n0 int;
 begin
   -- Slack connected (a stand-in token, rolled back with everything else).
   perform public.slack_connection_save(ten, allan,
     '{"team_id":"T0TEST0001","team_name":"Virgilio","bot_user_id":"U0GIOBOT01","scopes":["chat:write"]}', 'xoxb-stand-in');
+
+  -- What the job's Recruiter already sees (real automations stay as they are).
+  perform pg_temp.as_user(victoria);
+  select count(*) into n0 from public.slack_automations_list(ten, sdr);
+  perform set_config('role', 'postgres', true);
 
   -- Who may set up what.
   perform pg_temp.as_user(allan);
@@ -85,7 +100,7 @@ begin
   insert into t_results values ('somewhere to send it is required and checked',
     pg_temp.err_of(format($q$select public.slack_save_automation(null, %L, %L, null, 'candidate.hired', '{}', '[{"type":"channel","id":"#hiring"}]', 'x')$q$, ten, sdr)) = 'GSL04');
   select count(*) into n from public.slack_automations_list(ten, sdr);
-  insert into t_results values ('the job''s Recruiter sees its own and the workspace-wide ones that apply (' || n || ')', n = 3);
+  insert into t_results values ('the job''s Recruiter sees its own and the workspace-wide ones that apply (' || (n - n0) || ' new)', n = n0 + 3);
   perform set_config('role', 'postgres', true);
 
   perform pg_temp.as_user(erik);
@@ -166,6 +181,62 @@ begin
   perform public.slack_set_automation(stage_auto, null, false);
   perform set_config('role', 'postgres', true);
   insert into t_results values ('Undo restores it', (select removed_at is null from public.slack_automations where id = stage_auto));
+
+  -- The offer approver: one at a time, only on their turn.
+  perform pg_temp.as_user(allan);
+  appr_auto := public.slack_save_automation(null, ten, null, null, 'offer.approval_requested', '{}',
+    chan || '[{"type":"role","role":"approver"}]'::jsonb, '{approver}, your turn ({approval_step})');
+  appr_only := public.slack_save_automation(null, ten, null, null, 'offer.approval_requested', '{}',
+    '[{"type":"role","role":"approver"}]', '{approver}, the offer for {candidate} is yours to approve');
+  insert into t_results values ('the offer approver is only for "An offer needs approval"',
+    pg_temp.err_of(format($q$select public.slack_save_automation(null, %L, null, null, 'offer.approved', '{}', '[{"type":"role","role":"approver"}]', 'x')$q$, ten)) = 'GSL04');
+  perform set_config('role', 'postgres', true);
+
+  insert into public.offer_letters (candidate_id, job_id, organization_id, title, status, created_by)
+  values ((select candidate_id from public.job_candidate_associations where id = a_sdr), sdr, ten, 'Slack test offer', 'pending_approval', victoria)
+  returning id into ol;
+  insert into public.offer_approval_requests (offer_letter_id, job_id, organization_id, candidate_id, requested_by, status, current_step_order)
+  values (ol, sdr, ten, (select candidate_id from public.offer_letters where id = ol), victoria, 'pending', 1)
+  returning id into req;
+  insert into public.offer_approval_request_steps (request_id, approver_user_id, step_order, status)
+  values (req, allan, 1, 'pending'), (req, erik, 2, 'pending'), (req, jurre, 3, 'pending');
+  select id into s1 from public.offer_approval_request_steps where request_id = req and step_order = 1;
+  select id into s2 from public.offer_approval_request_steps where request_id = req and step_order = 2;
+  select id into s3 from public.offer_approval_request_steps where request_id = req and step_order = 3;
+
+  select count(*) into n from public.slack_deliveries where event_key = 'approval_requested:' || req;
+  insert into t_results values ('the channel hears once per request, the approver-only automation doesn''t (' || n || ')',
+    n = 1 and exists (select 1 from public.slack_deliveries where event_key = 'approval_requested:' || req and automation_id = appr_auto));
+  select count(*) into n from public.slack_deliveries where context ? 'turn_step_id' and context ->> 'request_id' = req::text;
+  insert into t_results values ('only approver 1 has a turn when it goes out (' || n || ')',
+    n = 2 and not exists (select 1 from public.slack_deliveries where context ->> 'request_id' = req::text
+      and context ? 'turn_step_id' and context ->> 'turn_step_id' <> s1::text));
+  mc := public.slack_message_context((select context from public.slack_deliveries where event_key = 'approval_turn:' || s1 limit 1));
+  insert into t_results values ('the turn names approver 1 and "Step 1 of 3"',
+    (mc ->> 'turn')::boolean and jsonb_array_length(mc -> 'approvers') = 1
+    and mc -> 'approvers' -> 0 ->> 'id' = allan::text and mc ->> 'approval_step' = 'Step 1 of 3');
+  mc := public.slack_message_context((select context from public.slack_deliveries where event_key = 'approval_requested:' || req));
+  insert into t_results values ('the request''s message names whose turn it is', mc -> 'approvers' -> 0 ->> 'id' = allan::text and not (mc ->> 'turn')::boolean);
+
+  perform pg_temp.as_user(allan);
+  perform public.offer_approval_decide(s1, 'approved');
+  perform set_config('role', 'postgres', true);
+  select count(*) into n from public.slack_deliveries where event_key = 'approval_turn:' || s2;
+  insert into t_results values ('approving moves the turn to approver 2 (' || n || ')',
+    n = 2 and not exists (select 1 from public.slack_deliveries where event_key = 'approval_turn:' || s3));
+  perform public.offer_approval_slack_turns(req);
+  select count(*) into n from public.slack_deliveries where event_key = 'approval_turn:' || s2;
+  insert into t_results values ('an approver never hears twice for a step', n = 2);
+
+  perform pg_temp.as_user(erik);
+  perform public.offer_approval_decide(s2, 'declined');
+  perform set_config('role', 'postgres', true);
+  insert into t_results values ('a decline stops the chain',
+    not exists (select 1 from public.slack_deliveries where event_key = 'approval_turn:' || s3));
+  perform public.slack_deliveries_claim(50);
+  select count(*) into n from public.slack_deliveries
+  where context ->> 'request_id' = req::text and context ? 'turn_step_id' and status = 'skipped' and error = 'No longer their turn';
+  insert into t_results values ('a turn that''s over is never sent late (' || n || ')', n = 4);
 
   -- Disconnecting: waiting messages are skipped, nothing more queues.
   perform public.slack_connection_remove(ten, allan);
