@@ -94,6 +94,11 @@ type SectionId =
   | 'slack'
   | 'danger'
 
+/** Where a section starts inside the scroller, whatever its offset parent. */
+function sectionTop(root: HTMLElement, el: HTMLElement): number {
+  return el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop
+}
+
 const NAV_CONFIG: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'openings', label: 'Openings', icon: Hash },
   { id: 'hiring-plan', label: 'Hiring plan', icon: GitBranch },
@@ -185,26 +190,52 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     }
   }
 
-  // Scroll spy
+  // Scroll spy. Section tops are measured inside the scroller (offsetTop is
+  // relative to the page, which put every link a header's height off). A
+  // clicked link stays lit while the scroll it started settles, so the last
+  // sections, which can't reach the top, still light up.
   const scrollRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState<SectionId>('openings')
+  const pinnedRef = useRef<SectionId | null>(null)
   useLayoutEffect(() => {
     const root = scrollRef.current
     if (!root) return
+    let settle: ReturnType<typeof setTimeout> | undefined
     const onScroll = () => {
-      const headers = Array.from(
-        root.querySelectorAll<HTMLElement>('[data-section]')
-      )
+      if (pinnedRef.current) {
+        clearTimeout(settle)
+        settle = setTimeout(() => { pinnedRef.current = null }, 150)
+        return
+      }
+      // Only the sections the menu lists: Screening, AI screen and
+      // Notifications read as part of the one above them.
+      const headers = Array.from(root.querySelectorAll<HTMLElement>('[data-section]'))
+        .filter((h) => NAV_CONFIG.some((n) => n.id === h.dataset.section))
       const top = root.scrollTop + 100
       let current: SectionId = 'openings'
       for (const h of headers) {
-        if (h.offsetTop <= top) current = (h.dataset.section as SectionId) || current
+        if (sectionTop(root, h) <= top) current = (h.dataset.section as SectionId) || current
+      }
+      // At the very bottom the last section is the one being read.
+      if (headers.length && root.scrollTop + root.clientHeight >= root.scrollHeight - 2) {
+        current = (headers[headers.length - 1].dataset.section as SectionId) || current
       }
       setActive(current)
     }
+    // Wheel, touch or keys mean the reader took over from a clicked link.
+    const release = () => { pinnedRef.current = null }
     root.addEventListener('scroll', onScroll, { passive: true })
+    root.addEventListener('wheel', release, { passive: true })
+    root.addEventListener('touchstart', release, { passive: true })
+    root.addEventListener('keydown', release)
     onScroll()
-    return () => root.removeEventListener('scroll', onScroll)
+    return () => {
+      clearTimeout(settle)
+      root.removeEventListener('scroll', onScroll)
+      root.removeEventListener('wheel', release)
+      root.removeEventListener('touchstart', release)
+      root.removeEventListener('keydown', release)
+    }
   }, [])
 
   // Deep link support: /jobs/:id/setup#hiring-team lands on the section.
@@ -212,8 +243,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   useEffect(() => {
     const hash = (typeof window !== 'undefined' ? window.location.hash : '').replace('#', '')
     if (!hash) return
-    const valid: SectionId[] = ['openings', 'hiring-plan', 'hiring-team', 'offer-approval']
-    if (!valid.includes(hash as SectionId)) return
+    if (!NAV_CONFIG.some((n) => n.id === hash)) return
     const t = setTimeout(() => {
       scrollTo(hash as SectionId)
       setHighlightSection(hash as SectionId)
@@ -240,7 +270,13 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     const root = scrollRef.current
     if (!root) return
     const el = root.querySelector<HTMLElement>(`[data-section="${id}"]`)
-    if (el) root.scrollTo({ top: Math.max(0, el.offsetTop - 16), behavior: 'smooth' })
+    if (!el) return
+    const target = Math.min(Math.max(0, sectionTop(root, el) - 16), root.scrollHeight - root.clientHeight)
+    setActive(id)
+    // Already there: nothing will scroll, so nothing would release the pin.
+    pinnedRef.current = Math.abs(target - root.scrollTop) > 1 ? id : null
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    root.scrollTo({ top: target, behavior: still ? 'auto' : 'smooth' })
   }
 
   // Quick-link handlers
@@ -774,6 +810,7 @@ function NavItem({
     <button
       type="button"
       onClick={onClick}
+      aria-current={active ? 'location' : undefined}
       className={cn(
         'group w-full flex items-center text-left font-inter transition-colors',
         active ? '' : 'hover:bg-[rgba(13,13,9,0.05)]'
