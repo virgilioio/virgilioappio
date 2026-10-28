@@ -66,7 +66,7 @@ const MAX = 3000
 const GROUPS = ['Candidates', 'Interviews', 'Offers', 'Jobs', 'People'] as const
 /** Who a DM-only event goes to, as the Send to row and its note say it. */
 const DM_ONLY: Partial<Record<SlackRole, { who: string; note: string }>> = {
-  member: { who: 'The team member', note: 'Profile reminders only go to the person, by DM.' },
+  member: { who: 'The team member', note: 'Profile reminders and Google alerts only go to the person, by DM.' },
   approver: { who: 'The offer approver, on their turn', note: 'Approval reminders only go to the approver whose turn it is, by DM.' },
   interviewer: { who: 'The interviewer who owes it', note: 'Scorecard reminders only go to the interviewer, by DM.' },
 }

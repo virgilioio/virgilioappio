@@ -9,7 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Briefcase, CalendarClock, CalendarX2, CheckCircle2, ClipboardCheck, ClipboardList, FileCheck2, FileSignature,
-  FileX2, Hourglass, Inbox, ListTodo, MoveRight, PartyPopper, Send, UserPlus, UserX, XCircle, type LucideIcon,
+  FileX2, Hourglass, Inbox, ListTodo, MailWarning, MoveRight, PartyPopper, Send, UserPlus, UserX, XCircle, type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import type { Json } from '@/integrations/supabase/types'
@@ -21,7 +21,7 @@ export type SlackEvent =
   | 'interview.scheduled' | 'interview.cancelled' | 'scorecard.submitted' | 'scorecard.due'
   | 'offer.approval_requested' | 'offer.approval_waiting' | 'offer.approved' | 'offer.sent' | 'offer.signed' | 'offer.declined'
   | 'job.opened' | 'job.closed'
-  | 'member.joined' | 'member.profile_incomplete'
+  | 'member.joined' | 'member.profile_incomplete' | 'member.google_broken'
 
 export type SlackDetail =
   | 'who' | 'candidate' | 'job' | 'client' | 'department' | 'stage' | 'previous_stage'
@@ -131,6 +131,11 @@ export const SLACK_EVENTS: SlackEventDef[] = [
     repeats: { options: [3, 5, 7, 14], initial: 7, from: 'From the day they join, until their profile is complete.' },
     details: ['member', 'missing', 'progress', 'my_profile_link'], roles: ['member'],
     message: 'Hey {member}! 👋 Your Gio profile is {progress}. Still to add: {missing}. It only takes a few minutes, and it helps the whole team ✨' },
+  // 2026-10-28: the moment Gio notices someone's Gmail or Calendar needs reconnecting.
+  { key: 'member.google_broken', group: 'People', label: 'Someone’s Google stops working', when: 'When someone’s Google stops working', icon: MailWarning,
+    people: true, dmOnly: 'member',
+    details: ['member', 'my_profile_link'], roles: ['member'],
+    message: 'Hi {member}! 👋 Your Google Workspace stopped working in Gio, so emails to candidates and your calendar are on hold. Reconnecting takes a minute.' },
 ]
 
 export const SLACK_EVENT = Object.fromEntries(SLACK_EVENTS.map((e) => [e.key, e])) as Record<SlackEvent, SlackEventDef>
@@ -177,7 +182,8 @@ export function linkLabel(key: SlackDetail, event: SlackEvent | null | undefined
       return event === 'scorecard.submitted' ? 'Read the scorecard' : event === 'scorecard.due' ? 'Open your scorecard' : 'Open the scorecards'
     case 'job_link': return 'Open the job'
     case 'pipeline_link': return 'See the pipeline'
-    case 'my_profile_link': return event === 'member.profile_incomplete' ? 'Finish your profile' : 'Open your profile'
+    case 'my_profile_link':
+      return event === 'member.profile_incomplete' ? 'Finish your profile' : event === 'member.google_broken' ? 'Reconnect Google' : 'Open your profile'
     default: return SLACK_DETAILS[key].label
   }
 }
@@ -188,6 +194,7 @@ export function openLabel(event: SlackEvent | null | undefined, dm = false): { l
   switch (event) {
     case 'member.joined': return dm ? { label: 'Open your profile', where: 'My profile' } : null
     case 'member.profile_incomplete': return { label: 'Finish your profile', where: 'the first card still to fill in on My profile' }
+    case 'member.google_broken': return { label: 'Reconnect Google', where: 'their Google Workspace card on My profile' }
     case 'offer.approval_requested': return { label: 'Review the offer', where: 'the approval, at whose turn it is' }
     case 'offer.approval_waiting': return { label: 'Review the offer', where: 'their Approve / Decline row' }
     case 'scorecard.due': return { label: 'Open your scorecard', where: 'their own scorecard, ready to fill in' }

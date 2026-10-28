@@ -47,6 +47,7 @@ const REMINDER_STARTERS: Array<{ event: SlackEvent; title: string; body: string 
 const PEOPLE_STARTERS: Array<{ event: SlackEvent; title: string; body: string }> = [
   { event: 'member.joined', title: 'Welcome new teammates', body: 'DM them a welcome the day they join Gio.' },
   { event: 'member.profile_incomplete', title: 'Profile reminders', body: 'Nudge them every few days until their profile is complete.' },
+  { event: 'member.google_broken', title: 'Google alerts', body: 'DM them the moment their Google stops working, so they reconnect.' },
 ]
 
 /** Disconnect Slack? (the card's ⋯ and the sheet's Settings ask the same). */
@@ -227,7 +228,7 @@ export function SlackSheet({
                       </FormSection>
                     )}
                     {(people.length > 0 || (isAdmin && working)) && (
-                      <FormSection title="People" subtitle="Virgilio’s own team, never external users: welcomes and profile reminders." bare>
+                      <FormSection title="People" subtitle="Virgilio’s own team, never external users: welcomes, profile reminders and Google alerts." bare>
                         {people.length > 0 ? (
                           <SlackAutomationList
                             tenantId={tenantId}
@@ -239,7 +240,7 @@ export function SlackSheet({
                             onDuplicate={(row) => newOne(row)}
                           />
                         ) : (
-                          <StarterCards starters={PEOPLE_STARTERS} columns={2} onPick={(e) => newOne(starterRow(e))} />
+                          <StarterCards starters={PEOPLE_STARTERS} columns={3} onPick={(e) => newOne(starterRow(e))} />
                         )}
                       </FormSection>
                     )}
