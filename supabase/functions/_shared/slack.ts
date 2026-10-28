@@ -289,7 +289,9 @@ export function messageLinks(ctx: MessageContext): Record<string, Link | null> {
     my_profile_link: has(ctx, 'member.')
       ? (ctx.event === 'member.profile_incomplete'
         ? { url: `${APP_URL}/me${missing ? `?focus=${missing}` : ''}`, label: 'Finish your profile' }
-        : { url: `${APP_URL}/me`, label: 'Open your profile' })
+        : ctx.event === 'member.google_broken'
+          ? { url: `${APP_URL}/me?focus=card-google`, label: 'Reconnect Google' }
+          : { url: `${APP_URL}/me`, label: 'Open your profile' })
       : null,
   }
 }

@@ -147,6 +147,20 @@ describe('deliver', () => {
     expect(posts[0].body.get('blocks')).toContain('https://app.gogio.io/me?focus=card-personal|Finish your profile')
   })
 
+  it('DMs the person when their Google stops working, linking to their Google card', async () => {
+    const calls = stubSlack({ 'sofia@virgilio.tech': 'USOF' })
+    await deliver('xoxb', 'Hi {member}! Your Google Workspace stopped working in Gio.', [{ type: 'role', role: 'member' }], {
+      event: 'member.google_broken',
+      member: { name: 'Sofía Ramírez', email: 'sofia@virgilio.tech' },
+      missing: ['google'],
+      progress: '6 of 7 done',
+      link: '/me',
+    })
+    const posts = calls.filter((c) => c.method === 'chat.postMessage')
+    expect(posts.map((c) => c.body.get('channel'))).toEqual(['D-USOF'])
+    expect(posts[0].body.get('blocks')).toContain('https://app.gogio.io/me?focus=card-google|Reconnect Google')
+  })
+
   it('sends the interviewer to their own scorecard and everyone else to the scorecards', async () => {
     const calls = stubSlack({ 'jurre@virgilio.tech': 'UJUR' })
     await deliver('xoxb', 'x', [{ type: 'channel', id: 'C1', name: 'hiring' }, { type: 'role', role: 'interviewer' }],
