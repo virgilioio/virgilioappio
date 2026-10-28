@@ -137,13 +137,13 @@ describe('deliver', () => {
       event: 'member.profile_incomplete',
       member: { name: 'Sofía Ramírez', email: 'sofia@virgilio.tech' },
       missing: ['birthday', 'tax', 'bank'],
-      progress: '3 of 6 done',
+      progress: '3 of 7 done',
       link: '/me',
     }
     await deliver('xoxb', 'Hi {member}! Your profile is {progress}. Still to add: {missing}.', [{ type: 'role', role: 'member' }], ctx2)
     const posts = calls.filter((c) => c.method === 'chat.postMessage')
     expect(posts.map((c) => c.body.get('channel'))).toEqual(['D-USOF'])
-    expect(posts[0].body.get('blocks')).toContain('Hi <@USOF>! Your profile is 3 of 6 done. Still to add: birthday, tax ID and bank details.')
+    expect(posts[0].body.get('blocks')).toContain('Hi <@USOF>! Your profile is 3 of 7 done. Still to add: birthday, tax ID and bank details.')
     expect(posts[0].body.get('blocks')).toContain('https://app.gogio.io/me?focus=card-personal|Finish your profile')
   })
 
@@ -210,6 +210,7 @@ describe('links', () => {
 describe('missingSentence', () => {
   it('names the cards the way the profile does', () => {
     expect(missingSentence(['you'])).toBe('photo and title')
+    expect(missingSentence(['you', 'google'])).toBe('photo and title and Google Workspace')
     expect(missingSentence(['personal', 'shipping'])).toBe('country and contact and shipping address')
     expect(missingSentence([])).toBe(null)
   })

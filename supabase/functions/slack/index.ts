@@ -246,7 +246,7 @@ serve(withRequestCors(async (req) => {
       waiting: '2 days',
       member: meP,
       missing: ['birthday', 'tax', 'bank'],
-      progress: '3 of 6 done',
+      progress: '3 of 7 done',
     }
     // People messages are about a team member, not a job: they open their profile.
     if (event.startsWith('member.')) Object.assign(ctx, { job: null, candidate: null, link: '/me' })

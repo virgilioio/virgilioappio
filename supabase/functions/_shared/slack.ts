@@ -173,7 +173,7 @@ export interface MessageContext {
   /** This message is an approver's turn (it goes only to them). */
   turn?: boolean
   /** People: the team member it's about, what their profile still needs
-   * (card keys, never anything in them), "4 of 6 done", and where it opens. */
+   * (card keys, never anything in them), "4 of 7 done", and where it opens. */
   member?: Person | null
   missing?: string[]
   progress?: string | null
@@ -183,6 +183,7 @@ export interface MessageContext {
 /** A profile's cards in a sentence, as My profile's To do card names them. */
 const MISSING_LABEL: Record<string, string> = {
   you: 'photo and title',
+  google: 'Google Workspace',
   personal: 'country and contact',
   birthday: 'birthday',
   tax: 'tax ID',
@@ -242,6 +243,7 @@ export type Audience = 'everyone' | 'interviewer' | 'member'
 /** My profile's card for each profile check (as `useProfileChecks` links them). */
 const MISSING_CARD: Record<string, string> = {
   you: 'card-you',
+  google: 'card-google',
   personal: 'card-personal',
   birthday: 'card-personal',
   tax: 'card-tax-ids',

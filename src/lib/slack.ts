@@ -156,7 +156,7 @@ export const SLACK_DETAILS: Record<SlackDetail, { label: string; example: string
   waiting: { label: 'Waiting for', example: '2 days' },
   member: { label: 'Team member', example: 'Sofía Ramírez' },
   missing: { label: 'What’s missing', example: 'birthday, tax ID and bank details' },
-  progress: { label: 'Progress', example: '3 of 6 done' },
+  progress: { label: 'Progress', example: '3 of 7 done' },
   profile_link: { label: 'Link to their profile', example: 'Opens the candidate in this job' },
   offer_link: { label: 'Link to the offer', example: 'Opens the Offer tab' },
   scorecard_link: { label: 'Link to the scorecards', example: 'Opens the Scorecards tab' },
