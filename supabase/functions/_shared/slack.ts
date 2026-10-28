@@ -168,6 +168,29 @@ export interface MessageContext {
   approval_step?: string | null
   /** This message is an approver's turn (it goes only to them). */
   turn?: boolean
+  /** People: the team member it's about, what their profile still needs
+   * (card keys, never anything in them), "4 of 6 done", and where it opens. */
+  member?: Person | null
+  missing?: string[]
+  progress?: string | null
+  link?: string | null
+}
+
+/** A profile's cards in a sentence, as My profile's To do card names them. */
+const MISSING_LABEL: Record<string, string> = {
+  you: 'photo and title',
+  personal: 'country and contact',
+  birthday: 'birthday',
+  tax: 'tax ID',
+  bank: 'bank details',
+  shipping: 'shipping address',
+}
+
+/** "birthday, tax ID and bank details". */
+export function missingSentence(keys: string[] | undefined): string | null {
+  const names = (keys ?? []).map((k) => MISSING_LABEL[k] ?? k.replace(/_/g, ' '))
+  if (!names.length) return null
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
 /** Escapes text for Slack mrkdwn (&, <, >). */
@@ -232,6 +255,9 @@ export function detailValues(ctx: MessageContext, mention: MentionOf): Record<st
     opening: ctx.opening ? esc(ctx.opening) : null,
     approver: people(ctx.approvers, mention),
     approval_step: ctx.approval_step ? esc(ctx.approval_step) : null,
+    member: ctx.member ? (mention(ctx.member) ?? esc(ctx.member.name)) : null,
+    missing: ctx.missing ? esc(missingSentence(ctx.missing) ?? '') || null : null,
+    progress: ctx.progress ? esc(ctx.progress) : null,
   }
 }
 
@@ -279,7 +305,7 @@ export function plainText(mrkdwn: string): string {
 
 /** The message: the text, then a quiet line with where it came from. */
 export function messageBlocks(text: string, ctx: MessageContext, test = false): unknown[] {
-  const link = candidateUrl(ctx) ?? jobUrl(ctx) ?? APP_URL
+  const link = candidateUrl(ctx) ?? jobUrl(ctx) ?? (ctx.link ? `${APP_URL}${ctx.link}` : APP_URL)
   const where = [ctx.job?.title, ctx.job?.client].filter(Boolean).map((s) => esc(String(s))).join(` ${DOT} `)
   return [
     { type: 'section', text: { type: 'mrkdwn', text: text.slice(0, 3000) } },
@@ -318,7 +344,7 @@ export function makeResolver(token: string) {
 export type Destination =
   | { type: 'channel'; id: string; name?: string }
   | { type: 'user'; id: string; name?: string }
-  | { type: 'role'; role: 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'approver' }
+  | { type: 'role'; role: 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'approver' | 'member' }
 
 export const ROLE_LABEL: Record<string, string> = {
   recruiter: 'the Recruiter',
@@ -326,6 +352,7 @@ export const ROLE_LABEL: Record<string, string> = {
   hiring_manager: 'the Hiring manager',
   interviewer: 'the interviewer',
   approver: 'the offer approver',
+  member: 'the team member',
 }
 
 export function peopleForRole(ctx: MessageContext, role: string): Person[] {
@@ -335,6 +362,7 @@ export function peopleForRole(ctx: MessageContext, role: string): Person[] {
     case 'hiring_manager': return ctx.hiring_managers ?? []
     case 'interviewer': return ctx.interviewer ? [ctx.interviewer] : []
     case 'approver': return ctx.approvers ?? []
+    case 'member': return ctx.member ? [ctx.member] : []
     default: return []
   }
 }
@@ -401,7 +429,7 @@ export async function deliver(
   const everyone: Person[] = [
     ctx.actor, ctx.interviewer,
     ...(ctx.recruiters ?? []), ...(ctx.sourcers ?? []), ...(ctx.hiring_managers ?? []),
-    ...(ctx.approvers ?? []),
+    ...(ctx.approvers ?? []), ctx.member,
   ].filter(Boolean) as Person[]
   await resolver.load(everyone)
   const text = renderTemplate(template, detailValues(ctx, (p) => resolver.mention(p)))
@@ -426,7 +454,11 @@ export async function deliver(
         missing.push({
           to: ROLE_LABEL[d.role],
           ok: true,
-          problem: d.role === 'approver' ? 'Nobody has a turn to approve.' : `This job has no ${ROLE_LABEL[d.role].replace('the ', '')}.`,
+          problem: d.role === 'approver'
+            ? 'Nobody has a turn to approve.'
+            : d.role === 'member'
+              ? 'That team member is no longer here.'
+              : `This job has no ${ROLE_LABEL[d.role].replace('the ', '')}.`,
         })
       }
       for (const p of list) {

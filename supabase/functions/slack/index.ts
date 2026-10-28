@@ -242,7 +242,12 @@ serve(withRequestCors(async (req) => {
       opening: 'REQ-0001',
       approvers: [meP],
       approval_step: 'Step 1 of 2',
+      member: meP,
+      missing: ['birthday', 'tax', 'bank'],
+      progress: '3 of 6 done',
     }
+    // People messages are about a team member, not a job: they open their profile.
+    if (event.startsWith('member.')) Object.assign(ctx, { job: null, candidate: null, link: '/me' })
     let testTo: string | null = null
     if (meP.email) {
       const r = await slackApi(token, 'users.lookupByEmail', { email: meP.email })

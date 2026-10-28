@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { deliver, destinationsFor, detailValues, esc, plainText, renderTemplate, type Destination, type MessageContext } from '../slack'
+import { deliver, destinationsFor, detailValues, messageBlocks, missingSentence, esc, plainText, renderTemplate, type Destination, type MessageContext } from '../slack'
 
 const ctx: MessageContext = {
   candidate: { id: 'c1', name: 'Ana <Torres> & Co' },
@@ -120,5 +120,33 @@ describe('deliver', () => {
 
   it('a test goes everywhere', () => {
     expect(destinationsFor(mixed, approval, true)).toEqual(mixed)
+  })
+
+  it('DMs the team member their profile reminder, linking to their profile', async () => {
+    const calls = stubSlack({ 'sofia@virgilio.tech': 'USOF' })
+    const ctx2: MessageContext = {
+      member: { name: 'Sofía Ramírez', email: 'sofia@virgilio.tech' },
+      missing: ['birthday', 'tax', 'bank'],
+      progress: '3 of 6 done',
+      link: '/me',
+    }
+    await deliver('xoxb', 'Hi {member}! Your profile is {progress}. Still to add: {missing}.', [{ type: 'role', role: 'member' }], ctx2)
+    const posts = calls.filter((c) => c.method === 'chat.postMessage')
+    expect(posts.map((c) => c.body.get('channel'))).toEqual(['D-USOF'])
+    expect(posts[0].body.get('blocks')).toContain('Hi <@USOF>! Your profile is 3 of 6 done. Still to add: birthday, tax ID and bank details.')
+    expect(posts[0].body.get('blocks')).toContain('https://app.gogio.io/me|Open in Gio')
+  })
+})
+
+describe('missingSentence', () => {
+  it('names the cards the way the profile does', () => {
+    expect(missingSentence(['you'])).toBe('photo and title')
+    expect(missingSentence(['personal', 'shipping'])).toBe('country and contact and shipping address')
+    expect(missingSentence([])).toBe(null)
+  })
+  it('a People message has no job line', () => {
+    const blocks = JSON.stringify(messageBlocks('x', { link: '/me' }))
+    expect(blocks).toContain('Gio ATS')
+    expect(blocks).toContain('/me|Open in Gio')
   })
 })
