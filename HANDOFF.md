@@ -42,13 +42,11 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Waiting for Apply 2026-10-28 (ATS) — Slack: People (welcome + profile reminders)
+## Done 2026-10-28 (ATS) — Slack: People (welcome + profile reminders) — applied
 
 - **What it is:** a People group in Settings › Integrations › Slack, for Virgilio's own team (never external users), admins only: "Someone joins Gio ATS" (a welcome once, to the team member by DM and any channel) and "A profile is still incomplete" (only to the team member, by DM, every 3/5/7/14 days from the day they join, until the six profile checks are done or they leave). Details `{member}`, `{missing}` ("birthday, tax ID and bank details"), `{progress}` ("3 of 6 done"); the link opens their profile.
-- **On Apply, in this order:**
-  1. **Desktop chat (Allan):** `supabase/migrations/20261028130000_slack_event_rule.sql` swaps the table's event check for `slack_event_known()` (needs `drop constraint`, so not from a cloud chat). Apply the file exactly, keep the version prefix.
-  2. **Cloud:** `20261028130100_slack_people.sql` (rename to the recorded version), test 73 live, types, redeploy `slack` and `slack-deliver`.
-- **Dry run:** all People checks pass. Four older offer-approver checks miscounted because a real approver automation now listens too; they count only the test's own automations now (to be confirmed in the live run).
+- **Applied:** the event rule from a desktop chat (`20261028130000_slack_event_rule`: the table's check now asks `slack_event_known()`, so a new event is a `create or replace` of that function), then `20261028022907_slack_people` from the cloud (recorded before the event rule's version; harmless, the file is named to match). All 10 function bodies match the file (md5), test 73 live 59 of 59 ok (rolled back), pg_cron `slack-profile-reminders` at 16:07 UTC (10:07 in Mexico City) and trigger `members_z_slack` in place, types regenerated. `slack` and `slack-deliver` redeployed (v6, hand-deployed from git); both answer an unsigned call with 401.
+- **Turning on a reminder:** the first daily run DMs everyone already past their N days with an incomplete profile, once each, then every N days after. A welcome only goes to people who join (or are reactivated) after the automation exists.
 
 ## Done 2026-10-28 (ATS) — Slack: Offer approver — applied
 
