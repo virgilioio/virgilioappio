@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Lock, Send, Users } from 'lucide-react'
+import { Check, Link2, Lock, Send, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import FormSheet from '@/components/references/FormSheet'
 import FormSection from '@/components/references/FormSection'
@@ -11,6 +11,7 @@ import { UnsavedGuard } from '@/components/ui/unsaved-guard'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { shakeFirstInvalid } from '@/lib/motion'
 import {
+  LINK_DETAILS,
   REMIND_EVERY,
   SLACK_DETAILS,
   SLACK_EVENT,
@@ -418,8 +419,9 @@ export function SlackAutomationSheet({
               key={k}
               type="button"
               onClick={() => insertRef.current?.(`{${k}}`)}
-              className="gio-pressable h-6 rounded-md bg-[#F1F0EC] px-2 font-inter text-[11.5px] text-text-secondary transition-colors duration-hover hover:bg-[#E9E7E1] hover:text-text-primary"
+              className="gio-pressable inline-flex h-6 items-center gap-1 rounded-md bg-[#F1F0EC] px-2 font-inter text-[11.5px] text-text-secondary transition-colors duration-hover hover:bg-[#E9E7E1] hover:text-text-primary"
             >
+              {LINK_DETAILS.has(k) && <Link2 aria-hidden className="h-3 w-3" strokeWidth={2} />}
               {SLACK_DETAILS[k].label}
             </button>
           ))}
@@ -427,7 +429,14 @@ export function SlackAutomationSheet({
       </FormSection>
 
       <FormSection title="Preview" subtitle="With example details." bare>
-        <SlackPreview message={draft} picked={picked} details={def.details} people={def.people} />
+        <SlackPreview
+          message={draft}
+          picked={picked}
+          details={def.details}
+          people={def.people}
+          event={event}
+          dm={destinations.length > 0 && destinations.every((d) => d.type === 'role' && (d.role === 'interviewer' || d.role === 'member'))}
+        />
       </FormSection>
 
       <FormSection title="Name" subtitle={`Optional. Shown in the list instead of “${def.when}”.`}>

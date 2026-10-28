@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Braces } from 'lucide-react'
+import { Braces, Link2 } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { caretRect } from '@/components/candidates/comments/MentionComposer'
 import { PersonAvatar } from '@/components/candidates/comments/PersonAvatar'
 import { leave } from '@/lib/motion'
+import { cn } from '@/lib/utils'
 import { matchPeople, mentionQuery } from '@/lib/mentions'
-import { SLACK_DETAILS, slackTagsIn, type SlackDetail, type SlackTag, type SlackUser } from '@/lib/slack'
+import { LINK_DETAILS, SLACK_DETAILS, slackTagsIn, type SlackDetail, type SlackTag, type SlackUser } from '@/lib/slack'
 
 /**
  * The Slack message box (2026-10-27): the comment box's behaviour with two
@@ -314,42 +315,48 @@ function MessageMenu({
           </p>
         ) : (
           <>
-            <p className="px-3 pb-1 pt-1.5 font-inter text-[11px] font-medium text-text-tertiary">
-              {kind === 'people' ? 'People in your Slack' : 'Details of this event'}
-            </p>
+            {(kind === 'people' || !(rows[0].kind === 'detail' && LINK_DETAILS.has(rows[0].id))) && (
+              <p className="px-3 pb-1 pt-1.5 font-inter text-[11px] font-medium text-text-tertiary">
+                {kind === 'people' ? 'People in your Slack' : 'Details of this event'}
+              </p>
+            )}
             {rows.map((r, i) => (
-              <div
-                key={r.id}
-                id={`slack-opt-${r.id}`}
-                role="option"
-                aria-selected={i === active}
-                className="gio-slash-row !h-[38px]"
-                onMouseEnter={() => onHover(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  onPick(r)
-                }}
-              >
-                {r.kind === 'person' ? (
-                  <>
-                    <PersonAvatar name={r.user.name} url={r.user.avatar} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12.5px] leading-[1.25]">{r.user.name}</span>
-                      <span className="block truncate text-[11px] font-normal leading-[1.25] text-text-tertiary">@{r.user.handle}</span>
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-[#F1F0EC] text-[#5A6072]">
-                      <Braces className="h-3.5 w-3.5" strokeWidth={2} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12.5px] leading-[1.25]">{SLACK_DETAILS[r.id].label}</span>
-                      <span className="block truncate text-[11px] font-normal leading-[1.25] text-text-tertiary">e.g. {SLACK_DETAILS[r.id].example}</span>
-                    </span>
-                  </>
+              <Fragment key={r.id}>
+                {r.kind === 'detail' && LINK_DETAILS.has(r.id) && !(rows[i - 1]?.kind === 'detail' && LINK_DETAILS.has(rows[i - 1].id as SlackDetail)) && (
+                  <p className={cn('px-3 pb-1 font-inter text-[11px] font-medium text-text-tertiary', i > 0 ? 'pt-2.5' : 'pt-1.5')}>Links</p>
                 )}
-              </div>
+                <div
+                  id={`slack-opt-${r.id}`}
+                  role="option"
+                  aria-selected={i === active}
+                  className="gio-slash-row !h-[38px]"
+                  onMouseEnter={() => onHover(i)}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    onPick(r)
+                  }}
+                >
+                  {r.kind === 'person' ? (
+                    <>
+                      <PersonAvatar name={r.user.name} url={r.user.avatar} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[12.5px] leading-[1.25]">{r.user.name}</span>
+                        <span className="block truncate text-[11px] font-normal leading-[1.25] text-text-tertiary">@{r.user.handle}</span>
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-[#F1F0EC] text-[#5A6072]">
+                        {LINK_DETAILS.has(r.id) ? <Link2 className="h-3.5 w-3.5" strokeWidth={2} /> : <Braces className="h-3.5 w-3.5" strokeWidth={2} />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[12.5px] leading-[1.25]">{SLACK_DETAILS[r.id].label}</span>
+                        <span className="block truncate text-[11px] font-normal leading-[1.25] text-text-tertiary">{LINK_DETAILS.has(r.id) ? SLACK_DETAILS[r.id].example : <>e.g. {SLACK_DETAILS[r.id].example}</>}</span>
+                      </span>
+                    </>
+                  )}
+                </div>
+              </Fragment>
             ))}
           </>
         )}

@@ -28,6 +28,8 @@ export type SlackDetail =
   | 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'interview_time'
   | 'rating' | 'reason' | 'opening' | 'approver' | 'approval_step'
   | 'member' | 'missing' | 'progress'
+  // Links (2026-10-28): each reads as a labelled link in Slack.
+  | 'profile_link' | 'offer_link' | 'scorecard_link' | 'job_link' | 'pipeline_link' | 'my_profile_link'
 
 export type SlackRole = 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'approver' | 'member'
 
@@ -58,58 +60,63 @@ export interface SlackEventDef {
 
 const JOB_PEOPLE: SlackDetail[] = ['recruiter', 'sourcer', 'hiring_manager']
 const CANDIDATE: SlackDetail[] = ['who', 'candidate', 'job', 'client', 'department', 'stage', ...JOB_PEOPLE]
+// The links each kind of event can carry (the server's messageLinks).
+const JOB_LINKS: SlackDetail[] = ['job_link', 'pipeline_link']
+const CANDIDATE_LINKS: SlackDetail[] = ['profile_link', ...JOB_LINKS]
+const SCORECARD_LINKS: SlackDetail[] = ['profile_link', 'scorecard_link', ...JOB_LINKS]
+const OFFER_LINKS: SlackDetail[] = ['profile_link', 'offer_link', ...JOB_LINKS]
 const TEAM: SlackRole[] = ['recruiter', 'sourcer', 'hiring_manager']
 
 export const SLACK_EVENTS: SlackEventDef[] = [
   { key: 'candidate.applied', group: 'Candidates', label: 'Someone applies', when: 'When someone applies', icon: Inbox,
-    details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE], roles: TEAM,
+    details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...CANDIDATE_LINKS], roles: TEAM,
     message: '{candidate} applied to {job}.' },
   { key: 'candidate.stage_changed', group: 'Candidates', label: 'A candidate moves stage', when: 'When a candidate moves stage', icon: MoveRight,
-    details: [...CANDIDATE, 'previous_stage'], roles: TEAM, stages: true,
+    details: [...CANDIDATE, 'previous_stage', ...CANDIDATE_LINKS], roles: TEAM, stages: true,
     message: '{who} moved {candidate} to {stage} on {job}.' },
   { key: 'candidate.hired', group: 'Candidates', label: 'A candidate is hired', when: 'When a candidate is hired', icon: PartyPopper,
-    details: [...CANDIDATE, 'opening'], roles: TEAM,
+    details: [...CANDIDATE, 'opening', ...CANDIDATE_LINKS], roles: TEAM,
     message: '{who} just hired {candidate} for {client} ({job}).' },
   { key: 'candidate.rejected', group: 'Candidates', label: 'A candidate is rejected', when: 'When a candidate is rejected', icon: UserX,
-    details: [...CANDIDATE, 'reason'], roles: TEAM, stages: true,
+    details: [...CANDIDATE, 'reason', ...CANDIDATE_LINKS], roles: TEAM, stages: true,
     message: '{candidate} was rejected from {job}: {reason}.' },
   { key: 'interview.scheduled', group: 'Interviews', label: 'An interview is scheduled', when: 'When an interview is scheduled', icon: CalendarClock,
-    details: [...CANDIDATE, 'interviewer', 'interview_time'], roles: [...TEAM, 'interviewer'], stages: true,
+    details: [...CANDIDATE, 'interviewer', 'interview_time', ...SCORECARD_LINKS], roles: [...TEAM, 'interviewer'], stages: true,
     message: '{who} scheduled {candidate} with {interviewer} for {interview_time} ({job}).' },
   { key: 'interview.cancelled', group: 'Interviews', label: 'An interview is cancelled', when: 'When an interview is cancelled', icon: CalendarX2,
-    details: [...CANDIDATE, 'interviewer', 'interview_time'], roles: [...TEAM, 'interviewer'], stages: true,
+    details: [...CANDIDATE, 'interviewer', 'interview_time', ...SCORECARD_LINKS], roles: [...TEAM, 'interviewer'], stages: true,
     message: 'The interview with {candidate} on {interview_time} was cancelled ({job}).' },
   { key: 'scorecard.submitted', group: 'Interviews', label: 'A scorecard is submitted', when: 'When a scorecard is submitted', icon: ClipboardCheck,
-    details: [...CANDIDATE, 'rating'], roles: TEAM, stages: true,
+    details: [...CANDIDATE, 'rating', ...SCORECARD_LINKS], roles: TEAM, stages: true,
     message: '{who} submitted a scorecard for {candidate}: {rating}.' },
   { key: 'offer.approval_requested', group: 'Offers', label: 'An offer needs approval', when: 'When an offer is sent for approval', icon: FileCheck2, offer: true,
-    details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE, 'approver', 'approval_step'],
+    details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE, 'approver', 'approval_step', ...OFFER_LINKS],
     roles: [...TEAM, 'approver'],
     message: "{who} sent {candidate}'s offer for {job} for approval. Next to approve: {approver}." },
   { key: 'offer.approved', group: 'Offers', label: 'An offer is approved', when: 'When an offer is approved', icon: CheckCircle2, offer: true,
-    details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE], roles: TEAM,
+    details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...OFFER_LINKS], roles: TEAM,
     message: "{candidate}'s offer for {job} is approved." },
   { key: 'offer.sent', group: 'Offers', label: 'An offer is sent to sign', when: 'When an offer is sent to sign', icon: Send, offer: true,
-    details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE], roles: TEAM,
+    details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...OFFER_LINKS], roles: TEAM,
     message: '{who} sent {candidate} their offer for {job}.' },
   { key: 'offer.signed', group: 'Offers', label: 'An offer is signed', when: 'When an offer is signed', icon: FileSignature, offer: true,
-    details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE], roles: TEAM,
+    details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...OFFER_LINKS], roles: TEAM,
     message: '{candidate} signed their offer for {job}.' },
   { key: 'offer.declined', group: 'Offers', label: 'An offer is declined', when: 'When an offer is declined', icon: FileX2, offer: true,
-    details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE], roles: TEAM,
+    details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...OFFER_LINKS], roles: TEAM,
     message: '{candidate} declined their offer for {job}.' },
   { key: 'job.opened', group: 'Jobs', label: 'A job opens', when: 'When a job opens', icon: Briefcase,
-    details: ['who', 'job', 'client', 'department', ...JOB_PEOPLE], roles: TEAM,
+    details: ['who', 'job', 'client', 'department', ...JOB_PEOPLE, ...JOB_LINKS], roles: TEAM,
     message: '{who} opened {job} for {client}.' },
   { key: 'job.closed', group: 'Jobs', label: 'A job closes', when: 'When a job closes', icon: XCircle,
-    details: ['who', 'job', 'client', 'department', ...JOB_PEOPLE], roles: TEAM,
+    details: ['who', 'job', 'client', 'department', ...JOB_PEOPLE, ...JOB_LINKS], roles: TEAM,
     message: '{job} for {client} is closed.' },
   { key: 'member.joined', group: 'People', label: 'Someone joins Gio ATS', when: 'When someone joins Gio ATS', icon: UserPlus, people: true,
-    details: ['member'], roles: ['member'],
+    details: ['member', 'my_profile_link'], roles: ['member'],
     message: 'Welcome to Gio, {member}! 👋🎉 We’re so happy you’re here. Start with your profile: it only takes a few minutes ✨' },
   { key: 'member.profile_incomplete', group: 'People', label: 'A profile is still incomplete', when: 'When a profile is still incomplete', icon: ListTodo,
     people: true, dmOnly: true, repeats: true,
-    details: ['member', 'missing', 'progress'], roles: ['member'],
+    details: ['member', 'missing', 'progress', 'my_profile_link'], roles: ['member'],
     message: 'Hey {member}! 👋 Your Gio profile is {progress}. Still to add: {missing}. It only takes a few minutes, and it helps the whole team ✨' },
 ]
 
@@ -136,6 +143,48 @@ export const SLACK_DETAILS: Record<SlackDetail, { label: string; example: string
   member: { label: 'Team member', example: 'Sofía Ramírez' },
   missing: { label: 'What’s missing', example: 'birthday, tax ID and bank details' },
   progress: { label: 'Progress', example: '3 of 6 done' },
+  profile_link: { label: 'Link to their profile', example: 'Opens the candidate in this job' },
+  offer_link: { label: 'Link to the offer', example: 'Opens the Offer tab' },
+  scorecard_link: { label: 'Link to the scorecards', example: 'Opens the Scorecards tab' },
+  job_link: { label: 'Link to the job', example: 'Opens the job page' },
+  pipeline_link: { label: 'Link to the pipeline', example: 'Opens the job’s pipeline' },
+  my_profile_link: { label: 'Link to their own profile', example: 'Opens My profile for whoever clicks it' },
+}
+
+/** Details that become a labelled link in Slack. */
+export const LINK_DETAILS = new Set<SlackDetail>(['profile_link', 'offer_link', 'scorecard_link', 'job_link', 'pipeline_link', 'my_profile_link'])
+
+/** The words a link reads as in Slack (the server's messageLinks). */
+export function linkLabel(key: SlackDetail, event: SlackEvent | null | undefined): string {
+  switch (key) {
+    case 'profile_link': return `Open ${SLACK_DETAILS.candidate.example}'s profile`
+    case 'offer_link': return event === 'offer.approval_requested' ? 'Review the offer' : 'See the offer'
+    case 'scorecard_link': return event === 'scorecard.submitted' ? 'Read the scorecard' : 'Open the scorecards'
+    case 'job_link': return 'Open the job'
+    case 'pipeline_link': return 'See the pipeline'
+    case 'my_profile_link': return event === 'member.profile_incomplete' ? 'Finish your profile' : 'Open your profile'
+    default: return SLACK_DETAILS[key].label
+  }
+}
+
+/** Where a message's own "Open" link goes and what it reads as (the server's
+ * openLink), as seen by someone it DMs. Null: no link (a welcome in a channel). */
+export function openLabel(event: SlackEvent | null | undefined, dm = false): { label: string; where: string } | null {
+  switch (event) {
+    case 'member.joined': return dm ? { label: 'Open your profile', where: 'My profile' } : null
+    case 'member.profile_incomplete': return { label: 'Finish your profile', where: 'the first card still to fill in on My profile' }
+    case 'offer.approval_requested': return { label: 'Review the offer', where: 'the approval, at whose turn it is' }
+    case 'offer.approved': case 'offer.sent': case 'offer.signed': case 'offer.declined':
+      return { label: 'See the offer', where: 'the Offer tab' }
+    case 'interview.scheduled':
+      return dm ? { label: 'Open your scorecard', where: 'the interviewer’s own scorecard' } : { label: 'Open the scorecards', where: 'the Scorecards tab' }
+    case 'interview.cancelled': return { label: 'Open the scorecards', where: 'the Scorecards tab' }
+    case 'scorecard.submitted': return { label: 'Read the scorecard', where: 'the Scorecards tab' }
+    case 'candidate.hired': return { label: `Open ${SLACK_DETAILS.candidate.example}'s profile`, where: 'Onboarding' }
+    case 'candidate.rejected': return { label: `Open ${SLACK_DETAILS.candidate.example}'s profile`, where: 'Rejection details' }
+    case 'job.opened': case 'job.closed': return { label: 'Open the job', where: 'the job page' }
+    default: return { label: `Open ${SLACK_DETAILS.candidate.example}'s profile`, where: 'the candidate in this job' }
+  }
 }
 
 /** Details a person may click that become an @mention in Slack. */
