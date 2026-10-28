@@ -1,4 +1,4 @@
--- Run after 20261028130100_slack_people inside a transaction that is rolled back.
+-- Run after 20261028022907_slack_people (and 20261028130000_slack_event_rule) inside a transaction that is rolled back.
 -- Slack: who sets up automations, which events queue a message (once), that
 -- the token and the queue stay server-side, that the offer approver hears
 -- only when it's their turn, and People: a welcome once when someone joins,
