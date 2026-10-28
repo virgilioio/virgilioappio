@@ -1,4 +1,4 @@
-import gioAvatar from '@/assets/gio-avatar.png'
+import { GioGlyph } from '@/components/icons/GioGlyph'
 import { SLACK_DETAILS, PERSON_DETAILS, slackTagsIn, type SlackDetail, type SlackTag } from '@/lib/slack'
 
 /**
@@ -46,7 +46,9 @@ export function SlackPreview({
   return (
     <div className="rounded-xl border border-[#E7E8EE] bg-white p-3.5" aria-label="Preview in Slack">
       <div className="flex gap-2.5">
-        <img src={gioAvatar} alt="" aria-hidden className="h-9 w-9 shrink-0 rounded-[8px]" />
+        <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] border border-[#ECEBE6] bg-[#FFFCF9]">
+          <GioGlyph size={20} />
+        </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5">
             <span className="font-inter text-[13.5px] font-bold text-[#1D1C1D]">Gio</span>

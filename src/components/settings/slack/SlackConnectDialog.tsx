@@ -3,7 +3,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Check, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SlackLogo } from '@/components/icons/SlackLogo'
-import gioAvatar from '@/assets/gio-avatar.png'
+import { GioGlyph } from '@/components/icons/GioGlyph'
 import { startSlackConnect } from '@/lib/slack'
 
 /**
@@ -66,7 +66,7 @@ export function SlackConnectDialog({
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6 pt-7">
             <div aria-hidden className="flex items-center justify-center gap-3">
               <span className="grid h-14 w-14 place-items-center rounded-2xl border border-[#ECEBE6] bg-white">
-                <img src={gioAvatar} alt="" className="h-9 w-9 rounded-full" />
+                <GioGlyph size={28} />
               </span>
               <span className="flex items-center gap-1">
                 <span className="h-1 w-1 rounded-full bg-[#C9C7BF]" />
