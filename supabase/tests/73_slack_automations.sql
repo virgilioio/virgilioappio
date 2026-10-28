@@ -1,4 +1,4 @@
--- Run after 20261028120000_slack_offer_approver inside a transaction that is rolled back.
+-- Run after 20261028005802_slack_offer_approver inside a transaction that is rolled back.
 -- Slack: who sets up automations, which events queue a message (once), that
 -- the token and the queue stay server-side, and that the offer approver hears
 -- only when it's their turn.
