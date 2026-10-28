@@ -42,6 +42,12 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Waiting for Apply 2026-10-28 (ATS) — Job posts: the URL slug saves
+
+- **What it is:** the posting editor (job › Postings) and the Create job wizard kept a typed URL slug but never sent it, so a posting's address never changed. Both now save it, cleaned as you type (`typedSlug` / `finishSlug` in `src/lib/postingUrl.ts`). A taken address (slugs are unique across every workspace, `job_postings_slug_key`) shows "That URL is taken. Try another." under the field and keeps the sheet open (`isSlugTaken`, `onSlugTaken` on `useJobPostings` create/update). A failed save no longer reads as Saved. Changing a live posting's slug warns "The old link stops working once you save." A new posting left empty keeps the title + random ending. Screens only, no database change.
+- **Checked:** unit tests 3 of 3; editor in the browser with fake data (live change and warning, save sends the slug, taken, empty, draft without the warning, new with and without a slug, new and taken). The wizard's field shares the same code but wasn't clicked through.
+- **Not done:** old addresses don't redirect to the new one (would need a table of old slugs; offered as a follow-up).
+
 ## Done 2026-10-28 (ATS) — Slack: Someone's Google stops working — applied
 
 - **What it is:** a People automation (admins, Settings › Integrations › Slack › People, "Google alerts" starter) that DMs only the person when Gio notices their Gmail or Calendar needs reconnecting, with "Reconnect Google" opening their Google Workspace card. Once a day per person (Gmail and Calendar breaking together send one), never repeats, Virgilio's own people only, skipped if they reconnect before it goes out ("Google works again" in its History). Default message: "Hi {member}! 👋 Your Google Workspace stopped working in Gio, so emails to candidates and your calendar are on hold. Reconnecting takes a minute."
