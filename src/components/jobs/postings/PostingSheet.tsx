@@ -48,6 +48,8 @@ import { CharCounterLine } from '@/components/ui/char-counter'
 import { AffixInput } from '@/components/ui/affix-input'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { brandingDetails, readBranding } from '@/lib/postingMedia'
+import { finishSlug, typedSlug } from '@/lib/postingUrl'
+import { shakeFirstInvalid } from '@/lib/motion'
 
 interface PostingSheetProps {
   jobId: string
@@ -84,6 +86,9 @@ export function PostingSheet({
   // Basics
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
+  // The slug on record, to tell when a live posting's link is about to change.
+  const [savedSlug, setSavedSlug] = useState('')
+  const [slugError, setSlugError] = useState<string | undefined>()
   const [referenceId, setReferenceId] = useState('')
   const [language, setLanguage] = useState('en')
   const [deadline, setDeadline] = useState<Date | undefined>()
@@ -172,6 +177,8 @@ export function PostingSheet({
         if (p) {
           setTitle(p.title || '')
           setSlug(p.slug || '')
+          setSavedSlug(p.slug || '')
+          setSlugError(undefined)
           setDescription(markdownToHtml(p.description || ''))
           setIsActive(!!p.is_active)
           const d = (p as any).details || {}
@@ -257,6 +264,8 @@ export function PostingSheet({
       } else {
         setTitle(defaultTitle || '')
         setSlug('')
+        setSavedSlug('')
+        setSlugError(undefined)
         setReferenceId('')
         setLanguage('en')
         setDeadline(undefined)
@@ -393,6 +402,17 @@ export function PostingSheet({
       toast({ title: 'Title required', description: 'Enter a public job title', variant: 'destructive' })
       return
     }
+    const nextSlug = finishSlug(slug)
+    // A new posting may leave it empty (made from the title); a saved one can't.
+    if (localId && !nextSlug) {
+      setSlugError('Add a URL')
+      shakeFirstInvalid()
+      return
+    }
+    const slugTaken = () => {
+      setSlugError('That URL is taken. Try another.')
+      shakeFirstInvalid()
+    }
     setSaving(true)
     try {
       const details = buildDetails()
@@ -416,29 +436,32 @@ export function PostingSheet({
         if (jobErr) console.error('Error syncing job compensation:', jobErr)
       }
       if (localId) {
-        await updatePosting(localId, {
+        const saved = await updatePosting(localId, {
           title,
+          slug: nextSlug,
           description,
           details,
           publish_to_talent: channels.publishToTalent,
           syndication,
           ...(publish !== undefined ? { is_active: publish } : {}),
-        } as any)
+        } as any, { onSlugTaken: slugTaken })
+        if (!saved) return
+        setSlug(nextSlug)
+        setSavedSlug(nextSlug)
         toast({ title: 'Saved', description: 'Posting updated' })
       } else {
-        const created = await createPosting({ title, description, details })
-        if (created) {
-          setLocalId(created.id)
-          await updatePosting(created.id, {
-            publish_to_talent: channels.publishToTalent,
-            syndication,
-            is_active: !!publish,
-          } as any)
-          toast({
-            title: publish ? 'Published' : 'Saved as draft',
-            description: publish ? 'Posting is now live' : 'Draft saved',
-          })
-        }
+        const created = await createPosting({ title, description, details, slug: nextSlug || undefined, onSlugTaken: slugTaken })
+        if (!created) return
+        setLocalId(created.id)
+        await updatePosting(created.id, {
+          publish_to_talent: channels.publishToTalent,
+          syndication,
+          is_active: !!publish,
+        } as any)
+        toast({
+          title: publish ? 'Published' : 'Saved as draft',
+          description: publish ? 'Posting is now live' : 'Draft saved',
+        })
       }
       onSaved()
       onOpenChange(false)
@@ -503,11 +526,25 @@ export function PostingSheet({
                   disabled={readOnly}
                 />
               </FormField>
-              <FormField label="URL slug" required>
+              <FormField
+                label="URL slug"
+                required
+                error={slugError}
+                helpText={
+                  isEdit && isActive && savedSlug && finishSlug(slug) !== savedSlug
+                    ? 'The old link stops working once you save.'
+                    : undefined
+                }
+              >
                 <AffixInput
                   prefix={<span className="font-mono">/jobs/</span>}
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  invalid={!!slugError}
+                  onChange={(e) => {
+                    setSlug(typedSlug(e.target.value))
+                    if (slugError) setSlugError(undefined)
+                  }}
+                  onBlur={() => setSlug((s) => finishSlug(s))}
                   placeholder={isEdit ? 'posting-slug' : 'auto-generated from title'}
                   className="text-sm"
                   disabled={readOnly}

@@ -35,3 +35,29 @@ export function buildPostingUrl(args: BuildPostingPathArgs): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   return `${origin}${buildPostingPath(args)}`
 }
+
+/**
+ * A posting's slug as it's typed: lowercase, accents dropped, spaces and
+ * underscores become hyphens, anything a URL can't hold is left out. A hyphen
+ * at the end stays so the next word can follow it.
+ */
+export function typedSlug(input: string): string {
+  return input
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+/, '')
+}
+
+/** The slug that's saved: `typedSlug` without hyphens at either end. */
+export function finishSlug(input: string): string {
+  return typedSlug(input).replace(/-+$/, '')
+}
+
+/** True when a save failed because another posting already has the slug. */
+export function isSlugTaken(error: { code?: string; message?: string } | null | undefined): boolean {
+  return error?.code === '23505' && /slug/i.test(error.message || '')
+}

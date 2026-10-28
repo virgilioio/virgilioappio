@@ -1,6 +1,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { isSlugTaken } from '@/lib/postingUrl'
 import { useToast } from '@/hooks/use-toast'
 
 export interface JobPosting {
@@ -74,8 +75,9 @@ export function useJobPostings(jobId: string) {
     return data as JobPosting | null
   }, [])
 
-  const createPosting = useCallback(async ({ title, description, details, is_active, publish_to_talent }: { title: string; description?: string; details?: any; is_active?: boolean; publish_to_talent?: boolean }) => {
-    const slug = generateSlug(title)
+  const createPosting = useCallback(async ({ title, description, details, is_active, publish_to_talent, slug: chosenSlug, onSlugTaken }: { title: string; description?: string; details?: any; is_active?: boolean; publish_to_talent?: boolean; slug?: string; onSlugTaken?: () => void }) => {
+    // A slug someone typed is used as is; otherwise one is made from the title.
+    const slug = chosenSlug || generateSlug(title)
     const { data, error } = await supabase
       .from('job_postings')
       .insert({
@@ -93,24 +95,30 @@ export function useJobPostings(jobId: string) {
       .maybeSingle()
     if (error) {
       console.error('Error creating posting:', error)
-      toast({ title: 'Error', description: 'Could not create posting', variant: 'destructive' })
+      if (isSlugTaken(error) && onSlugTaken) onSlugTaken()
+      else if (isSlugTaken(error)) toast({ title: 'That URL is taken', description: 'Another posting uses it. Try another.', variant: 'destructive' })
+      else toast({ title: 'Error', description: 'Could not create posting', variant: 'destructive' })
       return null
     }
     await fetchPostings()
     return data as JobPosting
   }, [jobId, fetchPostings, toast])
 
-  const updatePosting = useCallback(async (id: string, updates: Partial<JobPosting>) => {
+  /** Resolves true once saved. A taken slug calls `onSlugTaken` instead of a toast. */
+  const updatePosting = useCallback(async (id: string, updates: Partial<JobPosting>, opts?: { onSlugTaken?: () => void }) => {
     const { error } = await supabase
       .from('job_postings')
       .update(updates)
       .eq('id', id)
     if (error) {
       console.error('Error updating posting:', error)
-      toast({ title: 'Error', description: 'Could not update posting', variant: 'destructive' })
-    } else {
-      await fetchPostings()
+      if (isSlugTaken(error) && opts?.onSlugTaken) opts.onSlugTaken()
+      else if (isSlugTaken(error)) toast({ title: 'That URL is taken', description: 'Another posting uses it. Try another.', variant: 'destructive' })
+      else toast({ title: 'Error', description: 'Could not update posting', variant: 'destructive' })
+      return false
     }
+    await fetchPostings()
+    return true
   }, [fetchPostings, toast])
 
   const deletePosting = useCallback(async (id: string) => {
