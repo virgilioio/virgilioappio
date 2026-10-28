@@ -293,7 +293,7 @@ begin
   end if;
   mc := public.slack_message_context((select context from public.slack_deliveries where event_key = 'member_joined:' || vic_member));
   insert into t_results values ('the message names the member and what''s missing (' || (mc ->> 'progress') || ')',
-    mc -> 'member' ->> 'id' = victoria::text and mc ->> 'progress' = '3 of 6 done'
+    mc -> 'member' ->> 'id' = victoria::text and mc ->> 'progress' = '4 of 7 done'
     and mc -> 'missing' = '["you", "tax", "bank"]'::jsonb and mc ->> 'link' = '/me');
 
   -- Reminders: not on the day they join; due a week later; once a day at most.
