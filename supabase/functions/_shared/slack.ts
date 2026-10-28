@@ -163,6 +163,11 @@ export interface MessageContext {
   interview_start?: string | null
   interview_title?: string | null
   rating?: string | null
+  /** An offer approval: whose turn it is, and "Step 2 of 3". */
+  approvers?: Person[]
+  approval_step?: string | null
+  /** This message is an approver's turn (it goes only to them). */
+  turn?: boolean
 }
 
 /** Escapes text for Slack mrkdwn (&, <, >). */
@@ -225,6 +230,8 @@ export function detailValues(ctx: MessageContext, mention: MentionOf): Record<st
     rating: ratingLabel(ctx.rating),
     reason: ctx.reason ? esc(ctx.reason) : null,
     opening: ctx.opening ? esc(ctx.opening) : null,
+    approver: people(ctx.approvers, mention),
+    approval_step: ctx.approval_step ? esc(ctx.approval_step) : null,
   }
 }
 
@@ -311,13 +318,14 @@ export function makeResolver(token: string) {
 export type Destination =
   | { type: 'channel'; id: string; name?: string }
   | { type: 'user'; id: string; name?: string }
-  | { type: 'role'; role: 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' }
+  | { type: 'role'; role: 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'approver' }
 
 export const ROLE_LABEL: Record<string, string> = {
   recruiter: 'the Recruiter',
   sourcer: 'the Sourcer',
   hiring_manager: 'the Hiring manager',
   interviewer: 'the interviewer',
+  approver: 'the offer approver',
 }
 
 export function peopleForRole(ctx: MessageContext, role: string): Person[] {
@@ -326,6 +334,7 @@ export function peopleForRole(ctx: MessageContext, role: string): Person[] {
     case 'sourcer': return ctx.sourcers ?? []
     case 'hiring_manager': return ctx.hiring_managers ?? []
     case 'interviewer': return ctx.interviewer ? [ctx.interviewer] : []
+    case 'approver': return ctx.approvers ?? []
     default: return []
   }
 }
@@ -364,6 +373,18 @@ export async function postTo(
     : { to: target.label, ok: false, error: r.error, problem: slackProblem(r.error, target.label) }
 }
 
+const isApprover = (d: Destination) => d.type === 'role' && d.role === 'approver'
+
+/**
+ * Who hears this message: an approver's turn goes only to the offer approver;
+ * the request's own message goes everywhere else (the approver hears on their
+ * turn, never twice). A test goes everywhere.
+ */
+export function destinationsFor(destinations: Destination[], ctx: MessageContext, test = false): Destination[] {
+  if (test) return destinations
+  return destinations.filter((d) => isApprover(d) === Boolean(ctx.turn))
+}
+
 /**
  * Sends one automation's message to all its destinations. Role destinations
  * DM each person the role names (found in Slack by email); `testTo` sends
@@ -380,6 +401,7 @@ export async function deliver(
   const everyone: Person[] = [
     ctx.actor, ctx.interviewer,
     ...(ctx.recruiters ?? []), ...(ctx.sourcers ?? []), ...(ctx.hiring_managers ?? []),
+    ...(ctx.approvers ?? []),
   ].filter(Boolean) as Person[]
   await resolver.load(everyone)
   const text = renderTemplate(template, detailValues(ctx, (p) => resolver.mention(p)))
@@ -388,7 +410,7 @@ export async function deliver(
   const targets: Array<{ channel?: string; user?: string; label: string }> = []
   const missing: PostResult[] = []
   const seenUsers = new Set<string>()
-  for (const d of destinations) {
+  for (const d of destinationsFor(destinations, ctx, opts.test)) {
     if (d.type === 'channel') targets.push({ channel: d.id, label: d.name ? `#${d.name}` : 'that channel' })
     else if (d.type === 'user') {
       if (!seenUsers.has(d.id)) targets.push({ user: d.id, label: d.name ?? 'that person' })
@@ -401,7 +423,11 @@ export async function deliver(
       }
       const list = peopleForRole(ctx, d.role)
       if (list.length === 0) {
-        missing.push({ to: ROLE_LABEL[d.role], ok: true, problem: `This job has no ${ROLE_LABEL[d.role].replace('the ', '')}.` })
+        missing.push({
+          to: ROLE_LABEL[d.role],
+          ok: true,
+          problem: d.role === 'approver' ? 'Nobody has a turn to approve.' : `This job has no ${ROLE_LABEL[d.role].replace('the ', '')}.`,
+        })
       }
       for (const p of list) {
         const id = resolver.idFor(p)

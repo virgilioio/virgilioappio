@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { deliver, detailValues, esc, plainText, renderTemplate, type MessageContext } from '../slack'
+import { deliver, destinationsFor, detailValues, esc, plainText, renderTemplate, type Destination, type MessageContext } from '../slack'
 
 const ctx: MessageContext = {
   candidate: { id: 'c1', name: 'Ana <Torres> & Co' },
@@ -94,5 +94,31 @@ describe('deliver', () => {
     await deliver('xoxb', 'x', [{ type: 'role', role: 'hiring_manager' }, { type: 'role', role: 'recruiter' }], ctx, { test: true, testTo: 'UME' })
     const posts = calls.filter((c) => c.method === 'chat.postMessage').map((c) => c.body.get('channel'))
     expect(posts).toEqual(['D-UME'])
+  })
+
+  const approval: MessageContext = {
+    ...ctx,
+    approvers: [{ name: 'Erik Veen', email: 'erik@virgilio.tech' }],
+    approval_step: 'Step 2 of 3',
+  }
+  const mixed: Destination[] = [{ type: 'channel', id: 'C1', name: 'offers' }, { type: 'role', role: 'approver' }]
+
+  it('DMs only the approver whose turn it is, and nobody else, on their turn', async () => {
+    const calls = stubSlack({ 'erik@virgilio.tech': 'UERIK' })
+    await deliver('xoxb', '{approver}, your turn ({approval_step})', mixed, { ...approval, turn: true })
+    const posts = calls.filter((c) => c.method === 'chat.postMessage')
+    expect(posts.map((c) => c.body.get('channel'))).toEqual(['D-UERIK'])
+    expect(posts[0].body.get('blocks')).toContain('<@UERIK>, your turn (Step 2 of 3)')
+  })
+
+  it('keeps the request\'s own message from the approver (they hear on their turn)', async () => {
+    const calls = stubSlack({ 'erik@virgilio.tech': 'UERIK' })
+    await deliver('xoxb', 'x', mixed, approval)
+    const posts = calls.filter((c) => c.method === 'chat.postMessage').map((c) => c.body.get('channel'))
+    expect(posts).toEqual(['C1'])
+  })
+
+  it('a test goes everywhere', () => {
+    expect(destinationsFor(mixed, approval, true)).toEqual(mixed)
   })
 })

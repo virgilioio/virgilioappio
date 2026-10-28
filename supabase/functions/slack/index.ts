@@ -240,6 +240,8 @@ serve(withRequestCors(async (req) => {
       rating: 'strong_yes',
       reason: 'Not enough experience',
       opening: 'REQ-0001',
+      approvers: [meP],
+      approval_step: 'Step 1 of 2',
     }
     let testTo: string | null = null
     if (meP.email) {
