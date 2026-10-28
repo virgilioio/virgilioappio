@@ -9347,6 +9347,8 @@ export type Database = {
           preset: string | null
           removed_at: string | null
           removed_by: string | null
+          sent_now_at: string | null
+          sent_now_by: string | null
           tenant_id: string
           updated_at: string
           updated_by: string | null
@@ -9368,6 +9370,8 @@ export type Database = {
           preset?: string | null
           removed_at?: string | null
           removed_by?: string | null
+          sent_now_at?: string | null
+          sent_now_by?: string | null
           tenant_id: string
           updated_at?: string
           updated_by?: string | null
@@ -9389,6 +9393,8 @@ export type Database = {
           preset?: string | null
           removed_at?: string | null
           removed_by?: string | null
+          sent_now_at?: string | null
+          sent_now_by?: string | null
           tenant_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -12972,6 +12978,10 @@ export type Database = {
         }[]
       }
       skill_priorities_valid: { Args: { p: Json }; Returns: boolean }
+      slack_automation_history: {
+        Args: { _automation: string; _limit?: number }
+        Returns: Json
+      }
       slack_automations_list: {
         Args: { _job?: string; _tenant: string }
         Returns: {
@@ -12993,6 +13003,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      slack_can_change: { Args: { _automation: string }; Returns: boolean }
       slack_check_destinations: { Args: { _d: Json }; Returns: boolean }
       slack_check_edit: {
         Args: { _event: string; _job: string; _tenant: string }
@@ -13023,6 +13034,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      slack_delivery_trigger: { Args: { _key: string }; Returns: string }
       slack_due_reminders: { Args: never; Returns: number }
       slack_emit: {
         Args: { _ctx: Json; _event: string; _key: string; _tenant: string }
@@ -13035,9 +13047,21 @@ export type Database = {
       }
       slack_is_admin: { Args: { _tenant: string }; Returns: boolean }
       slack_is_member: { Args: { _tenant: string }; Returns: boolean }
+      slack_kick: { Args: never; Returns: undefined }
       slack_message_context: { Args: { _ctx: Json }; Returns: Json }
       slack_person: { Args: { _user: string }; Returns: Json }
       slack_profile_reminders: { Args: never; Returns: number }
+      slack_queue_due: { Args: { _events: string[] }; Returns: number }
+      slack_reminders_waiting: {
+        Args: { _automation: string }
+        Returns: {
+          w_context: Json
+          w_match: Json
+          w_started: string
+          w_subject: string
+        }[]
+      }
+      slack_retry_delivery: { Args: { _delivery: string }; Returns: undefined }
       slack_save_automation: {
         Args: {
           _destinations: Json
@@ -13065,6 +13089,10 @@ export type Database = {
           _users: string[]
         }
         Returns: number
+      }
+      slack_send_now: {
+        Args: { _automation: string; _dry?: boolean }
+        Returns: Json
       }
       slack_set_automation: {
         Args: { _active?: boolean; _id: string; _removed?: boolean }

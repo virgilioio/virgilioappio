@@ -1,4 +1,4 @@
--- Run after 20261028200000_slack_log inside a transaction that is rolled back.
+-- Run after 20261028175419_slack_log inside a transaction that is rolled back.
 -- Slack log: each automation's History, a line in the candidate's activity for
 -- every message about them that went out or failed (offer ones only for the
 -- offer team), Send now for reminders (who's waiting, then all at once, at
