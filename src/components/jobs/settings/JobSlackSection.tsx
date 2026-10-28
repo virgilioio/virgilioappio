@@ -74,22 +74,27 @@ export function JobSlackSection({ jobId, jobTitle, readOnly }: { jobId: string; 
       ) : (
         <Loadable
           loading={list.isLoading}
-          skeleton={<div className="flex flex-col gap-1.5">{[0, 1].map((i) => <Skeleton key={i} className="h-[64px] rounded-[10px]" />)}</div>}
+          skeleton={<Skeleton className="h-[104px] rounded-xl" />}
         >
-          <div className="flex flex-col gap-4">
-            {own.length > 0 ? (
+          <div className="flex flex-col gap-2.5">
+            {own.length === 0 && (
+              <p className="font-inter text-[12.5px] text-text-tertiary">Nothing from this job goes to Slack on its own yet.</p>
+            )}
+            {(own.length > 0 || fromWorkspace.length > 0) && (
               <SlackAutomationList
                 tenantId={tenantId!}
                 rows={own}
                 connected={working}
                 inJob
+                more={{ label: 'Also sent for this job, from Settings › Integrations', rows: fromWorkspace }}
                 onEdit={(row) => setSeed({ id: row.id, row })}
-                onDuplicate={(row) => setSeed({ id: null, row })}
+                onDuplicate={(row) =>
+                  setSeed({
+                    id: null,
+                    row: row.job_id ? row : { ...row, job_id: jobId, job_title: jobTitle, filters: row.filters.every_days ? { every_days: row.filters.every_days } : {} },
+                  })
+                }
               />
-            ) : (
-              <p className="font-inter text-[12.5px] text-text-tertiary">
-                Nothing from this job goes to Slack on its own yet. Add an automation to tell a channel or the job&rsquo;s people when something happens.
-              </p>
             )}
             {scorecardReminder && working && (
               <button
@@ -105,19 +110,6 @@ export function JobSlackSection({ jobId, jobTitle, readOnly }: { jobId: string; 
                   <span className="block font-inter text-[12px] text-text-tertiary">A DM when their scorecard is due, every day until it&rsquo;s in.</span>
                 </span>
               </button>
-            )}
-            {fromWorkspace.length > 0 && (
-              <div>
-                <p className="mb-1.5 font-inter text-[11.5px] font-medium text-text-tertiary">Also sent for this job, from Settings › Integrations</p>
-                <SlackAutomationList
-                  tenantId={tenantId!}
-                  rows={fromWorkspace}
-                  connected={working}
-                  inJob
-                  onEdit={(row) => setSeed({ id: row.id, row })}
-                  onDuplicate={(row) => setSeed({ id: null, row: { ...row, job_id: jobId, job_title: jobTitle, filters: row.filters.every_days ? { every_days: row.filters.every_days } : {} } })}
-                />
-              </div>
             )}
           </div>
         </Loadable>

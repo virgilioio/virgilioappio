@@ -168,8 +168,13 @@ export function SlackSheet({
               <Loadable
                 loading={list.isLoading}
                 skeleton={
-                  <div className="flex flex-col gap-1.5">
-                    {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[64px] rounded-[10px]" />)}
+                  <div className="flex flex-col divide-y divide-[#F1F0EC] overflow-clip rounded-xl border border-[#EFEEEA] bg-white">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="flex h-[52px] items-center gap-3 px-3">
+                        <Skeleton className="h-7 w-7 rounded-lg" />
+                        <div className="flex-1 space-y-1.5"><Skeleton className="h-3 w-2/5" /><Skeleton className="h-2.5 w-3/5" /></div>
+                      </div>
+                    ))}
                   </div>
                 }
               >
