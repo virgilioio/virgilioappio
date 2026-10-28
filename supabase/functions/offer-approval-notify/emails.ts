@@ -24,7 +24,7 @@ export interface Notice {
 
 /** One email per notice, in the Gio ATS design (_shared/atsEmail.ts). */
 export function message(n: Notice) {
-  const url = `${appBase()}/jobs/${n.job_id}?candidate=${n.candidate_id}&tab=offer`;
+  const url = `${appBase()}/jobs/${n.job_id}/candidates/${n.candidate_id}?focus=approval`;
   const role = [n.job_title, n.company].filter(Boolean).join(" at ") || "Offer";
   // The card shows the role; the plain-text email says it in brackets.
   const forRole = n.job_title ? ` (${n.job_title})` : "";
@@ -107,7 +107,7 @@ function joinNames(names: string[]) {
 }
 
 export function approvedMessage(o: Outcome) {
-  const url = `${appBase()}/jobs/${o.job_id}?candidate=${o.candidate_id}&tab=offer`;
+  const url = `${appBase()}/jobs/${o.job_id}/candidates/${o.candidate_id}?tab=offer`;
   const role = [o.job_title, o.company].filter(Boolean).join(" at ") || "Offer";
   const forRole = o.job_title ? ` (${o.job_title})` : "";
   const names = (o.approver_names ?? []).filter(Boolean);
