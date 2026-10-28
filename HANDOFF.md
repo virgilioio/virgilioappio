@@ -42,10 +42,10 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Waiting for Apply 2026-10-28 (ATS) — Slack: Offer approver
+## Done 2026-10-28 (ATS) — Slack: Offer approver — applied
 
 - **What it is:** Send to › "The offer approver" on "An offer needs approval": a DM to whoever's turn it is in the approval chain, one at a time (approver 1 when it goes out, approver 2 once 1 approves; everyone at once only in a parallel chain). A decline or closed request stops it; a turn that's over is skipped, never sent late. The request's message still goes once to the automation's channels and people. New details `{approver}` and `{approval_step}`.
-- **On Apply:** migration `20261028120000_slack_offer_approver.sql` (rename to the recorded version), test 73 live, types, then redeploy `slack` and `slack-deliver` (both read `_shared/slack.ts`). Dry run: test 73 all ok (42 checks).
+- **Applied:** migration `20261028005802_slack_offer_approver` (function bodies md5-checked against the file), test 73 live 42/42 ok, types regenerated. `slack` and `slack-deliver` redeployed (v5, hand-deployed from git); both answer an unsigned call with 401.
 
 ## Done 2026-10-28 (ATS) — Slack automations — applied
 
