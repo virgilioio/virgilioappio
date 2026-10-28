@@ -5,7 +5,7 @@ import { ActivityFeedItem } from './ActivityFeedItem';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AnimatedEmpty, type EmptyStateAction } from '@/components/empty/AnimatedEmpty';
 import { LoadError } from '@/components/empty/LoadError';
-import { activityMeta, type ActivityCategory } from '@/lib/activityRegistry';
+import { activityMetaFor, type ActivityCategory } from '@/lib/activityRegistry';
 
 interface ActivityFeedListProps {
   candidateId: string;
@@ -30,7 +30,7 @@ export function ActivityFeedList({ candidateId, jobId, visibleCategories, onEmai
     );
     if (!visibleCategories) return sorted;
     const allowed = new Set(visibleCategories);
-    return sorted.filter(a => allowed.has(activityMeta(a.activity_type).category));
+    return sorted.filter(a => allowed.has(activityMetaFor(a).category));
   }, [activities, visibleCategories]);
 
   if (isLoading) {

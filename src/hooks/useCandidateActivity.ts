@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { useEmailLogs } from '@/hooks/useEmailLogs'
-import { activityMeta, ACTIVITY_CATEGORIES, isAutomated, type ActivityCategory } from '@/lib/activityRegistry'
+import { activityMetaFor, ACTIVITY_CATEGORIES, isAutomated, type ActivityCategory } from '@/lib/activityRegistry'
 
 /**
  * A candidate's Activity tab, shared by the in-job profile and the standalone
@@ -19,7 +19,7 @@ export function useCandidateActivity(candidateId: string | null | undefined, job
     const events = feed.data || []
     const byCategory = new Map<string, number>()
     events.forEach((e) => {
-      const cat = activityMeta(e.activity_type).category
+      const cat = activityMetaFor(e).category
       byCategory.set(cat, (byCategory.get(cat) || 0) + 1)
     })
     const categoryRows = ACTIVITY_CATEGORIES

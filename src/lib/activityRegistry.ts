@@ -39,8 +39,10 @@ import {
   Bell,
   type LucideIcon,
 } from 'lucide-react'
+import type { ComponentType } from 'react'
+import { SlackLogo } from '@/components/icons/SlackLogo'
 
-export type ActivityCategory = 'stage' | 'offers' | 'scorecards' | 'emails' | 'automations' | 'files' | 'other'
+export type ActivityCategory = 'stage' | 'offers' | 'scorecards' | 'emails' | 'automations' | 'slack' | 'files' | 'other'
 
 export type ActivityTone =
   | 'purple'
@@ -53,7 +55,7 @@ export type ActivityTone =
 
 export interface ActivityMeta {
   category: ActivityCategory
-  icon: LucideIcon
+  icon: LucideIcon | ComponentType<{ size?: number | string; strokeWidth?: number }>
   tone: ActivityTone
 }
 
@@ -148,6 +150,21 @@ export function activityMeta(type: string): ActivityMeta {
   return ACTIVITY_TYPES[type] || ACTIVITY_FALLBACK
 }
 
+/** A Slack message about the candidate (2026-10-28), written by the database
+ * when it went out or failed for good: `metadata.source = 'slack'`. */
+export function isSlackActivity(event: { metadata?: Record<string, unknown> | null }): boolean {
+  return event?.metadata?.source === 'slack'
+}
+
+/** The category, glyph and tone of one event, Slack messages included. */
+export function activityMetaFor(event: { activity_type: string; metadata?: Record<string, unknown> | null }): ActivityMeta {
+  if (isSlackActivity(event)) {
+    const failed = (event.metadata?.slack as { status?: string } | undefined)?.status === 'failed'
+    return { category: 'slack', icon: SlackLogo, tone: failed ? 'red' : 'neutral' }
+  }
+  return activityMeta(event.activity_type)
+}
+
 /**
  * The machine did this, not a person. Use this everywhere instead of
  * comparing activity type strings inline.
@@ -168,6 +185,7 @@ export const ACTIVITY_CATEGORIES: { id: ActivityCategory; label: string }[] = [
   { id: 'scorecards', label: 'Scorecards' },
   { id: 'emails', label: 'Emails' },
   { id: 'automations', label: 'Automations' },
+  { id: 'slack', label: 'Slack' },
   { id: 'files', label: 'Files' },
   { id: 'other', label: 'Other events' },
 ]
