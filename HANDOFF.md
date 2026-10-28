@@ -42,6 +42,13 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Waiting for Apply 2026-10-28 (ATS) — Slack: Someone's Google stops working
+
+- **What it is:** a People automation (admins, Settings › Integrations › Slack › People, "Google alerts" starter) that DMs only the person when Gio notices their Gmail or Calendar needs reconnecting, with "Reconnect Google" opening their Google Workspace card. Once a day per person (Gmail and Calendar breaking together send one), never repeats, Virgilio's own people only, skipped if they reconnect before it goes out ("Google works again" in its History). Default message: "Hi {member}! 👋 Your Google Workspace stopped working in Gio, so emails to candidates and your calendar are on hold. Reconnecting takes a minute."
+- **Written, not applied:** `20261028220000_slack_google_broken` (event, save rule, trigger `google_identities_z_slack` on both connection tables, claim skip). Test 78 dry-ran 13 of 13; tests 73 (59/59) and 75 (28/28) on top of it. Functions changed, not deployed: `slack`, `slack-deliver` (link). Unit tests 67 of 67; builder checked in the browser with fake data.
+- **On Apply:** apply, rename to the recorded version, test 78 live, md5, types, deploy `slack` and `slack-deliver` (401 check), then main.
+- **When it fires:** when Gio's sync or a send marks the connection broken, not the instant someone revokes access in Google.
+
 ## Done 2026-10-28 (ATS) — Google Workspace on My profile — applied
 
 - **What it is:** Settings › Email & calendar is gone; connecting Google lives in a Google Workspace card on My profile (and on an external user's profile), with Reconnect when it stopped working. Integrations keeps its Google card. For Virgilio's own people it is the seventh profile check, right after photo and title: To do, the welcome dialog and the banner read "N of 7 done", and the Slack profile reminder names "Google Workspace" and opens the card. Old links to Email & calendar, Setup's email and calendar rows, the onboarding task and the Inbox's Connect Gmail all open the card.
