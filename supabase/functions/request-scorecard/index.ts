@@ -236,6 +236,15 @@ serve(async (req) => {
       }
     }
 
+    // Slack "A scorecard is due" automations DM the same people at once
+    // (signed-in requests only; the database checks who asked).
+    if (callerUserId && targets.length) {
+      const { error: slackError } = await supabase.rpc("slack_scorecard_requested", {
+        _association: assocId, _stage: jhsId, _users: targets, _by: callerUserId,
+      });
+      if (slackError) console.error("[request-scorecard] slack", slackError.message);
+    }
+
     return new Response(
       JSON.stringify({ ok: true, sent, skipped, targeted: targets.length, skipped_self: skippedSelf }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

@@ -168,6 +168,8 @@ export interface MessageContext {
   /** An offer approval: whose turn it is, and "Step 2 of 3". */
   approvers?: Person[]
   approval_step?: string | null
+  /** How long it has been their turn ("2 days"). */
+  waiting?: string | null
   /** This message is an approver's turn (it goes only to them). */
   turn?: boolean
   /** People: the team member it's about, what their profile still needs
@@ -268,14 +270,17 @@ export function messageLinks(ctx: MessageContext): Record<string, Link | null> {
   const inJob = !!ctx.job
   const at = (url: string | null, label: string): Link | null => (url ? { url, label } : null)
   const missing = (ctx.missing ?? []).map((k) => MISSING_CARD[k]).find(Boolean)
+  const approval = ctx.event === 'offer.approval_requested' || ctx.event === 'offer.approval_waiting'
   return {
     profile_link: at(profileLink(ctx), name ? `Open ${name}'s profile` : 'Open the profile'),
     offer_link: inJob && has(ctx, 'offer.')
-      ? at(profileLink(ctx, ctx.event === 'offer.approval_requested' ? 'focus=approval' : 'tab=offer'),
-        ctx.event === 'offer.approval_requested' ? 'Review the offer' : 'See the offer')
+      ? at(profileLink(ctx, approval ? 'focus=approval' : 'tab=offer'), approval ? 'Review the offer' : 'See the offer')
       : null,
+    // "A scorecard is due" goes only to the interviewer: their own, ready to fill in.
     scorecard_link: inJob && (has(ctx, 'interview.') || has(ctx, 'scorecard.'))
-      ? at(profileLink(ctx, 'tab=scorecards'), ctx.event === 'scorecard.submitted' ? 'Read the scorecard' : 'Open the scorecards')
+      ? ctx.event === 'scorecard.due'
+        ? at(profileLink(ctx, 'focus=my-scorecard'), 'Open your scorecard')
+        : at(profileLink(ctx, 'tab=scorecards'), ctx.event === 'scorecard.submitted' ? 'Read the scorecard' : 'Open the scorecards')
       : null,
     job_link: at(jobLink(ctx), 'Open the job'),
     pipeline_link: at(jobLink(ctx, '/pipeline'), 'See the pipeline'),
@@ -345,6 +350,7 @@ export function detailValues(ctx: MessageContext, mention: MentionOf): Record<st
     opening: ctx.opening ? esc(ctx.opening) : null,
     approver: people(ctx.approvers, mention),
     approval_step: ctx.approval_step ? esc(ctx.approval_step) : null,
+    waiting: ctx.waiting ? esc(ctx.waiting) : null,
     member: ctx.member ? (mention(ctx.member) ?? esc(ctx.member.name)) : null,
     missing: ctx.missing ? esc(missingSentence(ctx.missing) ?? '') || null : null,
     progress: ctx.progress ? esc(ctx.progress) : null,

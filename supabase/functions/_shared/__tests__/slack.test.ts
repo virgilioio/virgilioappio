@@ -122,6 +122,15 @@ describe('deliver', () => {
     expect(destinationsFor(mixed, approval, true)).toEqual(mixed)
   })
 
+  it('a scorecard reminder DMs only the interviewer who owes it', async () => {
+    const calls = stubSlack({ 'jurre@virgilio.tech': 'UJUR' })
+    await deliver('xoxb', 'Hi {interviewer}, your scorecard for {candidate} is due', [{ type: 'role', role: 'interviewer' }],
+      { ...ctx, event: 'scorecard.due', interviewer: { name: 'Jurre Veen', email: 'jurre@virgilio.tech' } })
+    const posts = calls.filter((c) => c.method === 'chat.postMessage')
+    expect(posts.map((c) => c.body.get('channel'))).toEqual(['D-UJUR'])
+    expect(posts[0].body.get('blocks')).toContain('focus=my-scorecard|Open your scorecard')
+  })
+
   it('DMs the team member their profile reminder, linking to their profile', async () => {
     const calls = stubSlack({ 'sofia@virgilio.tech': 'USOF' })
     const ctx2: MessageContext = {
@@ -181,6 +190,16 @@ describe('links', () => {
   it('writes link details as labelled Slack links, a dash where they don\'t apply', () => {
     const values = detailValues({ ...ctx, event: 'offer.approval_requested' }, () => null)
     expect(renderTemplate('{offer_link} · {my_profile_link}', values)).toBe(`<${base}?focus=approval|Review the offer> · —`)
+  })
+  it('an approval reminder goes to the approval, and says how long it has waited', () => {
+    const waiting: MessageContext = { ...ctx, event: 'offer.approval_waiting', turn: true, waiting: '2 days' }
+    expect(openLink(waiting)).toEqual({ url: `${base}?focus=approval`, label: 'Review the offer' })
+    expect(renderTemplate('{waiting}', detailValues(waiting, () => null))).toBe('2 days')
+  })
+  it('a due scorecard opens the interviewer\'s own scorecard', () => {
+    const due: MessageContext = { ...ctx, event: 'scorecard.due', interviewer: { name: 'Jurre Veen' } }
+    expect(openLink(due, 'interviewer')).toEqual({ url: `${base}?focus=my-scorecard`, label: 'Open your scorecard' })
+    expect(messageLinks(due).scorecard_link?.url).toBe(`${base}?focus=my-scorecard`)
   })
   it('a Send test with example details still shows every link, opening Gio', () => {
     const test: MessageContext = { event: 'offer.approval_requested', candidate: { id: '', name: 'Ana Example' }, job: { id: '', title: 'AE' } }
