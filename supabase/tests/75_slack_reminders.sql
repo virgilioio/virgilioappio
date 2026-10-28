@@ -1,4 +1,4 @@
--- Run after 20261028150000_slack_reminders inside a transaction that is rolled back.
+-- Run after 20261028051646_slack_reminders inside a transaction that is rolled back.
 -- Slack reminders: "An offer is still waiting for approval" goes only to the
 -- approver whose turn it is, every N days from when the turn began, and at
 -- once on Remind; "A scorecard is due" goes only to the interviewer who owes

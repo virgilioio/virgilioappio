@@ -12169,6 +12169,7 @@ export type Database = {
         Args: { _request_id: string }
         Returns: undefined
       }
+      offer_approval_turn_started: { Args: { _step: string }; Returns: string }
       offer_base_salary: { Args: { _fv: Json }; Returns: Json }
       offer_can_send: { Args: { _offer_id: string }; Returns: Json }
       offer_chain_is_approver: { Args: { _chain_id: string }; Returns: boolean }
@@ -13022,6 +13023,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      slack_due_reminders: { Args: never; Returns: number }
       slack_emit: {
         Args: { _ctx: Json; _event: string; _key: string; _tenant: string }
         Returns: undefined
@@ -13050,6 +13052,19 @@ export type Database = {
           _tenant: string
         }
         Returns: string
+      }
+      slack_scorecard_owed: {
+        Args: { _assoc: string; _stage: string; _user: string }
+        Returns: boolean
+      }
+      slack_scorecard_requested: {
+        Args: {
+          _association: string
+          _by: string
+          _stage: string
+          _users: string[]
+        }
+        Returns: number
       }
       slack_set_automation: {
         Args: { _active?: boolean; _id: string; _removed?: boolean }
