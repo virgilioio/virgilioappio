@@ -149,6 +149,8 @@ export interface Person {
 }
 
 export interface MessageContext {
+  /** The event it's about (decides where its links go). */
+  event?: string | null
   candidate?: { id: string; name: string } | null
   job?: { id: string; title: string; client?: string | null; department?: string | null } | null
   stage?: string | null
@@ -224,6 +226,94 @@ export function jobUrl(ctx: MessageContext): string | null {
   return ctx.job?.id ? `${APP_URL}/jobs/${ctx.job.id}` : null
 }
 
+// ---------- Links: where a message sends its reader (2026-10-28) ----------
+
+export interface Link {
+  url: string
+  label: string
+}
+
+/** Who a copy of the message is for: its links can differ (an interviewer's
+ * own scorecard, a team member's own profile). */
+export type Audience = 'everyone' | 'interviewer' | 'member'
+
+/** My profile's card for each profile check (as `useProfileChecks` links them). */
+const MISSING_CARD: Record<string, string> = {
+  you: 'card-you',
+  personal: 'card-personal',
+  birthday: 'card-personal',
+  tax: 'card-tax-ids',
+  bank: 'card-bank',
+  shipping: 'card-shipping',
+}
+
+// One query parameter per link, so nothing in an address needs escaping for Slack.
+// A Send test's example candidate and job have no ids: their links open Gio.
+function profileLink(ctx: MessageContext, param?: string): string | null {
+  const base = candidateUrl(ctx)
+  if (!base) return ctx.candidate ? (jobUrl(ctx) ?? APP_URL) : null
+  return param ? `${base}?${param}` : base
+}
+
+function jobLink(ctx: MessageContext, path = ''): string | null {
+  if (!ctx.job) return null
+  return ctx.job.id ? `${APP_URL}/jobs/${ctx.job.id}${path}` : APP_URL
+}
+
+const has = (ctx: MessageContext, prefix: string) => !ctx.event || ctx.event.startsWith(prefix)
+
+/** Every link a message can carry, by name; null where it doesn't apply. */
+export function messageLinks(ctx: MessageContext): Record<string, Link | null> {
+  const name = ctx.candidate?.name?.replace(/\|/g, '') ?? ''
+  const inJob = !!ctx.job
+  const at = (url: string | null, label: string): Link | null => (url ? { url, label } : null)
+  const missing = (ctx.missing ?? []).map((k) => MISSING_CARD[k]).find(Boolean)
+  return {
+    profile_link: at(profileLink(ctx), name ? `Open ${name}'s profile` : 'Open the profile'),
+    offer_link: inJob && has(ctx, 'offer.')
+      ? at(profileLink(ctx, ctx.event === 'offer.approval_requested' ? 'focus=approval' : 'tab=offer'),
+        ctx.event === 'offer.approval_requested' ? 'Review the offer' : 'See the offer')
+      : null,
+    scorecard_link: inJob && (has(ctx, 'interview.') || has(ctx, 'scorecard.'))
+      ? at(profileLink(ctx, 'tab=scorecards'), ctx.event === 'scorecard.submitted' ? 'Read the scorecard' : 'Open the scorecards')
+      : null,
+    job_link: at(jobLink(ctx), 'Open the job'),
+    pipeline_link: at(jobLink(ctx, '/pipeline'), 'See the pipeline'),
+    my_profile_link: has(ctx, 'member.')
+      ? (ctx.event === 'member.profile_incomplete'
+        ? { url: `${APP_URL}/me${missing ? `?focus=${missing}` : ''}`, label: 'Finish your profile' }
+        : { url: `${APP_URL}/me`, label: 'Open your profile' })
+      : null,
+  }
+}
+
+/**
+ * Where "Open" under the message goes: the place the reader has something to
+ * do. Null when there's nowhere that fits this reader (a welcome in a channel).
+ */
+export function openLink(ctx: MessageContext, audience: Audience = 'everyone'): Link | null {
+  const l = messageLinks(ctx)
+  const ev = ctx.event ?? ''
+  if (ev.startsWith('member.')) return audience === 'member' ? l.my_profile_link : null
+  if (ev.startsWith('offer.')) return l.offer_link ?? l.profile_link
+  if (ev === 'interview.scheduled' && audience === 'interviewer' && l.scorecard_link && ctx.candidate?.id) {
+    return { url: profileLink(ctx, 'focus=my-scorecard') as string, label: 'Open your scorecard' }
+  }
+  if (ev.startsWith('interview.') || ev.startsWith('scorecard.')) return l.scorecard_link ?? l.profile_link
+  if (ev === 'candidate.hired' && l.profile_link && ctx.candidate?.id && ctx.job?.id) return { ...l.profile_link, url: profileLink(ctx, 'tab=onboarding') as string }
+  if (ev === 'candidate.rejected' && l.profile_link && ctx.candidate?.id && ctx.job?.id) return { ...l.profile_link, url: profileLink(ctx, 'tab=rejection-details') as string }
+  if (ev.startsWith('job.')) return l.job_link
+  if (l.profile_link) return l.profile_link
+  if (l.job_link) return l.job_link
+  if (ctx.link) return { url: `${APP_URL}${ctx.link}`, label: 'Open in Gio' }
+  return { url: APP_URL, label: 'Open Gio' }
+}
+
+/** A link as Slack writes it. */
+function slackLink(l: Link | null): string | null {
+  return l ? `<${l.url}|${esc(l.label)}>` : null
+}
+
 /** A person as a Slack mention when we found them in Slack, else their name. */
 export type MentionOf = (p: Person) => string | null
 
@@ -258,6 +348,7 @@ export function detailValues(ctx: MessageContext, mention: MentionOf): Record<st
     member: ctx.member ? (mention(ctx.member) ?? esc(ctx.member.name)) : null,
     missing: ctx.missing ? esc(missingSentence(ctx.missing) ?? '') || null : null,
     progress: ctx.progress ? esc(ctx.progress) : null,
+    ...Object.fromEntries(Object.entries(messageLinks(ctx)).map(([k, l]) => [k, slackLink(l)])),
   }
 }
 
@@ -304,18 +395,15 @@ export function plainText(mrkdwn: string): string {
 }
 
 /** The message: the text, then a quiet line with where it came from. */
-export function messageBlocks(text: string, ctx: MessageContext, test = false): unknown[] {
-  const link = candidateUrl(ctx) ?? jobUrl(ctx) ?? (ctx.link ? `${APP_URL}${ctx.link}` : APP_URL)
+export function messageBlocks(text: string, ctx: MessageContext, test = false, audience: Audience = 'everyone'): unknown[] {
+  const open = openLink(ctx, audience)
+  const parts = [test ? `Test from Gio ${DOT} example details` : 'Gio ATS']
   const where = [ctx.job?.title, ctx.job?.client].filter(Boolean).map((s) => esc(String(s))).join(` ${DOT} `)
+  if (where) parts.push(where)
+  if (open) parts.push(slackLink(open) as string)
   return [
     { type: 'section', text: { type: 'mrkdwn', text: text.slice(0, 3000) } },
-    {
-      type: 'context',
-      elements: [{
-        type: 'mrkdwn',
-        text: `${test ? `Test from Gio ${DOT} example details ${DOT} ` : `Gio ATS ${DOT} `}${where ? `${where} ${DOT} ` : ''}<${link}|Open in Gio>`,
-      }],
-    },
+    { type: 'context', elements: [{ type: 'mrkdwn', text: parts.join(` ${DOT} `) }] },
   ]
 }
 
@@ -401,6 +489,8 @@ export async function postTo(
     : { to: target.label, ok: false, error: r.error, problem: slackProblem(r.error, target.label) }
 }
 
+const audienceOf = (role: string): Audience => (role === 'interviewer' ? 'interviewer' : role === 'member' ? 'member' : 'everyone')
+
 const isApprover = (d: Destination) => d.type === 'role' && d.role === 'approver'
 
 /**
@@ -433,9 +523,9 @@ export async function deliver(
   ].filter(Boolean) as Person[]
   await resolver.load(everyone)
   const text = renderTemplate(template, detailValues(ctx, (p) => resolver.mention(p)))
-  const blocks = messageBlocks(text, ctx, opts.test)
+  const blocksFor = (audience: Audience) => messageBlocks(text, ctx, opts.test, audience)
 
-  const targets: Array<{ channel?: string; user?: string; label: string }> = []
+  const targets: Array<{ channel?: string; user?: string; label: string; audience?: Audience }> = []
   const missing: PostResult[] = []
   const seenUsers = new Set<string>()
   for (const d of destinationsFor(destinations, ctx, opts.test)) {
@@ -445,7 +535,7 @@ export async function deliver(
       seenUsers.add(d.id)
     } else if (d.type === 'role') {
       if (opts.test) {
-        if (opts.testTo && !seenUsers.has(opts.testTo)) targets.push({ user: opts.testTo, label: 'you' })
+        if (opts.testTo && !seenUsers.has(opts.testTo)) targets.push({ user: opts.testTo, label: 'you', audience: audienceOf(d.role) })
         if (opts.testTo) seenUsers.add(opts.testTo)
         continue
       }
@@ -467,11 +557,11 @@ export async function deliver(
           missing.push({ to: p.name, ok: false, error: 'no_slack_account', problem: `${p.name} isn't in your Slack under ${p.email ?? 'their email'}.` })
           continue
         }
-        if (!seenUsers.has(id)) targets.push({ user: id, label: p.name })
+        if (!seenUsers.has(id)) targets.push({ user: id, label: p.name, audience: audienceOf(d.role) })
         seenUsers.add(id)
       }
     }
   }
-  const posted = await Promise.all(targets.map((t) => postTo(token, t, text, blocks)))
+  const posted = await Promise.all(targets.map((t) => postTo(token, t, text, blocksFor(t.audience ?? 'everyone'))))
   return [...posted, ...missing]
 }

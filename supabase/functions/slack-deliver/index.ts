@@ -48,7 +48,7 @@ serve(async (req) => {
       await Promise.all(batch.map(async (d) => {
         try {
           if (broken.has(d.tenant_id)) throw Object.assign(new Error('token_revoked'), { code: 'token_revoked' })
-          const results = await deliver(d.connection.token, d.automation.message, d.automation.destinations ?? [], d.context ?? {})
+          const results = await deliver(d.connection.token, d.automation.message, d.automation.destinations ?? [], { ...(d.context ?? {}), event: d.event })
           const posted = results.filter((r) => r.ok && !r.problem)
           const problems = results.filter((r) => r.problem).map((r) => r.problem as string)
           const codes = results.filter((r) => !r.ok).map((r) => String(r.error ?? ''))

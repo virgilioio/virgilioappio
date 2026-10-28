@@ -227,6 +227,7 @@ serve(withRequestCors(async (req) => {
       if (jj) job = { id: jj.id, title: jj.title, client: jj.organizations?.name ?? null, department: jj.departments?.name ?? null }
     }
     const ctx: MessageContext = {
+      event,
       candidate: { id: '', name: 'Ana Example' },
       job,
       stage: 'Hiring manager interview',

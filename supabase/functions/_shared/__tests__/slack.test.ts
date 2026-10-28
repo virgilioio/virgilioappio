@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { deliver, destinationsFor, detailValues, messageBlocks, missingSentence, esc, plainText, renderTemplate, type Destination, type MessageContext } from '../slack'
+import { deliver, destinationsFor, detailValues, messageBlocks, messageLinks, missingSentence, openLink, esc, plainText, renderTemplate, type Destination, type MessageContext } from '../slack'
 
 const ctx: MessageContext = {
   candidate: { id: 'c1', name: 'Ana <Torres> & Co' },
@@ -125,6 +125,7 @@ describe('deliver', () => {
   it('DMs the team member their profile reminder, linking to their profile', async () => {
     const calls = stubSlack({ 'sofia@virgilio.tech': 'USOF' })
     const ctx2: MessageContext = {
+      event: 'member.profile_incomplete',
       member: { name: 'Sofía Ramírez', email: 'sofia@virgilio.tech' },
       missing: ['birthday', 'tax', 'bank'],
       progress: '3 of 6 done',
@@ -134,7 +135,56 @@ describe('deliver', () => {
     const posts = calls.filter((c) => c.method === 'chat.postMessage')
     expect(posts.map((c) => c.body.get('channel'))).toEqual(['D-USOF'])
     expect(posts[0].body.get('blocks')).toContain('Hi <@USOF>! Your profile is 3 of 6 done. Still to add: birthday, tax ID and bank details.')
-    expect(posts[0].body.get('blocks')).toContain('https://app.gogio.io/me|Open in Gio')
+    expect(posts[0].body.get('blocks')).toContain('https://app.gogio.io/me?focus=card-personal|Finish your profile')
+  })
+
+  it('sends the interviewer to their own scorecard and everyone else to the scorecards', async () => {
+    const calls = stubSlack({ 'jurre@virgilio.tech': 'UJUR' })
+    await deliver('xoxb', 'x', [{ type: 'channel', id: 'C1', name: 'hiring' }, { type: 'role', role: 'interviewer' }],
+      { ...ctx, event: 'interview.scheduled', interviewer: { name: 'Jurre Veen', email: 'jurre@virgilio.tech' } })
+    const posts = calls.filter((c) => c.method === 'chat.postMessage')
+    const byChannel = Object.fromEntries(posts.map((c) => [c.body.get('channel'), c.body.get('blocks') ?? '']))
+    expect(byChannel['C1']).toContain('/jobs/j1/candidates/c1?tab=scorecards|Open the scorecards')
+    expect(byChannel['D-UJUR']).toContain('/jobs/j1/candidates/c1?focus=my-scorecard|Open your scorecard')
+  })
+})
+
+describe('links', () => {
+  const base = 'https://app.gogio.io/jobs/j1/candidates/c1'
+  it('sends an approver straight to the approval card', () => {
+    expect(openLink({ ...ctx, event: 'offer.approval_requested', turn: true })).toEqual({ url: `${base}?focus=approval`, label: 'Review the offer' })
+  })
+  it('opens the offer tab for the other offer events', () => {
+    expect(openLink({ ...ctx, event: 'offer.signed' })?.url).toBe(`${base}?tab=offer`)
+  })
+  it('opens onboarding after a hire and the reasons after a rejection', () => {
+    expect(openLink({ ...ctx, event: 'candidate.hired' })?.url).toBe(`${base}?tab=onboarding`)
+    expect(openLink({ ...ctx, event: 'candidate.rejected' })?.url).toBe(`${base}?tab=rejection-details`)
+  })
+  it('opens the profile for applications and stage moves, the job for job events', () => {
+    expect(openLink({ ...ctx, event: 'candidate.stage_changed' })).toEqual({ url: base, label: "Open Ana <Torres> & Co's profile" })
+    expect(openLink({ ...ctx, candidate: null, event: 'job.opened' })).toEqual({ url: 'https://app.gogio.io/jobs/j1', label: 'Open the job' })
+  })
+  it('a welcome links the team member to their profile, and a channel to nothing', () => {
+    const welcome: MessageContext = { event: 'member.joined', member: { name: 'Sofía' } }
+    expect(openLink(welcome, 'member')).toEqual({ url: 'https://app.gogio.io/me', label: 'Open your profile' })
+    expect(openLink(welcome, 'everyone')).toBe(null)
+    expect(JSON.stringify(messageBlocks('x', welcome))).not.toContain('<https')
+  })
+  it('only offers the links that fit the event', () => {
+    const l = messageLinks({ ...ctx, event: 'candidate.applied' })
+    expect(l.offer_link).toBe(null)
+    expect(l.scorecard_link).toBe(null)
+    expect(l.my_profile_link).toBe(null)
+    expect(l.pipeline_link?.url).toBe('https://app.gogio.io/jobs/j1/pipeline')
+  })
+  it('writes link details as labelled Slack links, a dash where they don\'t apply', () => {
+    const values = detailValues({ ...ctx, event: 'offer.approval_requested' }, () => null)
+    expect(renderTemplate('{offer_link} · {my_profile_link}', values)).toBe(`<${base}?focus=approval|Review the offer> · —`)
+  })
+  it('a Send test with example details still shows every link, opening Gio', () => {
+    const test: MessageContext = { event: 'offer.approval_requested', candidate: { id: '', name: 'Ana Example' }, job: { id: '', title: 'AE' } }
+    expect(messageLinks(test).offer_link).toEqual({ url: 'https://app.gogio.io', label: 'Review the offer' })
   })
 })
 
@@ -145,7 +195,7 @@ describe('missingSentence', () => {
     expect(missingSentence([])).toBe(null)
   })
   it('a People message has no job line', () => {
-    const blocks = JSON.stringify(messageBlocks('x', { link: '/me' }))
+    const blocks = JSON.stringify(messageBlocks('x', { link: '/me' }, false, 'member'))
     expect(blocks).toContain('Gio ATS')
     expect(blocks).toContain('/me|Open in Gio')
   })
