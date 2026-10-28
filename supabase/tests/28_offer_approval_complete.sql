@@ -1,4 +1,4 @@
--- Run after 20261019011108_offer_approval_complete (link as of 20261028140000_offer_approval_links) inside a transaction that is rolled back.
+-- Run after 20261019011108_offer_approval_complete (link as of 20261028042537_offer_approval_links) inside a transaction that is rolled back.
 -- Fake offers and approval requests on a real job and candidate in Virgilio's workspace:
 -- Allan asks, the support account and another teammate approve. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);

@@ -1,4 +1,4 @@
--- Run after 20261028140000_offer_approval_links inside a transaction that is rolled back.
+-- Run after 20261028042537_offer_approval_links inside a transaction that is rolled back.
 -- Offer approval links: the approver's bell and its reminder open the candidate
 -- in the job at the approval (?focus=approval), the "offer approved" bell opens
 -- the Offer tab, and no bell or function keeps the old job-page address.
