@@ -1,7 +1,8 @@
--- Run after 20261028005802_slack_offer_approver inside a transaction that is rolled back.
+-- Run after 20261028130100_slack_people inside a transaction that is rolled back.
 -- Slack: who sets up automations, which events queue a message (once), that
--- the token and the queue stay server-side, and that the offer approver hears
--- only when it's their turn.
+-- the token and the queue stay server-side, that the offer approver hears
+-- only when it's their turn, and People: a welcome once when someone joins,
+-- profile reminders until complete, internal members only.
 -- Jobs: Sales Development Representative (SDR) and the open job where
 -- Melissa Perez is Recruiter (OTHER).
 --   Allan Bravo     admin                       workspace-wide and offer automations
@@ -62,6 +63,11 @@ declare
   s3 uuid;
   mc jsonb;
   n0 int;
+  welcome uuid;
+  remind uuid;
+  vic_member uuid;
+  allan_member uuid;
+  ext_member uuid;
 begin
   -- Slack connected (a stand-in token, rolled back with everything else).
   perform public.slack_connection_save(ten, allan,
@@ -207,7 +213,9 @@ begin
   select count(*) into n from public.slack_deliveries where event_key = 'approval_requested:' || req;
   insert into t_results values ('the channel hears once per request, the approver-only automation doesn''t (' || n || ')',
     n = 1 and exists (select 1 from public.slack_deliveries where event_key = 'approval_requested:' || req and automation_id = appr_auto));
-  select count(*) into n from public.slack_deliveries where context ? 'turn_step_id' and context ->> 'request_id' = req::text;
+  -- Counts only this test's automations (real ones may also be listening).
+  select count(*) into n from public.slack_deliveries where context ? 'turn_step_id' and context ->> 'request_id' = req::text
+    and automation_id in (appr_auto, appr_only);
   insert into t_results values ('only approver 1 has a turn when it goes out (' || n || ')',
     n = 2 and not exists (select 1 from public.slack_deliveries where context ->> 'request_id' = req::text
       and context ? 'turn_step_id' and context ->> 'turn_step_id' <> s1::text));
@@ -221,11 +229,11 @@ begin
   perform pg_temp.as_user(allan);
   perform public.offer_approval_decide(s1, 'approved');
   perform set_config('role', 'postgres', true);
-  select count(*) into n from public.slack_deliveries where event_key = 'approval_turn:' || s2;
+  select count(*) into n from public.slack_deliveries where event_key = 'approval_turn:' || s2 and automation_id in (appr_auto, appr_only);
   insert into t_results values ('approving moves the turn to approver 2 (' || n || ')',
     n = 2 and not exists (select 1 from public.slack_deliveries where event_key = 'approval_turn:' || s3));
   perform public.offer_approval_slack_turns(req);
-  select count(*) into n from public.slack_deliveries where event_key = 'approval_turn:' || s2;
+  select count(*) into n from public.slack_deliveries where event_key = 'approval_turn:' || s2 and automation_id in (appr_auto, appr_only);
   insert into t_results values ('an approver never hears twice for a step', n = 2);
 
   perform pg_temp.as_user(erik);
@@ -235,8 +243,88 @@ begin
     not exists (select 1 from public.slack_deliveries where event_key = 'approval_turn:' || s3));
   perform public.slack_deliveries_claim(50);
   select count(*) into n from public.slack_deliveries
-  where context ->> 'request_id' = req::text and context ? 'turn_step_id' and status = 'skipped' and error = 'No longer their turn';
+  where context ->> 'request_id' = req::text and context ? 'turn_step_id' and status = 'skipped' and error = 'No longer their turn'
+    and automation_id in (appr_auto, appr_only);
   insert into t_results values ('a turn that''s over is never sent late (' || n || ')', n = 4);
+
+  -- People: a welcome once, profile reminders until complete, internal only.
+  select id into vic_member from public.members where tenant_id = ten and user_id = victoria;
+  select id into allan_member from public.members where tenant_id = ten and user_id = allan;
+  select id into ext_member from public.members where tenant_id = ten and user_type::text = 'external' and user_status = 'active' limit 1;
+  perform pg_temp.as_user(allan);
+  welcome := public.slack_save_automation(null, ten, null, null, 'member.joined', '{}',
+    chan || '[{"type":"role","role":"member"}]'::jsonb, 'Welcome to Gio, {member}!');
+  remind := public.slack_save_automation(null, ten, null, null, 'member.profile_incomplete', '{"every_days": 7}',
+    '[{"type":"role","role":"member"}]', 'Hi {member}, your profile is {progress}. Still to add: {missing}.');
+  insert into t_results values ('an admin adds a welcome and a profile reminder', welcome is not null and remind is not null);
+  insert into t_results values ('a profile reminder goes only to the team member',
+    pg_temp.err_of(format($q$select public.slack_save_automation(null, %L, null, null, 'member.profile_incomplete', '{"every_days": 7}', %L, 'x')$q$, ten, chan)) = 'GSL04');
+  insert into t_results values ('People automations are workspace-wide, never a job''s',
+    pg_temp.err_of(format($q$select public.slack_save_automation(null, %L, %L, null, 'member.joined', '{}', '[{"type":"role","role":"member"}]', 'x')$q$, ten, sdr)) = 'GSL04');
+  insert into t_results values ('the team member is only for People automations',
+    pg_temp.err_of(format($q$select public.slack_save_automation(null, %L, null, null, 'candidate.hired', '{}', '[{"type":"role","role":"member"}]', 'x')$q$, ten)) = 'GSL04');
+  insert into t_results values ('only profile reminders repeat, and they need how often',
+    pg_temp.err_of(format($q$select public.slack_save_automation(null, %L, null, null, 'member.joined', '{"every_days": 7}', '[{"type":"role","role":"member"}]', 'x')$q$, ten)) = 'GSL04'
+    and pg_temp.err_of(format($q$select public.slack_save_automation(null, %L, null, null, 'member.profile_incomplete', '{}', '[{"type":"role","role":"member"}]', 'x')$q$, ten)) = 'GSL04'
+    and pg_temp.err_of(format($q$select public.slack_save_automation(null, %L, null, null, 'member.profile_incomplete', '{"every_days": 9}', '[{"type":"role","role":"member"}]', 'x')$q$, ten)) = 'GSL04');
+  insert into t_results values ('People automations take no job filters',
+    pg_temp.err_of(format($q$select public.slack_save_automation(null, %L, null, null, 'member.joined', %L, '[{"type":"role","role":"member"}]', 'x')$q$, ten, jsonb_build_object('job_ids', jsonb_build_array(sdr)))) = 'GSL04');
+  select count(*) into n from public.slack_automations_list(ten, sdr) where event like 'member.%';
+  insert into t_results values ('job pages don''t list People automations', n = 0);
+  perform set_config('role', 'postgres', true);
+  perform pg_temp.as_user(victoria);
+  insert into t_results values ('a Recruiter can''t add a People automation',
+    pg_temp.err_of(format($q$select public.slack_save_automation(null, %L, null, null, 'member.joined', '{}', '[{"type":"role","role":"member"}]', 'x')$q$, ten)) = 'GSL01');
+  perform set_config('role', 'postgres', true);
+
+  -- Victoria joins (again, in this transaction): one welcome, never twice.
+  update public.members set user_status = 'inactive' where id = vic_member;
+  update public.members set user_status = 'active' where id = vic_member;
+  update public.members set user_status = 'inactive' where id = vic_member;
+  update public.members set user_status = 'active' where id = vic_member;
+  select count(*) into n from public.slack_deliveries where event_key = 'member_joined:' || vic_member;
+  insert into t_results values ('joining queues the welcome once, never twice (' || n || ')',
+    n = 1 and exists (select 1 from public.slack_deliveries where event_key = 'member_joined:' || vic_member and automation_id = welcome));
+  if ext_member is not null then
+    update public.members set user_status = 'inactive' where id = ext_member;
+    update public.members set user_status = 'active' where id = ext_member;
+    insert into t_results values ('an external user gets no welcome',
+      not exists (select 1 from public.slack_deliveries where event_key = 'member_joined:' || ext_member));
+  end if;
+  mc := public.slack_message_context((select context from public.slack_deliveries where event_key = 'member_joined:' || vic_member));
+  insert into t_results values ('the message names the member and what''s missing (' || (mc ->> 'progress') || ')',
+    mc -> 'member' ->> 'id' = victoria::text and mc ->> 'progress' = '3 of 6 done'
+    and mc -> 'missing' = '["you", "tax", "bank"]'::jsonb and mc ->> 'link' = '/me');
+
+  -- Reminders: not on the day they join; due a week later; once a day at most.
+  perform public.slack_profile_reminders();
+  insert into t_results values ('no reminder the day someone joins',
+    not exists (select 1 from public.slack_deliveries where automation_id = remind and context ->> 'member_id' = vic_member::text));
+  update public.activities set created_at = now() - interval '8 days'
+  where activity_type = 'member_activated' and metadata ->> 'member_id' = vic_member::text and created_at >= now() - interval '1 minute';
+  perform public.slack_profile_reminders();
+  perform public.slack_profile_reminders();
+  select count(*) into n from public.slack_deliveries where automation_id = remind and context ->> 'member_id' = vic_member::text;
+  insert into t_results values ('a week after joining the reminder is due, once (' || n || ')', n = 1);
+  insert into t_results values ('a complete profile gets no reminder',
+    not exists (select 1 from public.slack_deliveries where automation_id = remind and context ->> 'member_id' = allan_member::text));
+  insert into t_results values ('external users get no reminders',
+    not exists (select 1 from public.slack_deliveries d join public.members m on m.id::text = d.context ->> 'member_id'
+                where d.automation_id = remind and m.user_type::text = 'external'));
+
+  -- Never sent when it's no longer needed.
+  insert into public.slack_deliveries (tenant_id, automation_id, event, event_key, context)
+  values (ten, remind, 'member.profile_incomplete', 'profile_reminder:test:' || allan_member,
+    jsonb_build_object('member_id', allan_member, 'member_user_id', allan));
+  update public.members set user_status = 'inactive' where id = vic_member;
+  perform public.slack_deliveries_claim(50);
+  insert into t_results values ('someone who left gets no reminder',
+    (select status = 'skipped' and error = 'No longer a team member' from public.slack_deliveries
+     where automation_id = remind and context ->> 'member_id' = vic_member::text));
+  insert into t_results values ('a profile completed meanwhile gets no reminder',
+    (select status = 'skipped' and error = 'Profile complete' from public.slack_deliveries
+     where event_key = 'profile_reminder:test:' || allan_member));
+  update public.members set user_status = 'active' where id = vic_member;
 
   -- Disconnecting: waiting messages are skipped, nothing more queues.
   perform public.slack_connection_remove(ten, allan);
