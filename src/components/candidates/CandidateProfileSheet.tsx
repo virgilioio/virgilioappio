@@ -303,6 +303,7 @@ const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
 const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
 // Set from a `?focus=my-scorecard` deep link — opens the current-stage scorecard editor once the stage is resolved.
 const [pendingFocusMyScorecard, setPendingFocusMyScorecard] = useState(false)
+const [approvalFocus, setApprovalFocus] = useState(false)
 // Bump to force per-stage useAllStageScorecards instances to refetch after a save/delete.
 const [scorecardsRefreshNonce, setScorecardsRefreshNonce] = useState(0)
 const bumpScorecardsRefresh = () => setScorecardsRefreshNonce((n) => n + 1)
@@ -704,9 +705,15 @@ const stageHasAutomation = useMemo(() => {
         // The Comments tab became the Comments card on Job overview (2026-10-19).
         else if (tabParam === 'comments') initialTab = 'job'
         else if (tabParam === 'offer') initialTab = 'offer'
+        else if (tabParam === 'job' || tabParam === 'resume' || tabParam === 'onboarding' || tabParam === 'rejection-details') initialTab = tabParam
         focusMine = params.get('focus') === 'my-scorecard'
+        // ?focus=approval (Slack, the bell, the approval email): the Offer tab's
+        // approvals, scrolled to whose turn it is.
+        const focusApproval = params.get('focus') === 'approval'
+        if (focusApproval) initialTab = 'offer'
+        setApprovalFocus(focusApproval)
         // A link that names a tab (a scorecard email) keeps it, whatever the status.
-        tabFromLink.current = !!tabParam
+        tabFromLink.current = !!tabParam || focusApproval
       }
       setActiveTab(initialTab)
       if (focusMine) {
@@ -768,6 +775,13 @@ const stageHasAutomation = useMemo(() => {
     else if (associationStatus === 'hired') setActiveTab('onboarding')
     else if (associationStatus === 'rejected') setActiveTab('rejection-details')
   }, [associationStatus, canViewOffers])
+
+  // Onboarding and Rejection details only open for a candidate in that state.
+  useEffect(() => {
+    if (!associationStatus) return
+    if (activeTab === 'onboarding' && associationStatus !== 'hired') setActiveTab('job')
+    if (activeTab === 'rejection-details' && associationStatus !== 'rejected') setActiveTab('job')
+  }, [activeTab, associationStatus])
 
   // Someone outside the offer team never lands on the Offer tab.
   useEffect(() => {
@@ -1993,7 +2007,7 @@ const stageHasAutomation = useMemo(() => {
 
                     {/* Offer Tab */}
                     {activeTab === 'offer' && candidateId && canViewOffers && (
-                      <Tabs defaultValue="offer-details" className="w-full">
+                      <Tabs defaultValue={approvalFocus ? 'offer-approvals' : 'offer-details'} className="w-full">
                         <TabsList
                           className="inline-flex w-auto p-1 rounded-[10px] h-auto bg-transparent gap-1"
                           style={{ backgroundColor: '#ECEAE2' }}
@@ -2025,7 +2039,7 @@ const stageHasAutomation = useMemo(() => {
                           <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }} />
                         </TabsContent>
                         <TabsContent value="offer-approvals" className="mt-4">
-                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidateFirstName={candidate?.candidate_name?.split(' ')[0]} jobTitle={(job as any)?.title || undefined} />
+                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidateFirstName={candidate?.candidate_name?.split(' ')[0]} jobTitle={(job as any)?.title || undefined} focus={approvalFocus} onFocused={() => setApprovalFocus(false)} />
                         </TabsContent>
                       </Tabs>
                     )}
