@@ -8,8 +8,8 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Briefcase, CalendarClock, CalendarX2, CheckCircle2, ClipboardCheck, FileCheck2, FileSignature,
-  FileX2, Inbox, ListTodo, MoveRight, PartyPopper, Send, UserPlus, UserX, XCircle, type LucideIcon,
+  Briefcase, CalendarClock, CalendarX2, CheckCircle2, ClipboardCheck, ClipboardList, FileCheck2, FileSignature,
+  FileX2, Hourglass, Inbox, ListTodo, MoveRight, PartyPopper, Send, UserPlus, UserX, XCircle, type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import type { Json } from '@/integrations/supabase/types'
@@ -18,15 +18,15 @@ import type { Json } from '@/integrations/supabase/types'
 
 export type SlackEvent =
   | 'candidate.applied' | 'candidate.stage_changed' | 'candidate.hired' | 'candidate.rejected'
-  | 'interview.scheduled' | 'interview.cancelled' | 'scorecard.submitted'
-  | 'offer.approval_requested' | 'offer.approved' | 'offer.sent' | 'offer.signed' | 'offer.declined'
+  | 'interview.scheduled' | 'interview.cancelled' | 'scorecard.submitted' | 'scorecard.due'
+  | 'offer.approval_requested' | 'offer.approval_waiting' | 'offer.approved' | 'offer.sent' | 'offer.signed' | 'offer.declined'
   | 'job.opened' | 'job.closed'
   | 'member.joined' | 'member.profile_incomplete'
 
 export type SlackDetail =
   | 'who' | 'candidate' | 'job' | 'client' | 'department' | 'stage' | 'previous_stage'
   | 'recruiter' | 'sourcer' | 'hiring_manager' | 'interviewer' | 'interview_time'
-  | 'rating' | 'reason' | 'opening' | 'approver' | 'approval_step'
+  | 'rating' | 'reason' | 'opening' | 'approver' | 'approval_step' | 'waiting'
   | 'member' | 'missing' | 'progress'
   // Links (2026-10-28): each reads as a labelled link in Slack.
   | 'profile_link' | 'offer_link' | 'scorecard_link' | 'job_link' | 'pipeline_link' | 'my_profile_link'
@@ -51,10 +51,12 @@ export interface SlackEventDef {
   /** People (2026-10-28): Virgilio's own team members, workspace-wide, admins
    * only, no job filters. */
   people?: boolean
-  /** Goes only to the team member, by DM. */
-  dmOnly?: boolean
-  /** Repeats every `filters.every_days` until it no longer applies. */
-  repeats?: boolean
+  /** Goes only to this person, by DM (the team member, the approver whose
+   * turn it is, the interviewer who owes a scorecard). */
+  dmOnly?: SlackRole
+  /** Repeats every `filters.every_days` until it no longer applies: the
+   * choices, the default, whether "Only once" is one, and from when. */
+  repeats?: { options: readonly number[]; initial: number; once?: boolean; from: string }
   message: string
 }
 
@@ -89,10 +91,20 @@ export const SLACK_EVENTS: SlackEventDef[] = [
   { key: 'scorecard.submitted', group: 'Interviews', label: 'A scorecard is submitted', when: 'When a scorecard is submitted', icon: ClipboardCheck,
     details: [...CANDIDATE, 'rating', ...SCORECARD_LINKS], roles: TEAM, stages: true,
     message: '{who} submitted a scorecard for {candidate}: {rating}.' },
+  { key: 'scorecard.due', group: 'Interviews', label: 'A scorecard is due', when: 'When a scorecard is due', icon: ClipboardList,
+    details: ['candidate', 'job', 'client', 'department', 'stage', 'interviewer', 'interview_time', ...SCORECARD_LINKS],
+    roles: ['interviewer'], stages: true, dmOnly: 'interviewer',
+    repeats: { options: [1, 2, 3], initial: 1, once: true, from: 'From when the interview ends, until their scorecard is in.' },
+    message: 'Hi {interviewer}! 👋 Your scorecard for {candidate} ({job}, {stage}) is due. A few minutes now keeps the process moving. {scorecard_link}' },
   { key: 'offer.approval_requested', group: 'Offers', label: 'An offer needs approval', when: 'When an offer is sent for approval', icon: FileCheck2, offer: true,
     details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE, 'approver', 'approval_step', ...OFFER_LINKS],
     roles: [...TEAM, 'approver'],
     message: "{who} sent {candidate}'s offer for {job} for approval. Next to approve: {approver}." },
+  { key: 'offer.approval_waiting', group: 'Offers', label: 'An offer is still waiting for approval', when: 'When an offer is still waiting for approval', icon: Hourglass, offer: true,
+    details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE, 'approver', 'approval_step', 'waiting', ...OFFER_LINKS],
+    roles: ['approver'], dmOnly: 'approver',
+    repeats: { options: [1, 2, 3], initial: 1, from: 'From when their turn began, until they decide.' },
+    message: 'Hi {approver}! 👋 The offer for {candidate} ({job}) is still waiting for your approval. It can’t go out until you decide. {offer_link}' },
   { key: 'offer.approved', group: 'Offers', label: 'An offer is approved', when: 'When an offer is approved', icon: CheckCircle2, offer: true,
     details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...OFFER_LINKS], roles: TEAM,
     message: "{candidate}'s offer for {job} is approved." },
@@ -115,7 +127,8 @@ export const SLACK_EVENTS: SlackEventDef[] = [
     details: ['member', 'my_profile_link'], roles: ['member'],
     message: 'Welcome to Gio, {member}! 👋🎉 We’re so happy you’re here. Start with your profile: it only takes a few minutes ✨' },
   { key: 'member.profile_incomplete', group: 'People', label: 'A profile is still incomplete', when: 'When a profile is still incomplete', icon: ListTodo,
-    people: true, dmOnly: true, repeats: true,
+    people: true, dmOnly: 'member',
+    repeats: { options: [3, 5, 7, 14], initial: 7, from: 'From the day they join, until their profile is complete.' },
     details: ['member', 'missing', 'progress', 'my_profile_link'], roles: ['member'],
     message: 'Hey {member}! 👋 Your Gio profile is {progress}. Still to add: {missing}. It only takes a few minutes, and it helps the whole team ✨' },
 ]
@@ -140,6 +153,7 @@ export const SLACK_DETAILS: Record<SlackDetail, { label: string; example: string
   opening: { label: 'Opening (Req ID)', example: 'REQ-0042' },
   approver: { label: 'Approver (whose turn)', example: 'Erik Veen' },
   approval_step: { label: 'Approval step', example: 'Step 2 of 3' },
+  waiting: { label: 'Waiting for', example: '2 days' },
   member: { label: 'Team member', example: 'Sofía Ramírez' },
   missing: { label: 'What’s missing', example: 'birthday, tax ID and bank details' },
   progress: { label: 'Progress', example: '3 of 6 done' },
@@ -158,8 +172,9 @@ export const LINK_DETAILS = new Set<SlackDetail>(['profile_link', 'offer_link', 
 export function linkLabel(key: SlackDetail, event: SlackEvent | null | undefined): string {
   switch (key) {
     case 'profile_link': return `Open ${SLACK_DETAILS.candidate.example}'s profile`
-    case 'offer_link': return event === 'offer.approval_requested' ? 'Review the offer' : 'See the offer'
-    case 'scorecard_link': return event === 'scorecard.submitted' ? 'Read the scorecard' : 'Open the scorecards'
+    case 'offer_link': return event === 'offer.approval_requested' || event === 'offer.approval_waiting' ? 'Review the offer' : 'See the offer'
+    case 'scorecard_link':
+      return event === 'scorecard.submitted' ? 'Read the scorecard' : event === 'scorecard.due' ? 'Open your scorecard' : 'Open the scorecards'
     case 'job_link': return 'Open the job'
     case 'pipeline_link': return 'See the pipeline'
     case 'my_profile_link': return event === 'member.profile_incomplete' ? 'Finish your profile' : 'Open your profile'
@@ -174,6 +189,8 @@ export function openLabel(event: SlackEvent | null | undefined, dm = false): { l
     case 'member.joined': return dm ? { label: 'Open your profile', where: 'My profile' } : null
     case 'member.profile_incomplete': return { label: 'Finish your profile', where: 'the first card still to fill in on My profile' }
     case 'offer.approval_requested': return { label: 'Review the offer', where: 'the approval, at whose turn it is' }
+    case 'offer.approval_waiting': return { label: 'Review the offer', where: 'their Approve / Decline row' }
+    case 'scorecard.due': return { label: 'Open your scorecard', where: 'their own scorecard, ready to fill in' }
     case 'offer.approved': case 'offer.sent': case 'offer.signed': case 'offer.declined':
       return { label: 'See the offer', where: 'the Offer tab' }
     case 'interview.scheduled':
@@ -205,8 +222,6 @@ export const ROLE_HINT: Partial<Record<SlackRole, string>> = {
   member: 'The person it’s about, by DM',
 }
 
-/** How often a profile reminder repeats (`filters.every_days`). */
-export const REMIND_EVERY = [3, 5, 7, 14] as const
 
 // ---------- Shapes ----------
 

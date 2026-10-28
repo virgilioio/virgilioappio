@@ -12,7 +12,6 @@ import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { shakeFirstInvalid } from '@/lib/motion'
 import {
   LINK_DETAILS,
-  REMIND_EVERY,
   SLACK_DETAILS,
   SLACK_EVENT,
   SLACK_EVENTS,
@@ -28,6 +27,7 @@ import {
   useSlackTest,
   type SlackAutomation,
   type SlackDestination,
+  type SlackRole,
   type SlackEvent,
   type SlackFilters,
   type SlackTag,
@@ -56,7 +56,12 @@ export interface AutomationDraftSeed {
 
 const MAX = 3000
 const GROUPS = ['Candidates', 'Interviews', 'Offers', 'Jobs', 'People'] as const
-const MEMBER: SlackDestination = { type: 'role', role: 'member' }
+/** Who a DM-only event goes to, as the Send to row and its note say it. */
+const DM_ONLY: Partial<Record<SlackRole, { who: string; note: string }>> = {
+  member: { who: 'The team member', note: 'Profile reminders only go to the person, by DM.' },
+  approver: { who: 'The offer approver, on their turn', note: 'Approval reminders only go to the approver whose turn it is, by DM.' },
+  interviewer: { who: 'The interviewer who owes it', note: 'Scorecard reminders only go to the interviewer, by DM.' },
+}
 
 export function SlackAutomationSheet({
   open,
@@ -159,15 +164,17 @@ export function SlackAutomationSheet({
     // A message still at the old default follows the new event.
     if (draft.trim() === SLACK_EVENT[event].message || !draft.trim()) setDraft(SLACK_EVENT[next].message)
     const to = SLACK_EVENT[next]
-    // Roles the new event can't DM go; a DM-only event goes to the team member.
-    setDestinations((ds) => (to.dmOnly ? [MEMBER] : ds.filter((d) => d.type !== 'role' || to.roles.includes(d.role))))
-    // People events have no job filters; only reminders repeat; stage filters
-    // only where stages apply.
+    // Roles the new event can't DM go; a DM-only event goes to its one person.
+    setDestinations((ds) =>
+      to.dmOnly ? [{ type: 'role', role: to.dmOnly }] : ds.filter((d) => d.type !== 'role' || to.roles.includes(d.role)))
+    // People events have no job filters; only reminders repeat, each with its
+    // own choices; stage filters only where stages apply.
     setFilters((f) => {
-      if (to.people) return to.repeats ? { every_days: f.every_days ?? 7 } : {}
+      const every = to.repeats ? (to.repeats.options.includes(f.every_days ?? -1) ? f.every_days : to.repeats.initial) : undefined
+      if (to.people) return every ? { every_days: every } : {}
       const { every_days: _every, ...rest } = f
       if (!to.stages) delete rest.stage_ids
-      return rest
+      return every ? { ...rest, every_days: every } : rest
     })
     setEvent(next)
   }
@@ -222,7 +229,8 @@ export function SlackAutomationSheet({
 
   const stageOptions = jobId ? jobStages.data ?? [] : options.data?.stages ?? []
   const hasFilters = !def.people && (!jobId || def.stages)
-  const every = filters.every_days ?? 7
+  const every = filters.every_days ?? 0
+  const dmOnly = def.dmOnly ? DM_ONLY[def.dmOnly] : undefined
   const showError = tried ? problem : null
 
   return (
@@ -345,30 +353,38 @@ export function SlackAutomationSheet({
       )}
 
       {def.repeats && (
-        <FormSection title="Remind every" subtitle="From the day they join, until their profile is complete.">
-          <RemindEvery value={every} onChange={(d) => setFilters((f) => ({ ...f, every_days: d }))} />
+        <FormSection title="Reminders" subtitle={def.repeats.from}>
+          <RemindEvery
+            options={def.repeats.options}
+            once={def.repeats.once}
+            value={every}
+            onChange={(d) => setFilters((f) => {
+              const { every_days: _every, ...rest } = f
+              return d ? { ...rest, every_days: d } : rest
+            })}
+          />
         </FormSection>
       )}
 
       <FormSection
         title="Send to"
         subtitle={
-          def.dmOnly
-            ? 'Only the team member, by DM.'
+          dmOnly
+            ? `Only ${dmOnly.who.toLowerCase()}, by DM.`
             : def.people
               ? 'The team member by DM, or channels and people in your Slack.'
               : 'Channels, people in your Slack, or the job\'s people by DM.'
         }
       >
-        {def.dmOnly ? (
+        {dmOnly ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#F1F0EC] px-2.5 font-inter text-[13px] text-text-primary">
               <Users className="h-3.5 w-3.5 text-[#5A6072]" aria-hidden />
-              The team member
+              {dmOnly.who}
             </span>
             <span className="inline-flex items-center gap-1 font-inter text-[12px] text-text-tertiary">
               <Lock className="h-3 w-3" aria-hidden />
-              Profile reminders only go to the person, by DM.
+              {dmOnly.note}
             </span>
           </div>
         ) : (
@@ -435,7 +451,7 @@ export function SlackAutomationSheet({
           details={def.details}
           people={def.people}
           event={event}
-          dm={destinations.length > 0 && destinations.every((d) => d.type === 'role' && (d.role === 'interviewer' || d.role === 'member'))}
+          dm={!!def.dmOnly || (destinations.length > 0 && destinations.every((d) => d.type === 'role' && (d.role === 'interviewer' || d.role === 'member')))}
         />
       </FormSection>
 
@@ -456,18 +472,24 @@ function cleanFilters(f: SlackFilters): SlackFilters {
   return out
 }
 
-/** Every 3, 5, 7 or 14 days: one layer slides between them (§14). */
-function RemindEvery({ value, onChange }: { value: number; onChange: (days: number) => void }) {
+/** How often (the event's own choices, and "Only once" where it may): one
+ * layer slides between them (§14). 0 is only once. */
+function RemindEvery({ options, once, value, onChange }: {
+  options: readonly number[]
+  once?: boolean
+  value: number
+  onChange: (days: number) => void
+}) {
   const segRef = useSegmentLayer<HTMLDivElement>()
   return (
     <div
       ref={segRef}
       role="radiogroup"
-      aria-label="Remind every"
+      aria-label="Reminders"
       className="gio-seg inline-flex"
       style={{ gap: 4, padding: 4, background: '#ECEAE2', borderRadius: 10 }}
     >
-      {REMIND_EVERY.map((d) => {
+      {[...options, ...(once ? [0] : [])].map((d) => {
         const active = d === value
         return (
           <button
@@ -492,7 +514,7 @@ function RemindEvery({ value, onChange }: { value: number; onChange: (days: numb
               cursor: 'pointer',
             }}
           >
-            {d} days
+            {d === 0 ? 'Only once' : d === 1 ? 'Every day' : `Every ${d} days`}
           </button>
         )
       })}

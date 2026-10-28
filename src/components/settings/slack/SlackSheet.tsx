@@ -36,6 +36,12 @@ const STARTERS: Array<{ event: SlackEvent; title: string; body: string }> = [
   { event: 'scorecard.submitted', title: 'Scorecards in', body: 'Tell the Recruiter when an interviewer submits.' },
 ]
 
+/** Reminders (2026-10-28): to the one person who has to act, by DM, until it's done. */
+const REMINDER_STARTERS: Array<{ event: SlackEvent; title: string; body: string }> = [
+  { event: 'offer.approval_waiting', title: 'Approval reminders', body: 'Nudge whoever’s turn it is to approve an offer, every day until they decide.' },
+  { event: 'scorecard.due', title: 'Scorecard reminders', body: 'DM interviewers when their scorecard is due, every day until it’s in.' },
+]
+
 /** People (2026-10-28): for Virgilio's own team. */
 const PEOPLE_STARTERS: Array<{ event: SlackEvent; title: string; body: string }> = [
   { event: 'member.joined', title: 'Welcome new teammates', body: 'DM them a welcome the day they join Gio.' },
@@ -57,8 +63,8 @@ export function askDisconnectSlack(status: SlackStatus | undefined) {
 function starterRow(event: SlackEvent): SlackAutomation {
   const def = SLACK_EVENT[event]
   return {
-    id: '', job_id: null, job_title: null, name: null, event, filters: def.repeats ? { every_days: 7 } : {},
-    destinations: def.people ? [{ type: 'role', role: 'member' }] : event === 'candidate.hired' ? [] : [{ type: 'role', role: 'recruiter' }],
+    id: '', job_id: null, job_title: null, name: null, event, filters: def.repeats ? { every_days: def.repeats.initial } : {},
+    destinations: def.dmOnly ? [{ type: 'role', role: def.dmOnly }] : event === 'candidate.hired' ? [] : [{ type: 'role', role: 'recruiter' }],
     message: def.message, is_active: true, preset: null, created_by_name: null, updated_at: '',
     last_sent_at: null, last_error: null, last_error_at: null, can_edit: true,
   }
@@ -87,7 +93,8 @@ export function SlackSheet({
   const isAdmin = !!status?.is_admin
   const rows = list.data ?? []
   const people = rows.filter((r) => SLACK_EVENT[r.event]?.people)
-  const workspace = rows.filter((r) => !r.job_id && !SLACK_EVENT[r.event]?.people)
+  const reminders = rows.filter((r) => !r.job_id && SLACK_EVENT[r.event]?.repeats && !SLACK_EVENT[r.event]?.people)
+  const workspace = rows.filter((r) => !r.job_id && !SLACK_EVENT[r.event]?.people && !SLACK_EVENT[r.event]?.repeats)
   const onJobs = rows.filter((r) => r.job_id)
 
   const reconnect = async () => {
@@ -177,25 +184,7 @@ export function SlackSheet({
                       primary={isAdmin && working ? { label: 'New automation', icon: <Plus className="h-4 w-4" />, onClick: () => newOne() } : undefined}
                     />
                     {isAdmin && working && (
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        {STARTERS.map((s) => {
-                          const Icon = SLACK_EVENT[s.event].icon
-                          return (
-                            <button
-                              key={s.event}
-                              type="button"
-                              onClick={() => newOne(starterRow(s.event))}
-                              className="gio-pressable flex flex-col items-start gap-1.5 rounded-xl border border-[#E7E8EE] bg-white p-3 text-left transition-colors duration-hover hover:border-[#C9C7BF]"
-                            >
-                              <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-[#EDE4FF] text-[#6F3FF5]">
-                                <Icon className="h-3.5 w-3.5" strokeWidth={2} />
-                              </span>
-                              <span className="font-inter text-[13px] font-medium text-text-primary">{s.title}</span>
-                              <span className="font-inter text-[12px] leading-snug text-text-secondary">{s.body}</span>
-                            </button>
-                          )
-                        })}
-                      </div>
+                      <StarterCards starters={[...STARTERS, ...REMINDER_STARTERS]} columns={3} onPick={(e) => newOne(starterRow(e))} />
                     )}
                   </div>
                 ) : (
@@ -211,6 +200,21 @@ export function SlackSheet({
                         />
                       </FormSection>
                     )}
+                    {(reminders.length > 0 || (isAdmin && working)) && (
+                      <FormSection title="Reminders" subtitle="To the one person who has to act, by DM, until it’s done." bare>
+                        {reminders.length > 0 ? (
+                          <SlackAutomationList
+                            tenantId={tenantId}
+                            rows={reminders}
+                            connected={working}
+                            onEdit={(row) => setSeed({ id: row.id, row })}
+                            onDuplicate={(row) => newOne(row)}
+                          />
+                        ) : (
+                          <StarterCards starters={REMINDER_STARTERS} columns={2} onPick={(e) => newOne(starterRow(e))} />
+                        )}
+                      </FormSection>
+                    )}
                     {(people.length > 0 || (isAdmin && working)) && (
                       <FormSection title="People" subtitle="Virgilio’s own team, never external users: welcomes and profile reminders." bare>
                         {people.length > 0 ? (
@@ -222,25 +226,7 @@ export function SlackSheet({
                             onDuplicate={(row) => newOne(row)}
                           />
                         ) : (
-                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            {PEOPLE_STARTERS.map((s) => {
-                              const Icon = SLACK_EVENT[s.event].icon
-                              return (
-                                <button
-                                  key={s.event}
-                                  type="button"
-                                  onClick={() => newOne(starterRow(s.event))}
-                                  className="gio-pressable flex flex-col items-start gap-1.5 rounded-xl border border-[#E7E8EE] bg-white p-3 text-left transition-colors duration-hover hover:border-[#C9C7BF]"
-                                >
-                                  <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-[#EDE4FF] text-[#6F3FF5]">
-                                    <Icon className="h-3.5 w-3.5" strokeWidth={2} />
-                                  </span>
-                                  <span className="font-inter text-[13px] font-medium text-text-primary">{s.title}</span>
-                                  <span className="font-inter text-[12px] leading-snug text-text-secondary">{s.body}</span>
-                                </button>
-                              )
-                            })}
-                          </div>
+                          <StarterCards starters={PEOPLE_STARTERS} columns={2} onPick={(e) => newOne(starterRow(e))} />
                         )}
                       </FormSection>
                     )}
@@ -322,5 +308,34 @@ export function SlackSheet({
         seed={seed}
       />
     </>
+  )
+}
+
+/** Ready-made automations to start from: a card each. */
+function StarterCards({ starters, columns, onPick }: {
+  starters: Array<{ event: SlackEvent; title: string; body: string }>
+  columns: 2 | 3
+  onPick: (event: SlackEvent) => void
+}) {
+  return (
+    <div className={columns === 3 ? 'grid grid-cols-1 gap-2 sm:grid-cols-3' : 'grid grid-cols-1 gap-2 sm:grid-cols-2'}>
+      {starters.map((s) => {
+        const Icon = SLACK_EVENT[s.event].icon
+        return (
+          <button
+            key={s.event}
+            type="button"
+            onClick={() => onPick(s.event)}
+            className="gio-pressable flex flex-col items-start gap-1.5 rounded-xl border border-[#E7E8EE] bg-white p-3 text-left transition-colors duration-hover hover:border-[#C9C7BF]"
+          >
+            <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-[#EDE4FF] text-[#6F3FF5]">
+              <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+            </span>
+            <span className="font-inter text-[13px] font-medium text-text-primary">{s.title}</span>
+            <span className="font-inter text-[12px] leading-snug text-text-secondary">{s.body}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
