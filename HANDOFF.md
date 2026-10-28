@@ -42,6 +42,13 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Waiting for Apply 2026-10-28 (ATS) — Slack log: History, Send now, Send again, Activity
+
+- **What it is:** see whether Slack automations work. Each saved automation has Automation · History: its last 50 messages with the outcome (Sent, Partly sent, Didn't go out, Skipped, Waiting, Retrying), who it was about, who it reached by name and Slack's reason for anyone it didn't, and what started it (an event, the schedule, Send now, Remind, Request scorecard, with who pressed it). A message that didn't go out has Send again. Reminders (approval waiting, scorecard due, profile incomplete) have Send now: who's waiting right now, then one button for all of them, at most once every 10 minutes; the schedule counts from it. Every message about a candidate that went out or failed for good is a line in the candidate's Activity, in a Slack group; offer ones only for the offer team.
+- **Database, applied with Allan's Apply:** `20261028175419_slack_log` (12 function bodies match the file, md5). Test 76 live 26 of 26 (rolled back); tests 75 (28/28) and 73 (59/59) dry-ran on top of it (the schedule now goes through `slack_reminders_waiting` / `slack_queue_due`). Types regenerated.
+- **Screens, waiting for Apply (branch only):** History tab, Send now dialog, Send again, Slack in the Activity feed; checked in the browser with fake data. No Edge Function changes.
+- **Live data to know:** one real offer approval is waiting (about a day); 12 active teammates have something missing on their profile, so Send now on those reminders messages them.
+
 ## Done 2026-10-28 (ATS) — Slack reminders + compact automation list — applied
 
 - **What it is:** two reminders that go only to the one person who has to act, by DM, until it's done. "An offer is still waiting for approval": the approver whose turn it is, every 1, 2 or 3 days from when their turn began, until they decide (admins, Settings); the Remind button on the offer also sends one. "A scorecard is due": the interviewer, after the interview ends, at stages that require a scorecard, every 1, 2 or 3 days or only once, until it's in (workspace or one job's Setup › Slack, where it's offered as a starter); Request scorecard also sends one. Settings › Integrations › Slack has a Reminders section. Automation lists are now one card of thin rows (Setup › Slack and Settings).
