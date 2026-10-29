@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { useNotifications, NotificationRow, NotificationCategory } from '@/hooks/useNotifications'
+import { notificationHref } from '@/lib/notificationLink'
 import { useNotificationSound } from '@/hooks/useNotificationSound'
 import { previewNotificationSound } from '@/lib/notificationSound'
 import {
@@ -352,7 +353,8 @@ export function NotificationCenter() {
 
   const handleClick = (n: NotificationRow) => {
     setOpen(false)
-    if (n.action_url) navigate(n.action_url)
+    const href = notificationHref(n)
+    if (href) navigate(href)
   }
 
   return (
