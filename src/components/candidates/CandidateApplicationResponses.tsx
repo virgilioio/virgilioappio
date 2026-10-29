@@ -118,6 +118,8 @@ const formatFieldValue = (value: string | null, fieldType: string, fieldConfig?:
   if (!value) return "Not provided";
 
   if (fieldType === 'select') return optionLabels?.[value] ?? value;
+  // Yes / No questions are stored as 'true' / 'false'.
+  if (fieldType === 'checkbox') return value === 'true' ? 'Yes' : value === 'false' ? 'No' : value;
   if (fieldType === 'checkbox_group') {
     const picked = parseChoices(value).map((v) => optionLabels?.[v] ?? v);
     if (!picked.length) return "Not provided";
