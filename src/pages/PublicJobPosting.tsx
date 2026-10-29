@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { buildJobPostingJsonLd } from '@/lib/jobPostingJsonLd'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { PlaceFieldsByName } from '@/components/ui/place-picker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -129,7 +129,7 @@ interface SelectOption {
 export default function PublicJobPosting() {
   const params = useParams<{ slug?: string; postingSlug?: string }>()
   const slug = params.slug || params.postingSlug
-  // useNavigate previously used by old header; no longer needed
+  const navigate = useNavigate()
   const [posting, setPosting] = useState<Posting | null>(null)
   const [customFields, setCustomFields] = useState<PostingField[]>([])
   const [options, setOptions] = useState<Record<string, SelectOption[]>>({})
@@ -225,6 +225,18 @@ export default function PublicJobPosting() {
         .eq('jobs.status', 'open')
         .maybeSingle()
       if (!p) {
+        // An old address of a posting whose URL changed goes to the current one,
+        // in the same careers-page form and with the same tracking tags.
+        const { data: current } = await (supabase as unknown as {
+          rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown }>
+        }).rpc('posting_current_slug', { _slug: slug })
+        if (typeof current === 'string' && current && current !== slug) {
+          const { pathname, search, hash } = window.location
+          const parts = pathname.split('/')
+          parts[parts.length - 1] = encodeURIComponent(current)
+          navigate(`${parts.join('/')}${search}${hash}`, { replace: true })
+          return
+        }
         setPosting(null)
         setLoading(false)
         return
@@ -333,7 +345,7 @@ export default function PublicJobPosting() {
       setLoading(false)
     }
     load()
-  }, [slug])
+  }, [slug, navigate])
 
   const details = useMemo(() => {
     const d: any = (posting?.details as any) || {}
