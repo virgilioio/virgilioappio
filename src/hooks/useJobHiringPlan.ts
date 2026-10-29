@@ -231,12 +231,12 @@ export function useJobHiringPlan() {
         if (delErr) throw delErr
       }
 
-      // Phase 4: finalize positions 1..n
-      for (let i = 0; i < finalOrderedJhsIds.length; i++) {
-        const { error: finErr } = await supabase
-          .from('job_hiring_stages')
-          .update({ position: i + 1 })
-          .eq('id', finalOrderedJhsIds[i])
+      // Phase 4: the final order in one step (job_plan_order puts the default
+      // stages first and numbers the plan 1..n), so it is never half-written.
+      if (finalOrderedJhsIds.length > 0) {
+        const { error: finErr } = await (supabase as unknown as {
+          rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ error: unknown }>
+        }).rpc('job_plan_order', { _job: jobId, _ids: finalOrderedJhsIds })
         if (finErr) throw finErr
       }
 

@@ -61,9 +61,47 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
+  // A default stage with priority 99 or more (or none) belongs at the end;
+  // the rest go first. job_plan_ranked in the database uses the same line.
   const isLastPriorityStage = (stage: JobStage) => {
     const p = stage.stage_priority
-    return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
+    return p == null || p === '' || p === 'last' || Number(p) >= 99
+  }
+  const priorityOf = (row: PlanRow) => {
+    const p = Number(row.stage.stage_priority)
+    return Number.isFinite(p) ? p : 500
+  }
+
+  // Default stages sit first in priority order (Application Review, then Final
+  // Candidate Review), a "last" one at the end, and every other stage between
+  // them in the team's order (Allan, 2026-10-29). Saving goes through
+  // job_plan_order, which keeps the same rule.
+  const arrangeRows = (rows: PlanRow[]): PlanRow[] => {
+    const head = rows.filter((r) => r.locked && !isLastPriorityStage(r.stage))
+    const tail = rows.filter((r) => r.locked && isLastPriorityStage(r.stage))
+    const rest = rows.filter((r) => !r.locked)
+    const byPriority = (list: PlanRow[]) =>
+      list.map((r, i) => ({ r, i })).sort((a, b) => priorityOf(a.r) - priorityOf(b.r) || a.i - b.i).map((x) => x.r)
+    return [...byPriority(head), ...rest, ...byPriority(tail)]
+  }
+
+  // The first row of each default stage is locked: it can't be removed or moved.
+  const rowsFromInstances = (instances: Awaited<ReturnType<typeof loadHiringPlanInstances>>): PlanRow[] => {
+    const seenDefaultStageIds = new Set<string>()
+    return arrangeRows(instances.map((inst) => {
+      let locked = false
+      if (inst.stage.is_default && !seenDefaultStageIds.has(inst.stage.id)) {
+        locked = true
+        seenDefaultStageIds.add(inst.stage.id)
+      }
+      return {
+        instanceId: inst.jhsId,
+        jhsId: inst.jhsId,
+        stage: inst.stage as JobStage,
+        customStageName: inst.customStageName,
+        locked,
+      }
+    }))
   }
 
   const sortStagesByPriority = (list: JobStage[]) => {
@@ -90,22 +128,7 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
 
         let rows: PlanRow[]
         if (instances.length > 0) {
-          // Lock the FIRST occurrence of each default stage (cannot be removed)
-          const seenDefaultStageIds = new Set<string>()
-          rows = instances.map((inst) => {
-            let locked = false
-            if (inst.stage.is_default && !seenDefaultStageIds.has(inst.stage.id)) {
-              locked = true
-              seenDefaultStageIds.add(inst.stage.id)
-            }
-            return {
-              instanceId: inst.jhsId,
-              jhsId: inst.jhsId,
-              stage: inst.stage as JobStage,
-              customStageName: inst.customStageName,
-              locked,
-            }
-          })
+          rows = rowsFromInstances(instances)
         } else {
           // No custom plan yet — seed with library defaults, sorted by priority
           const defaults = sortStagesByPriority(stages.filter((s) => s.is_default))
@@ -138,12 +161,13 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
     if (!over || active.id === over.id) return
 
     setPlanRows((rows) => {
-      // Reorder among the non-locked rows; locked rows keep their slots
-      const oldIndex = rows.findIndex((r) => r.instanceId === active.id)
-      const newIndex = rows.findIndex((r) => r.instanceId === over.id)
+      // Only the team's stages move, among themselves; the defaults stay put.
+      const movable = rows.filter((r) => !r.locked)
+      const oldIndex = movable.findIndex((r) => r.instanceId === active.id)
+      const newIndex = movable.findIndex((r) => r.instanceId === over.id)
       if (oldIndex === -1 || newIndex === -1) return rows
-      if (rows[oldIndex].locked || rows[newIndex].locked) return rows
-      return arrayMove(rows, oldIndex, newIndex)
+      const moved = arrayMove(movable, oldIndex, newIndex)
+      return arrangeRows([...rows.filter((r) => r.locked), ...moved])
     })
     setHasUnsavedChanges(true)
   }
@@ -160,11 +184,8 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
         // Adding from picker never produces a "locked" row — only the original seeded default instance is locked.
         locked: false,
       }
-      // Insert before the first trailing "last priority" locked default, otherwise append.
-      const trailingIdx = next.findIndex((r) => r.locked && isLastPriorityStage(r.stage))
-      if (trailingIdx >= 0) next.splice(trailingIdx, 0, newRow)
-      else next.push(newRow)
-      return next
+      // After the team's stages, before a "last" default.
+      return arrangeRows([...next, newRow])
     })
     setHasUnsavedChanges(true)
 
@@ -289,22 +310,7 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
     await saveHiringPlan(jobId, buildSaveInput(newRows), row.jhsId ? { moveTo: { [row.jhsId]: targetIndex } } : {})
     // Reload instances to get fresh jhsIds and the correct count of duplicates
     const refreshed = await loadHiringPlanInstances(jobId)
-    const seenDefaultStageIds = new Set<string>()
-    const rebuilt: PlanRow[] = refreshed.map((inst) => {
-      let locked = false
-      if (inst.stage.is_default && !seenDefaultStageIds.has(inst.stage.id)) {
-        locked = true
-        seenDefaultStageIds.add(inst.stage.id)
-      }
-      return {
-        instanceId: inst.jhsId,
-        jhsId: inst.jhsId,
-        stage: inst.stage as JobStage,
-        customStageName: inst.customStageName,
-        locked,
-      }
-    })
-    setPlanRows(rebuilt)
+    setPlanRows(rowsFromInstances(refreshed))
     setHasUnsavedChanges(false)
 
     toast({
