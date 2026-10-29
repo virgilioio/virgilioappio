@@ -1,4 +1,4 @@
--- Run after 20261029180000_hiring_plan_order inside a transaction that is rolled back.
+-- Run after 20261029055257_hiring_plan_order inside a transaction that is rolled back.
 -- A hiring plan keeps its default stages first, in priority order
 -- (Application Review, Final Candidate Review), then the team's stages.
 --   Allan Bravo  admin

@@ -11990,6 +11990,21 @@ export type Database = {
         Args: { _opening_id: string }
         Returns: string
       }
+      job_plan_apply: {
+        Args: { _ids?: string[]; _job: string }
+        Returns: undefined
+      }
+      job_plan_order: {
+        Args: { _ids?: string[]; _job: string }
+        Returns: undefined
+      }
+      job_plan_ranked: {
+        Args: { _ids?: string[]; _job: string }
+        Returns: {
+          id: string
+          rn: number
+        }[]
+      }
       job_rejection_sender: { Args: { _job_id: string }; Returns: string }
       job_screening_verdict: {
         Args: { _association_id: string }
