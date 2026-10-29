@@ -19,11 +19,14 @@ import {
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Loadable } from '@/components/ui/loadable'
+import { LoadError } from '@/components/empty/LoadError'
 import { Textarea } from '@/components/ui/textarea'
 import { IconTip } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { cn } from '@/lib/utils'
 import { prefersReducedMotion, shakeFirstInvalid } from '@/lib/motion'
 import { loadPdfFromUrl } from '@/lib/sign/pdf'
@@ -731,6 +734,10 @@ export default function SigningPage() {
   const mobile = useIsMobile()
   const [view, setView] = useState<View>({ k: 'loading' })
   const [declineOpen, setDeclineOpen] = useState(false)
+  // §16: a first load with no answer after 15s turns into Retry.
+  const [attempt, setAttempt] = useState(0)
+  const loading = view.k === 'loading'
+  const timedOut = useLoadTimeout(loading, attempt)
   useSignatureFonts()
   useReportSplashReady(view.k !== 'loading')
 
@@ -773,9 +780,7 @@ export default function SigningPage() {
     }
   }
 
-  let body: React.ReactNode
-  if (view.k === 'loading') {
-    body = (
+  const skeleton = (
       <Centered>
         <Card>
           <div className="flex flex-col gap-3 p-7">
@@ -786,7 +791,24 @@ export default function SigningPage() {
           </div>
         </Card>
       </Centered>
-    )
+  )
+
+  let body: React.ReactNode = null
+  if (view.k === 'loading') {
+    if (timedOut) {
+      body = (
+        <Centered>
+          <LoadError
+            what="the document"
+            timedOut
+            onRetry={() => {
+              setAttempt((n) => n + 1)
+              void start()
+            }}
+          />
+        </Centered>
+      )
+    }
   } else if (view.k === 'not_found') {
     body = (
       <Terminal icon={<CircleX className="h-6 w-6" strokeWidth={2} />} tone="muted" title="This link doesn’t work">
@@ -905,7 +927,9 @@ export default function SigningPage() {
 
   return (
     <>
-      {body}
+      <Loadable loading={loading && !timedOut} skeleton={skeleton}>
+        {body}
+      </Loadable>
       {view.k === 'doc' && (
         <DeclineDialog
           open={declineOpen}
