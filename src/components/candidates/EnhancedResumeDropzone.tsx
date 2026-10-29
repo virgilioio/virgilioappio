@@ -73,6 +73,8 @@ export function EnhancedResumeDropzone({
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  // The minimal (careers) variant says what's wrong in its own line, not a toast.
+  const [fileProblem, setFileProblem] = useState<string | null>(null)
   
   const { isParsing, parseResume, parseResumeCoreFields, parseAndUpdateCandidate } = useResumeParsing()
   const { generateSkills, isGenerating, generatedSkills } = useSkillsGeneration()
@@ -84,6 +86,10 @@ export function EnhancedResumeDropzone({
     
     // Validate file size
     if (file.size > maxSizeMb * 1024 * 1024) {
+      if (variant === 'minimal') {
+        setFileProblem(`That file is over ${maxSizeMb} MB. Try a smaller one.`)
+        return
+      }
       toast({ 
         title: 'File too large', 
         description: `Max size is ${maxSizeMb}MB`, 
@@ -91,6 +97,7 @@ export function EnhancedResumeDropzone({
       })
       return
     }
+    setFileProblem(null)
 
     try {
       setIsProcessing(true)
@@ -292,7 +299,8 @@ export function EnhancedResumeDropzone({
     return (
       <div className={`relative ${className}`}>
         <div
-          className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-text-secondary bg-surface-secondary/50' : 'border-border hover:border-text-secondary/60 bg-surface-primary'}`}
+          className={`gio-dropzone relative border-2 border-dashed rounded-lg p-6 text-center ${dragOver ? 'border-text-secondary bg-surface-secondary/50' : 'border-border hover:border-text-secondary/60 bg-surface-primary'}`}
+          data-drag-over={dragOver || undefined}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -311,22 +319,23 @@ export function EnhancedResumeDropzone({
             type="button"
             variant="outline"
             onClick={() => inputRef.current?.click()}
-            disabled={isActive}
-            className="gap-2"
+            loading={isActive}
           >
-            {isActive ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {isParsing ? 'Analyzing…' : isUploading ? 'Uploading…' : 'Processing…'}
-              </>
-            ) : (
-              'Upload File'
-            )}
+            Upload file
           </Button>
           <p className="text-xs text-text-secondary mt-3">
             or drag and drop here · {accept.includes('.jpg') ? 'PDF, DOC, DOCX, TXT or images' : 'PDF, DOC, DOCX, TXT'} up to {maxSizeMb}MB
           </p>
         </div>
+        <p
+          className={`gio-field-message mt-1 text-xs ${fileProblem ? 'font-medium text-virgilio-error' : 'text-text-tertiary'}`}
+          data-state={fileProblem ? 'error' : undefined}
+          role={fileProblem ? 'alert' : undefined}
+          aria-live="polite"
+          key={fileProblem ? `e:${fileProblem}` : 'idle'}
+        >
+          {fileProblem || (isActive ? 'Reading your resume…' : null)}
+        </p>
       </div>
     )
   }
