@@ -4,6 +4,9 @@ import { COUNTRY_CODES, parsePhoneValue } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { format } from 'date-fns'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 
 /** Trigger styling shared by the public date/month pickers. */
 const dateTriggerClass =
@@ -74,17 +77,18 @@ export function PublicMonthField({
   )
 }
 
-const controlStyle: React.CSSProperties = {
-  height: 38,
-  width: '100%',
-  borderRadius: 9,
-  border: '1px solid #E3E0D6',
-  background: '#fff',
-  padding: '0 11px',
-  fontSize: 13,
-  color: '#1F2230',
-  outline: 'none',
-}
+/**
+ * The public pages' field chrome on the shared fields (§12): Input and Textarea
+ * are `gio-field` (colour and shadow only, focus border + ring, red on
+ * aria-invalid); the native selects take the same focus treatment.
+ */
+const fieldClass =
+  'h-[38px] rounded-[9px] border-[#E3E0D6] bg-white px-[11px] py-0 font-inter text-[13px] text-[#1F2230] shadow-none'
+const selectClass = cn(
+  'gio-field w-full appearance-none border border-[#E3E0D6] bg-white font-inter text-[13px] text-[#1F2230] h-[38px] rounded-[9px] px-[11px]',
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-transparent focus-visible:border-[var(--input-border-focus)] focus-visible:shadow-input',
+  'aria-[invalid=true]:border-destructive',
+)
 
 export function PublicField({
   label,
@@ -116,34 +120,19 @@ export function PublicField({
   )
 }
 
-export function PublicInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className="font-inter" style={{ ...controlStyle, ...props.style }} />
+export function PublicInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  return <Input {...props} className={cn(fieldClass, className)} />
 }
 
-export function PublicSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      {...props}
-      className="font-inter"
-      style={{ ...controlStyle, appearance: 'none', ...props.style }}
-    />
-  )
+export function PublicSelect({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return <select {...props} className={cn(selectClass, className)} />
 }
 
-export function PublicTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function PublicTextarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
-    <textarea
+    <Textarea
       {...props}
-      className="font-inter"
-      style={{
-        ...controlStyle,
-        height: 'auto',
-        minHeight: 96,
-        padding: '10px 11px',
-        lineHeight: 1.55,
-        resize: 'vertical',
-        ...props.style,
-      }}
+      className={cn(fieldClass, 'h-auto min-h-[96px] py-[10px] leading-[1.55] resize-y', className)}
     />
   )
 }
@@ -182,7 +171,7 @@ export function PublicPhoneField({
   return (
     <div style={{ display: 'flex', gap: 8 }}>
       <select
-        className="font-inter"
+        className={cn(selectClass, 'w-[92px] flex-none px-2')}
         aria-label="Country code"
         value={code}
         onChange={(e) => {
@@ -190,7 +179,6 @@ export function PublicPhoneField({
           emit(e.target.value, number)
         }}
         onBlur={onBlur}
-        style={{ ...controlStyle, width: 92, flex: '0 0 auto', appearance: 'none', padding: '0 8px' }}
       >
         {COUNTRY_CODES.map((c, i) => (
           <option key={`${c.country}-${c.code}-${i}`} value={c.code}>
@@ -198,8 +186,8 @@ export function PublicPhoneField({
           </option>
         ))}
       </select>
-      <input
-        className="font-inter"
+      <Input
+        className={cn(fieldClass, 'flex-1 min-w-0')}
         type="tel"
         value={number}
         placeholder={placeholder}
@@ -209,7 +197,6 @@ export function PublicPhoneField({
           emit(code, display)
         }}
         onBlur={onBlur}
-        style={{ ...controlStyle, flex: 1, minWidth: 0 }}
       />
     </div>
   )

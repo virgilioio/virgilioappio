@@ -2,11 +2,20 @@
  * Flow C — the candidate adds their referees. Token-resolved, no Gio account.
  * Route: /references/:token
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
-import { Check, Loader2, Plus, Send, Trash2 } from 'lucide-react'
+import { Check, Plus, Send, Trash2 } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Loadable } from '@/components/ui/loadable'
+import { Switch } from '@/components/ui/switch'
+import { LoadError } from '@/components/empty/LoadError'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { PublicFormSkeleton } from '@/components/public/PublicFormSkeleton'
+import { SubmitErrorLine, type SubmitError } from '@/components/public/SubmitErrorLine'
 
 import { PublicPageShell } from '@/components/public/PublicPageShell'
 import {
@@ -22,6 +31,8 @@ import {
 import { QuestionInstrument } from '@/components/public/QuestionInstrument'
 import { TerminalCard } from '@/components/public/TerminalCard'
 import {
+  isGoneLink,
+  PublicRefError,
   resolveCandidateToken,
   submitCandidateReferees,
   type CandidateResolve,
@@ -103,7 +114,7 @@ function RefereeFieldControl({
                   (on ? selected.filter((s) => s !== o) : [...selected, o]).join(', '),
                 )
               }
-              className="font-inter"
+              className="font-inter gio-pressable transition-colors duration-hover"
               style={{
                 height: 32,
                 padding: '0 11px',
@@ -208,7 +219,11 @@ function formatDate(iso?: string | null) {
 export default function PublicReferenceSubmit() {
   const { token = '' } = useParams()
   const [data, setData] = useState<CandidateResolve | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  // A gone link (unknown or expired token) is final; anything else can be retried.
+  const [gone, setGone] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
+  const [submitError, setSubmitError] = useState<SubmitError>(null)
   const [referees, setReferees] = useState<RefereeDraft[]>([])
   const [consent, setConsent] = useState(false)
   const [selfAnswers, setSelfAnswers] = useState<Record<string, unknown>>({})
@@ -217,11 +232,13 @@ export default function PublicReferenceSubmit() {
 
   // Public route: nothing else in the tree clears the cold-load splash when the
   // visitor happens to have a (possibly stale) Gio session, so report it here.
-  useReportSplashReady(!!data || !!loadError)
-
+  const loading = !data && !gone && !loadFailed
+  const timedOut = useLoadTimeout(loading, retryKey)
+  useReportSplashReady(!loading || timedOut)
 
   useEffect(() => {
     let alive = true
+    setLoadFailed(false)
     resolveCandidateToken(token)
       .then((d) => {
         if (!alive) return
@@ -231,11 +248,15 @@ export default function PublicReferenceSubmit() {
         )
         document.title = `Add your references · ${d.brand.agency_name}`
       })
-      .catch(() => alive && setLoadError('expired'))
+      .catch((e) => {
+        if (!alive) return
+        if (isGoneLink(e)) setGone(true)
+        else setLoadFailed(true)
+      })
     return () => {
       alive = false
     }
-  }, [token])
+  }, [token, retryKey])
 
   const fields = data?.referee_fields ?? []
   const contactable = referees.filter((r) => !r.on_hold)
@@ -293,12 +314,43 @@ export default function PublicReferenceSubmit() {
 
   const canSubmit = checklist.length > 0 && checklist.every((c) => c.ok) && !submitting
 
+  // Whatever the server says, the visitor sees one plain line above the button.
+  const submitMessage = (e: unknown): SubmitError => {
+    const code = e instanceof PublicRefError ? e.code : ''
+    switch (code) {
+      case 'not_found':
+        setGone(true)
+        return null
+      case 'cancelled':
+      case 'already_submitted':
+        setData((d) => (d ? { ...d, status: code } : d))
+        return null
+      case 'not_enough_referees':
+        return {
+          text: `Add ${word(data?.referee_count ?? 1)} contactable ${
+            data?.referee_count === 1 ? 'referee' : 'referees'
+          } to send.`,
+        }
+      case 'too_many_referees':
+        return { text: `You can add up to ${data?.max_referees || 8} referees. Remove one to send.` }
+      case 'consent_required':
+        return { text: 'Confirm you have their permission to send.' }
+      case 'missing_answers':
+        return { text: 'Some required details are missing. Fill them in to send.' }
+      case 'rate_limited':
+        return { text: 'Too many tries. Wait a minute, then try again.' }
+      default:
+        return { text: 'Couldn’t send', retry: true }
+    }
+  }
+
   const patch = (key: string, next: Partial<RefereeDraft>) =>
     setReferees((prev) => prev.map((r) => (r.key === key ? { ...r, ...next } : r)))
 
   const handleSubmit = async () => {
     if (!data || !canSubmit) return
     setSubmitting(true)
+    setSubmitError(null)
     try {
       const result = await submitCandidateReferees(token, {
         consent: true,
@@ -310,47 +362,50 @@ export default function PublicReferenceSubmit() {
         })),
       })
       setDone({ emailed: result.emailed, held: result.held })
-    } catch {
-      setLoadError('failed')
+    } catch (e) {
+      setSubmitError(submitMessage(e))
     } finally {
       setSubmitting(false)
     }
   }
 
   /* ------------------------------------------------------------- shell states */
-  if (loadError === 'expired' || (!data && loadError)) {
-    return (
-      <PublicPageShell agencyName="References" pageKind="Reference check" width={760}>
-        <TerminalCard
-          tone="neutral"
-          title="This link has expired"
-          body="Reference links are time-limited for privacy. Please ask the recruiter who contacted you for a fresh link."
-        />
-      </PublicPageShell>
+  // One shell for every state, so the form crossfades in over its skeleton (§16).
+  const failed = !data && (loadFailed || timedOut)
+  const shell = (children: ReactNode) => (
+    <PublicPageShell
+      agencyName={data?.brand.agency_name ?? (gone ? 'References' : '')}
+      logoUrl={data?.brand.logo_url}
+      pageKind="Reference check"
+      width={760}
+    >
+      <Loadable loading={!data && !gone && !failed} skeleton={<PublicFormSkeleton />}>
+        {children}
+      </Loadable>
+    </PublicPageShell>
+  )
+
+  if (gone) {
+    return shell(
+      <TerminalCard
+        tone="neutral"
+        title="This link has expired"
+        body="Reference links are time-limited for privacy. Please ask the recruiter who contacted you for a fresh link."
+      />,
     )
   }
 
   if (!data) {
-    return (
-      <div
-        className="flex items-center justify-center"
-        style={{ minHeight: '100dvh', background: '#FAF8F3' }}
-      >
-        <Loader2 className="animate-spin" size={22} color="#8B8F9E" />
-      </div>
+    return shell(
+      failed ? (
+        <LoadError
+          what="your reference request"
+          timedOut={timedOut && !loadFailed}
+          onRetry={() => setRetryKey((k) => k + 1)}
+        />
+      ) : null,
     )
   }
-
-  const shell = (children: React.ReactNode) => (
-    <PublicPageShell
-      agencyName={data.brand.agency_name}
-      logoUrl={data.brand.logo_url}
-      pageKind="Reference check"
-      width={760}
-    >
-      {children}
-    </PublicPageShell>
-  )
 
   if (done) {
     return shell(
@@ -592,23 +647,16 @@ export default function PublicReferenceSubmit() {
                 </span>
               )}
               {referees.length > 1 && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="xs"
+                  icon={Trash2}
                   onClick={() => setReferees((prev) => prev.filter((x) => x.key !== r.key))}
-                  className="font-inter inline-flex items-center"
-                  style={{
-                    marginLeft: 'auto',
-                    gap: 5,
-                    border: 'none',
-                    background: 'transparent',
-                    color: '#8B8F9E',
-                    fontSize: 11.5,
-                    cursor: 'pointer',
-                  }}
+                  className="ml-auto font-inter font-normal text-[#8B8F9E]"
                 >
-                  <Trash2 size={13} />
                   Remove
-                </button>
+                </Button>
               )}
             </div>
 
@@ -641,31 +689,22 @@ export default function PublicReferenceSubmit() {
               className="flex items-center"
               style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #F6F5F1', gap: 10 }}
             >
-              <button
-                type="button"
-                role="switch"
-                aria-checked={r.on_hold}
-                onClick={() => patch(r.key, { on_hold: !r.on_hold })}
+              <Switch
+                id={`hold-${r.key}`}
+                checked={r.on_hold}
+                onCheckedChange={(on) => patch(r.key, { on_hold: on })}
                 style={{
-                  width: 34,
-                  height: 20,
-                  borderRadius: 999,
-                  border: 'none',
-                  padding: 2,
-                  background: r.on_hold ? '#E8590C' : '#DAD8D0',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  justifyContent: r.on_hold ? 'flex-end' : 'flex-start',
+                  backgroundColor: r.on_hold ? '#E8590C' : '#DAD8D0',
+                  borderColor: r.on_hold ? '#E8590C' : '#DAD8D0',
                 }}
+              />
+              <label
+                htmlFor={`hold-${r.key}`}
+                className="font-inter"
+                style={{ fontSize: 12.5, color: '#1F2230', cursor: 'pointer' }}
               >
-                <span
-                  style={{ width: 16, height: 16, borderRadius: 999, background: '#fff' }}
-                  aria-hidden
-                />
-              </button>
-              <span className="font-inter" style={{ fontSize: 12.5, color: '#1F2230' }}>
                 Don’t contact yet
-              </span>
+              </label>
             </div>
 
             {r.on_hold && (
@@ -683,27 +722,16 @@ export default function PublicReferenceSubmit() {
         ))}
 
         {referees.length < (data.max_referees || 8) && (
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="md"
+            icon={Plus}
             onClick={() => setReferees((prev) => [...prev, newReferee()])}
-            className="font-poppins inline-flex items-center"
-            style={{
-              marginTop: 14,
-              gap: 7,
-              height: 36,
-              padding: '0 14px',
-              borderRadius: 9,
-              border: '1px solid #E3E0D6',
-              background: '#fff',
-              color: '#1F2230',
-              fontSize: 12.5,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
+            className="mt-[14px]"
           >
-            <Plus size={14} />
             Add another referee
-          </button>
+          </Button>
         )}
       </section>
 
@@ -718,11 +746,10 @@ export default function PublicReferenceSubmit() {
         }}
       >
         <label className="flex items-start" style={{ gap: 10, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
+          <Checkbox
             checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-            style={{ marginTop: 2, width: 16, height: 16, accentColor: '#6F3FF5' }}
+            onCheckedChange={(v) => setConsent(v === true)}
+            className="mt-[2px]"
           />
           <span className="font-inter" style={{ fontSize: 12.5, lineHeight: 1.6, color: '#1F2230' }}>
             {data.consent_text ||
@@ -732,10 +759,14 @@ export default function PublicReferenceSubmit() {
       </section>
 
       {/* Submit */}
-      <div
-        className="flex flex-wrap items-center"
-        style={{ marginTop: 22, gap: 12, paddingTop: 16, borderTop: '1px solid #F1F0EC' }}
-      >
+      <div style={{ marginTop: 22, paddingTop: 12, borderTop: '1px solid #F1F0EC' }}>
+        <SubmitErrorLine
+          error={submitError}
+          onRetry={handleSubmit}
+          retrying={submitting}
+        />
+      </div>
+      <div className="flex flex-wrap items-center" style={{ marginTop: 6, gap: 12 }}>
         <span className="font-inter" style={{ fontSize: 12, color: '#8B8F9E' }}>
           {canSubmit
             ? `Ready to send — ${contactable.length} ${
@@ -743,28 +774,18 @@ export default function PublicReferenceSubmit() {
               } will be emailed now${heldCount > 0 ? `, ${heldCount} held` : ''}.`
             : 'Complete the checklist above to send.'}
         </span>
-        <button
+        <Button
           type="button"
+          variant="primary"
+          size="xl"
+          icon={Send}
+          loading={submitting}
+          disabled={!canSubmit && !submitting}
           onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="font-poppins inline-flex items-center justify-center submit-btn"
-          style={{
-            marginLeft: 'auto',
-            gap: 8,
-            height: 44,
-            padding: '0 20px',
-            borderRadius: 10,
-            border: 'none',
-            background: canSubmit ? '#0d0d09' : '#DAD8D0',
-            color: '#fffcf9',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: canSubmit ? 'pointer' : 'not-allowed',
-          }}
+          className="submit-btn ml-auto h-[44px] rounded-[10px] text-[13.5px] font-semibold"
         >
-          {submitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           Send to my referees
-        </button>
+        </Button>
       </div>
       <style>{`@media (max-width:759px){.submit-btn{width:100%;margin-left:0 !important;}}`}</style>
     </>,

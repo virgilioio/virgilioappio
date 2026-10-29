@@ -12,6 +12,15 @@ import {
   PublicTextarea,
 } from './PublicField'
 import type { PublicQuestion } from '@/lib/references/publicApi'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
+import { cn } from '@/lib/utils'
+
+/**
+ * Single-choice rows (ratings, scores, Yes / No, would rehire) are segmented
+ * controls (§14): one fill slides to the chosen option; options draw no fill of
+ * their own, only their border and text colour change. Multi-choice chips press.
+ */
+const optionClass = 'gio-pressable transition-colors duration-hover'
 
 const RATINGS = [1, 2, 3, 4, 5]
 const REHIRE = ['Yes without hesitation', 'Yes with reservations', 'No']
@@ -38,11 +47,12 @@ interface Props {
 
 export function QuestionInstrument({ question, value, onChange, onBlur, showRatingLegend }: Props) {
   const q = question
+  const segRef = useSegmentLayer<HTMLDivElement>()
 
   if (q.type === 'rating_1_5') {
     return (
       <div>
-        <div className="flex flex-wrap" style={{ gap: 7 }}>
+        <div ref={segRef} className="gio-seg flex flex-wrap" style={{ gap: 7 }}>
           {RATINGS.map((n) => {
             const sel = Number(value) === n
             return (
@@ -50,17 +60,19 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
                 key={n}
                 type="button"
                 aria-pressed={sel}
+                data-seg-option
+                data-active={sel || undefined}
                 onClick={() => {
                   onChange(n)
                   onBlur?.()
                 }}
-                className="font-poppins"
+                className={cn('font-poppins', optionClass)}
                 style={{
                   width: 52,
                   height: 42,
                   borderRadius: 9,
                   border: `1px solid ${sel ? '#0d0d09' : '#E3E0D6'}`,
-                  background: sel ? '#0d0d09' : '#fff',
+                  background: 'transparent',
                   color: sel ? '#fffcf9' : '#5A6072',
                   fontSize: 14,
                   fontWeight: 600,
@@ -71,6 +83,7 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
               </button>
             )
           })}
+          <SegmentLayer fill="#0d0d09" />
         </div>
         {showRatingLegend && (
           <p className="font-inter" style={{ fontSize: 11, color: '#8B8F9E', marginTop: 7 }}>
@@ -83,7 +96,7 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
 
   if (q.type === 'would_rehire') {
     return (
-      <div className="flex flex-col" style={{ gap: 7 }}>
+      <div ref={segRef} className="gio-seg flex flex-col" style={{ gap: 7 }}>
         {(q.options?.length ? q.options : REHIRE).map((opt) => {
           const sel = value === opt
           const tone = REHIRE_TONE[opt] ?? { bg: '#F7F6F2', border: '#E3E0D6', fg: '#1F2230' }
@@ -92,18 +105,21 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
               key={opt}
               type="button"
               aria-pressed={sel}
+              data-seg-option
+              data-active={sel || undefined}
+              data-seg-fill={tone.bg}
               onClick={() => {
                 onChange(opt)
                 onBlur?.()
               }}
-              className="font-inter text-left"
+              className={cn('font-inter text-left', optionClass)}
               style={{
                 width: '100%',
                 minHeight: 44,
                 padding: '11px 13px',
                 borderRadius: 10,
                 border: `1px solid ${sel ? tone.border : '#EDEBE3'}`,
-                background: sel ? tone.bg : '#fff',
+                background: 'transparent',
                 color: sel ? tone.fg : '#5A6072',
                 fontSize: 13,
                 fontWeight: sel ? 600 : 400,
@@ -114,13 +130,14 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
             </button>
           )
         })}
+        <SegmentLayer fill="#F7F6F2" />
       </div>
     )
   }
 
   if (q.type === 'recommendation_score') {
     return (
-      <div className="flex flex-wrap" style={{ gap: 6 }}>
+      <div ref={segRef} className="gio-seg flex flex-wrap" style={{ gap: 6 }}>
         {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
           const sel = Number(value) === n
           return (
@@ -128,17 +145,19 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
               key={n}
               type="button"
               aria-pressed={sel}
+              data-seg-option
+              data-active={sel || undefined}
               onClick={() => {
                 onChange(n)
                 onBlur?.()
               }}
-              className="font-poppins"
+              className={cn('font-poppins tabular-nums', optionClass)}
               style={{
                 width: 40,
                 height: 40,
                 borderRadius: 9,
                 border: `1px solid ${sel ? '#0d0d09' : '#E3E0D6'}`,
-                background: sel ? '#0d0d09' : '#fff',
+                background: 'transparent',
                 color: sel ? '#fffcf9' : '#5A6072',
                 fontSize: 13,
                 fontWeight: 600,
@@ -149,6 +168,7 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
             </button>
           )
         })}
+        <SegmentLayer fill="#0d0d09" />
       </div>
     )
   }
@@ -189,7 +209,7 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
 
   if (q.type === 'yes_no') {
     return (
-      <div className="flex" style={{ gap: 7 }}>
+      <div ref={segRef} className="gio-seg flex" style={{ gap: 7 }}>
         {['Yes', 'No'].map((opt) => {
           const sel = value === opt
           return (
@@ -197,17 +217,19 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
               key={opt}
               type="button"
               aria-pressed={sel}
+              data-seg-option
+              data-active={sel || undefined}
               onClick={() => {
                 onChange(opt)
                 onBlur?.()
               }}
-              className="font-poppins"
+              className={cn('font-poppins', optionClass)}
               style={{
                 minWidth: 74,
                 height: 42,
                 borderRadius: 9,
                 border: `1px solid ${sel ? '#0d0d09' : '#E3E0D6'}`,
-                background: sel ? '#0d0d09' : '#fff',
+                background: 'transparent',
                 color: sel ? '#fffcf9' : '#5A6072',
                 fontSize: 13,
                 fontWeight: 600,
@@ -218,6 +240,7 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
             </button>
           )
         })}
+        <SegmentLayer fill="#0d0d09" />
       </div>
     )
   }
@@ -254,7 +277,7 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
                 onChange(sel ? arr.filter((x) => x !== o) : [...arr, o])
                 onBlur?.()
               }}
-              className="font-inter"
+              className={cn('font-inter', optionClass)}
               style={{
                 minHeight: 34,
                 padding: '7px 12px',

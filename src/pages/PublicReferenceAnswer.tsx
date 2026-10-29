@@ -2,17 +2,27 @@
  * Flow D — the referee answers the questionnaire. Token-resolved, no Gio
  * account. Route: /reference/:token
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
-import { Clock, Loader2, Send, ShieldOff, UserX } from 'lucide-react'
+import { Clock, Send, ShieldOff, UserX } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
+import { Loadable } from '@/components/ui/loadable'
+import { LoadError } from '@/components/empty/LoadError'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { shakeFirstInvalid } from '@/lib/motion'
+import { PublicFormSkeleton } from '@/components/public/PublicFormSkeleton'
+import { SubmitErrorLine, type SubmitError } from '@/components/public/SubmitErrorLine'
 
 import { PublicPageShell } from '@/components/public/PublicPageShell'
 import { QuestionInstrument } from '@/components/public/QuestionInstrument'
 import { TerminalCard } from '@/components/public/TerminalCard'
 import {
   declineReference,
+  isGoneLink,
+  PublicRefError,
   resolveRefereeToken,
   saveRefereeDraft,
   submitReferee,
@@ -23,12 +33,25 @@ import { toast } from 'sonner'
 
 type Answers = Record<string, unknown>
 
+/** An answer counts once it holds something: text, a choice, or any part of a range. */
+function answered(v: unknown): boolean {
+  if (v === undefined || v === null) return false
+  if (typeof v === 'string') return v.replace(' to ', '').trim().length > 0
+  if (Array.isArray(v)) return v.length > 0
+  if (typeof v === 'object') return Object.values(v as Record<string, unknown>).some(answered)
+  return true
+}
+
 export default function PublicReferenceAnswer() {
   const { token = '' } = useParams()
   const [searchParams] = useSearchParams()
   const declineIntent = searchParams.get('decline') === '1'
   const [data, setData] = useState<RefereeResolve | null>(null)
-  const [loadError, setLoadError] = useState(false)
+  // A gone link (unknown or expired token) is final; anything else can be retried.
+  const [gone, setGone] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
+  const [submitError, setSubmitError] = useState<SubmitError>(null)
   const [answers, setAnswers] = useState<Answers>({})
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<string | null>(null)
@@ -39,11 +62,13 @@ export default function PublicReferenceAnswer() {
 
   // Public route: nothing else in the tree clears the cold-load splash when the
   // visitor happens to have a (possibly stale) Gio session, so report it here.
-  useReportSplashReady(!!data || loadError)
-
+  const loading = !data && !gone && !loadFailed
+  const timedOut = useLoadTimeout(loading, retryKey)
+  useReportSplashReady(!loading || timedOut)
 
   useEffect(() => {
     let alive = true
+    setLoadFailed(false)
     resolveRefereeToken(token)
       .then((d) => {
         if (!alive) return
@@ -57,11 +82,15 @@ export default function PublicReferenceAnswer() {
         answersRef.current = draft
         document.title = `A reference for ${d.candidate_name} · ${d.brand.agency_name}`
       })
-      .catch(() => alive && setLoadError(true))
+      .catch((e) => {
+        if (!alive) return
+        if (isGoneLink(e)) setGone(true)
+        else setLoadFailed(true)
+      })
     return () => {
       alive = false
     }
-  }, [token])
+  }, [token, retryKey])
 
   const setAnswer = (id: string, value: unknown) => {
     setAnswers((prev) => {
@@ -69,8 +98,24 @@ export default function PublicReferenceAnswer() {
       answersRef.current = next
       return next
     })
-    setMissing((prev) => prev.filter((x) => x !== id))
+    if (answered(value)) setMissing((prev) => prev.filter((x) => x !== id))
   }
+
+  // §7: name what's missing in the reserved line and shake the first one, once.
+  // The line counts down as answers come in and clears with the last one.
+  const flagMissing = (ids: string[]) => {
+    setMissing(ids)
+    setSubmitError(null)
+    shakeFirstInvalid()
+  }
+  const lineError: SubmitError = missing.length
+    ? {
+        text:
+          missing.length === 1
+            ? 'One required question still needs an answer.'
+            : `${missing.length} required questions still need an answer.`,
+      }
+    : submitError
 
   const autosave = useCallback(async () => {
     if (!data || data.status !== 'open') return
@@ -92,18 +137,30 @@ export default function PublicReferenceAnswer() {
   )
 
   const handleSubmit = async () => {
-    if (!data) return
+    if (!data || submitting) return
+    const unanswered = (data.questions ?? [])
+      .filter((q) => q.required && q.type !== 'section_header' && !answered(answersRef.current[q.id]))
+      .map((q) => q.id)
+    if (unanswered.length) {
+      flagMissing(unanswered)
+      return
+    }
     setSubmitting(true)
+    setSubmitError(null)
     try {
       await submitReferee(token, answersRef.current)
       setTerminal('submitted')
     } catch (e) {
+      const code = e instanceof PublicRefError ? e.code : ''
       const ids = (e as { details?: { question_ids?: string[] } })?.details?.question_ids
-      if (ids?.length) {
-        setMissing(ids)
-        const el = document.getElementById(`q-${ids[0]}`)
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }
+      if (ids?.length) flagMissing(ids)
+      else if (code === 'not_found') setGone(true)
+      else if (code === 'already_submitted') setTerminal('submitted')
+      else if (code === 'declined') setTerminal('declined')
+      else if (code === 'cancelled') setData((d) => (d ? { ...d, status: 'cancelled' } : d))
+      else if (code === 'rate_limited')
+        setSubmitError({ text: 'Too many tries. Wait a minute, then try again.' })
+      else setSubmitError({ text: 'Couldn’t send', retry: true })
     } finally {
       setSubmitting(false)
     }
@@ -140,40 +197,43 @@ export default function PublicReferenceAnswer() {
     void handleDecline()
   }, [declineIntent, data, handleDecline])
 
-  if (loadError) {
-    return (
-      <PublicPageShell agencyName="References" pageKind="Reference" width={720}>
-        <TerminalCard
-          tone="neutral"
-          title="This link has expired"
-          body="Reference links are time-limited for privacy. If you still want to help, ask the recruiter who contacted you for a fresh link."
-        />
-      </PublicPageShell>
-    )
-  }
-
-  if (!data) {
-    return (
-      <div
-        className="flex items-center justify-center"
-        style={{ minHeight: '100dvh', background: '#FAF8F3' }}
-      >
-        <Loader2 className="animate-spin" size={22} color="#8B8F9E" />
-      </div>
-    )
-  }
-
-  const shell = (children: React.ReactNode) => (
+  // One shell for every state, so the questions crossfade in over their skeleton (§16).
+  const failed = !data && (loadFailed || timedOut)
+  const shell = (children: ReactNode) => (
     <PublicPageShell
-      agencyName={data.brand.agency_name}
-      logoUrl={data.brand.logo_url}
+      agencyName={data?.brand.agency_name ?? (gone ? 'References' : '')}
+      logoUrl={data?.brand.logo_url}
       pageKind="Reference"
       width={720}
       footnote="Your answers are shared with the hiring team, never with the candidate."
     >
-      {children}
+      <Loadable loading={!data && !gone && !failed} skeleton={<PublicFormSkeleton />}>
+        {children}
+      </Loadable>
     </PublicPageShell>
   )
+
+  if (gone) {
+    return shell(
+      <TerminalCard
+        tone="neutral"
+        title="This link has expired"
+        body="Reference links are time-limited for privacy. If you still want to help, ask the recruiter who contacted you for a fresh link."
+      />,
+    )
+  }
+
+  if (!data) {
+    return shell(
+      failed ? (
+        <LoadError
+          what="this reference"
+          timedOut={timedOut && !loadFailed}
+          onRetry={() => setRetryKey((k) => k + 1)}
+        />
+      ) : null,
+    )
+  }
 
   if (terminal === 'submitted' || data.status === 'submitted') {
     return shell(
@@ -307,7 +367,7 @@ export default function PublicReferenceAnswer() {
           <button
             type="button"
             onClick={handleDecline}
-            className="font-inter inline-flex items-center"
+            className="font-inter inline-flex items-center gio-pressable"
             style={{
               gap: 6,
               border: 'none',
@@ -387,7 +447,12 @@ export default function PublicReferenceAnswer() {
                   {q.helper}
                 </p>
               )}
-              <div style={{ marginTop: 11, marginLeft: 26 }}>
+              <div
+                style={{ marginTop: 11, marginLeft: 26 }}
+                tabIndex={isMissing ? -1 : undefined}
+                aria-invalid={isMissing || undefined}
+                aria-label={isMissing ? `${q.label} (needs an answer)` : undefined}
+              >
                 <QuestionInstrument
                   question={q}
                   value={answers[q.id]}
@@ -402,10 +467,10 @@ export default function PublicReferenceAnswer() {
       </section>
 
       {/* Footer */}
-      <div
-        className="flex flex-wrap items-center"
-        style={{ marginTop: 20, gap: 12, paddingTop: 16, borderTop: '1px solid #F1F0EC' }}
-      >
+      <div style={{ marginTop: 20, paddingTop: 12, borderTop: '1px solid #F1F0EC' }}>
+        <SubmitErrorLine error={lineError} onRetry={handleSubmit} retrying={submitting} />
+      </div>
+      <div className="flex flex-wrap items-center" style={{ marginTop: 6, gap: 12 }}>
         <span className="font-inter" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
           {saving
             ? 'Saving…'
@@ -414,48 +479,28 @@ export default function PublicReferenceAnswer() {
               : 'Your answers save as you go.'}
         </span>
         <span className="flex items-center" style={{ marginLeft: 'auto', gap: 12 }}>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="lg"
             onClick={autosave}
-            className="font-inter"
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: '#5A6072',
-              fontSize: 12.5,
-              cursor: 'pointer',
-            }}
+            className="font-inter font-normal text-[12.5px] text-[#5A6072]"
           >
             Finish later
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="primary"
+            size="xl"
+            icon={Send}
+            loading={submitting}
             onClick={handleSubmit}
-            disabled={submitting}
-            className="font-poppins inline-flex items-center justify-center submit-btn"
-            style={{
-              gap: 8,
-              height: 44,
-              padding: '0 20px',
-              borderRadius: 10,
-              border: 'none',
-              background: '#0d0d09',
-              color: '#fffcf9',
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: submitting ? 'wait' : 'pointer',
-            }}
+            className="submit-btn h-[44px] rounded-[10px] text-[13.5px] font-semibold"
           >
-            {submitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
             Submit reference
-          </button>
+          </Button>
         </span>
       </div>
-      {missing.length > 0 && (
-        <p className="font-inter" style={{ marginTop: 10, fontSize: 12, color: '#D9382C' }}>
-          A few required questions still need an answer.
-        </p>
-      )}
       <style>{`@media (max-width:759px){.submit-btn{width:100%;}}`}</style>
     </>,
   )
