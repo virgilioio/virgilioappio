@@ -84,7 +84,7 @@ export function AppSidebar() {
   return (
     <TooltipProvider delayDuration={150}>
       <aside
-        className="hidden sm:flex fixed top-3 left-3 bottom-3 z-[60] w-16 flex-col items-center py-3"
+        className="gio-strip-follow hidden sm:flex fixed top-[calc(var(--gio-strip)+0.75rem)] left-3 bottom-3 z-[60] w-16 flex-col items-center py-3"
         style={{
           backgroundColor: '#0d0d09',
           borderRadius: 16,

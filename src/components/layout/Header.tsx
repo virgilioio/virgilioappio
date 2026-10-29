@@ -204,7 +204,7 @@ export function Header() {
   return (
     <header
       className={cn(
-        'hidden sm:flex fixed top-3 right-3 left-[5.5rem] z-50 h-11 items-center rounded-2xl ring-1 ring-white/[0.06] transition-shadow',
+        'gio-strip-follow hidden sm:flex fixed top-[calc(var(--gio-strip)+0.75rem)] right-3 left-[5.5rem] z-50 h-11 items-center rounded-2xl ring-1 ring-white/[0.06] transition-shadow',
         scrolled
           ? 'shadow-[0_6px_24px_-12px_rgba(0,0,0,0.55)]'
           : 'shadow-[0_2px_10px_-4px_rgba(0,0,0,0.35)]',

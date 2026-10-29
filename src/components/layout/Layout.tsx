@@ -6,7 +6,7 @@ import { BulkUploadProvider } from '@/contexts/BulkUploadContext'
 import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUploadWidget'
 import { PhoneShell } from '@/components/phone/PhoneShell'
 import { AppSidebar } from '@/components/layout/AppSidebar'
-import { HeaderContextBands } from '@/components/layout/HeaderContextBands'
+import { TopStrip } from '@/components/layout/TopStrip'
 import { ProfileInviteDialog } from '@/components/os/ProfileInvite'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -29,16 +29,16 @@ export function Layout() {
         <BulkUploadProvider>
           <AppSidebar />
           {!isReview && (
-            <div aria-hidden className="hidden sm:block fixed top-0 left-[5.5rem] right-3 h-3 z-40 bg-virgilio-cream pointer-events-none" />
+            <div aria-hidden className="gio-strip-follow hidden sm:block fixed top-[var(--gio-strip)] left-[5.5rem] right-3 h-3 z-40 bg-virgilio-cream pointer-events-none" />
           )}
           <div className={isReview ? 'bg-virgilio-cream sm:pl-[5.5rem]' : 'bg-virgilio-cream sm:pl-[5.5rem] sm:pr-3'}>
             {!isReview && <Header />}
-            {!isReview && <HeaderContextBands />}
+            {!isReview && <TopStrip />}
             <main
               className={
                 isReview
                   ? 'pt-0 pb-0 min-h-[100dvh]'
-                  : 'pt-[calc(env(safe-area-inset-top,0px)+72px)] sm:pt-16 pb-28 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-4rem)] sm:[--tbl-page-top:4rem]'
+                  : 'gio-strip-follow pt-[calc(var(--gio-sat)+var(--gio-strip)+72px)] sm:pt-[calc(4rem+var(--gio-strip))] pb-28 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-4rem-var(--gio-strip))] sm:[--tbl-page-top:calc(4rem+var(--gio-strip))]'
               }
             >
               <Outlet />

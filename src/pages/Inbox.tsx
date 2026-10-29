@@ -354,7 +354,7 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-13rem)] gap-5 px-3 sm:h-[calc(100dvh-4rem)] sm:px-0 sm:pb-3 sm:pt-1">
+    <div className="flex h-[calc(100dvh-13rem-var(--gio-strip))] gap-5 px-3 sm:h-[calc(100dvh-4rem-var(--gio-strip))] sm:px-0 sm:pb-3 sm:pt-1">
       {split && (
         <div className="shrink-0 pt-1">
           <InboxFolders

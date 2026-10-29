@@ -413,7 +413,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
       <div className="mx-auto max-w-[1280px] px-6 sm:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-[224px_minmax(0,1fr)] items-start gap-[26px]">
           {/* Sidebar — flat rail */}
-          <aside className="lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100dvh-120px)] lg:overflow-auto">
+          <aside className="lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100dvh-120px-var(--gio-strip))] lg:overflow-auto">
             <div style={{ padding: '0 10px 12px' }}>
               <div
                 className="font-poppins"

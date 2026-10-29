@@ -109,7 +109,7 @@ export default function Jobs() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewJobs">
-        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream">
+        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem-var(--gio-strip))] flex flex-col overflow-hidden bg-virgilio-cream">
           <div className="flex-1 min-h-0 overflow-auto">
             <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8 space-y-6">
               {/* Page header */}

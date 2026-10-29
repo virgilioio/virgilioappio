@@ -188,7 +188,7 @@ function useInviteSeen(userId: string | null | undefined) {
 
 /**
  * Who gets the invitation to fill in My profile (Allan, 2026-10-26): the
- * dialog (`ProfileInviteDialog`) and the band in HeaderContextBands.
+ * dialog (`ProfileInviteDialog`) and the band in TopStrip.
  * Virgilio's own people only: never externals, never on /me itself, and gone
  * once nothing is missing.
  */
@@ -204,4 +204,12 @@ export function useProfileInvite() {
   const seen = useInviteSeen(userId)
   // The dialog first, once; the band only after it.
   return { ...checks, showDialog: show && !seen, showBand: show && seen, userId }
+}
+
+/** What's still missing, for a sentence: "Google Workspace, tax ID and 2 more". */
+export function missingText(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? ''
+  if (items.length === 2) return `${items[0]} and ${items[1]}`
+  if (items.length === 3) return `${items[0]}, ${items[1]} and ${items[2]}`
+  return `${items[0]}, ${items[1]} and ${items.length - 2} more`
 }

@@ -712,7 +712,7 @@ function CandidatesInner() {
   })()
 
   return (
-    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream">
+    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem-var(--gio-strip))] flex flex-col overflow-hidden bg-virgilio-cream">
       {/* Header */}
       <div className="shrink-0 px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 lg:pt-12 pb-6">
         <CandidatesHeader
