@@ -42,6 +42,12 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Waiting for Apply 2026-10-29 (ATS) — Top strip (after Deel's) for the profile reminder and Platform admin
+
+- **What it is:** the two lilac bands that floated over the page (and hid page titles) are now one noir strip across the top of the window, above the rail and top bar, which move down to make room. Profile: tag "MY PROFILE · 3 OF 7", "Add your Google Workspace, tax ID and 2 more to finish your profile.", white Finish profile pill, ×. Platform admin (desktop): tag "PLATFORM ADMIN", "You're viewing data across all organizations.", ×. Both: the profile reminder in the middle, the admin mode as a quiet tag at the left edge (from 1024px). Phones: "MY PROFILE · 3 of 7 done · Finish profile". Who sees what and × for the session are unchanged (same session key).
+- **Motion:** the strip fades in (--dur-dialog-in) while the shell slides down (--dur-expand, --ease-in-out); × fades it out and the shell slides back up at --dur-dialog-out; no slide on page load; reduced motion is instant. The shell moves by `top`/`padding-top` (fixed elements can't take a transform without breaking), the one stated exception.
+- **Files:** `TopStrip.tsx` (was `HeaderContextBands.tsx`), CSS at the end of `index.css`, `--gio-strip` added to the rail, top bar, Layout, PhoneShell, the full-height pages (`100dvh-…-var(--gio-strip)`) and `IndependentCandidateProfileSheet`; `missingText` in `profileChecks.ts` (unit test). Checked in the browser with fake data at 1440, 1024 and 390: both, profile only, admin only, arriving late (slides), × (slides back), page load (no slide), reduced motion.
+
 ## Done 2026-10-29 (ATS) — Old posting links redirect; bell items open the candidate in the job — applied
 
 - **What it is:** (1) when a posting's URL changes, the old address keeps working: the public page asks `posting_current_slug` and goes to the current address in the same careers-page form, keeping `?utm…` and `#…`; drafts, closed jobs and addresses a posting holds now never redirect. (2) Bell items about a candidate in a job (scorecard submitted, interview booked/moved/cancelled, client decisions from a shared pipeline or dossier) open the in-job profile, a scorecard on its Scorecards tab; items with no job keep the general profile.
