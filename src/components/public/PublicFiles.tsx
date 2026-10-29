@@ -166,6 +166,7 @@ function FileModal({ open, files, index, onIndex, onClose, onInfo }: { open: boo
   const f = files[index]
   const t = typeOf(f)
   const go = useCallback((d: number) => { const n = index + d; if (n >= 0 && n < files.length) onIndex(n) }, [index, files.length, onIndex])
+  const panel = useRef<HTMLDivElement>(null)
 
   // Left and right move between files; Esc, focus and scroll lock are the Dialog's.
   useEffect(() => {
@@ -186,6 +187,10 @@ function FileModal({ open, files, index, onIndex, onClose, onInfo }: { open: boo
       <DialogContent
         aria-describedby={undefined}
         closeClassName="hidden"
+        ref={panel}
+        // Focus the viewer itself, not its first button: a focused icon button would
+        // open its tooltip on arrival, and Esc would close that before the viewer.
+        onOpenAutoFocus={(e) => { e.preventDefault(); panel.current?.focus() }}
         onContextMenu={(e) => e.preventDefault()}
         className="flex max-h-[92vh] w-[calc(100vw-32px)] max-w-[980px] flex-col gap-0 overflow-hidden rounded-2xl p-0 font-inter sm:rounded-2xl"
       >
