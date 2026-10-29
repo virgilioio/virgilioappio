@@ -2415,3 +2415,9 @@ html.gio-strip-anim.gio-strip-closing .gio-strip-follow { transition-duration: v
   html.gio-strip-anim .gio-strip-follow { transition: none; }
   .gio-strip-cta:active, .gio-strip-x:active { transform: none; }
 }
+
+/* Careers application (2026-10-29): a question with a problem turns its box red
+   (the wrapper carries aria-invalid so a failed Apply can focus and shake it). */
+.gio-apply-invalid :is(input:not([type="checkbox"]):not([type="radio"]), textarea, [role="combobox"]) {
+  border-color: hsl(var(--destructive));
+}
