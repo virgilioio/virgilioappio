@@ -47,9 +47,9 @@ export function TimezonePicker({ value, onChange, detected, className }: Timezon
           aria-expanded={open}
           aria-label="Time zone"
           className={cn(
-            'w-full h-9 px-3 rounded-lg border border-virgilio-border bg-white',
+            'gio-pressable w-full h-9 px-3 rounded-lg border border-virgilio-border bg-white transition-colors duration-hover',
             'inline-flex items-center gap-1.5 text-[12.5px] text-virgilio-text',
-            'hover:border-virgilio-purple/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
+            'hover:border-virgilio-purple/40',
             className,
           )}
         >

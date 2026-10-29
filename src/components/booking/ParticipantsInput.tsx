@@ -1,5 +1,6 @@
 import { useState, KeyboardEvent, ClipboardEvent } from 'react';
 import { X } from 'lucide-react';
+import { IconTip } from '@/components/ui/tooltip';
 import { z } from 'zod';
 
 const emailSchema = z.string().trim().toLowerCase().email().max(255);
@@ -52,13 +53,15 @@ export function ParticipantsInput({ emails, onChange, ownEmail, max = 10 }: Prop
   return (
     <div className="space-y-1.5">
       <label className="text-sm font-medium text-virgilio-muted">Add participants (optional)</label>
-      <div className="min-h-11 flex flex-wrap items-center gap-1.5 rounded-lg border border-virgilio-border bg-background px-2 py-1.5 focus-within:border-virgilio-purple focus-within:ring-1 focus-within:ring-virgilio-purple">
+      <div className="min-h-11 flex flex-wrap items-center gap-1.5 rounded-lg border border-virgilio-border bg-background px-2 py-1.5 focus-within:border-[var(--input-border-focus)] focus-within:shadow-input">
         {emails.map((e) => (
           <span key={e} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-virgilio-text">
             {e}
-            <button type="button" aria-label={`Remove ${e}`} onClick={() => onChange(emails.filter((x) => x !== e))} className="rounded p-0.5 hover:bg-foreground/10">
-              <X className="h-3 w-3" />
-            </button>
+            <IconTip label={`Remove ${e}`}>
+              <button type="button" aria-label={`Remove ${e}`} onClick={() => onChange(emails.filter((x) => x !== e))} className="gio-pressable rounded p-0.5 transition-colors duration-hover hover:bg-foreground/10">
+                <X className="h-3 w-3" />
+              </button>
+            </IconTip>
           </span>
         ))}
         <input

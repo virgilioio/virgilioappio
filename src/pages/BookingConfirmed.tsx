@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   detectTimeZone,
@@ -8,7 +7,8 @@ import {
   isValidTimeZone,
   zoneAbbr,
 } from '@/lib/timezoneFormat';
-import { Check, Clock, Video, Download, RefreshCw } from 'lucide-react';
+import { Check, Clock, Video, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { PublicBookingHeader } from '@/components/booking/PublicBookingHeader';
 import { PublicBookingFooter } from '@/components/booking/PublicBookingFooter';
 
@@ -42,40 +42,6 @@ function initials(name: string) {
 export default function BookingConfirmed() {
   const location = useLocation();
   const state = location.state as BookingState | null;
-
-  useEffect(() => {
-    // Confetti
-    const duration = 2500;
-    const end = Date.now() + duration;
-    const colors = ['#6F3FF5', '#10B981', '#FFD700'];
-    (function frame() {
-      if (Date.now() > end) return;
-      for (let i = 0; i < 2; i++) {
-        const p = document.createElement('div');
-        const angle = Math.random() * 360;
-        const v = Math.random() * 5 + 5;
-        Object.assign(p.style, {
-          position: 'fixed', width: '8px', height: '8px',
-          background: colors[Math.floor(Math.random() * colors.length)],
-          borderRadius: '50%', pointerEvents: 'none', zIndex: '9999',
-          left: '50%', top: '25%',
-        });
-        document.body.appendChild(p);
-        const rad = (angle + i * 30) * Math.PI / 180;
-        const vx = Math.cos(rad) * v;
-        const vy = Math.sin(rad) * v;
-        let x = 0, y = 0;
-        const tick = () => {
-          x += vx; y += vy + 0.5;
-          p.style.transform = `translate(${x}px, ${y}px)`;
-          p.style.opacity = String(Math.max(0, 1 - y / 200));
-          if (y < 200) requestAnimationFrame(tick); else p.remove();
-        };
-        tick();
-      }
-      requestAnimationFrame(frame);
-    })();
-  }, []);
 
   const firstName = state?.booking.candidate_name?.split(' ')[0] || 'there';
   const startTime = state ? new Date(state.booking.scheduled_start) : null;
@@ -112,7 +78,7 @@ END:VCALENDAR`;
 
   if (!state || !startTime || !endTime) {
     return (
-      <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
+      <div className="min-h-screen bg-virgilio-cream flex flex-col">
         <PublicBookingHeader workspaceName="Scheduling" />
         <main className="flex-1 container mx-auto px-4 py-16 max-w-xl text-center space-y-4">
           <div className="h-20 w-20 rounded-full bg-emerald-100 mx-auto flex items-center justify-center">
@@ -133,7 +99,7 @@ END:VCALENDAR`;
   const panelists = [{ name: state.interviewerName }];
 
   return (
-    <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
+    <div className="min-h-screen bg-virgilio-cream flex flex-col">
       <PublicBookingHeader workspaceName={state.config.display_name} />
 
       <main className="flex-1 container mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-16 max-w-2xl">
@@ -215,21 +181,9 @@ END:VCALENDAR`;
             </div>
 
             <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={downloadICS}
-                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-[#0d0d09] text-white font-poppins font-semibold text-[13px]"
-              >
-                <Download className="h-3.5 w-3.5" />
+              <Button variant="primary" size="lg" icon={Download} onClick={downloadICS} className="font-semibold text-[13px]">
                 Add to calendar
-              </button>
-              <button
-                disabled
-                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-white border border-virgilio-border text-virgilio-text font-poppins font-semibold text-[13px] opacity-60 cursor-not-allowed"
-                title="Use your booking link to reschedule"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Reschedule
-              </button>
+              </Button>
             </div>
           </div>
         </div>
