@@ -4134,6 +4134,24 @@ export type Database = {
           },
         ]
       }
+      job_posting_old_slugs: {
+        Row: {
+          posting_id: string
+          replaced_at: string
+          slug: string
+        }
+        Insert: {
+          posting_id: string
+          replaced_at?: string
+          slug: string
+        }
+        Update: {
+          posting_id?: string
+          replaced_at?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       job_postings: {
         Row: {
           created_at: string
@@ -12518,6 +12536,7 @@ export type Database = {
           strength: string
         }[]
       }
+      posting_current_slug: { Args: { _slug: string }; Returns: string }
       privacy_hash: {
         Args: { p_kind: string; p_value: string }
         Returns: string

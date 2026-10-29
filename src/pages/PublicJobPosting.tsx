@@ -227,9 +227,7 @@ export default function PublicJobPosting() {
       if (!p) {
         // An old address of a posting whose URL changed goes to the current one,
         // in the same careers-page form and with the same tracking tags.
-        const { data: current } = await (supabase as unknown as {
-          rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown }>
-        }).rpc('posting_current_slug', { _slug: slug })
+        const { data: current } = await supabase.rpc('posting_current_slug', { _slug: slug })
         if (typeof current === 'string' && current && current !== slug) {
           const { pathname, search, hash } = window.location
           const parts = pathname.split('/')

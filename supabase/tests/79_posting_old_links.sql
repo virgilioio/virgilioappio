@@ -1,4 +1,4 @@
--- Run after 20261029120000_posting_old_links inside a transaction that is rolled back.
+-- Run after 20261029044938_posting_old_links inside a transaction that is rolled back.
 -- Old posting links lead to the new address; bell items about a candidate in
 -- a job open the in-job profile.
 --   Allan Bravo  admin, renames two live postings on open jobs (live data)

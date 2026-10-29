@@ -42,12 +42,12 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Waiting for Apply 2026-10-29 (ATS) — Old posting links redirect; bell items open the candidate in the job
+## Done 2026-10-29 (ATS) — Old posting links redirect; bell items open the candidate in the job — applied
 
 - **What it is:** (1) when a posting's URL changes, the old address keeps working: the public page asks `posting_current_slug` and goes to the current address in the same careers-page form, keeping `?utm…` and `#…`; drafts, closed jobs and addresses a posting holds now never redirect. (2) Bell items about a candidate in a job (scorecard submitted, interview booked/moved/cancelled, client decisions from a shared pipeline or dossier) open the in-job profile, a scorecard on its Scorecards tab; items with no job keep the general profile.
-- **Written, not applied:** `20261029120000_posting_old_links` (table `job_posting_old_slugs`, trigger `job_postings_z_old_slug`, `posting_current_slug` for anon, trigger `notifications_a_in_job_link` before insert on `notifications`; no drop or delete, so it applies from a cloud chat). Test 79 dry-ran 17 of 17 with the migration (rolled back, nothing left behind). One rule on `notifications` instead of editing the senders: `record_dossier_decision` and `record_pipeline_decision` on live don't match their repo files, so copying them was riskier.
+- **Applied:** `20261029044938_posting_old_links` (table `job_posting_old_slugs`, trigger `job_postings_z_old_slug`, `posting_current_slug` for anon, trigger `notifications_a_in_job_link` before insert on `notifications`; no drop or delete, so it applies from a cloud chat). The three function bodies match the file (md5); test 79 live 17 of 17 (rolled back); types regenerated (the table and `posting_current_slug` only). One rule on `notifications` instead of editing the senders: `record_dossier_decision` and `record_pipeline_decision` on live don't match their repo files, so copying them was riskier.
 - **Screens:** `PublicJobPosting` redirects; the bell uses `notificationHref` for rows already written. Unit tests 3 + 3; browser check with fake data: an old careers address with tags, an old Virgilio careers address, an unknown address (still "Posting not found"), and the four bell items. Before the migration is applied the page just shows "Posting not found" as today.
-- **On Apply:** apply, rename to the recorded version, test 79 live, md5, regenerate types (then the page can call the typed `rpc`), main.
+- **On main 2026-10-29.** Addresses changed before this was applied weren't recorded, so they still show "Posting not found".
 
 ## Done 2026-10-28 (ATS) — Job posts: the URL slug saves — on main
 
