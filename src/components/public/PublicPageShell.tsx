@@ -36,11 +36,11 @@ export function PublicPageShell({
   useReportSplashReady(true)
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#FAF8F3' }}>
+    <div className="bg-virgilio-cream" style={{ minHeight: '100dvh' }}>
       <header
         style={{
           borderBottom: '1px solid #EDEBE3',
-          background: 'rgba(250,248,243,0.9)',
+          background: 'rgba(255,252,249,0.9)',
           backdropFilter: 'blur(6px)',
         }}
       >

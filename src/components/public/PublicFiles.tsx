@@ -6,9 +6,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import {
   AudioLines, ChevronLeft, ChevronRight, Clapperboard, Download, ExternalLink, File, FileArchive, FileSpreadsheet,
-  FileText, FileType2, Image as ImageIcon, Loader2, Maximize, Minus, Paperclip, Pause, Play, Plus,
+  FileText, FileType2, Image as ImageIcon, Maximize, Minus, Paperclip, Pause, Play, Plus,
   RotateCcw, RotateCw, X, type LucideIcon,
 } from 'lucide-react'
+
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
+import { IconTip } from '@/components/ui/tooltip'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 
@@ -88,6 +92,8 @@ export function Tile({ t, size = 36, ext }: { t: TypeDef; size?: number; ext?: s
 
 export function PublicFilesCard({ files }: { files: PublicFile[] }) {
   const [openIdx, setOpenIdx] = useState<number | null>(null)
+  // The last file opened stays in the dialog while it leaves.
+  const [shownIdx, setShownIdx] = useState(0)
   const [meta, setMeta] = useState<Record<string, string>>({})
   if (!files.length) return null
   const previewable = files.map((f, i) => ({ f, i })).filter(({ f }) => typeOf(f).viewer)
@@ -97,18 +103,19 @@ export function PublicFilesCard({ files }: { files: PublicFile[] }) {
     <section style={{ background: '#fff', border: '1px solid #E7E8EE', borderRadius: 14, padding: 16, marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#8B8F9E' }}>
         <Paperclip size={11} /> Files
-        <span style={{ marginLeft: 'auto', letterSpacing: 0 }}>{files.length}</span>
+        <span style={{ marginLeft: 'auto', letterSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>{files.length}</span>
       </div>
       <div style={{ marginTop: 8 }}>
         {files.map((f, i) => (
-          <FileRowItem key={f.id} f={f} info={meta[f.id]} onOpen={() => (typeOf(f).viewer ? setOpenIdx(i) : window.open(downloadUrl(f), '_self'))} />
+          <FileRowItem key={f.id} f={f} info={meta[f.id]} onOpen={() => { if (!typeOf(f).viewer) { window.open(downloadUrl(f), '_self'); return } setOpenIdx(i); setShownIdx(i) }} />
         ))}
       </div>
-      {openIdx !== null && (
+      {previewable.length > 0 && (
         <FileModal
+          open={openIdx !== null}
           files={previewable.map((p) => p.f)}
-          index={Math.max(0, previewable.findIndex((p) => p.i === openIdx))}
-          onIndex={(k) => setOpenIdx(previewable[k].i)}
+          index={Math.max(0, previewable.findIndex((p) => p.i === (openIdx ?? shownIdx)))}
+          onIndex={(k) => { setOpenIdx(previewable[k].i); setShownIdx(previewable[k].i) }}
           onClose={() => setOpenIdx(null)}
           onInfo={setInfo}
         />
@@ -118,23 +125,22 @@ export function PublicFilesCard({ files }: { files: PublicFile[] }) {
 }
 
 function FileRowItem({ f, info, onOpen }: { f: PublicFile; info?: string; onOpen: () => void }) {
-  const [hover, setHover] = useState(false)
   const t = typeOf(f)
   const primary = f.label?.trim() || f.name
   const parts = [f.label?.trim() ? f.name : null, info || t.name, fmtSize(f.size) || null].filter(Boolean)
   const VI = t.verbIcon
   return (
     <button
-      type="button" onClick={onOpen} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      className="font-inter"
-      style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12, padding: '10px 8px', margin: '0 -8px', boxSizing: 'content-box', background: hover ? '#FBFAF7' : 'transparent', border: 0, borderRadius: 10, textAlign: 'left', cursor: 'pointer' }}
+      type="button" onClick={onOpen}
+      className="group gio-pressable font-inter hover:bg-[#FBFAF7]"
+      style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12, padding: '10px 8px', margin: '0 -8px', boxSizing: 'content-box', border: 0, borderRadius: 10, textAlign: 'left', cursor: 'pointer' }}
     >
       <Tile t={t} ext={extOf(f.name)} />
       <span style={{ minWidth: 0, flex: 1, marginLeft: 4 }}>
         <span style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: '#1F2230', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{primary}</span>
         <span style={{ display: 'block', fontSize: 11, color: '#8B8F9E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parts.join(' · ')}</span>
       </span>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 500, color: hover ? '#6F3FF5' : '#8B8F9E', flexShrink: 0 }}>
+      <span className="text-[#8B8F9E] group-hover:text-[#6F3FF5]" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 500, flexShrink: 0 }}>
         {VI ? (<>{t.verb} <VI size={12} /></>) : <Download size={14} aria-label="Download" />}
       </span>
     </button>
@@ -143,53 +149,73 @@ function FileRowItem({ f, info, onOpen }: { f: PublicFile; info?: string; onOpen
 
 /* ---------------- Modal ---------------- */
 
-const iconBtn: React.CSSProperties = { width: 30, height: 30, borderRadius: 8, border: 0, background: 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#1F2230' }
+const iconBtn: React.CSSProperties = { width: 30, height: 30, borderRadius: 8, border: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#1F2230' }
+const ICON_BTN = 'gio-pressable bg-transparent hover:bg-[#F1F0EC] disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent'
+const ICON_BTN_DARK = 'gio-pressable bg-transparent hover:bg-white/10'
 
-function FileModal({ files, index, onIndex, onClose, onInfo }: { files: PublicFile[]; index: number; onIndex: (i: number) => void; onClose: () => void; onInfo: (id: string, v: string) => void }) {
+/** An icon-only control: IconTip with the same words as its label, never a native title. */
+function IconButton({ label, side, dark, style, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { label: string; side?: 'top' | 'bottom'; dark?: boolean }) {
+  return (
+    <IconTip label={label} side={side}>
+      <button type="button" aria-label={label} className={dark ? ICON_BTN_DARK : ICON_BTN} style={{ ...iconBtn, ...(dark ? { color: '#fffcf9' } : null), ...style }} {...props} />
+    </IconTip>
+  )
+}
+
+function FileModal({ open, files, index, onIndex, onClose, onInfo }: { open: boolean; files: PublicFile[]; index: number; onIndex: (i: number) => void; onClose: () => void; onInfo: (id: string, v: string) => void }) {
   const f = files[index]
   const t = typeOf(f)
   const go = useCallback((d: number) => { const n = index + d; if (n >= 0 && n < files.length) onIndex(n) }, [index, files.length, onIndex])
+  const panel = useRef<HTMLDivElement>(null)
 
+  // Left and right move between files; Esc, focus and scroll lock are the Dialog's.
   useEffect(() => {
+    if (!open) return
     const k = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-      else if (e.key === 'ArrowLeft') go(-1)
+      if ((e.target as HTMLElement | null)?.closest('input, textarea, [contenteditable="true"]')) return
+      if (e.key === 'ArrowLeft') go(-1)
       else if (e.key === 'ArrowRight') go(1)
     }
     window.addEventListener('keydown', k)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { window.removeEventListener('keydown', k); document.body.style.overflow = prev }
-  }, [go, onClose])
+    return () => window.removeEventListener('keydown', k)
+  }, [open, go])
 
   const added = new Date(f.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(13,13,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()} className="font-inter"
-        style={{ width: '100%', maxWidth: 980, maxHeight: '92vh', background: '#fff', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px -16px rgba(0,0,0,0.35)' }}>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        aria-describedby={undefined}
+        closeClassName="hidden"
+        ref={panel}
+        // Focus the viewer itself, not its first button: a focused icon button would
+        // open its tooltip on arrival, and Esc would close that before the viewer.
+        onOpenAutoFocus={(e) => { e.preventDefault(); panel.current?.focus() }}
+        onContextMenu={(e) => e.preventDefault()}
+        className="flex max-h-[92vh] w-[calc(100vw-32px)] max-w-[980px] flex-col gap-0 overflow-hidden rounded-2xl p-0 font-inter sm:rounded-2xl"
+      >
         <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: '1px solid #EEEDE8' }}>
           <Tile t={t} size={32} />
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="font-poppins" style={{ fontSize: 14, fontWeight: 600, color: '#0d0d09', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.label?.trim() || f.name}</div>
+            <DialogTitle className="truncate font-poppins" style={{ fontSize: 14, fontWeight: 600, color: '#0d0d09', lineHeight: 1.4 }}>{f.label?.trim() || f.name}</DialogTitle>
             <div style={{ fontSize: 11, color: '#8B8F9E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[f.name, fmtSize(f.size), `Added ${added}`].filter(Boolean).join(' · ')}</div>
           </div>
           {files.length > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 11.5, color: '#5A6072' }}>
-              <button style={{ ...iconBtn, opacity: index ? 1 : 0.35 }} onClick={() => go(-1)} aria-label="Previous file"><ChevronLeft size={15} /></button>
+              <IconButton label="Previous file" disabled={index === 0} onClick={() => go(-1)}><ChevronLeft size={15} /></IconButton>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{index + 1} of {files.length}</span>
-              <button style={{ ...iconBtn, opacity: index < files.length - 1 ? 1 : 0.35 }} onClick={() => go(1)} aria-label="Next file"><ChevronRight size={15} /></button>
+              <IconButton label="Next file" disabled={index === files.length - 1} onClick={() => go(1)}><ChevronRight size={15} /></IconButton>
             </div>
           )}
           <span style={{ width: 1, height: 20, background: '#E7E8EE' }} />
-          <a href={downloadUrl(f)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 10px', borderRadius: 8, border: '1px solid #E7E8EE', fontSize: 12, fontWeight: 500, color: '#1F2230', textDecoration: 'none' }}>
+          <a href={downloadUrl(f)} className="gio-pressable whitespace-nowrap hover:bg-[#FBFAF7]" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 10px', borderRadius: 8, border: '1px solid #E7E8EE', fontSize: 12, fontWeight: 500, color: '#1F2230', textDecoration: 'none' }}>
             <Download size={13} /> Download
           </a>
-          <button style={iconBtn} onClick={onClose} aria-label="Close"><X size={16} /></button>
+          <IconButton label="Close" onClick={onClose}><X size={16} /></IconButton>
         </header>
         <FileStage f={f} onInfo={onInfo} />
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -271,17 +297,33 @@ function DocViewer({ f, word, onPages }: { f: PublicFile; word: boolean; onPages
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px', background: '#FBFAF7', borderBottom: '1px solid #EEEDE8', fontSize: 11.5, color: '#5A6072' }}>
         <span style={{ fontVariantNumeric: 'tabular-nums' }}>{doc ? `Page ${page} of ${doc.numPages}` : 'Loading…'}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-          <button style={{ ...iconBtn, width: 26, height: 26 }} disabled={zoom <= 60} onClick={() => setZoom((z) => Math.max(60, z - 20))} aria-label="Zoom out"><Minus size={13} /></button>
+          <IconButton label="Zoom out" style={{ width: 26, height: 26 }} disabled={zoom <= 60} onClick={() => setZoom((z) => Math.max(60, z - 20))}><Minus size={13} /></IconButton>
           <span style={{ width: 42, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{zoom}%</span>
-          <button style={{ ...iconBtn, width: 26, height: 26 }} disabled={zoom >= 180} onClick={() => setZoom((z) => Math.min(180, z + 20))} aria-label="Zoom in"><Plus size={13} /></button>
+          <IconButton label="Zoom in" style={{ width: 26, height: 26 }} disabled={zoom >= 180} onClick={() => setZoom((z) => Math.min(180, z + 20))}><Plus size={13} /></IconButton>
         </span>
       </div>
       <div ref={scroller} onScroll={onScroll} style={{ flex: 1, minHeight: 360, maxHeight: '74vh', overflow: 'auto', background: '#EDEBE5', padding: 20, position: 'relative' }}>
         {!doc ? (
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}><Loader2 className="animate-spin" size={22} color="#8B8F9E" /></div>
+          <PageSkeleton zoom={zoom} />
         ) : Array.from({ length: doc.numPages }, (_, i) => <PdfPage key={i} doc={doc} n={i + 1} zoom={zoom} />)}
       </div>
     </>
+  )
+}
+
+/** A blank page the size of the first one while the PDF opens (§6: never a lone spinner). */
+function PageSkeleton({ zoom }: { zoom: number }) {
+  return (
+    <div aria-busy="true" aria-label="Loading the document" style={{ width: `min(100%, ${Math.round(612 * 1.25 * zoom / 100)}px)`, aspectRatio: '8.5 / 11', margin: '0 auto 16px', background: '#fff', boxShadow: '0 2px 10px rgba(13,13,9,0.12)', padding: '9% 10%' }}>
+      <Skeleton className="h-5 w-1/2" />
+      <Skeleton className="mt-3 h-3 w-1/3" />
+      <div className="mt-8 grid gap-2.5">
+        {[100, 96, 92, 98, 70].map((w, i) => <Skeleton key={i} className="h-2.5" style={{ width: `${w}%` }} />)}
+      </div>
+      <div className="mt-6 grid gap-2.5">
+        {[94, 99, 88, 60].map((w, i) => <Skeleton key={i} className="h-2.5" style={{ width: `${w}%` }} />)}
+      </div>
+    </div>
   )
 }
 
@@ -382,12 +424,14 @@ function AudioViewer({ url, onDuration }: { url: string; onDuration: (d: number)
       </div>
       <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
         <span style={{ fontSize: 12, color: '#5A6072', fontVariantNumeric: 'tabular-nums', minWidth: 96 }}>{fmtTime(time)} / {fmtTime(dur)}</span>
-        <button style={iconBtn} onClick={() => seek(time - 15)} aria-label="Back 15 seconds"><RotateCcw size={17} /></button>
-        <button onClick={toggle} aria-label={playing ? 'Pause' : 'Play'} style={{ width: 48, height: 48, borderRadius: 999, border: 0, background: '#0d0d09', color: '#fffcf9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginLeft: 2 }} />}
-        </button>
-        <button style={iconBtn} onClick={() => seek(time + 15)} aria-label="Forward 15 seconds"><RotateCw size={17} /></button>
-        <span style={{ minWidth: 96 }}><button style={speedChip} onClick={cycle}>{speed}×</button></span>
+        <IconButton label="Back 15 seconds" onClick={() => seek(time - 15)}><RotateCcw size={17} /></IconButton>
+        <IconTip label={playing ? 'Pause' : 'Play'}>
+          <button type="button" onClick={toggle} aria-label={playing ? 'Pause' : 'Play'} className="gio-pressable" style={{ width: 48, height: 48, borderRadius: 999, border: 0, background: '#0d0d09', color: '#fffcf9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginLeft: 2 }} />}
+          </button>
+        </IconTip>
+        <IconButton label="Forward 15 seconds" onClick={() => seek(time + 15)}><RotateCw size={17} /></IconButton>
+        <span style={{ minWidth: 96 }}><button type="button" aria-label={`Speed ${speed}×`} className="gio-pressable" style={speedChip} onClick={cycle}>{speed}×</button></span>
       </div>
     </div>
   )
@@ -400,7 +444,6 @@ function VideoViewer({ url, onDuration }: { url: string; onDuration: (d: number)
   const stage = useRef<HTMLDivElement>(null)
   const { time, dur, playing, speed, toggle, seek, cycle } = useMedia(video, onDuration)
   const pct = dur ? (time / dur) * 100 : 0
-  const ctl: React.CSSProperties = { ...iconBtn, color: '#fffcf9' }
   return (
     <div ref={stage} style={{ background: '#000', display: 'flex', flexDirection: 'column' }}>
       <div onClick={toggle} style={{ position: 'relative', aspectRatio: '16 / 9', maxHeight: '68vh', cursor: 'pointer' }}>
@@ -421,13 +464,13 @@ function VideoViewer({ url, onDuration }: { url: string; onDuration: (d: number)
           <span style={{ position: 'absolute', left: `calc(${pct}% - 6px)`, width: 12, height: 12, borderRadius: 999, background: '#fff' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, color: '#fffcf9', fontSize: 12 }}>
-          <button style={ctl} onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}</button>
-          <button style={ctl} onClick={() => seek(time - 10)} aria-label="Back 10 seconds"><RotateCcw size={15} /></button>
-          <button style={ctl} onClick={() => seek(time + 10)} aria-label="Forward 10 seconds"><RotateCw size={15} /></button>
+          <IconButton dark side="top" label={playing ? 'Pause' : 'Play'} onClick={toggle}>{playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}</IconButton>
+          <IconButton dark side="top" label="Back 10 seconds" onClick={() => seek(time - 10)}><RotateCcw size={15} /></IconButton>
+          <IconButton dark side="top" label="Forward 10 seconds" onClick={() => seek(time + 10)}><RotateCw size={15} /></IconButton>
           <span style={{ fontVariantNumeric: 'tabular-nums', marginLeft: 6 }}>{fmtTime(time)} / {fmtTime(dur)}</span>
           <span style={{ flex: 1 }} />
-          <button style={{ ...speedChip, background: 'transparent', color: '#fffcf9', borderColor: 'rgba(255,255,255,0.25)' }} onClick={cycle}>{speed}×</button>
-          <button style={ctl} onClick={() => stage.current?.requestFullscreen?.()} aria-label="Full screen"><Maximize size={15} /></button>
+          <button type="button" aria-label={`Speed ${speed}×`} className="gio-pressable" style={{ ...speedChip, background: 'transparent', color: '#fffcf9', borderColor: 'rgba(255,255,255,0.25)' }} onClick={cycle}>{speed}×</button>
+          <IconButton dark side="top" label="Full screen" onClick={() => stage.current?.requestFullscreen?.()}><Maximize size={15} /></IconButton>
         </div>
       </div>
     </div>
