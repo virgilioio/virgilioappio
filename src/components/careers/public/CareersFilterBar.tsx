@@ -1,4 +1,6 @@
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { IconTip } from '@/components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -26,13 +28,25 @@ export function CareersFilterBar(p: Props) {
     <div className="border-b border-black/5">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[220px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8B8F9E]" />
-          <input
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8B8F9E]" />
+          <Input
             value={p.search}
             onChange={(e) => p.onSearch(e.target.value)}
             placeholder="Search by role, team, or keyword"
-            className="w-full h-9 pl-9 pr-3 rounded-lg bg-white border border-black/10 text-[13px] placeholder:text-[#8B8F9E] focus:outline-none focus:ring-2 focus:ring-virgilio-purple/30"
+            aria-label="Search roles"
+            className="h-9 pl-9 pr-9 text-[13px]"
           />
+          <IconTip label="Clear search">
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => p.onSearch('')}
+              data-visible={p.search ? '' : undefined}
+              className="gio-search-clear absolute right-2 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:text-text-primary"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </IconTip>
         </div>
 
         <FilterSelect value={p.department} onChange={p.onDepartment} label="Department" options={p.departments} />

@@ -17,7 +17,7 @@ export function JobCTABand({ onApply, responseHours = 48 }: Props) {
         </div>
         <button
           onClick={onApply}
-          className="inline-flex items-center justify-center gap-1.5 h-10 px-5 rounded-lg bg-white text-[#0d0d09] text-[13px] font-poppins font-medium hover:bg-[#FAFAF7]"
+          className="gio-pressable inline-flex items-center justify-center gap-1.5 h-10 px-5 rounded-lg bg-white text-[#0d0d09] text-[13px] font-poppins font-medium hover:bg-[#FAFAF7]"
         >
           Apply now
           <ArrowRight className="h-3.5 w-3.5" />

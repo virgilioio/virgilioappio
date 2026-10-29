@@ -98,7 +98,7 @@ function RoleRow({ role, onOpen }: { role: CareersRole; onOpen: () => void }) {
       <div className="col-span-3 md:col-span-1 flex justify-end">
         <button
           onClick={(e) => { e.stopPropagation(); onOpen() }}
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[#0d0d09] text-[#FFFCF9] text-[12px] font-poppins font-medium hover:bg-black"
+          className="gio-pressable inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[#0d0d09] text-[#FFFCF9] text-[12px] font-poppins font-medium hover:bg-black"
         >
           View role
           <ArrowRight className="h-3.5 w-3.5" />

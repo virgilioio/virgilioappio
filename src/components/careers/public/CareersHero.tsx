@@ -1,4 +1,4 @@
-import { ArrowDown, Play, Globe } from 'lucide-react'
+import { ArrowDown, Globe } from 'lucide-react'
 
 interface Props {
   openRolesCount: number
@@ -37,14 +37,10 @@ export function CareersHero({ openRolesCount, departmentsCount, companyName, hea
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <button
               onClick={onScrollToRoles}
-              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-[#0d0d09] text-[#FFFCF9] text-[13px] font-poppins font-medium hover:bg-black transition-colors"
+              className="gio-pressable inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-[#0d0d09] text-[#FFFCF9] text-[13px] font-poppins font-medium hover:bg-black transition-colors"
             >
               See open roles
               <ArrowDown className="h-4 w-4" />
-            </button>
-            <button className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-white border border-black/10 text-[13px] font-poppins font-medium text-[#0d0d09] hover:bg-[#FAFAF7]">
-              Life at {companyName} · 90s
-              <Play className="h-3.5 w-3.5 fill-current" />
             </button>
           </div>
         </div>

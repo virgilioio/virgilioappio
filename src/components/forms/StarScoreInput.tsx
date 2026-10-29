@@ -67,8 +67,7 @@ export function StarScoreInput({ value, onChange, config, disabled, ariaLabel }:
         onKeyDown={onKeyDown}
         onMouseLeave={() => setHover(null)}
         className={cn(
-          'inline-flex items-center gap-1 rounded-lg outline-none',
-          'focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
+          'inline-flex items-center gap-1 rounded-lg',
           disabled && 'opacity-60'
         )}
       >
@@ -86,7 +85,7 @@ export function StarScoreInput({ value, onChange, config, disabled, ariaLabel }:
               onBlur={() => setHover(null)}
               onClick={() => set(n)}
               className={cn(
-                'rounded-md p-0.5 transition-colors',
+                'gio-pressable rounded-md p-0.5 transition-colors',
                 !disabled && 'hover:bg-[#F1F0EC] cursor-pointer',
                 disabled && 'cursor-not-allowed'
               )}
