@@ -799,7 +799,7 @@ export default function SigningPage() {
       body = (
         <Centered>
           <LoadError
-            what="the document"
+            what="your documents"
             timedOut
             onRetry={() => {
               setAttempt((n) => n + 1)
