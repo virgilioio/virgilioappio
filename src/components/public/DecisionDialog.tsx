@@ -256,12 +256,12 @@ export function DecisionDialog({
               />
             </div>
 
-            {/* A reserved line, so an error never moves the buttons (§7). */}
+            {/* A reserved line (two on phones, where the message wraps), so an error never moves the buttons (§7). */}
             <p
               role={error ? 'alert' : undefined}
               aria-live="polite"
-              className="font-inter"
-              style={{ padding: '10px 24px 0', margin: 0, minHeight: 28, fontSize: 11.5, lineHeight: '18px', color: '#B42318' }}
+              className="min-h-[46px] font-inter sm:min-h-[28px]"
+              style={{ padding: '10px 24px 0', margin: 0, fontSize: 11.5, lineHeight: '18px', color: '#B42318' }}
             >
               {error}
             </p>
