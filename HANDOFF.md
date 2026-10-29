@@ -42,6 +42,14 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-29 (ATS) — Public pages: Yes / No questions and Motion & Feel — waiting for Apply!
+
+- **The bug:** a Yes / No question on an application form (`field_type 'checkbox'`, 6 live questions) showed as one "I acknowledge" checkbox, so a candidate could only say yes or skip it. It's now two options, Yes and No, nothing picked until they choose; required ones need an answer. Answers are stored as before (`'true'` / `'false'`), so screening rules and old answers read the same; the profile shows Yes or No instead of true/false, and the question library calls the type "Yes / No".
+- **Motion & Feel on every public page, in four rounds (no database change):** (1) careers pages and the application form: errors under each field and a shake instead of toasts, email checked on blur, Submit keeps its width while sending, skeletons, Retry after a failed or 15s-slow load, the search scene for a closed post or missing careers page, press feel, the resume drop area's inline problems; the two buttons that went nowhere (Life at … video, the open-application band) are gone; (2) booking: one frame with skeleton slots, Retry, the scheduling scene for no times, errors in a reserved line, the phone steps slide, no confetti or dead Reschedule; (3) reference checks (add references, questionnaire, report): skeletons, a gone link told apart from a failed request, the shared Input and Textarea, single-choice answers as segmented controls, missing answers shake, send errors inline; (4) client pipeline, dossier and signing: page skeletons, Retry, "This link doesn't open anything" instead of "404", sliding section tabs (two to a row on phones), the decision dialog and file viewer on the Dialog primitive (focus, Esc, scroll lock), dimension rows open with Collapsible, IconTips instead of `title`. Every public page is Opaline White.
+- **Checked:** browser with fake data at 1440 and 390 for every round (round 4: 73 of 73 checks), reduced motion; `tsc` clean for the whole app; lint on the 45 changed files one finding fewer than `main`.
+- **Left as is:** two long pipeline tab labels still cut on phones ("Application re…"); `LoadError`'s "They didn't arrive within 15 seconds" is plural for "this pipeline"; `CandidateFileViewer` keeps its spinner while it fetches the link.
+- **Apply = push to `main`** (screens only).
+
 ## Done 2026-10-29 (ATS) — Hiring plan order; target hire date names its req — applied
 
 - **Done already (Allan's "Go!"):** "International Talent Acquisition Partner" (`cc0428c9…`) `created_at` set to 2026-10-15 21:37:47 UTC (was 2025-11-04; same time of day).
