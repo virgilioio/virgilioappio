@@ -102,16 +102,20 @@ export default function PublicReferenceAnswer() {
   }
 
   // §7: name what's missing in the reserved line and shake the first one, once.
+  // The line counts down as answers come in and clears with the last one.
   const flagMissing = (ids: string[]) => {
     setMissing(ids)
-    setSubmitError({
-      text:
-        ids.length === 1
-          ? 'One required question still needs an answer.'
-          : `${ids.length} required questions still need an answer.`,
-    })
+    setSubmitError(null)
     shakeFirstInvalid()
   }
+  const lineError: SubmitError = missing.length
+    ? {
+        text:
+          missing.length === 1
+            ? 'One required question still needs an answer.'
+            : `${missing.length} required questions still need an answer.`,
+      }
+    : submitError
 
   const autosave = useCallback(async () => {
     if (!data || data.status !== 'open') return
@@ -464,7 +468,7 @@ export default function PublicReferenceAnswer() {
 
       {/* Footer */}
       <div style={{ marginTop: 20, paddingTop: 12, borderTop: '1px solid #F1F0EC' }}>
-        <SubmitErrorLine error={submitError} onRetry={handleSubmit} retrying={submitting} />
+        <SubmitErrorLine error={lineError} onRetry={handleSubmit} retrying={submitting} />
       </div>
       <div className="flex flex-wrap items-center" style={{ marginTop: 6, gap: 12 }}>
         <span className="font-inter" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
