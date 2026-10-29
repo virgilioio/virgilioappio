@@ -39,6 +39,8 @@ interface BookingConfirmationFormProps {
   defaultCandidateEmail?: string;
   /** Show "Add participants" — general (non-interview) links only */
   allowGuests?: boolean;
+  /** Why the last booking didn't go through, in plain words (never server text). */
+  error?: string | null;
 }
 
 export function BookingConfirmationForm({
@@ -49,6 +51,7 @@ export function BookingConfirmationForm({
   defaultCandidateName,
   defaultCandidateEmail,
   allowGuests,
+  error,
 }: BookingConfirmationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [guests, setGuests] = useState<string[]>([]);
@@ -68,6 +71,8 @@ export function BookingConfirmationForm({
     try {
       const own = data.candidate_email.trim().toLowerCase();
       await onConfirm(allowGuests ? { ...data, guest_emails: guests.filter((g) => g !== own) } : data);
+    } catch {
+      // The page shows why under the button (`error`); nothing else to do here.
     } finally {
       setIsSubmitting(false);
     }
@@ -76,7 +81,7 @@ export function BookingConfirmationForm({
   if (!selectedSlot) return null;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       {/* Back button */}
       <Button
         variant="ghost"
@@ -132,7 +137,7 @@ export function BookingConfirmationForm({
                       <Input 
                         placeholder="John Doe" 
                         {...field}
-                        className="h-11 border-virgilio-border focus:border-virgilio-purple focus:ring-virgilio-purple rounded-lg"
+                        className="h-11 border-virgilio-borderrounded-lg"
                       />
                     </FormControl>
                     <FormMessage className="text-virgilio-error text-xs" />
@@ -155,14 +160,14 @@ export function BookingConfirmationForm({
                           type="email"
                           placeholder="john@example.com"
                           {...field}
-                          className="h-11 border-virgilio-border focus:border-virgilio-purple focus:ring-virgilio-purple rounded-lg"
+                          className="h-11 border-virgilio-borderrounded-lg"
                         />
                       </FormControl>
                       {suggestion && (
                         <button
                           type="button"
                           onClick={() => form.setValue('candidate_email', suggestion, { shouldValidate: true })}
-                          className="mt-1 text-xs text-virgilio-muted hover:text-virgilio-text text-left"
+                          className="gio-pressable mt-1 text-xs text-virgilio-muted transition-colors duration-hover hover:text-virgilio-text text-left"
                         >
                           Did you mean <span className="font-semibold text-virgilio-purple">{suggestion}</span>?
                         </button>
@@ -191,7 +196,7 @@ export function BookingConfirmationForm({
                         type="tel" 
                         placeholder="+1 (555) 123-4567" 
                         {...field}
-                        className="h-11 border-virgilio-border focus:border-virgilio-purple focus:ring-virgilio-purple rounded-lg"
+                        className="h-11 border-virgilio-borderrounded-lg"
                       />
                     </FormControl>
                     <FormMessage className="text-virgilio-error text-xs" />
@@ -210,7 +215,7 @@ export function BookingConfirmationForm({
                     <FormControl>
                       <Textarea
                         placeholder="Anything you'd like to share..."
-                        className="resize-none border-virgilio-border focus:border-virgilio-purple focus:ring-virgilio-purple rounded-lg min-h-[100px]"
+                        className="resize-none border-virgilio-borderrounded-lg min-h-[100px]"
                         {...field}
                       />
                     </FormControl>
@@ -228,13 +233,26 @@ export function BookingConfirmationForm({
                 We'll send you email reminders about this meeting.
               </p>
 
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full h-12 bg-virgilio-purple hover:bg-virgilio-purple/90 text-white font-semibold rounded-lg shadow-md transition-all duration-200 focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2"
-              >
-                {isSubmitting ? 'Scheduling...' : 'Schedule Event'}
-              </Button>
+              <div className="space-y-1.5">
+                {/* Reserved line: why the booking didn't go through (§5, §13). */}
+                <p
+                  role={error ? 'alert' : undefined}
+                  aria-live="assertive"
+                  className="gio-field-message min-h-[18px] text-xs font-medium text-virgilio-error"
+                  key={error ? `e:${error}` : 'idle'}
+                  data-state={error ? 'error' : undefined}
+                >
+                  {error || null}
+                </p>
+                <Button
+                  type="submit"
+                  variant="purple"
+                  loading={isSubmitting}
+                  className="w-full h-12 font-semibold rounded-lg"
+                >
+                  Schedule Event
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>
