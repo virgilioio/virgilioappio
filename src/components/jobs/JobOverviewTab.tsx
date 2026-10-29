@@ -52,6 +52,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { useJobPostings } from '@/hooks/useJobPostings'
+import { useJobOpenings } from '@/hooks/useJobOpenings'
 import { markdownToHtml } from '@/utils/markdown'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 
@@ -95,6 +96,18 @@ export function JobOverviewTab({ jobId, job, onEdit, onNavigate }: JobOverviewTa
   const { assignments } = useJobAssignments(jobId)
   const { members } = useMembers(true)
   const { postings: jobPostings } = useJobPostings(jobId)
+  const { openings } = useJobOpenings(jobId)
+
+  // The target hire date is the earliest one among the reqs still to fill
+  // (the database keeps jobs.target_fill_date in step); name that req.
+  const openReqs = useMemo(
+    () => openings.filter((o) => o.status === 'open' || o.status === 'offer'),
+    [openings],
+  )
+  const nextReq = useMemo(
+    () => [...openReqs].filter((o) => o.target_hire_date).sort((a, b) => a.target_hire_date.localeCompare(b.target_hire_date))[0] ?? null,
+    [openReqs],
+  )
 
   const livePostingsCount = useMemo(
     () => (jobPostings || []).filter((p: any) => p.is_active).length,
@@ -389,14 +402,29 @@ export function JobOverviewTab({ jobId, job, onEdit, onNavigate }: JobOverviewTa
                   )
                 }
                 sub={
-                  targetSub ? (
-                    <span
-                      style={{
-                        color: targetSub.tone === 'amber' ? '#B45309' : '#0B7A52',
-                      }}
-                    >
-                      {targetSub.text}
-                    </span>
+                  targetSub || nextReq ? (
+                    <>
+                      {targetSub && (
+                        <span
+                          className="block"
+                          style={{
+                            color: targetSub.tone === 'amber' ? '#B45309' : '#0B7A52',
+                          }}
+                        >
+                          {targetSub.text}
+                        </span>
+                      )}
+                      {nextReq && (
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('job-setup')}
+                          className="block ml-auto mt-px tabular-nums transition-colors duration-hover hover:text-[#1F2230]"
+                        >
+                          {nextReq.req_id || 'Next req'}
+                          {openReqs.length > 1 ? ` · next of ${openReqs.length} open reqs` : ' · the open req'}
+                        </button>
+                      )}
+                    </>
                   ) : undefined
                 }
               />
