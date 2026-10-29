@@ -37,7 +37,6 @@ interface PublicDossierBodyProps {
   decision: string | null
   decisionOn: string | null
   isSending: boolean
-  error: string | null
   onDownload?: () => void
   onDecision: (decision: 'interview_requested' | 'not_a_fit') => void
 }
@@ -114,7 +113,6 @@ export function PublicDossierBody({
   decision,
   decisionOn,
   isSending,
-  error,
   onDownload,
   onDecision,
 }: PublicDossierBodyProps) {
@@ -258,9 +256,6 @@ export function PublicDossierBody({
         )}
       </div>
 
-      {error && (
-        <p role="alert" className="font-inter" style={{ margin: '10px 0 0', fontSize: 11.5, lineHeight: 1.5, color: '#B42318' }}>{error}</p>
-      )}
       {note && (
         <div
           className="font-inter"
