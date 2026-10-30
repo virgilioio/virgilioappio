@@ -42,6 +42,14 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-30 (Gio Sales + ATS) — Inbox plan phase 3: Inbox data (with Unread and stars) — applied
+
+- **Gio Sales database:** `20261030050017_inbox` (applied byte-for-byte; 17 function bodies md5-checked; test `supabase/tests/inbox.sql` 34 of 34, rolled back): `email_mailbox_messages` (every mailbox that holds an email), `inbox_thread_state` (your read, unread, Done and star; Allan asked for the Unread filter and stars the same day), `inbox_threads` / `inbox_counts` / `inbox_thread` / `inbox_mark` / `inbox_access` (own mailbox only; never Billing), later replies kept in your threads, Refresh once a minute, a one-time 30-day refetch. Types regenerated. Stars live in Gio only (Gio never changes Gmail).
+- **Functions:** Gio ATS `google-gateway` v32 (`list_recent`: message and thread ids since a time). Gio Sales `email-sync` v10 (mailboxes take turns, longest waiting first; files only after every mailbox's mail, starting with the next mailbox each run), `email-send` v7 (a reply goes into your own Gmail thread), `email-files` v2; Storage keys use `storageName()` (accents and macOS's narrow space in screenshot names were refused). All byte-identical to git after deploy.
+- **Live check:** all four mailboxes synced and refetched with no errors; files stored a few per run (200 of 514 at 05:47 UTC, the rest over the next hour).
+- **Next:** phase 4 (Inbox screens) waits for Allan's Go!. The Gio ATS Inbox's Unread filter and stars are in another chat.
+- **On main 2026-10-30** in both apps.
+
 ## Done 2026-10-30 (Gio Sales + ATS) — Inbox plan phases 1–2: Comments card, composer, feed emails — applied
 
 - **Plan:** "Gio Sales inbox, email composer and deal page" (Claude Docs). Phase 1: the deal page's Comments card is Gio ATS's (reminders as tasks). Phase 2: Gio ATS's composer in Gio Sales (formatting, links, files from the computer or the deal, booking link, Reply · Reply all · Forward), Gio ATS's email card in every feed. Phases 3–5 (Inbox data, Inbox screens, Inbox on phones) are next, each waiting for its own Go!.
