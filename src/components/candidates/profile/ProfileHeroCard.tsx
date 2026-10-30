@@ -3,6 +3,7 @@ import '@/components/candidates/insights/loading/gioFitLoading.css'
 import type { ReactNode } from 'react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Button } from '@/components/ui/button'
+import { IconTip } from '@/components/ui/tooltip'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 import { ApplicationSwitcher } from '@/components/candidates/profile/ApplicationSwitcher'
@@ -159,26 +160,28 @@ export function ProfileHeroCard({
           )}
           {(onNavigatePrev || onNavigateNext) && (
             <>
-              <Button
-                variant="secondary"
-                size="md"
-                iconOnly
-                aria-label={prevLabel}
-                title={prevLabel}
-                icon={ChevronLeft}
-                onClick={onNavigatePrev}
-                disabled={!hasPrev}
-              />
-              <Button
-                variant="secondary"
-                size="md"
-                iconOnly
-                aria-label={nextLabel}
-                title={nextLabel}
-                icon={ChevronRight}
-                onClick={onNavigateNext}
-                disabled={!hasNext}
-              />
+              <IconTip label={prevLabel}>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  iconOnly
+                  aria-label={prevLabel}
+                  icon={ChevronLeft}
+                  onClick={onNavigatePrev}
+                  disabled={!hasPrev}
+                />
+              </IconTip>
+              <IconTip label={nextLabel}>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  iconOnly
+                  aria-label={nextLabel}
+                  icon={ChevronRight}
+                  onClick={onNavigateNext}
+                  disabled={!hasNext}
+                />
+              </IconTip>
             </>
           )}
           {actionMenu}

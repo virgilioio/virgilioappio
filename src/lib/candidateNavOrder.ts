@@ -102,29 +102,36 @@ export interface NavAssoc extends SectionAssoc {
   ai_fit_score?: number | null
   rejected_at?: string | null
   updated_at?: string | null
+  pipeline_position?: number | null
+  entered_stage_at?: string | null
 }
 
 const time = (v?: string | null) => (v ? new Date(v).getTime() || 0 : 0)
 
 /**
- * A list rebuilt the way its tab shows it by default: Application review by
- * Gio Fit score, Recruiting process by stage, Rejected newest first, Job
- * offers and Hired newest added first.
+ * A list rebuilt the way its tab shows it by default. Every tab starts from the
+ * job's applications in their saved order (`pipeline_position`, empty last, then
+ * newest added); Application review then sorts by Gio Fit score, Rejected by
+ * newest rejection, and Recruiting process goes stage by stage, ordered within a
+ * stage as the board orders it (`withinStage`; oldest in the stage when not given).
  */
-export function sectionOrder(
-  assocs: NavAssoc[],
+export function sectionOrder<T extends NavAssoc>(
+  assocs: T[],
   section: PipelineSection,
   stageType: StageTypeOf,
   stagePosition: (jhsId: string) => number,
+  withinStage?: (a: T, b: T) => number,
 ): string[] {
+  const place = (a: T) => a.pipeline_position ?? Number.MAX_SAFE_INTEGER
   const rows = assocs
     .filter((a) => inPipelineSection(a, section, stageType))
-    .sort((a, b) => time(b.created_at) - time(a.created_at))
+    .sort((a, b) => place(a) - place(b) || time(b.created_at) - time(a.created_at))
   if (section === 'application') rows.sort((a, b) => (b.ai_fit_score ?? -1) - (a.ai_fit_score ?? -1))
   if (section === 'rejected') rows.sort((a, b) => time(b.rejected_at || b.updated_at) - time(a.rejected_at || a.updated_at))
   if (section === 'recruiting') {
-    const pos = (a: NavAssoc) => (a.current_stage_id ? stagePosition(a.current_stage_id) : Number.MAX_SAFE_INTEGER)
-    rows.sort((a, b) => pos(a) - pos(b))
+    const pos = (a: T) => (a.current_stage_id ? stagePosition(a.current_stage_id) : Number.MAX_SAFE_INTEGER)
+    const inStage = withinStage ?? ((a: T, b: T) => time(a.entered_stage_at || a.created_at) - time(b.entered_stage_at || b.created_at))
+    rows.sort((a, b) => pos(a) - pos(b) || inStage(a, b))
   }
   return rows.map((a) => a.candidate_id)
 }

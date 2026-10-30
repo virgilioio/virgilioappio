@@ -57,6 +57,26 @@ describe('a list rebuilt for a link', () => {
   it('Rejected newest first', () => {
     expect(sectionOrder(JOB, 'rejected', stageType, position)).toEqual(['rej-new', 'rej-old']);
   });
+  it('Job offers keep the saved position first, then newest added', () => {
+    const offers = [
+      a('o1', 'offer', 'off', { pipeline_position: 3, created_at: '2026-10-09T00:00:00Z' }),
+      a('o2', 'offer', 'off', { pipeline_position: null, created_at: '2026-10-10T00:00:00Z' }),
+      a('o3', 'offer', 'off', { pipeline_position: 0, created_at: '2026-10-01T00:00:00Z' }),
+    ];
+    expect(sectionOrder(offers, 'offers', stageType, position)).toEqual(['o3', 'o1', 'o2']);
+  });
+  it('Recruiting process orders a stage like the board', () => {
+    const rec = [
+      a('s-new', 'active', 'scr', { entered_stage_at: '2026-10-09T00:00:00Z' }),
+      a('s-old', 'active', 'scr', { entered_stage_at: '2026-10-01T00:00:00Z' }),
+      a('h-1', 'active', 'hm'),
+    ];
+    // Without board statuses: oldest in the stage first.
+    expect(sectionOrder(rec, 'recruiting', stageType, position)).toEqual(['s-old', 's-new', 'h-1']);
+    // With them: the board's comparison decides inside each stage, stages stay in order.
+    const first = (x: NavAssoc) => (x.candidate_id === 's-new' ? 0 : 1);
+    expect(sectionOrder(rec, 'recruiting', stageType, position, (x, y) => first(x) - first(y))).toEqual(['s-new', 's-old', 'h-1']);
+  });
   it('never mixes lists', () => {
     const all = (['application', 'recruiting', 'offers', 'hired', 'rejected'] as const).flatMap((s) => sectionOrder(JOB, s, stageType, position));
     expect(new Set(all).size).toBe(all.length);

@@ -916,17 +916,11 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const defaultOpenGroups = useMemo(() => groupedByStage.map(g => g.stageName), [groupedByStage])
 
-  // Ordered list of candidate IDs across the pipeline (respects current view)
-  const orderedCandidateIds = useMemo(() => {
-    if (currentView === 'list') {
-      // List view: use the table's sorted order (respects user's column sorting)
-      return sortedData.map(r => r.candidateId)
-    } else {
-      // Board view: use status-priority sort order (left-to-right, top-to-bottom)
-      const perStage = stageOptions.map(opt => sortedByStage[opt.jhsId] || [])
-      return perStage.flat().map(a => a.candidate_id)
-    }
-  }, [currentView, sortedData, sortedByStage, stageOptions])
+  // Board and list views draw the same order: stage by stage, status priority within a stage.
+  const orderedCandidateIds = useMemo(
+    () => stageOptions.flatMap((opt) => (sortedByStage[opt.jhsId] || []).map((a) => a.candidate_id)),
+    [sortedByStage, stageOptions],
+  )
 
   // Update ref whenever orderedCandidateIds changes (for snapshot capture)
   useEffect(() => {

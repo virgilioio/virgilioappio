@@ -6,6 +6,7 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
 import { supabase } from '@/lib/supabaseClient'
+import { usePipelineCandidateStatuses } from '@/hooks/usePipelineCandidateStatuses'
 import {
   neighbours,
   pipelineSectionOf,
@@ -49,10 +50,10 @@ export default function CandidateProfile() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('job_candidate_associations')
-        .select('candidate_id, status, current_stage_id, created_at, ai_fit_score, rejected_at, updated_at')
+        .select('id, candidate_id, status, current_stage_id, created_at, entered_stage_at, pipeline_position, ai_fit_score, rejected_at, updated_at')
         .eq('job_id', jobId!)
       if (error) throw error
-      return (data || []) as NavAssoc[]
+      return (data || []) as (NavAssoc & { id: string; created_at: string })[]
     },
   })
 
@@ -60,20 +61,37 @@ export default function CandidateProfile() {
   // mid-browse doesn't move where Next lands.
   const saved = readCandidateNavOrder(jobId || '')
 
-  const { orderedIds, section, fromSaved } = useMemo(() => {
-    // Opened from a list (or walking it): that list, exactly as it was shown.
-    if (saved && navSection && saved.section === navSection && candidateId && saved.order.includes(candidateId)) {
-      return { orderedIds: saved.order, section: navSection, fromSaved: true }
-    }
-    // A link from the bell, Slack or anywhere else: the candidate's own list.
-    const byId = new Map(stages.map((s) => [s.id, s]))
-    const stageType = (jhsId: string) => byId.get(jhsId)?.type
+  const fromSaved = !!(saved && navSection && saved.section === navSection && candidateId && saved.order.includes(candidateId))
+
+  // A link from the bell, Slack or anywhere else: the candidate's own list.
+  const stageById = useMemo(() => new Map(stages.map((s) => [s.id, s])), [stages])
+  const stageType = useMemo(() => (jhsId: string) => stageById.get(jhsId)?.type, [stageById])
+  const own = useMemo(() => {
     const mine = assocs.find((a) => a.candidate_id === candidateId)
-    const own = mine ? pipelineSectionOf(mine, stageType) : null
-    if (!own) return { orderedIds: candidateId ? [candidateId] : [], section: null, fromSaved: false }
-    const ids = sectionOrder(assocs, own, stageType, (jhsId) => byId.get(jhsId)?.position ?? Number.MAX_SAFE_INTEGER)
-    return { orderedIds: ids, section: own, fromSaved: false }
-  }, [saved, navSection, candidateId, stages, assocs])
+    return mine ? pipelineSectionOf(mine, stageType) : null
+  }, [assocs, candidateId, stageType])
+  // Recruiting process orders each stage by the board's statuses (needs a scorecard, booked…).
+  const boardAssocs = useMemo(
+    () => (!fromSaved && own === 'recruiting' ? assocs.filter((a) => a.current_stage_id) : []),
+    [fromSaved, own, assocs],
+  )
+  const { statusMap } = usePipelineCandidateStatuses(jobId || '', boardAssocs as Parameters<typeof usePipelineCandidateStatuses>[1])
+
+  const { orderedIds, section } = useMemo(() => {
+    // Opened from a list (or walking it): that list, exactly as it was shown.
+    if (fromSaved && saved && navSection) return { orderedIds: saved.order, section: navSection }
+    if (!own) return { orderedIds: candidateId ? [candidateId] : [], section: null }
+    const rank = (a: (typeof assocs)[number]) =>
+      statusMap.get(a.id) ?? { priority: 5, sortTime: new Date(a.entered_stage_at || a.created_at).getTime() }
+    const ids = sectionOrder(
+      assocs,
+      own,
+      stageType,
+      (jhsId) => stageById.get(jhsId)?.position ?? Number.MAX_SAFE_INTEGER,
+      (a, b) => rank(a).priority - rank(b).priority || rank(a).sortTime - rank(b).sortTime,
+    )
+    return { orderedIds: ids, section: own }
+  }, [fromSaved, saved, navSection, own, candidateId, assocs, stageType, stageById, statusMap])
 
   const { index, prev, next } = neighbours(orderedIds, candidateId)
 
