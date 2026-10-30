@@ -401,7 +401,6 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                 <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
                 <GeneralCard person={person} />
                 <LatestAgreementsCard person={person} self={self} onSeeAll={() => setTab('agreements')} />
-                {joined && !self && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
                 {self && joined && <ComingUpCard tenantId={tenant.id} />}
                 {self && <UsefulLinksCard tenantId={tenant.id} />}
               </div>
@@ -420,6 +419,8 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                 )}
                 {joined && <BankDetailsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
                 {joined && <TaxIdsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
+                {/* An admin's rating of someone else; it sits here so that view's columns even out. */}
+                {joined && !self && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
               </div>
             </div>
           )}
