@@ -42,12 +42,13 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## Done 2026-10-30 (ATS) — Schedule interview: vertical day grid and real time zones — waiting for Apply!
+## Done 2026-10-30 (ATS) — Schedule interview: vertical day grid and real time zones — applied
 
 - **What it is:** the WHEN section's 9 AM–6 PM strip is now a vertical day grid (`DayTimeGrid`): the whole day in a 360px box with its own scroll, one column per panelist with their own busy times and their night dimmed by their profile time zone, the panel's free times in lilac, one interview block to click, drag, resize or move with the arrow keys, and ‹ › to change day. The Time zone field was a fixed label showing your own computer's zone (and that's what the booking saved as the candidate's zone); it's now a real picker that starts on your zone, and the grid, free times, summary and booking follow it. Panelists abroad get their own clock in the summary ("1:15 PM for Daniel, 6:15 PM for Elena"). The sheet is 760px wide; the doubled × is gone.
-- **Edge Functions (deploy on Apply):** `get-booking-availability` adds `user_id` to each busy event (additive; the old screen ignores it), `create-booking` names the zone in the candidate's and guests' emails. Check the deployed copies match the repo's previous versions before deploying.
+- **Edge Functions (deployed on Apply):** `get-booking-availability` adds `user_id` to each busy event (additive; the old screen ignores it), `create-booking` names the zone in the candidate's and guests' emails. Both live copies matched the repo's previous versions (no drift); deployed 2026-10-30 as get-booking-availability v587 and create-booking v604 (verify_jwt off, as before), each byte-identical to the repo after deploy.
 - **Checked:** unit tests `scheduleGrid.test.ts` 10 of 10 (zones, the New York DST change, holds over midnight, a teammate's night abroad); browser with fake data (three panelists in Mexico City, New York and Madrid) at 1440 and 390, 20 checks each: grid 360px, columns and zone tags, opens on the first free time, 3 free times, click, drag onto a busy time (flagged), resize, Use a free slot, arrow keys, switch to Tokyo (same moment, the date moves to Oct 30, availability refetched in Tokyo), next day keeps the time, no page errors. `tsc` clean; lint on the changed files no worse than before.
 - **Not changed:** the Calendar page still shows 8 AM–6 PM; the same pieces can widen it next.
+- **On main 2026-10-30**, without the public-pages work, which still waits for its own Apply (until then the time zone picker on main lacks the press feel the booking round gives it).
 
 ## Done 2026-10-29 (ATS) — Public pages: Yes / No questions and Motion & Feel — waiting for Apply!
 
