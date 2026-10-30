@@ -42,6 +42,14 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-30 (Gio Sales) — Inbox plan phase 4: Inbox screens on the computer — applied
+
+- **Gio Sales screens** (no database change): `/inbox` and `/inbox/:threadId` (`InboxPage`, `src/components/inbox/`): folders (Inbox · Needs reply · Starred · Sent · Done · All mail, Your deals; icons below 1280px), Gmail's one-line list with stars, the Unread filter, search and Refresh, the reader (folded earlier messages, received HTML through DOMPurify, files in the file viewer, Reply · Reply all · Forward into the composer), Compose picks a contact first, the bulk bar, Gmail's keys. The rail has an Inbox tile with the unread number, live over Realtime; a "replied" bell item opens the conversation. Billing never sees it. CLAUDE.md records the rail item and routes.
+- **Tested:** Playwright with a fake mailbox at 1440 and 1200 wide and as Billing (script and screenshots in the session scratchpad); a script tag and an onerror in a received email didn't run.
+- **Stars stay in Gio** (Allan, 2026-10-30): never pushed to Gmail.
+- **Next:** phase 5 (Inbox on phones) waits for Allan's Go!.
+- **On main 2026-10-30** (Gio Sales).
+
 ## Done 2026-10-30 (Gio Sales + ATS) — Inbox plan phase 3: Inbox data (with Unread and stars) — applied
 
 - **Gio Sales database:** `20261030050017_inbox` (applied byte-for-byte; 17 function bodies md5-checked; test `supabase/tests/inbox.sql` 34 of 34, rolled back): `email_mailbox_messages` (every mailbox that holds an email), `inbox_thread_state` (your read, unread, Done and star; Allan asked for the Unread filter and stars the same day), `inbox_threads` / `inbox_counts` / `inbox_thread` / `inbox_mark` / `inbox_access` (own mailbox only; never Billing), later replies kept in your threads, Refresh once a minute, a one-time 30-day refetch. Types regenerated. Stars live in Gio only (Gio never changes Gmail).
