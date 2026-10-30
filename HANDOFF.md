@@ -67,12 +67,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-10-30 (ATS) — Profile arrows stay in their list — waiting for Apply!
+## Done 2026-10-30 (ATS) — Profile arrows stay in their list — on main
 
 - **The bug:** in the in-job profile, ‹ › jumped to candidates in other statuses. Only the Recruiting process board saved its order (one per job); the flat lists (Application review, Job offers, Hired, Rejected) saved nothing, so the profile reused a stale board order (tacking the candidate onto the end) or walked every candidate in the job.
 - **Now:** every list saves its order as shown (sort, search, filters) with its name and passes the name along; the profile walks only that list, stops at both ends, and a rejection mid-browse doesn't move Next. A link from the bell, Slack or a refresh walks the candidate's own list in that tab's default order. The Recruiting list view now saves the order it draws (it used an old flat sort nothing shows). The arrows' native `title` became `IconTip`.
 - **Checked:** unit tests `candidateNavOrder.test.ts` 12 of 12; browser with fake data (a job with all five lists): opening the first and a middle row of each list, Next to the end and back, plain links into each list, a stale saved list, a filtered list, a rejection mid-browse, the list view and saved positions; all ok, no page errors. `tsc` clean; lint on changed files no worse.
-- **Noticed, not changed:** the profile header is passed "N of M" but never draws it (`ProfileHeroCard` ignores `index` / `total`).
+- **No counter (Allan, 2026-10-30):** the profile header is passed "N of M" but doesn't draw it, and that stays: Allan doesn't want a counter beside the arrows.
+- **On main 2026-10-30** (screens only, no database change).
 
 ## Done 2026-10-30 (ATS) — Schedule interview: vertical day grid and real time zones — applied
 
