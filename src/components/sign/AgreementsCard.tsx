@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
-import { ENVELOPE_STATUS, ago, shortDateTime, signersOf } from '@/lib/sign/status'
+import { ENVELOPE_STATUS, ago, agoInline, shortDateTime, signersOf } from '@/lib/sign/status'
 import { SIGN_SENDING_LIVE, offerSendRefusal, useOfferGate, useRecordEnvelopes, type SendSource } from '@/lib/sign/send'
 import { sealStuck, type EnvelopeRow } from '@/lib/sign/api'
 import { SendSheet, type SendDraft } from './SendSheet'
@@ -26,7 +26,7 @@ export function AgreementLine({ e }: { e: EnvelopeRow }) {
       : e.status === 'sent'
       ? `${done}/${signers.length} signed · ${ago(e.sent_at ?? e.updated_at)}`
       : e.status === 'completed' && e.completed_at
-      ? `Signed ${ago(e.completed_at).replace(/^[A-Z]/, (c) => c.toLowerCase())}${e.sealed_path ? '' : sealStuck(e) ? ' · couldn’t seal' : ' · sealing…'}`
+      ? `Signed ${agoInline(e.completed_at)}${e.sealed_path ? '' : sealStuck(e) ? ' · couldn’t seal' : ' · sealing…'}`
       : ago(e.updated_at)
   return (
     <div className="flex items-start gap-3 py-2.5">

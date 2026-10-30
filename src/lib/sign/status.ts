@@ -66,6 +66,12 @@ export function ago(iso: string, now = Date.now()) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+/** "just now", "yesterday", "3 h ago" or "Sep 12": `ago` to follow a word, month names kept capitalised. */
+export function agoInline(iso: string, now = Date.now()) {
+  const v = ago(iso, now)
+  return v === 'Just now' || v === 'Yesterday' ? v.toLowerCase() : v
+}
+
 export function shortDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
 }
