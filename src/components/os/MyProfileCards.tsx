@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Cake, Check, ChevronRight, FileSignature, Link2, ListTodo, PartyPopper, Sparkles, type LucideIcon } from 'lucide-react'
 
@@ -27,6 +28,27 @@ interface ToDo {
   to: string
 }
 
+// How many to-dos this browser saw last time, so the card can hold its space while checking
+// (or take none, for a profile that was already complete) instead of pushing the page down.
+const TODO_SEEN = (userId: string) => `gio:todo-count:${userId}`
+function readSeenCount(userId: string | null | undefined): number | null {
+  if (!userId) return null
+  try {
+    const v = localStorage.getItem(TODO_SEEN(userId))
+    return v === null ? null : Number(v) || 0
+  } catch {
+    return null
+  }
+}
+function writeSeenCount(userId: string | null | undefined, n: number) {
+  if (!userId) return
+  try {
+    localStorage.setItem(TODO_SEEN(userId), String(n))
+  } catch {
+    // storage blocked: the card just won't hold its space next time
+  }
+}
+
 /** What's still missing from My profile, each a link to the card that fixes it (or a tab). Nothing is counted until it has loaded. */
 export function ToDoCard({ tenantId, person }: { tenantId: string; person: Person }) {
   const userId = person.user_id
@@ -50,9 +72,17 @@ export function ToDoCard({ tenantId, person }: { tenantId: string; person: Perso
       })
   }
 
-  // Nothing to do, or still checking: no card. It comes back by itself when something
-  // is missing again (a new profile check, an agreement to sign, Google needing a reconnect).
-  if (loading || (!failed && items.length === 0)) return null
+  useEffect(() => {
+    if (!loading && !failed) writeSeenCount(userId, items.length)
+  }, [loading, failed, userId, items.length])
+
+  // Nothing to do: no card. It comes back by itself when something is missing again (a new
+  // profile check, an agreement to sign, Google needing a reconnect).
+  if (!loading && !failed && items.length === 0) return null
+  // Still checking: a profile that was complete last time takes no space; anyone else
+  // (or a first visit) holds the card's place, so the cards below don't jump.
+  const seen = loading ? readSeenCount(userId) : null
+  if (loading && seen === 0) return null
 
   return (
     <ProfileCard
@@ -68,7 +98,13 @@ export function ToDoCard({ tenantId, person }: { tenantId: string; person: Perso
         ) : undefined
       }
     >
-      {failed ? (
+      {loading ? (
+        <div className="flex flex-col gap-1.5" aria-busy>
+          {Array.from({ length: Math.min(seen ?? 3, 7) }, (_, i) => (
+            <Skeleton key={i} className="h-[56px] w-full rounded-[10px]" />
+          ))}
+        </div>
+      ) : failed ? (
         <LoadError what="what's left to do" compact onRetry={profileChecks.refetch} />
       ) : (
         <ul className="flex flex-col gap-1.5">
