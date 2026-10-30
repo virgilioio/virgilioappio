@@ -72,7 +72,7 @@ Hard limits:
 - New People event `member.birthday`, workspace-wide only (the database refuses People automations on a job, and job pages don't list them). Goes to any channel, Slack people and/or the person by DM; message has `{member}` only, never the year or age, and no link. Starter "Birthdays" posts to a channel (you pick it).
 - Daily at 15:05 UTC (9:05 Mexico City) `slack_birthdays()` queues a wish for each active internal person whose birthday is today; 29 Feb is celebrated on the 28th in other years; once a year per automation; skipped if they left or if it's still waiting after the day. History shows it as "schedule".
 - Also closes a gap: People automations can no longer be saved with a job role (Recruiter etc.) as recipient.
-- On Apply: apply `20261030193724_slack_birthdays.sql` (cloud-safe, no drops), redeploy `slack-deliver` and `slack` (shared `_shared/slack.ts`: no link on a birthday), push to main. Dry run passed (rolled back): today's birthday queued once across two runs; tomorrow's, an external user's, an inactive member's and a switched-off automation's not; leap day; job and repeat refused.
+- On Apply: apply `20261030195847_slack_birthdays.sql` (cloud-safe, no drops), redeploy `slack-deliver` and `slack` (shared `_shared/slack.ts`: no link on a birthday), push to main. Dry run passed (rolled back): today's birthday queued once across two runs; tomorrow's, an external user's, an inactive member's and a switched-off automation's not; leap day; job and repeat refused.
 
 ## Done 2026-10-30 (ATS) — My profile: Useful links and Coming up first — waiting for Apply!
 
