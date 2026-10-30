@@ -1,62 +1,89 @@
 import { useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
-import { useCandidates } from '@/hooks/useCandidates'
 import { supabase } from '@/lib/supabaseClient'
-import { readCandidateNavOrder, buildStageOrderedIds } from '@/lib/candidateNavOrder'
+import {
+  neighbours,
+  pipelineSectionOf,
+  readCandidateNavOrder,
+  saveCandidateNavOrder,
+  sectionOrder,
+  type NavAssoc,
+  type PipelineSection,
+} from '@/lib/candidateNavOrder'
 
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
   const navigate = useNavigate()
-  const { candidates } = useCandidates(jobId || '')
+  const location = useLocation()
+  // The list this profile was opened from (or is being walked with ‹ ›), when it came from one.
+  const navSection = (location.state as { navSection?: PipelineSection } | null)?.navSection ?? null
 
-  // Stage order for the fallback ordering (no board snapshot available)
-  const { data: stageOrder = [] } = useQuery({
-    queryKey: ['job-hiring-stage-order', jobId],
+  // The job's stages and applications, to rebuild the candidate's own list when no list was saved.
+  const { data: stages = [] } = useQuery({
+    queryKey: ['job-hiring-stage-types', jobId],
     enabled: !!jobId,
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('job_hiring_stages')
-        .select('id, position')
+        .select('id, position, stage:job_stages(stage_type)')
         .eq('job_id', jobId!)
-        .order('position', { ascending: true })
       if (error) throw error
-      return (data || []).map((r: any) => r.id as string)
+      type Row = { id: string; position: number | null; stage: { stage_type: string | null } | null }
+      return ((data || []) as unknown as Row[]).map((r) => ({
+        id: r.id,
+        position: r.position ?? 0,
+        type: r.stage?.stage_type ?? undefined,
+      }))
+    },
+  })
+  const { data: assocs = [] } = useQuery({
+    queryKey: ['job-nav-associations', jobId],
+    enabled: !!jobId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('job_candidate_associations')
+        .select('candidate_id, status, current_stage_id, created_at, ai_fit_score, rejected_at, updated_at')
+        .eq('job_id', jobId!)
+      if (error) throw error
+      return (data || []) as NavAssoc[]
     },
   })
 
-  // Frozen board order, read once per mount so a rejection mid-browse does not
-  // reshuffle where "Next" lands.
-  const snapshot = useMemo(() => readCandidateNavOrder(jobId || ''), [jobId])
+  // The saved list, read on each visit; nothing rewrites it while you walk, so a rejection
+  // mid-browse doesn't move where Next lands.
+  const saved = readCandidateNavOrder(jobId || '')
 
-  const orderedIds = useMemo(() => {
-    const knownIds = new Set(candidates.map((c) => c.id))
-    if (snapshot && snapshot.length > 0) {
-      const fromSnapshot = snapshot.filter((id) => knownIds.has(id))
-      // Safety: if the snapshot barely matches the loaded candidates, ignore it
-      if (fromSnapshot.length >= Math.max(1, Math.floor(snapshot.length * 0.5))) {
-        // Keep the current candidate reachable even if it wasn't in the snapshot
-        if (candidateId && knownIds.has(candidateId) && !fromSnapshot.includes(candidateId)) {
-          return [...fromSnapshot, candidateId]
-        }
-        return fromSnapshot
-      }
+  const { orderedIds, section, fromSaved } = useMemo(() => {
+    // Opened from a list (or walking it): that list, exactly as it was shown.
+    if (saved && navSection && saved.section === navSection && candidateId && saved.order.includes(candidateId)) {
+      return { orderedIds: saved.order, section: navSection, fromSaved: true }
     }
-    return buildStageOrderedIds(candidates, stageOrder)
-  }, [snapshot, candidates, stageOrder, candidateId])
+    // A link from the bell, Slack or anywhere else: the candidate's own list.
+    const byId = new Map(stages.map((s) => [s.id, s]))
+    const stageType = (jhsId: string) => byId.get(jhsId)?.type
+    const mine = assocs.find((a) => a.candidate_id === candidateId)
+    const own = mine ? pipelineSectionOf(mine, stageType) : null
+    if (!own) return { orderedIds: candidateId ? [candidateId] : [], section: null, fromSaved: false }
+    const ids = sectionOrder(assocs, own, stageType, (jhsId) => byId.get(jhsId)?.position ?? Number.MAX_SAFE_INTEGER)
+    return { orderedIds: ids, section: own, fromSaved: false }
+  }, [saved, navSection, candidateId, stages, assocs])
 
-  const idx = orderedIds.findIndex((id) => id === candidateId)
-  const hasPrev = idx > 0
-  const hasNext = idx >= 0 && idx < orderedIds.length - 1
-  const total = orderedIds.length || null
-  const currentIndex = idx >= 0 ? idx + 1 : null
+  const { index, prev, next } = neighbours(orderedIds, candidateId)
 
-  const go = (id: string) => navigate(`/jobs/${jobId}/candidates/${id}`)
+  // ‹ › carry the list along, so the next profile walks the same one. A list rebuilt for a
+  // link is saved on the first step, so it stays put from then on too.
+  const go = (id: string) => {
+    if (!section) return navigate(`/jobs/${jobId}/candidates/${id}`)
+    if (!fromSaved && jobId) saveCandidateNavOrder(jobId, section, orderedIds)
+    navigate(`/jobs/${jobId}/candidates/${id}`, { state: { navSection: section } })
+  }
 
   return (
     <AuthGate>
@@ -68,12 +95,12 @@ export default function CandidateProfile() {
             onOpenChange={(o) => { if (!o) navigate(`/jobs/${jobId}`) }}
             jobId={jobId || ''}
             candidateId={candidateId || null}
-            hasPrev={hasPrev}
-            hasNext={hasNext}
-            onNavigatePrev={() => hasPrev && go(orderedIds[idx - 1])}
-            onNavigateNext={() => hasNext && go(orderedIds[idx + 1])}
-            currentIndex={currentIndex}
-            totalCount={total}
+            hasPrev={!!prev}
+            hasNext={!!next}
+            onNavigatePrev={() => prev && go(prev)}
+            onNavigateNext={() => next && go(next)}
+            currentIndex={index >= 0 ? index + 1 : null}
+            totalCount={orderedIds.length || null}
           />
         </JobAssignmentGuard>
       </PermissionGate>

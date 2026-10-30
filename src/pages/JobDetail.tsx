@@ -17,7 +17,7 @@ import { JobPostingsTab } from '@/components/jobs/JobPostingsTab'
 import { useCareersPageSettings } from '@/hooks/useCareersPageSettings'
 import { buildPostingPath } from '@/lib/postingUrl'
 import { copyToClipboard } from '@/utils/clipboard'
-import { saveCandidateNavOrder } from '@/lib/candidateNavOrder'
+import { inPipelineSection, saveCandidateNavOrder, type PipelineSection as NavSection } from '@/lib/candidateNavOrder'
 
 import { HiringTeamManageDialog } from '@/components/jobs/HiringTeamManageDialog'
 import { PostingSheet } from '@/components/jobs/postings/PostingSheet'
@@ -238,11 +238,17 @@ export default function JobDetail() {
     return searchParams.get('candidate')
   }
 
-  const openProfileInPlace = (candidateId: string, context: 'application' | 'pipeline' | 'suggested' = 'application', candidateList: any[] = []) => {
+  const openProfileInPlace = (
+    candidateId: string,
+    context: 'application' | 'pipeline' | 'suggested' = 'application',
+    candidateList: any[] = [],
+    /** The list it's opened from; its order was just saved, and the profile's ‹ › walk it. */
+    navSection?: NavSection,
+  ) => {
     // For application/pipeline contexts, navigate to the dedicated candidate profile route.
     // Suggested (Apollo/PDL) context still uses the in-place overlay since those previews may not have a real candidate row.
     if (context !== 'suggested') {
-      navigate(`/jobs/${id}/candidates/${candidateId}`)
+      navigate(`/jobs/${id}/candidates/${candidateId}`, navSection ? { state: { navSection } } : undefined)
       return
     }
 
@@ -342,7 +348,7 @@ export default function JobDetail() {
     // Freeze the board order so the profile route's prev/next arrows follow
     // the exact pipeline sequence (and stay stable after a rejection).
     if (id && navigationOrder && navigationOrder.length > 0) {
-      saveCandidateNavOrder(id, navigationOrder)
+      saveCandidateNavOrder(id, 'recruiting', navigationOrder)
     }
     
     // If we have a navigation order snapshot from PipelineOverview, use it!
@@ -363,7 +369,7 @@ export default function JobDetail() {
       
       // Only use ordered list if we found most candidates (fallback safety)
       if (orderedCandidates.length >= navigationOrder.length * 0.8) {
-        openProfileInPlace(candidateId, 'pipeline', orderedCandidates);
+        openProfileInPlace(candidateId, 'pipeline', orderedCandidates, 'recruiting');
         return;
       }
     }
@@ -530,7 +536,8 @@ export default function JobDetail() {
 
   // Open in-place sheet for Application Review rows
   const handleApplicationRowClick = (candidateId: string) => {
-    openProfileInPlace(candidateId, 'application', applicationReviewCandidates)
+    if (id) saveCandidateNavOrder(id, 'application', applicationReviewCandidates.map((c: any) => c.id))
+    openProfileInPlace(candidateId, 'application', applicationReviewCandidates, 'application')
   }
 
   // Derived job stats
@@ -611,7 +618,7 @@ export default function JobDetail() {
   const sectionHandlers = useMemo(
     () => ({
       onOpenRow: (row: any) =>
-        openProfileInPlace(row.id, sectionProfileContext as any, sectionCandidateList),
+        openProfileInPlace(row.id, sectionProfileContext as any, sectionCandidateList, pipelineSectionTab as NavSection),
       onAdvance: (row: any) => advanceToScreening(row.id),
       nextStageName,
       onBulkMoveStage: () => {
@@ -622,7 +629,7 @@ export default function JobDetail() {
         setShowBulkRejectionDialog(true)
       },
       onMoveToJob: (row: any) =>
-        openProfileInPlace(row.id, sectionProfileContext as any, sectionCandidateList),
+        openProfileInPlace(row.id, sectionProfileContext as any, sectionCandidateList, pipelineSectionTab as NavSection),
       onBulkEmail: () => setShowBulkEmailDialog(true),
       onBulkReject: () => setShowBulkRejectionDialog(true),
       onStartReview: () => {
@@ -634,11 +641,15 @@ export default function JobDetail() {
       },
       onDraftOffer: () => {
         const first = offersCandidates[0] || recruitingProcessCandidates[0]
-        if (first) openProfileInPlace(first.id, 'pipeline', offersCandidates)
+        if (first && id) {
+          const fromOffers = offersCandidates.length > 0
+          saveCandidateNavOrder(id, fromOffers ? 'offers' : 'recruiting', (fromOffers ? offersCandidates : recruitingProcessCandidates).map((c: any) => c.id))
+          openProfileInPlace(first.id, 'pipeline', offersCandidates, fromOffers ? 'offers' : 'recruiting')
+        }
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sectionCandidateList, sectionProfileContext, screeningStageId, nextStageName, selectedCandidateIds, associations, activePosting, applicationReviewCandidates],
+    [sectionCandidateList, sectionProfileContext, pipelineSectionTab, screeningStageId, nextStageName, selectedCandidateIds, associations, activePosting, applicationReviewCandidates],
   )
 
   // Real-time skill matching for suggested count (using existing job from query below)  
@@ -723,29 +734,17 @@ export default function JobDetail() {
         return
       }
       const allIdsAll = Array.from(new Set(associations.map(a => a.candidate_id)))
-      const offerIds = associations
-        .filter(a => a.status !== 'rejected' && (a.status === 'offer' || (a.current_stage_id && stageMap[a.current_stage_id!]?.type === 'offer')))
-        .map(a => a.candidate_id)
-      const hiredIds = associations.filter(a => a.status === 'hired').map(a => a.candidate_id)
-      const rejectedIds = associations.filter(a => a.status === 'rejected').map(a => a.candidate_id)
-      const applicationReviewAssocs = associations
-        .filter(a => 
-          a.status === 'active' && 
-          a.current_stage_id && 
-          stageMap[a.current_stage_id]?.type === 'application_review'
-        )
+      // One rule for which list a candidate is in, shared with the profile's ‹ › arrows.
+      const stageType = (jhsId: string) => stageMap[jhsId]?.type
+      const idsIn = (section: Parameters<typeof inPipelineSection>[1]) =>
+        associations.filter(a => inPipelineSection(a, section, stageType)).map(a => a.candidate_id)
+      const offerIds = idsIn('offers')
+      const hiredIds = idsIn('hired')
+      const rejectedIds = idsIn('rejected')
+      const applicationReviewAssocs = associations.filter(a => inPipelineSection(a, 'application', stageType))
       const applicationReviewIds = applicationReviewAssocs.map(a => a.candidate_id)
       const fitScoreMap = new Map(applicationReviewAssocs.map(a => [a.candidate_id, a.ai_fit_score ?? null]))
-      const recruitingIds = associations
-        .filter(a => 
-          a.status !== 'rejected' && 
-          a.status !== 'hired' && 
-          a.status !== 'offer' &&
-          a.current_stage_id &&
-          stageMap[a.current_stage_id]?.type !== 'offer' &&
-          stageMap[a.current_stage_id]?.type !== 'application_review'
-        )
-        .map(a => a.candidate_id)
+      const recruitingIds = idsIn('recruiting')
       setStatusListsLoading(true)
       // In chunks: one request with every id on a large job makes the URL too long.
       let data: any[]

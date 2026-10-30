@@ -5,6 +5,7 @@ import { SelectionBar } from '@/components/shared/SelectionBar'
 import { PipelineSectionTable } from './PipelineSectionTable'
 import { getSectionConfig, type PSHandlers, type PSSection } from './pipelineSectionConfigs'
 import { usePipelineSectionRows } from './usePipelineSectionRows'
+import { saveCandidateNavOrder } from '@/lib/candidateNavOrder'
 import { ArrowUpDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -89,7 +90,19 @@ export function PipelineFlatSection({
   const [sortKey, setSortKey] = React.useState<SortKey>('date_desc')
   const sortable = section === 'rejected'
   const rows = React.useMemo(() => (sortable ? sortRows(baseRows, sortKey) : baseRows), [baseRows, sortKey, sortable])
-  const cfg = React.useMemo(() => getSectionConfig(section, handlers), [section, handlers])
+  // Every way into a profile from this list (the row, Open offer, Open profile, Email candidate,
+  // Move to job) first saves the list as shown, so the profile's ‹ › walk it and stop at its ends.
+  const listHandlers = React.useMemo<PSHandlers>(() => {
+    const remember = (open?: (row: PSRowData) => void) =>
+      open
+        ? (row: PSRowData) => {
+            saveCandidateNavOrder(jobId, section, rows.map((r) => r.id))
+            open(row)
+          }
+        : undefined
+    return { ...handlers, onOpenRow: remember(handlers.onOpenRow), onMoveToJob: remember(handlers.onMoveToJob) }
+  }, [handlers, jobId, section, rows])
+  const cfg = React.useMemo(() => getSectionConfig(section, listHandlers), [section, listHandlers])
 
   // Changing section drops the selection — the set is no longer what you saw.
   React.useEffect(() => {
@@ -176,7 +189,7 @@ export function PipelineFlatSection({
           emptyKey={`section-empty:${jobId}:${section}`}
           selectedIds={selectedIds}
           onSelectedIdsChange={onSelectedIdsChange}
-          onOpenRow={(row) => handlers.onOpenRow?.(row)}
+          onOpenRow={(row) => listHandlers.onOpenRow?.(row)}
         />
       </div>
 
