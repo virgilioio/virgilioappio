@@ -33,6 +33,7 @@ export function PersonJobsTable({
   firstName,
   isAdmin,
   memoryKey,
+  self = false,
 }: {
   jobs: PersonJob[] | undefined
   loading: boolean
@@ -42,6 +43,8 @@ export function PersonJobsTable({
   isAdmin: boolean
   /** Remembers each status tab's scroll position, per person. */
   memoryKey: string
+  /** My profile: the empty and error states speak to them. */
+  self?: boolean
 }) {
   const all = useMemo(() => jobs ?? [], [jobs])
   const counts = useMemo(() => {
@@ -125,7 +128,7 @@ export function PersonJobsTable({
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={COLS} style={{ padding: '48px 24px' }}>
                     <LoadError
-                      what="their jobs"
+                      what={self ? 'your jobs' : 'their jobs'}
                       timedOut={timedOut && !error}
                       compact
                       onRetry={() => {
@@ -143,8 +146,16 @@ export function PersonJobsTable({
                         scene="jobs"
                         size="compact"
                         onceKey="os-person-jobs"
-                        title={`${firstName} isn't on any job`}
-                        body={isAdmin ? 'Admins see every job without a seat.' : "Seat them from a job's Hiring team."}
+                        title={self ? (isAdmin ? "You're not on any job" : "You're not on any job yet") : `${firstName} isn't on any job`}
+                        body={
+                          self
+                            ? isAdmin
+                              ? 'As an admin you see every job without a seat.'
+                              : "A job's recruiter adds you from its Hiring team."
+                            : isAdmin
+                              ? 'Admins see every job without a seat.'
+                              : "Seat them from a job's Hiring team."
+                        }
                       />
                     ) : (
                       <AnimatedEmpty

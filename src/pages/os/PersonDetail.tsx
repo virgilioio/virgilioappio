@@ -397,6 +397,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                   error={jobs.isError}
                   onRetry={() => void jobs.refetch()}
                   onSeeAll={() => setTab('work')}
+                  self={self}
                 />
                 <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
                 <GeneralCard person={person} />
@@ -440,6 +441,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
               firstName={first}
               isAdmin={person.system_role === 'admin'}
               memoryKey={`os-person:${person.member_id}:jobs`}
+              self={self}
             />
             </div>
           )}

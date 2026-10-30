@@ -115,6 +115,15 @@ export function RoleCard({
 }
 
 /** Current work: seat counts and the open jobs, each with its seat and client. */
+/** The empty Current work line, said to the person on their own page. */
+function noJobsLine(self: boolean, isAdmin: boolean): string {
+  if (self)
+    return isAdmin
+      ? "You're not on any job. As an admin you see every job without a seat."
+      : "You're not on any job yet. A job's recruiter adds you from its Hiring team."
+  return `Not on any job. ${isAdmin ? 'Admins see every job without a seat.' : "Seat them from a job's Hiring team."}`
+}
+
 export function CurrentWorkCard({
   person,
   jobs,
@@ -122,6 +131,7 @@ export function CurrentWorkCard({
   error,
   onRetry,
   onSeeAll,
+  self = false,
 }: {
   person: Person
   jobs: PersonJob[]
@@ -129,6 +139,8 @@ export function CurrentWorkCard({
   error: boolean
   onRetry: () => void
   onSeeAll: () => void
+  /** My profile: the empty and error lines speak to them. */
+  self?: boolean
 }) {
   const open = jobs.filter((j) => j.status === 'open')
   const draft = jobs.filter((j) => j.status === 'draft').length
@@ -152,11 +164,9 @@ export function CurrentWorkCard({
       ) : loading ? (
         <RowsSkeleton rows={4} />
       ) : error ? (
-        <LoadError what="their jobs" compact onRetry={onRetry} />
+        <LoadError what={self ? 'your jobs' : 'their jobs'} compact onRetry={onRetry} />
       ) : jobs.length === 0 ? (
-        <p className="font-inter text-[12.5px] text-[#6B7080]">
-          Not on any job. {person.system_role === 'admin' ? 'Admins see every job without a seat.' : "Seat them from a job's Hiring team."}
-        </p>
+        <p className="font-inter text-[12.5px] text-[#6B7080]">{noJobsLine(self, person.system_role === 'admin')}</p>
       ) : (
         <>
           <div className="pb-3">
