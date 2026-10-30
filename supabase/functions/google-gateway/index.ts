@@ -25,15 +25,25 @@
  *   send_email     { to, cc, bcc, subject, html, text, attachments, thread_id,
  *                  in_reply_to, references } -> { id, thread_id, message_id, from }
  *                  sent from the person's own Gmail; thread_id + in_reply_to
- *                  keep a reply in its Gmail thread.
+ *                  keep a reply in its Gmail thread. Up to 10 attachments
+ *                  ({ filename, content (base64), content_type }), 10MB each and
+ *                  25MB in total (2026-10-30, was 3 and about 1.5MB); a large
+ *                  message goes through Gmail's upload endpoint.
  *   list_messages  { addresses, after, page_token } -> { messages: [{ id, thread_id }],
  *                  next_page_token }  mail to, from or cc any of up to 40
  *                  addresses since `after` (unix seconds); chats and drafts left out.
- *   get_message    { id } -> { gmail_id, gmail_thread_id, message_id, from,
- *                  from_name, to, cc, subject, body, sent_at, attachments, labels }
- *                  one message, parsed: plain-text body, attachment names only.
+ *   get_message    { id } -> { gmail_id, gmail_thread_id, message_id, in_reply_to,
+ *                  references, from, from_name, to, cc, subject, body, html,
+ *                  sent_at, attachments, files, labels }
+ *                  one message, parsed: the plain-text body, the HTML body
+ *                  (2026-10-30), attachment names, and files: [{ filename,
+ *                  mime_type, size, attachment_id }] to fetch with get_attachment.
  *   get_messages   { ids } -> { messages: [...] }  up to 25 at once, same shape
  *                  (one call instead of many, so Supabase's per-trace limit holds).
+ *   get_attachment { message_id, attachment_id } -> { data (base64), size }
+ *                  one file of a message, up to 25MB (2026-10-30).
+ *   get_thread     { thread_id } -> { messages: [{ id }] }  every message id in a
+ *                  Gmail thread, oldest first, so later replies are found (2026-10-30).
  *
  * Keep this file ASCII only: the deploy tool rewrites escape sequences.
  */
@@ -288,8 +298,18 @@ function htmlToText(html: string): string {
     .trim()
 }
 
-function walk(part: GmailPart, acc: { text: string | null; html: string | null; files: string[] }) {
-  if (part.filename) acc.files.push(part.filename.slice(0, 200))
+type FileMeta = { filename: string; mime_type: string | null; size: number | null; attachment_id: string | null }
+
+function walk(part: GmailPart, acc: { text: string | null; html: string | null; files: string[]; meta: FileMeta[] }) {
+  if (part.filename) {
+    acc.files.push(part.filename.slice(0, 200))
+    acc.meta.push({
+      filename: part.filename.slice(0, 200),
+      mime_type: part.mimeType ?? null,
+      size: typeof part.body?.size === 'number' ? part.body.size : null,
+      attachment_id: part.body?.attachmentId ?? null,
+    })
+  }
   else if (part.mimeType === 'text/plain' && part.body?.data && acc.text === null) acc.text = fromB64url(part.body.data)
   else if (part.mimeType === 'text/html' && part.body?.data && acc.html === null) acc.html = fromB64url(part.body.data)
   for (const child of part.parts ?? []) walk(child, acc)
@@ -297,7 +317,7 @@ function walk(part: GmailPart, acc: { text: string | null; html: string | null; 
 
 function parseMessage(m: { id: string; threadId: string; internalDate?: string; labelIds?: string[]; payload?: GmailPart }) {
   const h = m.payload?.headers
-  const acc = { text: null as string | null, html: null as string | null, files: [] as string[] }
+  const acc = { text: null as string | null, html: null as string | null, files: [] as string[], meta: [] as FileMeta[] }
   if (m.payload) walk(m.payload, acc)
   const from = addresses(header(h, 'From'))[0] ?? null
   return {
@@ -312,8 +332,10 @@ function parseMessage(m: { id: string; threadId: string; internalDate?: string; 
     cc: addresses(header(h, 'Cc')).map((a) => a.email),
     subject: header(h, 'Subject'),
     body: (acc.text ?? (acc.html ? htmlToText(acc.html) : '')).slice(0, 60000),
+    html: acc.html ? acc.html.slice(0, 400000) : null,
     sent_at: m.internalDate ? new Date(Number(m.internalDate)).toISOString() : null,
     attachments: acc.files.slice(0, 20),
+    files: acc.meta.slice(0, 20),
     labels: m.labelIds ?? [],
   }
 }
@@ -476,7 +498,7 @@ async function handle(db: SupabaseClient, p: Record<string, unknown>) {
     const html = String(p.html ?? '')
     if (!to.length || !subject || !html) throw new Refusal('bad_request', 'to, subject and html are required.')
     const attachments = (Array.isArray(p.attachments) ? p.attachments : [])
-      .slice(0, 3)
+      .slice(0, 10)
       .map((a) => a as Record<string, unknown>)
       .filter((a) => typeof a.content === 'string' && typeof a.filename === 'string')
       .map((a) => ({
@@ -484,7 +506,9 @@ async function handle(db: SupabaseClient, p: Record<string, unknown>) {
         content: String(a.content),
         content_type: /^[a-z]+\/[a-z0-9.+-]+$/i.test(String(a.content_type ?? '')) ? String(a.content_type) : 'application/octet-stream',
       }))
-    if (attachments.reduce((n, a) => n + a.content.length, 0) > 2_000_000) throw new Refusal('bad_request', 'Attachments are limited to about 1.5MB.')
+    // Base64 is 4/3 of the file: 10MB a file, 25MB in total.
+    if (attachments.some((a) => a.content.length > 14_000_000)) throw new Refusal('too_large', 'Each attachment can be up to 10MB.')
+    if (attachments.reduce((n, a) => n + a.content.length, 0) > 35_000_000) throw new Refusal('too_large', 'Attachments can be up to 25MB in total.')
     const { token, identity } = await freshMailToken(db, userId)
     const name = identity.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
     const from = name ? `${encodeWord(String(name).replace(/["\r\n]/g, ''))} <${identity.email_address}>` : identity.email_address
@@ -494,12 +518,35 @@ async function handle(db: SupabaseClient, p: Record<string, unknown>) {
       inReplyTo,
       references: references ?? inReplyTo,
     })
-    const res = await fetch(`${GMAIL}/messages/send`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw: b64url(new TextEncoder().encode(mime)), ...(threadId ? { threadId } : {}) }),
-      signal: AbortSignal.timeout(20_000),
-    })
+    // Gmail's plain endpoint takes about 5MB; anything larger goes through its upload endpoint.
+    const res = mime.length > 4_500_000
+      ? await (() => {
+          const cut = `gio_up_${crypto.randomUUID().replace(/-/g, '')}`
+          const body = [
+            `--${cut}`,
+            'Content-Type: application/json; charset=UTF-8',
+            '',
+            JSON.stringify(threadId ? { threadId } : {}),
+            `--${cut}`,
+            'Content-Type: message/rfc822',
+            '',
+            mime,
+            `--${cut}--`,
+            '',
+          ].join('\r\n')
+          return fetch('https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=multipart', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${cut}` },
+            body,
+            signal: AbortSignal.timeout(60_000),
+          })
+        })()
+      : await fetch(`${GMAIL}/messages/send`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw: b64url(new TextEncoder().encode(mime)), ...(threadId ? { threadId } : {}) }),
+          signal: AbortSignal.timeout(20_000),
+        })
     if (!res.ok) await googleFailure(res, 'send the email')
     const sent = await res.json()
     // The Message-ID Gmail gave it, so replies and the sync can find it.
@@ -570,6 +617,39 @@ async function handle(db: SupabaseClient, p: Record<string, unknown>) {
       messages.push(parseMessage(await res.json()))
     }
     return { messages }
+  }
+
+  if (action === 'get_attachment') {
+    const id = String(p.message_id ?? '')
+    const att = String(p.attachment_id ?? '')
+    if (!/^[A-Za-z0-9]{6,64}$/.test(id) || !/^[A-Za-z0-9_-]{6,1000}$/.test(att)) {
+      throw new Refusal('bad_request', 'message_id and attachment_id are required.')
+    }
+    const { token } = await freshMailToken(db, userId)
+    const res = await fetch(`${GMAIL}/messages/${id}/attachments/${att}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(45_000),
+    })
+    if (res.status === 404) return { missing: true }
+    if (!res.ok) await googleFailure(res, 'read the attachment')
+    const body = await res.json()
+    if (typeof body.size === 'number' && body.size > 26_214_400) throw new Refusal('too_large', 'That attachment is over 25MB.')
+    const data = String(body.data ?? '').replace(/-/g, '+').replace(/_/g, '/')
+    return { data, size: typeof body.size === 'number' ? body.size : null }
+  }
+
+  if (action === 'get_thread') {
+    const id = String(p.thread_id ?? '')
+    if (!/^[A-Za-z0-9]{6,64}$/.test(id)) throw new Refusal('bad_request', 'thread_id is required.')
+    const { token } = await freshMailToken(db, userId)
+    const res = await fetch(`${GMAIL}/threads/${id}?format=minimal`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (res.status === 404) return { messages: [] }
+    if (!res.ok) await googleFailure(res, 'read the thread')
+    const body = await res.json()
+    return { messages: (body.messages ?? []).slice(0, 100).map((m: { id: string }) => ({ id: m.id })) }
   }
 
   throw new Refusal('bad_request', 'Unknown action.')
