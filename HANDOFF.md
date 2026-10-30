@@ -42,6 +42,15 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-30 (Gio Sales + ATS) — Inbox plan phases 1–2: Comments card, composer, feed emails — applied
+
+- **Plan:** "Gio Sales inbox, email composer and deal page" (Claude Docs). Phase 1: the deal page's Comments card is Gio ATS's (reminders as tasks). Phase 2: Gio ATS's composer in Gio Sales (formatting, links, files from the computer or the deal, booking link, Reply · Reply all · Forward), Gio ATS's email card in every feed. Phases 3–5 (Inbox data, Inbox screens, Inbox on phones) are next, each waiting for its own Go!.
+- **Gio Sales database:** `20261030020612_email_rich` (HTML, reply headers and files on emails; private bucket `email-attachments` with no policies; `email_attachment_path`). Applied as written, types regenerated.
+- **Gio Sales functions (hand-deployed from git):** `email-send` v5, `email-files` v1 (new, verify_jwt off; checks the caller), `email-sync` v6. The 02:45 UTC cron run synced all four mailboxes on the new code with no errors.
+- **Gio ATS functions:** `google-gateway` v30 (HTML and file details when reading, `get_attachment`, `get_thread`, 10 files / 25MB, Gmail's upload endpoint over ~4.5MB; the live copy matched the previous repo version first) and `send-user-email` v633 (reply headers name the real Message-ID; the ` ` escape sent as `\\u005Cu00A0`); both byte-identical to git after deploy.
+- **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
+- **On main 2026-10-30** in both apps.
+
 ## Done 2026-10-30 (ATS) — Schedule interview: vertical day grid and real time zones — applied
 
 - **What it is:** the WHEN section's 9 AM–6 PM strip is now a vertical day grid (`DayTimeGrid`): the whole day in a 360px box with its own scroll, one column per panelist with their own busy times and their night dimmed by their profile time zone, the panel's free times in lilac, one interview block to click, drag, resize or move with the arrow keys, and ‹ › to change day. The Time zone field was a fixed label showing your own computer's zone (and that's what the booking saved as the candidate's zone); it's now a real picker that starts on your zone, and the grid, free times, summary and booking follow it. Panelists abroad get their own clock in the summary ("1:15 PM for Daniel, 6:15 PM for Elena"). The sheet is 760px wide; the doubled × is gone.
