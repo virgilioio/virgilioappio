@@ -370,6 +370,9 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
 
         <TabsContent value="overview" className="mt-4 lg:mt-0">
           {tenant?.id && (
+            // Two columns by subject (Allan, 2026-10-30): the left is their work at Virgilio,
+            // the right is what they keep up to date about themselves. One column below xl,
+            // the work cards first.
             <div className="grid gap-4 xl:grid-cols-2">
               <div className="min-w-0 space-y-4">
                 {self && joined && <ToDoCard tenantId={tenant.id} person={person} />}
@@ -395,8 +398,12 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                   onRetry={() => void jobs.refetch()}
                   onSeeAll={() => setTab('work')}
                 />
+                <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
+                <GeneralCard person={person} />
                 <LatestAgreementsCard person={person} self={self} onSeeAll={() => setTab('agreements')} />
                 {joined && !self && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
+                {self && joined && <ComingUpCard tenantId={tenant.id} />}
+                {self && <UsefulLinksCard tenantId={tenant.id} />}
               </div>
               <div className="min-w-0 space-y-4">
                 {self && <AccountCard />}
@@ -411,12 +418,8 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                     fullName={[person.first_name, person.last_name].filter(Boolean).join(' ') || undefined}
                   />
                 )}
-                <GeneralCard person={person} />
-                <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
                 {joined && <BankDetailsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
                 {joined && <TaxIdsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
-                {self && joined && <ComingUpCard tenantId={tenant.id} />}
-                {self && <UsefulLinksCard tenantId={tenant.id} />}
               </div>
             </div>
           )}
