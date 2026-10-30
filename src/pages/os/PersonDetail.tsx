@@ -317,6 +317,37 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
   const level = loadLevel(jobCounts.open, max)
   const loadColor = { unset: '#12B886', ok: '#12B886', near: '#F59E0B', over: '#C2372B' }[level]
 
+  // The Overview's work cards, drawn in one order on My profile and another on someone else's.
+  const renderRole = (tenantId: string) =>
+    joined ? (
+      <RoleCard
+        tenantId={tenantId}
+        person={person}
+        jobRole={currentBundle?.name ?? null}
+        openJobs={jobCounts.open}
+        jobsReady={jobs.isSuccess}
+        editable={!self && personState(person) !== 'deactivated'}
+      />
+    ) : (
+      <ProfileCard id="card-role" title="Role" icon={Briefcase} tone="purple">
+        <p className="font-inter text-[12.5px] text-[#6B7080]">Set up once they accept their invitation.</p>
+      </ProfileCard>
+    )
+  const renderCurrentWork = () => (
+    <CurrentWorkCard
+      person={person}
+      jobs={jobList}
+      loading={jobs.isLoading}
+      error={jobs.isError}
+      onRetry={() => void jobs.refetch()}
+      onSeeAll={() => setTab('work')}
+      self={self}
+    />
+  )
+  const renderAccess = () => <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
+  const renderGeneral = () => <GeneralCard person={person} />
+  const renderAgreements = () => <LatestAgreementsCard person={person} self={self} onSeeAll={() => setTab('agreements')} />
+
   return (
     <ListPage
       breadcrumb={self ? undefined : [{ label: 'People', to: '/os/people' }, { label: personName(person) }]}
@@ -375,35 +406,29 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
             // the work cards first.
             <div className="grid gap-4 xl:grid-cols-2">
               <div className="min-w-0 space-y-4">
-                {self && joined && <ToDoCard tenantId={tenant.id} person={person} />}
-                {joined ? (
-                  <RoleCard
-                    tenantId={tenant.id}
-                    person={person}
-                    jobRole={currentBundle?.name ?? null}
-                    openJobs={jobCounts.open}
-                    jobsReady={jobs.isSuccess}
-                    editable={!self && personState(person) !== 'deactivated'}
-                  />
+                {self ? (
+                  // My profile: what changes or wants doing first (Allan, 2026-10-30), set-once
+                  // reference cards last.
+                  <>
+                    {joined && <ToDoCard tenantId={tenant.id} person={person} />}
+                    <UsefulLinksCard tenantId={tenant.id} />
+                    {joined && <ComingUpCard tenantId={tenant.id} />}
+                    {renderCurrentWork()}
+                    {renderAgreements()}
+                    {renderRole(tenant.id)}
+                    {renderAccess()}
+                    {renderGeneral()}
+                  </>
                 ) : (
-                  <ProfileCard id="card-role" title="Role" icon={Briefcase} tone="purple">
-                    <p className="font-inter text-[12.5px] text-[#6B7080]">Set up once they accept their invitation.</p>
-                  </ProfileCard>
+                  // Someone else's profile: an admin looks at their role first.
+                  <>
+                    {renderRole(tenant.id)}
+                    {renderCurrentWork()}
+                    {renderAccess()}
+                    {renderGeneral()}
+                    {renderAgreements()}
+                  </>
                 )}
-                <CurrentWorkCard
-                  person={person}
-                  jobs={jobList}
-                  loading={jobs.isLoading}
-                  error={jobs.isError}
-                  onRetry={() => void jobs.refetch()}
-                  onSeeAll={() => setTab('work')}
-                  self={self}
-                />
-                <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
-                <GeneralCard person={person} />
-                <LatestAgreementsCard person={person} self={self} onSeeAll={() => setTab('agreements')} />
-                {self && joined && <ComingUpCard tenantId={tenant.id} />}
-                {self && <UsefulLinksCard tenantId={tenant.id} />}
               </div>
               <div className="min-w-0 space-y-4">
                 {self && <AccountCard />}
