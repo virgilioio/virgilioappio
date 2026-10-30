@@ -44,6 +44,10 @@
  *                  one file of a message, up to 25MB (2026-10-30).
  *   get_thread     { thread_id } -> { messages: [{ id }] }  every message id in a
  *                  Gmail thread, oldest first, so later replies are found (2026-10-30).
+ *   list_recent    { after, page_token } -> { messages: [{ id, thread_id }], next_page_token }
+ *                  every message since `after` (unix seconds), ids only, chats and
+ *                  drafts left out, so Gio Sales can keep later replies in threads it
+ *                  already holds without reading anything else (2026-10-30).
  *
  * Keep this file ASCII only: the deploy tool rewrites escape sequences.
  */
@@ -574,6 +578,24 @@ async function handle(db: SupabaseClient, p: Record<string, unknown>) {
     const { token } = await freshMailToken(db, userId)
     const url = new URL(`${GMAIL}/messages`)
     url.searchParams.set('q', q)
+    url.searchParams.set('maxResults', '100')
+    url.searchParams.set('includeSpamTrash', 'false')
+    if (typeof p.page_token === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(p.page_token)) url.searchParams.set('pageToken', p.page_token)
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(20_000) })
+    if (!res.ok) await googleFailure(res, 'list messages')
+    const body = await res.json()
+    return {
+      messages: (body.messages ?? []).map((m: { id: string; threadId: string }) => ({ id: m.id, thread_id: m.threadId })),
+      next_page_token: body.nextPageToken ?? null,
+    }
+  }
+
+  if (action === 'list_recent') {
+    const after = Number(p.after)
+    if (!Number.isFinite(after) || after < 0) throw new Refusal('bad_request', 'after must be unix seconds.')
+    const { token } = await freshMailToken(db, userId)
+    const url = new URL(`${GMAIL}/messages`)
+    url.searchParams.set('q', `after:${Math.floor(after)} -in:chats -in:drafts`)
     url.searchParams.set('maxResults', '100')
     url.searchParams.set('includeSpamTrash', 'false')
     if (typeof p.page_token === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(p.page_token)) url.searchParams.set('pageToken', p.page_token)
