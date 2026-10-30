@@ -285,8 +285,9 @@ serve(async (req) => {
           });
           if (!r.ok) return [];
           const j = await r.json();
+          // Each hold keeps its owner, so the scheduler can show one column per person.
           return (j?.busy_slots || []).map((s: any) => ({
-            start: new Date(s.start), end: new Date(s.end),
+            start: new Date(s.start), end: new Date(s.end), user_id: cfg.user_id as string,
           }));
         } catch { return []; }
       }));
@@ -321,6 +322,7 @@ serve(async (req) => {
         busy_events: allBusy.map(s => ({
           start: s.start.toISOString(),
           end: s.end.toISOString(),
+          user_id: s.user_id,
         })),
         total_slots: formattedSlots.length,
         date_range: { start: start_date, end: end_date },
@@ -421,7 +423,7 @@ serve(async (req) => {
           start: s.start.toISOString(), end: s.end.toISOString(),
         })),
         busy_events: googleBusySlots.map(s => ({
-          start: s.start.toISOString(), end: s.end.toISOString(),
+          start: s.start.toISOString(), end: s.end.toISOString(), user_id: config.user_id,
         })),
         total_slots: availableSlots.length,
         date_range: { start: start_date, end: end_date },
