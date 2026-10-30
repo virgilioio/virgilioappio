@@ -893,16 +893,20 @@ const handler = async (req: Request): Promise<Response> => {
     if (request.in_reply_to_message_id) {
       const { data: originalEmail } = await supabase
         .from('email_logs')
-        .select('thread_id, provider_message_id, headers')
+        .select('thread_id, rfc822_message_id, references_header')
         .eq('id', request.in_reply_to_message_id)
         .single();
       
       if (originalEmail) {
         threadId = originalEmail.thread_id;
-        inReplyTo = originalEmail.provider_message_id;
-        references = originalEmail.headers?.references 
-          ? `${originalEmail.headers.references} ${originalEmail.provider_message_id}`
-          : originalEmail.provider_message_id;
+        // The reply headers name the message's real Message-ID (2026-10-30; they used Gmail's
+        // internal id, so replies threaded in Gmail only). Gmail still threads by threadId when
+        // the original has no Message-ID on record yet.
+        const messageId = originalEmail.rfc822_message_id || undefined;
+        inReplyTo = messageId;
+        references = messageId
+          ? (originalEmail.references_header ? `${originalEmail.references_header} ${messageId}` : messageId)
+          : undefined;
       }
     }
 
