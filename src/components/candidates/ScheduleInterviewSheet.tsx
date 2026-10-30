@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -25,23 +25,37 @@ import {
   UserPlus,
   Users,
   Video,
-  X,
   CalendarX,
 } from 'lucide-react';
-import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
+import { startOfMonth, endOfMonth, parseISO, addDays } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
+import { DayTimeGrid, type GridPanelist } from './DayTimeGrid';
 import {
-  AvailabilityStrip,
-  computeFreeWindows,
+  clampStart,
   findOverlaps,
-  minutesToLabel,
-  DAY_END_HOUR,
-  DAY_START_HOUR,
-  type StripPanelist,
-} from './AvailabilityStrip';
+  holdsFor,
+  minuteLabel,
+  panelFreeWindows,
+  rangeOnDay,
+  shiftDayKey,
+  zoneMinuteOfDay,
+  zoneWallToUtc,
+  type BusyInterval,
+} from '@/lib/scheduleGrid';
+import {
+  dayKeyToLocalDate,
+  detectTimeZone,
+  formatInTimeZone,
+  isValidTimeZone,
+  zoneAbbr,
+  localDayKey,
+  zoneCityLabel,
+  zoneDayKey,
+} from '@/lib/timezoneFormat';
 import { useCustomerMembers, type Member } from '@/hooks/useCustomerMembers';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
+import { TimezonePicker } from '@/components/booking/TimezonePicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -100,6 +114,7 @@ interface StageInterviewer {
     first_name: string | null;
     last_name: string | null;
     avatar_url: string | null;
+    timezone?: string | null;
   } | null;
   booking_configurations: {
     id: string;
@@ -140,32 +155,6 @@ function initials(p: StageInterviewer): string {
   const f = p.profiles?.first_name?.[0] || 'I';
   const l = p.profiles?.last_name?.[0] || '';
   return `${f}${l}`;
-}
-
-function busyBarsForPanelist(
-  busy: { start: string; end: string }[],
-  selectedDate: Date | null,
-) {
-  if (!selectedDate) return [];
-  const dayStart = new Date(selectedDate);
-  dayStart.setHours(9, 0, 0, 0);
-  const dayEnd = new Date(selectedDate);
-  dayEnd.setHours(17, 0, 0, 0);
-  const span = dayEnd.getTime() - dayStart.getTime();
-
-  return busy
-    .map((b) => {
-      const s = new Date(b.start);
-      const e = new Date(b.end);
-      if (!isSameDay(s, selectedDate)) return null;
-      const clampedStart = Math.max(s.getTime(), dayStart.getTime());
-      const clampedEnd = Math.min(e.getTime(), dayEnd.getTime());
-      if (clampedEnd <= clampedStart) return null;
-      const left = ((clampedStart - dayStart.getTime()) / span) * 100;
-      const width = ((clampedEnd - clampedStart) / span) * 100;
-      return { left, width, key: `${b.start}-${b.end}` };
-    })
-    .filter(Boolean) as { left: number; width: number; key: string }[];
 }
 
 function PanelistComboField({
@@ -655,7 +644,8 @@ export function ScheduleInterviewSheet({
       : formatOption === 'onsite'
       ? siteAddress
       : '';
-  const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // The zone the day grid, the summary and the invite use. Starts on yours.
+  const [scheduleZone, setScheduleZone] = useState<string>(() => detectTimeZone());
 
   const { data: stageMeta } = useQuery({
     queryKey: ['stage-meta', jhsId],
@@ -702,7 +692,7 @@ export function ScheduleInterviewSheet({
 
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('user_id, first_name, last_name, avatar_url')
+        .select('user_id, first_name, last_name, avatar_url, timezone')
         .in('user_id', userIds);
       if (profileError) throw profileError;
 
@@ -736,7 +726,7 @@ export function ScheduleInterviewSheet({
       const [{ data: profiles }, { data: bookingConfigs }] = await Promise.all([
         supabase
           .from('profiles')
-          .select('user_id, first_name, last_name, avatar_url')
+          .select('user_id, first_name, last_name, avatar_url, timezone')
           .in('user_id', userIds),
         supabase.from('booking_configurations').select('*').in('user_id', userIds),
       ]);
@@ -887,84 +877,76 @@ export function ScheduleInterviewSheet({
     return selectedInterviewer ? [selectedInterviewer] : [];
   }, [isGroupMode, groupInterviewers, selectedInterviewer]);
 
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
+  // A day before and after the month, so a far zone's day at the month's edge still has its holds.
+  const monthStart = addDays(startOfMonth(currentMonth), -1);
+  const monthEnd = addDays(endOfMonth(currentMonth), 1);
   const { data: availabilityData, isLoading: isLoadingAvailability } = useBookingAvailability(
     isGroupMode ? undefined : selectedInterviewer?.booking_configurations?.id,
     monthStart,
     monthEnd,
     selectedDuration,
-    candidateTimezone,
+    scheduleZone,
     true,
     undefined,
     isGroupMode ? groupConfigIds : undefined,
   );
 
-  const timeSlotsForSelectedDate = useMemo(() => {
-    if (!selectedDate || !availabilityData?.available_slots) return [];
-    return availabilityData.available_slots.filter((slot) =>
-      isSameDay(parseISO(slot.start), selectedDate),
-    );
-  }, [selectedDate, availabilityData]);
+  /* ---------- WHEN section: the day grid, in the chosen zone ---------- */
+  // The day shown is the picked calendar date, read in the chosen zone.
+  const dayKey = selectedDate ? localDayKey(selectedDate) : null;
+  const todayKey = zoneDayKey(new Date(), scheduleZone);
 
-  /* ---------- WHEN section: strip geometry + overlap awareness ---------- */
   // The booking being rescheduled must not count as a conflict against itself.
   const busyEvents = useMemo(() => {
-    const all = (availabilityData?.busy_events || []) as {
-      start: string;
-      end: string;
-      title?: string;
-    }[];
+    const all = (availabilityData?.busy_events || []) as BusyInterval[];
     if (!oldBooking) return all;
     const originStart = parseISO(oldBooking.scheduled_start).getTime();
     return all.filter((b) => Math.abs(new Date(b.start).getTime() - originStart) > 60 * 1000);
   }, [availabilityData, oldBooking]);
 
-  const stripPanelists: StripPanelist[] = useMemo(
+  const browserZone = useMemo(() => detectTimeZone(), []);
+  const gridPanelists: GridPanelist[] = useMemo(
     () =>
-      displayedPanelists.map((p) => ({
-        id: p.id,
-        name: fullName(p),
-        avatarUrl: p.profiles?.avatar_url,
-        initials: initials(p),
-        busy: busyEvents,
-      })),
-    [displayedPanelists, busyEvents],
+      displayedPanelists.map((p) => {
+        const person = {
+          id: p.id,
+          userId: p.member_user_id ?? null,
+          name: fullName(p),
+          avatarUrl: p.profiles?.avatar_url,
+          initials: initials(p),
+          timeZone: isValidTimeZone(p.profiles?.timezone) ? p.profiles!.timezone! : browserZone,
+          busy: [] as BusyInterval[],
+        };
+        return { ...person, busy: holdsFor(person, busyEvents) };
+      }),
+    [displayedPanelists, busyEvents, browserZone],
   );
 
-  const originStripWindow = useMemo(() => {
-    if (!oldBooking || !selectedDate) return null;
+  const originWindow = useMemo(() => {
+    if (!oldBooking || !dayKey) return null;
     const start = parseISO(oldBooking.scheduled_start);
-    if (!isSameDay(start, selectedDate)) return null;
-    const duration =
-      oldBooking.duration_minutes ||
-      (oldBooking.scheduled_end
-        ? Math.round((parseISO(oldBooking.scheduled_end).getTime() - start.getTime()) / 60000)
-        : 30);
-    return { startMin: start.getHours() * 60 + start.getMinutes(), duration };
-  }, [oldBooking, selectedDate]);
+    const end = oldBooking.scheduled_end
+      ? parseISO(oldBooking.scheduled_end)
+      : new Date(start.getTime() + (oldBooking.duration_minutes || 30) * 60000);
+    const r = rangeOnDay(start, end, dayKey, scheduleZone);
+    return r ? { startMin: r.startMin, duration: r.endMin - r.startMin } : null;
+  }, [oldBooking, dayKey, scheduleZone]);
 
-
-  const panelFreeWindows = useMemo(
-    () => computeFreeWindows(stripPanelists, selectedDate),
-    [stripPanelists, selectedDate],
+  const panelFree = useMemo(
+    () => panelFreeWindows(gridPanelists, dayKey, scheduleZone),
+    [gridPanelists, dayKey, scheduleZone],
   );
 
   const selectedStartMin = useMemo(() => {
-    if (!selectedSlot || !selectedDate) return null;
+    if (!selectedSlot || !dayKey) return null;
     const d = parseISO(selectedSlot.start);
-    if (!isSameDay(d, selectedDate)) return null;
-    return d.getHours() * 60 + d.getMinutes();
-  }, [selectedSlot, selectedDate]);
+    if (zoneDayKey(d, scheduleZone) !== dayKey) return null;
+    return zoneMinuteOfDay(d, scheduleZone);
+  }, [selectedSlot, dayKey, scheduleZone]);
 
-  const setSelectionFrom = (startMin: number, duration = selectedDuration) => {
-    if (!selectedDate) return;
-    const clamped = Math.min(
-      Math.max(startMin, DAY_START_HOUR * 60),
-      DAY_END_HOUR * 60 - duration,
-    );
-    const start = new Date(selectedDate);
-    start.setHours(Math.floor(clamped / 60), clamped % 60, 0, 0);
+  const setSelectionFrom = (startMin: number, duration = selectedDuration, key = dayKey) => {
+    if (!key) return;
+    const start = zoneWallToUtc(key, clampStart(startMin, duration), scheduleZone);
     const end = new Date(start.getTime() + duration * 60 * 1000);
     setSelectedSlot({ start: start.toISOString(), end: end.toISOString() });
   };
@@ -974,26 +956,59 @@ export function ScheduleInterviewSheet({
     if (selectedStartMin !== null) setSelectionFrom(selectedStartMin, d);
   };
 
+  // ‹ › on the grid: the next or previous day, keeping the time of day.
+  const shiftDay = (days: number) => {
+    if (!dayKey) return;
+    const next = shiftDayKey(dayKey, days);
+    if (next < todayKey) return;
+    setSelectedDate(dayKeyToLocalDate(next));
+    if (selectedStartMin !== null) setSelectionFrom(selectedStartMin, selectedDuration, next);
+    else setSelectedSlot(null);
+  };
+
   const overlaps = useMemo(() => {
     if (selectedStartMin === null) return [];
     return findOverlaps(
-      stripPanelists,
-      selectedDate,
+      gridPanelists,
+      dayKey,
+      scheduleZone,
       selectedStartMin,
       selectedStartMin + selectedDuration,
     );
-  }, [stripPanelists, selectedDate, selectedStartMin, selectedDuration]);
+  }, [gridPanelists, dayKey, scheduleZone, selectedStartMin, selectedDuration]);
 
   const overlapNote = overlaps.length
     ? `Overlaps ${overlaps.map((o) => `${o.name}'s ${o.title}`).join(' and ')}`
     : null;
 
   const jumpToFreeSlot = () => {
-    const fit = panelFreeWindows.find((w) => w.endMin - w.startMin >= selectedDuration);
+    const fits = panelFree.filter((w) => w.endMin - w.startMin >= selectedDuration);
+    const after = fits.find((w) => selectedStartMin === null || w.startMin >= selectedStartMin);
+    const fit = after ?? fits[0];
     if (fit) setSelectionFrom(fit.startMin);
   };
 
+  const zoneTime = (iso: string, opts: Intl.DateTimeFormatOptions) =>
+    formatInTimeZone(iso, scheduleZone, opts);
 
+  // A new zone relabels the grid; a time already picked stays the same moment.
+  const handleZoneChange = (zone: string) => {
+    if (selectedSlot) setSelectedDate(dayKeyToLocalDate(zoneDayKey(selectedSlot.start, zone)));
+    setScheduleZone(zone);
+  };
+
+  // The picked time on the clocks of panelists who live in another zone.
+  const elsewhere = useMemo(() => {
+    if (!selectedSlot) return [];
+    const seen = new Set<string>();
+    return gridPanelists
+      .filter((p) => p.timeZone !== scheduleZone)
+      .map((p) => ({
+        name: p.name.split(' ')[0],
+        time: formatInTimeZone(selectedSlot.start, p.timeZone, { hour: 'numeric', minute: '2-digit' }),
+      }))
+      .filter((e) => (seen.has(e.name) ? false : (seen.add(e.name), true)));
+  }, [selectedSlot, gridPanelists, scheduleZone]);
 
   useEffect(() => {
     if (selectedDate && selectedDate.getMonth() !== currentMonth.getMonth()) {
@@ -1050,7 +1065,7 @@ export function ScheduleInterviewSheet({
           const { error } = await supabase.functions.invoke('cancel-booking', {
             body: {
               booking_id: oldBookingId,
-              reason: `Rescheduled to ${format(new Date(selectedSlot.start), 'MMM d, yyyy h:mm a')}`,
+              reason: `Rescheduled to ${zoneTime(selectedSlot.start, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`,
             },
           });
           if (error) throw error;
@@ -1076,6 +1091,7 @@ export function ScheduleInterviewSheet({
       setSelectedInterviewer(null);
       setSelectedDate(new Date());
       setSelectedSlot(null);
+      setScheduleZone(detectTimeZone());
       setSelectedDuration(30);
       setFormatOption('video');
       setSiteAddress('');
@@ -1133,7 +1149,7 @@ export function ScheduleInterviewSheet({
       candidate_name: formData.candidate_name,
       candidate_email: formData.candidate_email,
       candidate_phone: formData.candidate_phone || null,
-      candidate_timezone: candidateTimezone,
+      candidate_timezone: scheduleZone,
       scheduled_start: selectedSlot.start,
       scheduled_end: new Date(
         new Date(selectedSlot.start).getTime() + selectedDuration * 60 * 1000,
@@ -1160,6 +1176,7 @@ export function ScheduleInterviewSheet({
       setSelectedInterviewer(null);
       setSelectedDate(new Date());
       setSelectedSlot(null);
+      setScheduleZone(detectTimeZone());
       setSelectedDuration(30);
       setFormatOption('video');
       setSiteAddress('');
@@ -1181,7 +1198,7 @@ export function ScheduleInterviewSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col">
+      <SheetContent className="w-full sm:max-w-[760px] p-0 flex flex-col">
         <header className="px-6 pt-6 pb-4 border-b border-virgilio-border">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1.5 min-w-0">
@@ -1189,7 +1206,7 @@ export function ScheduleInterviewSheet({
                 {kicker}
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-h2 text-virgilio-text">{titleText}</h2>
+                <SheetTitle className="text-h2 text-virgilio-text">{titleText}</SheetTitle>
                 <Badge tone="lilac" size="sm">
                   <CheckCircle2 className="h-3 w-3" />
                   Calendar-aware
@@ -1199,13 +1216,6 @@ export function ScheduleInterviewSheet({
                 We check everyone's calendar in real time and only show slots that work for the whole panel.
               </p>
             </div>
-            <Button
-              variant="ghost"
-              iconOnly
-              icon={X}
-              aria-label="Close"
-              onClick={() => handleOpenChange(false)}
-            />
           </div>
         </header>
 
@@ -1283,7 +1293,7 @@ export function ScheduleInterviewSheet({
                           {candidateName}
                         </div>
                         <div className="text-body-xs text-virgilio-muted truncate">
-                          {jobTitle} · {candidateTimezone.replace(/_/g, ' ')}
+                          {jobTitle} · {zoneCityLabel(scheduleZone)}
                         </div>
                       </div>
                     </div>
@@ -1342,38 +1352,39 @@ export function ScheduleInterviewSheet({
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-form-label text-virgilio-muted">Time zone</Label>
-                      <Select value={candidateTimezone} onValueChange={() => {}}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={candidateTimezone}>
-                            {candidateTimezone.replace(/_/g, ' ')}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <TimezonePicker
+                        value={scheduleZone}
+                        onChange={handleZoneChange}
+                        detected={browserZone}
+                        className="h-[var(--input-height)] rounded-brand text-sm"
+                      />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label className="text-form-label text-virgilio-muted">Pick a time</Label>
-                    <AvailabilityStrip
-                      date={selectedDate}
-                      panelists={stripPanelists}
+                    <DayTimeGrid
+                      dayKey={dayKey}
+                      timeZone={scheduleZone}
+                      panelists={gridPanelists}
                       durationMinutes={selectedDuration}
                       selectedStartMin={selectedStartMin}
                       onSelectStartMin={(m) => setSelectionFrom(m)}
                       onDurationChange={handleDurationChange}
+                      onShiftDay={shiftDay}
+                      canGoBack={!!dayKey && dayKey > todayKey}
                       isLoading={isLoadingAvailability || loadingOldBooking}
-                      originStartMin={originStripWindow?.startMin ?? null}
-                      originDurationMinutes={originStripWindow?.duration ?? null}
-
+                      originStartMin={originWindow?.startMin ?? null}
+                      originDurationMinutes={originWindow?.duration ?? null}
                     />
-                    <p className="text-body-xs text-virgilio-muted">
-                      {panelFreeWindows.length} window
-                      {panelFreeWindows.length === 1 ? '' : 's'} where the whole panel is free — but
-                      you can book any time, including over a hold.
-                    </p>
+                    {gridPanelists.length > 0 && !isLoadingAvailability && (
+                      <p className="text-body-xs text-virgilio-muted">
+                        {panelFree.length === 0
+                          ? 'No time this day when the whole panel is free in their working hours.'
+                          : `${panelFree.length} ${panelFree.length === 1 ? 'time' : 'times'} this day when the whole panel is free in their working hours.`}{' '}
+                        You can still book any time, even over a busy time.
+                      </p>
+                    )}
 
                     {/* Overlap notice — informational only, never gates submit */}
                     <div
@@ -1393,12 +1404,19 @@ export function ScheduleInterviewSheet({
                         className="text-[11.5px] font-inter min-w-0 flex-1"
                         style={{ color: overlaps.length ? '#92400E' : '#5B2FD1' }}
                       >
-                        {selectedSlot && selectedDate && selectedStartMin !== null ? (
+                        {selectedSlot && dayKey && selectedStartMin !== null ? (
                           <>
-                            <span className="font-semibold">
-                              {minutesToLabel(selectedDate, selectedStartMin)} –{' '}
-                              {minutesToLabel(selectedDate, selectedStartMin + selectedDuration)}
+                            <span className="font-semibold tabular-nums">
+                              {minuteLabel(dayKey, selectedStartMin, scheduleZone)} –{' '}
+                              {minuteLabel(dayKey, selectedStartMin + selectedDuration, scheduleZone)}{' '}
+                              {zoneAbbr(scheduleZone, selectedSlot.start)}
                             </span>
+                            {elsewhere.length > 0 && (
+                              <span className="tabular-nums">
+                                {' '}
+                                · {elsewhere.map((e) => `${e.time} for ${e.name}`).join(', ')}
+                              </span>
+                            )}
                             {overlaps.length ? (
                               <>
                                 {' '}
@@ -1411,7 +1429,7 @@ export function ScheduleInterviewSheet({
                             )}
                           </>
                         ) : (
-                          'Click anywhere on the strip to place the interview.'
+                          'Click the day grid to place the interview.'
                         )}
                       </p>
                       {overlaps.length > 0 && (
@@ -1738,7 +1756,7 @@ export function ScheduleInterviewSheet({
                     [oldBooking?.interviewer_id, ...(oldBooking?.scheduled_booking_attendees ?? []).map((a) => a.user_id)].filter(Boolean),
                   ).size;
                   const when = oldBooking?.scheduled_start
-                    ? format(parseISO(oldBooking.scheduled_start), "EEE d MMM 'at' h:mm a")
+                    ? zoneTime(oldBooking.scheduled_start, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
                     : null;
                   const guests = oldBooking?.guest_emails?.length ? ' and the guests' : '';
                   const emailed = panel > 1
