@@ -161,6 +161,21 @@ describe('deliver', () => {
     expect(posts[0].body.get('blocks')).toContain('https://app.gogio.io/me?focus=card-google|Reconnect Google')
   })
 
+  it('wishes a happy birthday in a channel and by DM, tagging them, with nothing to open', async () => {
+    const calls = stubSlack({ 'sofia@virgilio.tech': 'USOF' })
+    await deliver('xoxb', 'Happy birthday, {member}! 🎂', [{ type: 'channel', id: 'C1', name: 'general' }, { type: 'role', role: 'member' }], {
+      event: 'member.birthday',
+      member: { name: 'Sofía Ramírez', email: 'sofia@virgilio.tech' },
+      link: '/me',
+    })
+    const posts = calls.filter((c) => c.method === 'chat.postMessage')
+    expect(posts.map((c) => c.body.get('channel')).sort()).toEqual(['C1', 'D-USOF'])
+    for (const post of posts) {
+      expect(post.body.get('blocks')).toContain('Happy birthday, <@USOF>! 🎂')
+      expect(post.body.get('blocks')).not.toContain('<https')
+    }
+  })
+
   it('sends the interviewer to their own scorecard and everyone else to the scorecards', async () => {
     const calls = stubSlack({ 'jurre@virgilio.tech': 'UJUR' })
     await deliver('xoxb', 'x', [{ type: 'channel', id: 'C1', name: 'hiring' }, { type: 'role', role: 'interviewer' }],

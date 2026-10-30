@@ -303,6 +303,8 @@ export function messageLinks(ctx: MessageContext): Record<string, Link | null> {
 export function openLink(ctx: MessageContext, audience: Audience = 'everyone'): Link | null {
   const l = messageLinks(ctx)
   const ev = ctx.event ?? ''
+  // A birthday wish is just that: nothing to open, in a channel or a DM.
+  if (ev === 'member.birthday') return null
   if (ev.startsWith('member.')) return audience === 'member' ? l.my_profile_link : null
   if (ev.startsWith('offer.')) return l.offer_link ?? l.profile_link
   if (ev === 'interview.scheduled' && audience === 'interviewer' && l.scorecard_link && ctx.candidate?.id) {
