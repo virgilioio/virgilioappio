@@ -50,6 +50,10 @@ export function ToDoCard({ tenantId, person }: { tenantId: string; person: Perso
       })
   }
 
+  // Nothing to do, or still checking: no card. It comes back by itself when something
+  // is missing again (a new profile check, an agreement to sign, Google needing a reconnect).
+  if (loading || (!failed && items.length === 0)) return null
+
   return (
     <ProfileCard
       id="card-todo"
@@ -57,31 +61,15 @@ export function ToDoCard({ tenantId, person }: { tenantId: string; person: Perso
       icon={ListTodo}
       tone="yellow"
       aside={
-        !loading && items.length > 0 ? (
+        items.length > 0 ? (
           <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-[#FEF3C7] px-2 font-inter text-[12px] font-semibold tabular-nums text-[#B45309]">
             {items.length}
           </span>
         ) : undefined
       }
     >
-      {loading ? (
-        <div className="flex flex-col gap-1.5">
-          {Array.from({ length: 3 }, (_, i) => (
-            <Skeleton key={i} className="h-[56px] w-full rounded-[10px]" />
-          ))}
-        </div>
-      ) : failed ? (
+      {failed ? (
         <LoadError what="what's left to do" compact onRetry={profileChecks.refetch} />
-      ) : items.length === 0 ? (
-        <div className="flex items-center gap-3 rounded-[10px] bg-[#F7F6F2] px-3.5 py-3">
-          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#D1FAE5] text-[#0F9F74]" aria-hidden>
-            <Check className="h-4 w-4" strokeWidth={2.2} />
-          </span>
-          <span className="font-inter text-[12.5px] text-[#1F2230]">
-            <span className="block font-medium">You&apos;re all set.</span>
-            <span className="text-[#6B7080]">Your profile has everything Virgilio needs.</span>
-          </span>
-        </div>
       ) : (
         <ul className="flex flex-col gap-1.5">
           {items.map((t) => (
