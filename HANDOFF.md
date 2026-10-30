@@ -71,7 +71,7 @@ Hard limits:
 
 - **To do:** gone when nothing is missing (no more "You're all set"); it comes back by itself for a new profile check, an agreement to sign or Google needing a reconnect. While checking, it takes no space if it was empty last time in this browser, otherwise a placeholder of the size it had (three rows on a first visit), so the page doesn't jump (measured: 0px for a complete profile, 34px with to-dos, one settle of ~280px on a browser's very first visit). A failed check still shows Retry.
 - **Columns:** left is work at Virgilio (To do, Role, Current work, Apps and roles, General, Latest agreements, Coming up, Useful links), right is about them (You, Google Workspace, Personal, Shipping, Bank, Tax IDs, and an admin's Rating of someone else). Measured in the browser with fake data at 1440 and 1280: My profile complete, left 2257px vs right 2079px (was 4 cards vs 10); someone else's, 1573 vs 1446 (was 520px apart before Rating moved); one column on phones, work cards first.
-- **Noticed, not changed:** on My profile an empty Current work says "Seat them from a job's Hiring team." (third person on your own page); agreement lines read "Signed sep 12" with a lowercase month.
+- **Follow-up (waiting for Apply!):** on your own profile the empty Current work card and the Work tab's table now say "You're not on any job yet. A job's recruiter adds you from its Hiring team." (admins: they see every job without a seat), and a failed load says "your jobs"; agreement lines keep the month's capital ("Signed Sep 12", `agoInline` in `src/lib/sign/status.ts`, unit test `signAgo.test.ts`), which also fixes candidate agreement cards.
 
 ## Done 2026-10-30 (ATS) — Profile arrows stay in their list — on main
 
