@@ -67,6 +67,10 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-10-30 (ATS) — My profile: Useful links and Coming up first — waiting for Apply!
+
+- On your own profile the left column is To do (when something's missing), Useful links, Coming up, Current work, Latest agreements, Role, Apps and roles, General; a complete profile shows Useful links and Coming up above the fold at 1440×900. Someone else's profile keeps Role first. Same cards, so the columns' balance is unchanged (178px on a complete profile). Checked in the browser with fake data at 1440 and 390, no errors.
+
 ## Done 2026-10-30 (ATS) — My profile: To do hides when done; columns by subject — on main
 
 - **To do:** gone when nothing is missing (no more "You're all set"); it comes back by itself for a new profile check, an agreement to sign or Google needing a reconnect. While checking, it takes no space if it was empty last time in this browser, otherwise a placeholder of the size it had (three rows on a first visit), so the page doesn't jump (measured: 0px for a complete profile, 34px with to-dos, one settle of ~280px on a browser's very first visit). A failed check still shows Retry.
