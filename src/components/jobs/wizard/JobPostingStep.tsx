@@ -4,6 +4,7 @@ import {
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare, Puzzle,
   Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type, MapPin, Linkedin, Users, Building2,
   ListChecks,
+  AudioLines, Clapperboard,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -38,6 +39,8 @@ import { FormattedTextBox } from '@/components/ui/formatted-text'
 import { markdownToHtml } from '@/utils/markdown'
 import { PostingVideoField } from '@/components/jobs/postings/PostingVideoField'
 import { NO_VIDEO, brandingDetails, mediaFileProblem, uploadPostingMedia, type PostingVideo } from '@/lib/postingMedia'
+import { finishSlug, typedSlug } from '@/lib/postingUrl'
+import { shakeFirstInvalid } from '@/lib/motion'
 
 
 /* ---------------- helpers ---------------- */
@@ -64,6 +67,7 @@ const BRAND_SWATCHES = ['#6F3FF5', '#3B82F6', '#10B981', '#F59E0B', '#EC4899', '
 type FieldType =
   | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'multiselect' | 'number' | 'longtext' | 'date'
   | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location' | 'score'
+  | 'audio' | 'video'
 
 interface SmartFieldDef {
   id: string
@@ -115,7 +119,7 @@ const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   text: Type, longtext: AlignLeft, number: Hash, email: Mail, url: Link2,
   date: CalendarIcon, select: List, multiselect: ListChecks, yesno: ToggleLeft, file: FileText, phone: Phone,
   linkedin: Linkedin, location: MapPin, salary: DollarSign, employment_type: Briefcase,
-  work_location: Building2, recruiter: Users,
+  work_location: Building2, recruiter: Users, audio: AudioLines, video: Clapperboard,
 }
 const iconForType = (t: string) => TYPE_ICON[t] || MessageSquare
 
@@ -219,6 +223,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
 
     // keep slug in sync with title until user manually edits it
     const slugTouched = useRef(false)
+    const [slugError, setSlugError] = useState<string | null>(null)
     useEffect(() => {
       if (!slugTouched.current) setSlug(slugify(publicTitle))
     }, [publicTitle])
@@ -400,8 +405,15 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           // Create the posting as DRAFT (is_active = false). The wizard's
           // Summary step "Publish to careers page immediately" toggle is what
           // flips it live on Create — that happens in JobWizard.handleComplete.
+          // A slug someone typed is saved as is; untouched, one is made from the title.
+          const chosenSlug = slugTouched.current ? finishSlug(slug) : ''
           const created = await createPosting({
             title: publicTitle,
+            slug: chosenSlug || undefined,
+            onSlugTaken: () => {
+              setSlugError('That URL is taken. Try another.')
+              shakeFirstInvalid()
+            },
             description,
             details,
             is_active: opts?.publish === true ? true : false,
@@ -486,9 +498,17 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                 wrapperClassName="mt-2 rounded-xl bg-white"
                 prefix="/jobs/"
                 value={slug}
-                onChange={(e) => { slugTouched.current = true; setSlug(e.target.value) }}
+                invalid={!!slugError}
+                onChange={(e) => {
+                  slugTouched.current = true
+                  setSlug(typedSlug(e.target.value))
+                  setSlugError(null)
+                }}
+                onBlur={() => setSlug((s) => finishSlug(s))}
               />
-              <FieldHint>your-careers-domain/jobs/{slug || '…'}</FieldHint>
+              {slugError
+                ? <FieldHint tone="error">{slugError}</FieldHint>
+                : <FieldHint>your-careers-domain/jobs/{slug || '…'}</FieldHint>}
             </div>
             <div>
               <FieldLabel optional>Reference ID</FieldLabel>

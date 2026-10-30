@@ -27,6 +27,8 @@ import gioAvatar from "@/assets/gio-avatar.png";
 import gioAiBannerIcon from "@/assets/gio-ai-banner-icon.png";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { ProfileSummaryMarkdown } from "@/components/candidates/ProfileSummaryMarkdown";
+import { PlaceLineField } from "@/components/ui/place-picker";
+import { placeFromText } from "@/lib/places";
 
 function convertJsonOverviewToMarkdown(obj: any): string {
   const sections: string[] = [];
@@ -756,7 +758,18 @@ export function ScorecardSheet({
       if (!val) continue;
       if (q.answer_type === 'phone') patch.phone = val;
       else if (q.answer_type === 'linkedin') patch.linkedin_url = val;
-      else if (q.answer_type === 'location') patch.location_city = val;
+      else if (q.answer_type === 'location') {
+        // "City, State, Country" goes into the profile's three place fields;
+        // a line that doesn't end in a country stays the city, as before.
+        const place = placeFromText(val);
+        if (place.country) {
+          patch.location_country = place.country;
+          patch.location_state = place.region || null;
+          patch.location_city = place.city || null;
+        } else {
+          patch.location_city = val;
+        }
+      }
     }
 
     if (Object.keys(patch).length === 0) return;
@@ -779,7 +792,7 @@ export function ScorecardSheet({
 
     const { data: current } = await supabase
       .from('candidates')
-      .select('salary_amount, salary_currency, salary_period, phone, linkedin_url, location_city')
+      .select('salary_amount, salary_currency, salary_period, phone, linkedin_url, location_city, location_state, location_country')
       .eq('id', assoc.candidate_id)
       .maybeSingle();
 
@@ -1200,6 +1213,12 @@ export function ScorecardSheet({
                 disabled={isReadOnly}
                 rows={4}
                 placeholder={placeholder}
+              />
+            ) : t === 'location' && !isReadOnly ? (
+              <PlaceLineField
+                idPrefix={`question-${question.id}`}
+                value={response?.answerText || ''}
+                onChange={(line) => handleResponseChange(question.id, { answerText: line })}
               />
             ) : presetOptions ? (
               <RadioGroup

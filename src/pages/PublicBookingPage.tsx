@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -13,10 +13,12 @@ import { PublicBookingHeader } from '@/components/booking/PublicBookingHeader';
 import { PublicBookingFooter } from '@/components/booking/PublicBookingFooter';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from '@/hooks/use-toast';
-import { EmptyState } from '@/components/ui/empty-state';
-import { SoftFlag, SoftCalendar } from '@/components/ui/EmptyIllustrations';
-import { AlertCircle, ShieldX, ArrowLeft, Clock, Users } from 'lucide-react';
+import { Loadable } from '@/components/ui/loadable';
+import { LoadError } from '@/components/empty/LoadError';
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty';
+import { useLoadTimeout } from '@/hooks/useLoadTimeout';
+import { useStepSlide } from '@/lib/motion';
+import { ArrowLeft, Users } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { TimezonePicker } from '@/components/booking/TimezonePicker';
 import {
@@ -38,6 +40,26 @@ import {
   resolveBookingToken,
 } from '@/lib/bookingLinkUtils';
 import { useReportSplashReady } from '@/contexts/SplashReadyContext';
+
+/**
+ * Why a booking didn't go through, in plain words for the candidate (Motion &
+ * Feel §5: never the server's own text).
+ */
+function bookingErrorMessage(raw: unknown): string {
+  const text = String((raw as { message?: string })?.message ?? raw ?? '').toLowerCase();
+  if (/taken|no longer available|not available|conflict|already booked|overlap|slot/.test(text)) {
+    return 'That time was just taken. Pick another time.';
+  }
+  if (/fetch|network|failed to send|timeout/.test(text)) {
+    return "We couldn't reach the server. Check your connection and try again.";
+  }
+  return "We couldn't book this time. Please try again.";
+}
+
+/** A booking link with no active configuration (the query's "no rows"). */
+function isMissingLink(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === 'PGRST116';
+}
 
 function formatNamesList(names: string[]): string {
   if (names.length === 0) return '';
@@ -69,6 +91,11 @@ export default function PublicBookingPage() {
   const autoAdvanceCountRef = useRef(0);
   const hasAutoSelectedRef = useRef(false);
   const [selectedEventType, setSelectedEventType] = useState<any>(null);
+  // Bumped by Retry: refetches the page and resolves the link again.
+  const [retryKey, setRetryKey] = useState(0);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const mobileStepRef = useRef<HTMLDivElement>(null);
+  useStepSlide(mobileStepRef, ['date', 'time', 'confirm'].indexOf(mobileStep));
 
   // Parse contextual booking context from URL (legacy base64)
   const legacyContext = useMemo(() => {
@@ -114,7 +141,7 @@ export default function PublicBookingPage() {
     };
 
     resolveToken();
-  }, [searchParams]);
+  }, [searchParams, retryKey]);
 
   // Use resolved context (short token) or legacy context (base64)
   const bookingContext = resolvedContext || legacyContext;
@@ -124,7 +151,7 @@ export default function PublicBookingPage() {
   const showExistingBookingView = !!existingBooking && !rescheduleBookingId && !bookingCancelled;
 
   // Fetch booking configuration
-  const { data: config, isLoading, error } = useQuery({
+  const { data: config, isLoading, isRefetching, error, refetch } = useQuery({
     queryKey: ['public-booking-config', shortCode],
     queryFn: async () => {
       const { data: bookingConfig, error: configError } = await supabase
@@ -158,6 +185,13 @@ export default function PublicBookingPage() {
 
   // Dismiss the cold-load splash once initial config + token resolution settle.
   useReportSplashReady(!isLoading && !isResolvingToken);
+  // A Retry after an error shows the skeleton again until the page arrives.
+  const pageLoading = isLoading || isResolvingToken || (isRefetching && !config);
+  const timedOut = useLoadTimeout(pageLoading, retryKey);
+  const retry = () => {
+    setRetryKey((k) => k + 1);
+    void refetch();
+  };
 
 
   // Fetch event types for this booking config
@@ -301,6 +335,7 @@ export default function PublicBookingPage() {
   // Mobile slot selection — auto-advance to confirm step
   const handleSlotSelect = useCallback((slot: { start: string; end: string }) => {
     setSelectedSlot(slot);
+    setBookingError(null);
     if (isMobile) {
       setMobileStep('confirm');
     }
@@ -329,6 +364,7 @@ export default function PublicBookingPage() {
       guest_emails?: string[];
     }) => {
       if (!selectedSlot || !config) throw new Error('Missing required data');
+      setBookingError(null);
 
       const { data, error } = await supabase.functions.invoke('create-booking', {
         body: {
@@ -401,12 +437,9 @@ export default function PublicBookingPage() {
         },
       });
     },
-    onError: (error: any) => {
-      toast({
-        variant: 'destructive',
-        title: 'Booking Failed',
-        description: error.message || 'Failed to create booking. Please try again.',
-      });
+    onError: (error: unknown) => {
+      // Shown in the form's reserved line, never as raw server text.
+      setBookingError(bookingErrorMessage(error));
     },
   });
 
@@ -432,61 +465,71 @@ export default function PublicBookingPage() {
     : config?.display_name || '';
   const workspaceName = config?.display_name || interviewerFullName || 'Scheduling';
 
-  if (isLoading || isResolvingToken) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F2]">
-        <PublicBookingHeader workspaceName="Scheduling" />
-        <main className="container mx-auto px-4 py-8 max-w-6xl">
-          <div className="grid md:grid-cols-3 gap-8">
-            <Skeleton className="h-[400px] w-full" />
-            <div className="md:col-span-2">
-              <Skeleton className="h-[600px] w-full" />
-            </div>
-          </div>
-        </main>
-        <PublicBookingFooter />
+  const pageSkeleton = (
+    <main className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="grid md:grid-cols-3 gap-8">
+        <Skeleton className="h-[400px] w-full" />
+        <div className="md:col-span-2">
+          <Skeleton className="h-[600px] w-full" />
+        </div>
       </div>
+    </main>
+  );
+
+  // One page frame for every state, so the content crossfades in over the
+  // skeleton (Loadable) instead of swapping pages (Motion & Feel §6, §16).
+  const page = (name: string, body: ReactNode) => (
+    <div className="min-h-screen bg-virgilio-cream flex flex-col">
+      <PublicBookingHeader workspaceName={name} />
+      <Loadable loading={pageLoading && !timedOut} skeleton={pageSkeleton} className="flex-1 flex flex-col">
+        {body}
+      </Loadable>
+      <PublicBookingFooter />
+    </div>
+  );
+
+  if (pageLoading && !timedOut) return page('Scheduling', null);
+
+  if (timedOut || (error && !isMissingLink(error))) {
+    return page(
+      'Scheduling',
+      <main className="flex-1 container mx-auto px-4 py-16 max-w-lg">
+        <LoadError what="this booking page" timedOut={timedOut} onRetry={retry} />
+      </main>,
     );
   }
 
-  if (error || !config) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
-        <PublicBookingHeader workspaceName="Scheduling" />
-        <main className="flex-1 container mx-auto px-4 py-16 max-w-lg">
-          <EmptyState
-            size="card"
-            illustration={<SoftFlag />}
-            title="Booking link not found"
-            body="This booking link is either inactive or doesn't exist. Please check with the person who sent you this link."
-          />
-        </main>
-        <PublicBookingFooter />
-      </div>
+  if (!config) {
+    return page(
+      'Scheduling',
+      <main className="flex-1 container mx-auto px-4 py-16 max-w-lg">
+        <AnimatedEmpty
+          scene="search"
+          onceKey="booking-link-missing"
+          title="Booking link not found"
+          body="This booking link is either inactive or doesn't exist. Please check with the person who sent you this link."
+        />
+      </main>,
     );
   }
 
   if (showExpiredView) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
-        <PublicBookingHeader workspaceName={workspaceName} />
-        <main className="flex-1 container mx-auto px-4 py-16 max-w-lg">
-          <EmptyState
-            size="card"
-            illustration={<SoftFlag />}
-            title="This link has expired"
-            body="This booking link is no longer active. If you still need a time, contact the person who sent you this link."
-          />
-        </main>
-        <PublicBookingFooter />
-      </div>
+    return page(
+      workspaceName,
+      <main className="flex-1 container mx-auto px-4 py-16 max-w-lg">
+        <AnimatedEmpty
+          scene="scheduling"
+          onceKey="booking-link-expired"
+          title="This link has expired"
+          body="This booking link is no longer active. If you still need a time, contact the person who sent you this link."
+        />
+      </main>,
     );
   }
 
   if (showExistingBookingView && existingBooking && shortToken) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
-        <PublicBookingHeader workspaceName={workspaceName} />
+    return page(
+      workspaceName,
         <main className="flex-1 container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12">
           {bookingContext?.candidateName && (
             <p className="font-poppins font-bold text-virgilio-text text-lg md:text-xl mb-2 text-center">
@@ -505,9 +548,7 @@ export default function PublicBookingPage() {
             jobTitle={bookingContext?.jobTitle}
             stageName={bookingContext?.stageName}
           />
-        </main>
-        <PublicBookingFooter />
-      </div>
+        </main>,
     );
   }
 
@@ -545,9 +586,8 @@ export default function PublicBookingPage() {
 
   // Standalone event-type picker page (general booking link with multiple event types)
   if (showEventPicker) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
-        <PublicBookingHeader workspaceName={workspaceName} />
+    return page(
+      workspaceName,
         <main className="flex-1 container mx-auto px-4 py-10 md:py-16">
           {unknownEventSlug && (
             <p className="text-center text-sm text-virgilio-muted mb-6">This event type is no longer available — pick another below.</p>
@@ -564,22 +604,18 @@ export default function PublicBookingPage() {
             workspaceName={workspaceName}
             timezoneLabel={`${zoneCityLabel(candidateTimezone)}${zoneAbbr(candidateTimezone) ? ` (${zoneAbbr(candidateTimezone)})` : ''}`}
           />
-        </main>
-        <PublicBookingFooter />
-      </div>
+        </main>,
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
-      <PublicBookingHeader workspaceName={workspaceName} />
-
+  return page(
+    workspaceName,
       <main className="flex-1 container mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14 max-w-[1280px]">
         {showNoEventTypes ? (
           <div className="max-w-lg mx-auto py-16">
-            <EmptyState
-              size="card"
-              illustration={<SoftCalendar />}
+            <AnimatedEmpty
+              scene="scheduling"
+              onceKey="booking-no-options"
               title="No availability"
               body="There are no booking options available at this time. Please check back later or contact the organizer."
             />
@@ -644,6 +680,8 @@ export default function PublicBookingPage() {
                     <span className={mobileStep === 'confirm' ? 'text-virgilio-purple font-semibold' : ''}>Confirm</span>
                   </div>
 
+                  {/* Next slides in from the right, Back from the left (§7 Wizard). */}
+                  <div ref={mobileStepRef}>
                   {mobileStep === 'date' && (
                     <MonthCalendar
                       availableDates={availableDates}
@@ -705,9 +743,11 @@ export default function PublicBookingPage() {
                         defaultCandidateName={bookingContext?.candidateName}
                         defaultCandidateEmail={bookingContext?.candidateEmail}
                         allowGuests={!hasContextualLink}
+                        error={bookingError}
                       />
                     </div>
                   )}
+                  </div>
                 </div>
               ) : (
                 /* Desktop: 3-column grid */
@@ -784,6 +824,7 @@ export default function PublicBookingPage() {
                         defaultCandidateName={bookingContext?.candidateName}
                         defaultCandidateEmail={bookingContext?.candidateEmail}
                         allowGuests={!hasContextualLink}
+                        error={bookingError}
                       />
                     ) : (
                       <div className="space-y-4">
@@ -826,7 +867,7 @@ export default function PublicBookingPage() {
                           selectedDate={selectedDate}
                           timeSlots={timeSlotsForSelectedDate}
                           selectedSlot={selectedSlot}
-                          onSlotSelect={setSelectedSlot}
+                          onSlotSelect={(slot) => { setSelectedSlot(slot); setBookingError(null); }}
                           isLoading={isLoadingAvailability}
                           showHeader={false}
                           candidateTimezone={candidateTimezone}
@@ -839,10 +880,6 @@ export default function PublicBookingPage() {
             </div>
           </>
         )}
-      </main>
-
-      <PublicBookingFooter />
-    </div>
+      </main>,
   );
 }
-

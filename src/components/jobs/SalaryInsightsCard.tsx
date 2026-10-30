@@ -109,7 +109,8 @@ export function SalaryInsightsCard({
     return formatCurrency(value);
   };
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  // Recharts takes a render function for the tooltip.
+  const renderTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const salary = payload[0].payload.salary;
       return (
@@ -223,7 +224,7 @@ export function SalaryInsightsCard({
                   tickCount={5}
                 />
                 <YAxis hide />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={renderTooltip} />
                 <ReferenceLine
                   x={salaryData.minSalary}
                   stroke="hsl(var(--muted-foreground))"

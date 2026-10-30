@@ -99,19 +99,18 @@ serve(async (req) => {
         // Stop condition: candidate must still be at this stage.
         const { data: assoc } = await supabase
           .from("job_candidate_associations")
-          .select("id, candidate_id, current_stage_id, candidates!inner(first_name, last_name, candidate_name)")
+          .select("id, candidate_id, current_stage_id, candidates!inner(candidate_name)")
           .eq("id", assocId)
           .maybeSingle();
         if (!assoc || (assoc as any).current_stage_id !== jhsId) continue;
 
         const candidate = (assoc as any).candidates;
         const candidateFullName =
-          candidate?.candidate_name ||
-          [candidate?.first_name, candidate?.last_name].filter(Boolean).join(" ") ||
+          (candidate?.candidate_name ? String(candidate.candidate_name).trim() : "") ||
           "the candidate";
         const candidateFirstName =
-          candidate?.first_name ||
-          (candidate?.candidate_name ? String(candidate.candidate_name).split(" ")[0] : "there");
+          (candidate?.candidate_name ? String(candidate.candidate_name).trim().split(/\s+/)[0] : "") ||
+          "the candidate";
 
         // Who already submitted?
         const { data: submittedRows } = await supabase

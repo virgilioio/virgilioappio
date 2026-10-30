@@ -42,13 +42,16 @@ function Control({ field }: { field: OfferFormField }) {
       )
     }
     case 'location': {
-      const parts = ((field.field_config as LocationFieldConfig | null)?.fields ?? ['city', 'state', 'country']).map((p) =>
-        p === 'state' ? 'State / province' : p[0].toUpperCase() + p.slice(1),
-      )
+      const chosen = (field.field_config as LocationFieldConfig | null)?.fields ?? ['city', 'state', 'country']
+      // With a country the composer picks Country → State or province → City
+      // from the places list; without one it's plain text boxes.
+      const lists = chosen.includes('country')
+      const order = lists ? (['country', 'state', 'city'] as const).filter((p) => chosen.includes(p)) : chosen
+      const parts = order.map((p) => (p === 'state' ? 'State or province' : p[0].toUpperCase() + p.slice(1)))
       return (
         <div className={cn('grid gap-2', parts.length > 1 && 'sm:grid-cols-3')}>
           {parts.map((p) => (
-            <Box key={p}>{p}</Box>
+            <Box key={p} select={lists}>{p}</Box>
           ))}
         </div>
       )

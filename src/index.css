@@ -1785,7 +1785,7 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 .gio-phone-tabs {
   overflow-x: clip; /* the pills' fills reach past their tabs */
   gap: 10px;
-  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+  padding: calc(10px + var(--gio-sat)) 16px 10px;
 }
 .gio-phone-tab {
   transition: color var(--dur-tabs) var(--ease-in-out);
@@ -1808,7 +1808,7 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 }
 .gio-phone-top {
   gap: 10px;
-  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 0;
+  padding: calc(10px + var(--gio-sat)) 16px 0;
 }
 
 /* Rail: a module glyph's signal shape turns lilac while its tile is hovered (mouse only). */
@@ -2360,4 +2360,64 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 .gio-sig-pad canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
 @media (prefers-reduced-motion: reduce) {
   .gio-sf[data-kind="done"] .gio-sf-ink { animation-name: gio-fade-only; }
+}
+
+/* Top strip (2026-10-29, after Deel's): one noir strip across the top of the
+   window for the My profile reminder and Platform admin mode. While it shows,
+   <html> has .gio-has-strip and --gio-strip is its height; the rail, top bar,
+   page padding and full-height pages add it, so nothing is covered. The strip
+   owns the phone's notch area while it shows (--gio-sat 0). The shell follows
+   it at --dur-expand when it opens and --dur-dialog-out when it closes; never
+   on first paint (.gio-strip-anim comes a frame later). */
+:root { --gio-strip: 0px; --gio-sat: env(safe-area-inset-top, 0px); }
+html.gio-has-strip { --gio-strip: calc(40px + env(safe-area-inset-top, 0px)); --gio-sat: 0px; }
+html.gio-strip-anim .gio-strip-follow {
+  transition-property: top, padding-top, height, box-shadow;
+  transition-duration: var(--dur-expand), var(--dur-expand), var(--dur-expand), var(--dur-hover);
+  transition-timing-function: var(--ease-in-out);
+}
+html.gio-strip-anim.gio-strip-closing .gio-strip-follow { transition-duration: var(--dur-dialog-out); }
+.gio-strip {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+  height: calc(40px + env(safe-area-inset-top, 0px)); padding-top: env(safe-area-inset-top, 0px);
+  background: #0D0D09; color: #FFFCF9;
+  opacity: 0; transition: opacity var(--dur-dialog-in) var(--ease-out);
+}
+.gio-strip[data-state="open"] { opacity: 1; }
+.gio-strip[data-state="closing"] { transition-duration: var(--dur-dialog-out); }
+.gio-strip-tag {
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 6px;
+  background: #D7C5FB; color: #0D0D09;
+  font: 600 10.5px/1 Inter, sans-serif; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+}
+.gio-strip-mode {
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 6px;
+  background: rgba(255, 252, 249, .08); color: rgba(255, 252, 249, .72);
+  font: 500 10.5px/1 Inter, sans-serif; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+}
+.gio-strip-cta {
+  display: inline-flex; align-items: center; gap: 2px; height: 28px; padding: 0 10px 0 14px; border-radius: 999px;
+  background: #FFFCF9; color: #0D0D09; font: 500 12.5px/1 Inter, sans-serif; white-space: nowrap;
+  transition: background-color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+}
+.gio-strip-cta:active { transform: scale(.97); }
+.gio-strip-x {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px;
+  color: rgba(255, 252, 249, .6);
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+}
+.gio-strip-x:active { transform: scale(.97); }
+@media (hover: hover) and (pointer: fine) {
+  .gio-strip-cta:hover { background: #EDEAE2; }
+  .gio-strip-x:hover { background: rgba(255, 252, 249, .1); color: #FFFCF9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.gio-strip-anim .gio-strip-follow { transition: none; }
+  .gio-strip-cta:active, .gio-strip-x:active { transform: none; }
+}
+
+/* Careers application (2026-10-29): a question with a problem turns its box red
+   (the wrapper carries aria-invalid so a failed Apply can focus and shake it). */
+.gio-apply-invalid :is(input:not([type="checkbox"]):not([type="radio"]), textarea, [role="combobox"]) {
+  border-color: hsl(var(--destructive));
 }

@@ -1,4 +1,6 @@
 import { ArrowRight } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty';
 import { formatZoneDayHeading, formatZoneTime, zoneAbbr } from '@/lib/timezoneFormat';
 
 interface TimeSlot {
@@ -39,7 +41,7 @@ export function TimeSlotsList({
     return (
       <div className="space-y-2.5">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-11 bg-virgilio-border/30 animate-pulse rounded-lg" />
+          <Skeleton key={i} className="h-11 w-full rounded-lg" />
         ))}
       </div>
     );
@@ -60,9 +62,14 @@ export function TimeSlotsList({
       )}
 
       {timeSlots.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-center">
-          <p className="text-[13px] font-medium text-virgilio-text mb-1">No available times</p>
-          <p className="text-[11.5px] text-virgilio-muted">Please select another date</p>
+        <div className="py-4">
+          <AnimatedEmpty
+            scene="scheduling"
+            size="compact"
+            onceKey="booking-no-times"
+            title="No times left on this day"
+            body="Pick another date in the calendar."
+          />
         </div>
       ) : (
         <div className="space-y-2">
@@ -76,14 +83,14 @@ export function TimeSlotsList({
                   <button
                     type="button"
                     onClick={() => onSlotSelect(slot)}
-                    className="flex-1 h-11 rounded-lg bg-[#0d0d09] text-white font-poppins font-semibold text-[13px]"
+                    className="gio-pressable flex-1 h-11 rounded-lg bg-[#0d0d09] text-white font-poppins font-semibold text-[13px]"
                   >
                     {formatZoneTime(slot.start, candidateTimezone)}
                   </button>
                   <button
                     type="button"
                     onClick={onConfirm}
-                    className="flex-1 h-11 rounded-lg bg-virgilio-purple hover:bg-virgilio-purple/90 text-white font-poppins font-semibold text-[13px] inline-flex items-center justify-center gap-1.5"
+                    className="gio-pressable flex-1 h-11 rounded-lg bg-virgilio-purple transition-colors duration-hover hover:bg-virgilio-purple/90 text-white font-poppins font-semibold text-[13px] inline-flex items-center justify-center gap-1.5"
                   >
                     Confirm <ArrowRight className="h-3.5 w-3.5" />
                   </button>
@@ -96,8 +103,7 @@ export function TimeSlotsList({
                 key={idx}
                 type="button"
                 onClick={() => onSlotSelect(slot)}
-                className={`w-full h-11 rounded-lg border font-poppins font-semibold text-[13px] transition-all
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30
+                className={`gio-pressable w-full h-11 rounded-lg border font-poppins font-semibold text-[13px] tabular-nums transition-colors duration-hover
                   ${isSelected
                     ? 'bg-[#0d0d09] text-white border-[#0d0d09]'
                     : 'bg-white text-virgilio-text border-virgilio-border hover:border-virgilio-purple/40 hover:bg-virgilio-purple/5'}

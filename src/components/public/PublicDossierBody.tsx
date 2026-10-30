@@ -18,6 +18,7 @@ import { DossierExperienceGroups } from '@/components/candidates/experience/Doss
 import { StatusBanner } from '@/components/candidates/status/StatusBanner'
 import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ensureAbsoluteUrl } from '@/lib/utils'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { getGioFitLanguage } from '@/lib/gioFitLanguages'
@@ -37,7 +38,6 @@ interface PublicDossierBodyProps {
   decision: string | null
   decisionOn: string | null
   isSending: boolean
-  error: string | null
   onDownload?: () => void
   onDecision: (decision: 'interview_requested' | 'not_a_fit') => void
 }
@@ -114,7 +114,6 @@ export function PublicDossierBody({
   decision,
   decisionOn,
   isSending,
-  error,
   onDownload,
   onDecision,
 }: PublicDossierBodyProps) {
@@ -258,9 +257,6 @@ export function PublicDossierBody({
         )}
       </div>
 
-      {error && (
-        <p role="alert" className="font-inter" style={{ margin: '10px 0 0', fontSize: 11.5, lineHeight: 1.5, color: '#B42318' }}>{error}</p>
-      )}
       {note && (
         <div
           className="font-inter"
@@ -387,11 +383,15 @@ export function PublicDossierBody({
               const matches = dimension.matches ?? []
               const gaps = dimension.gaps ?? []
               return (
-                <div key={dimension.name} style={{ marginTop: 14 }}>
+                <Collapsible
+                  key={dimension.name}
+                  open={isOpen}
+                  onOpenChange={(open) => setOpenDimension(open ? dimension.name : null)}
+                  style={{ marginTop: 14 }}
+                >
+                  <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    onClick={() => setOpenDimension(isOpen ? null : dimension.name)}
-                    aria-expanded={isOpen}
                     style={{
                       display: 'block',
                       width: '100%',
@@ -407,7 +407,9 @@ export function PublicDossierBody({
                         <ChevronDown
                           size={12}
                           color="#8B8F9E"
-                          style={{ transform: isOpen ? 'none' : 'rotate(-90deg)', transition: 'transform 140ms ease' }}
+                          aria-hidden
+                          className="gio-disclosure-chevron"
+                          style={{ transform: isOpen ? 'none' : 'rotate(-90deg)' }}
                         />
                         {dimension.name}
                       </span>
@@ -417,8 +419,8 @@ export function PublicDossierBody({
                     </span>
                     <span style={{ display: 'block', marginTop: 6 }}><Bar value={Number(dimension.score ?? 0)} /></span>
                   </button>
-                  {isOpen && (
-                    <div style={{ marginTop: 8 }}>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2">
                       <p className="font-inter" style={{ fontSize: 11, color: '#8B8F9E', margin: 0 }}>
                         {matches.length} {matches.length === 1 ? 'match' : 'matches'} · {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'}
                       </p>
@@ -444,9 +446,8 @@ export function PublicDossierBody({
                           {gap}
                         </p>
                       ))}
-                    </div>
-                  )}
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
               )
             })}
           </section>

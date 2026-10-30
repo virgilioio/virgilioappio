@@ -69,8 +69,12 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Map to Talent.com question format
-    const questions = (fields || []).map((field: any) => {
+    // Map to Talent.com question format. Upload questions (audio, video,
+    // file) can't be answered on Talent.com, so they aren't sent.
+    const questions = (fields || []).filter((field: any) => {
+      const t = field.field_type || field.application_fields?.field_type
+      return t !== 'audio' && t !== 'video' && t !== 'file'
+    }).map((field: any) => {
       const af = field.application_fields || {}
       const fieldType = field.field_type || af.field_type
 

@@ -4134,6 +4134,24 @@ export type Database = {
           },
         ]
       }
+      job_posting_old_slugs: {
+        Row: {
+          posting_id: string
+          replaced_at: string
+          slug: string
+        }
+        Insert: {
+          posting_id: string
+          replaced_at?: string
+          slug: string
+        }
+        Update: {
+          posting_id?: string
+          replaced_at?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       job_postings: {
         Row: {
           created_at: string
@@ -9329,6 +9347,224 @@ export type Database = {
           },
         ]
       }
+      slack_automations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          destinations: Json
+          event: string
+          filters: Json
+          id: string
+          is_active: boolean
+          job_id: string | null
+          last_error: string | null
+          last_error_at: string | null
+          last_sent_at: string | null
+          message: string
+          name: string | null
+          preset: string | null
+          removed_at: string | null
+          removed_by: string | null
+          sent_now_at: string | null
+          sent_now_by: string | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          destinations: Json
+          event: string
+          filters?: Json
+          id?: string
+          is_active?: boolean
+          job_id?: string | null
+          last_error?: string | null
+          last_error_at?: string | null
+          last_sent_at?: string | null
+          message: string
+          name?: string | null
+          preset?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          sent_now_at?: string | null
+          sent_now_by?: string | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          destinations?: Json
+          event?: string
+          filters?: Json
+          id?: string
+          is_active?: boolean
+          job_id?: string | null
+          last_error?: string | null
+          last_error_at?: string | null
+          last_sent_at?: string | null
+          message?: string
+          name?: string | null
+          preset?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          sent_now_at?: string | null
+          sent_now_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_automations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slack_automations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slack_connections: {
+        Row: {
+          app_id: string | null
+          bot_user_id: string
+          connected_at: string
+          connected_by: string | null
+          id: string
+          removed_at: string | null
+          removed_by: string | null
+          scopes: string[]
+          status: string
+          status_detail: string | null
+          team_domain: string | null
+          team_icon: string | null
+          team_id: string
+          team_name: string
+          tenant_id: string
+          token_enc: string
+        }
+        Insert: {
+          app_id?: string | null
+          bot_user_id: string
+          connected_at?: string
+          connected_by?: string | null
+          id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          scopes?: string[]
+          status?: string
+          status_detail?: string | null
+          team_domain?: string | null
+          team_icon?: string | null
+          team_id: string
+          team_name: string
+          tenant_id: string
+          token_enc: string
+        }
+        Update: {
+          app_id?: string | null
+          bot_user_id?: string
+          connected_at?: string
+          connected_by?: string | null
+          id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          scopes?: string[]
+          status?: string
+          status_detail?: string | null
+          team_domain?: string | null
+          team_icon?: string | null
+          team_id?: string
+          team_name?: string
+          tenant_id?: string
+          token_enc?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_connections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slack_deliveries: {
+        Row: {
+          attempts: number
+          automation_id: string
+          claimed_at: string | null
+          context: Json
+          created_at: string
+          error: string | null
+          event: string
+          event_key: string
+          id: string
+          next_attempt_at: string
+          results: Json | null
+          sent_at: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          attempts?: number
+          automation_id: string
+          claimed_at?: string | null
+          context?: Json
+          created_at?: string
+          error?: string | null
+          event: string
+          event_key: string
+          id?: string
+          next_attempt_at?: string
+          results?: Json | null
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          attempts?: number
+          automation_id?: string
+          claimed_at?: string | null
+          context?: Json
+          created_at?: string
+          error?: string | null
+          event?: string
+          event_key?: string
+          id?: string
+          next_attempt_at?: string
+          results?: Json | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_deliveries_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "slack_automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slack_deliveries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sourcing_credits_usage: {
         Row: {
           billing_cycle_start: string
@@ -11103,6 +11339,8 @@ export type Database = {
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
       can_change_hire: { Args: { _job_id: string }; Returns: boolean }
       can_edit_job: { Args: { _job_id: string }; Returns: boolean }
+      can_manage_job: { Args: { _job_id: string }; Returns: boolean }
+      can_manage_job_stage: { Args: { _stage_id: string }; Returns: boolean }
       can_manage_job_team: {
         Args: {
           _job_id: string
@@ -11115,6 +11353,7 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_job_offers: { Args: { _job_id: string }; Returns: boolean }
       cancel_stage_automation_runs: {
         Args: {
           p_association_id: string
@@ -11706,6 +11945,7 @@ export type Database = {
       is_ats_admin: { Args: { _tenant_id: string }; Returns: boolean }
       is_email_suppressed: { Args: { p_email: string }; Returns: boolean }
       is_in_quiet_hours: { Args: { _user_id: string }; Returns: boolean }
+      is_job_sourcer: { Args: { _job_id: string }; Returns: boolean }
       is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
       is_os_admin: { Args: { _tenant_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
@@ -11749,6 +11989,21 @@ export type Database = {
       job_opening_active_offer: {
         Args: { _opening_id: string }
         Returns: string
+      }
+      job_plan_apply: {
+        Args: { _ids?: string[]; _job: string }
+        Returns: undefined
+      }
+      job_plan_order: {
+        Args: { _ids?: string[]; _job: string }
+        Returns: undefined
+      }
+      job_plan_ranked: {
+        Args: { _ids?: string[]; _job: string }
+        Returns: {
+          id: string
+          rn: number
+        }[]
       }
       job_rejection_sender: { Args: { _job_id: string }; Returns: string }
       job_screening_verdict: {
@@ -11922,6 +12177,10 @@ export type Database = {
           wants_email: boolean
         }[]
       }
+      offer_approval_decide: {
+        Args: { _decision: string; _notes?: string; _step_id: string }
+        Returns: Json
+      }
       offer_approval_finish_notice: {
         Args: { _error?: string; _id: string; _ok: boolean }
         Returns: undefined
@@ -11930,16 +12189,34 @@ export type Database = {
         Args: { _error?: string; _id: string; _ok: boolean }
         Returns: undefined
       }
+      offer_approval_is_approver: {
+        Args: { _request_id: string }
+        Returns: boolean
+      }
       offer_approval_queue_reminders: { Args: never; Returns: number }
       offer_approval_remind: { Args: { _request_id: string }; Returns: Json }
+      offer_approval_request_offer_team: {
+        Args: { _request_id: string }
+        Returns: boolean
+      }
+      offer_approval_slack_turns: {
+        Args: { _request: string }
+        Returns: undefined
+      }
       offer_approval_sync: { Args: { _request_id: string }; Returns: undefined }
       offer_approval_trail_complete: {
         Args: { _request_id: string }
         Returns: undefined
       }
+      offer_approval_turn_started: { Args: { _step: string }; Returns: string }
       offer_base_salary: { Args: { _fv: Json }; Returns: Json }
       offer_can_send: { Args: { _offer_id: string }; Returns: Json }
+      offer_chain_is_approver: { Args: { _chain_id: string }; Returns: boolean }
       offer_form_last_section: { Args: { _form_id: string }; Returns: string }
+      offer_letter_is_approver: {
+        Args: { _offer_id: string }
+        Returns: boolean
+      }
       offer_send_refusal: { Args: { _reason: string }; Returns: string }
       offer_trail_log: {
         Args: {
@@ -12086,6 +12363,10 @@ export type Database = {
         }
       }
       os_country_label: { Args: { _code: string }; Returns: string }
+      os_google_broken: {
+        Args: { _active: boolean; _message: string; _status: string }
+        Returns: boolean
+      }
       os_holidays_between: {
         Args: {
           _countries: string[]
@@ -12149,6 +12430,10 @@ export type Database = {
           _user_id: string
         }
         Returns: Json
+      }
+      os_profile_missing: {
+        Args: { _tenant: string; _user: string }
+        Returns: string[]
       }
       os_reactivate_ats: {
         Args: { _tenant_id: string; _user_id: string }
@@ -12266,6 +12551,7 @@ export type Database = {
           strength: string
         }[]
       }
+      posting_current_slug: { Args: { _slug: string }; Returns: string }
       privacy_hash: {
         Args: { p_kind: string; p_value: string }
         Returns: string
@@ -12730,6 +13016,128 @@ export type Database = {
         }[]
       }
       skill_priorities_valid: { Args: { p: Json }; Returns: boolean }
+      slack_automation_history: {
+        Args: { _automation: string; _limit?: number }
+        Returns: Json
+      }
+      slack_automations_list: {
+        Args: { _job?: string; _tenant: string }
+        Returns: {
+          can_edit: boolean
+          created_by_name: string
+          destinations: Json
+          event: string
+          filters: Json
+          id: string
+          is_active: boolean
+          job_id: string
+          job_title: string
+          last_error: string
+          last_error_at: string
+          last_sent_at: string
+          message: string
+          name: string
+          preset: string
+          updated_at: string
+        }[]
+      }
+      slack_can_change: { Args: { _automation: string }; Returns: boolean }
+      slack_check_destinations: { Args: { _d: Json }; Returns: boolean }
+      slack_check_edit: {
+        Args: { _event: string; _job: string; _tenant: string }
+        Returns: boolean
+      }
+      slack_check_filters: { Args: { _f: Json }; Returns: boolean }
+      slack_connection_broken: {
+        Args: { _detail: string; _tenant: string }
+        Returns: undefined
+      }
+      slack_connection_remove: {
+        Args: { _tenant: string; _user: string }
+        Returns: undefined
+      }
+      slack_connection_save: {
+        Args: { _team: Json; _tenant: string; _token: string; _user: string }
+        Returns: string
+      }
+      slack_connection_token: { Args: { _tenant: string }; Returns: Json }
+      slack_deliveries_claim: { Args: { _limit?: number }; Returns: Json }
+      slack_delivery_finish: {
+        Args: {
+          _error?: string
+          _id: string
+          _ok: boolean
+          _results?: Json
+          _retry?: boolean
+        }
+        Returns: undefined
+      }
+      slack_delivery_trigger: { Args: { _key: string }; Returns: string }
+      slack_due_reminders: { Args: never; Returns: number }
+      slack_emit: {
+        Args: { _ctx: Json; _event: string; _key: string; _tenant: string }
+        Returns: undefined
+      }
+      slack_event_known: { Args: { _event: string }; Returns: boolean }
+      slack_filter_ok: {
+        Args: { _filters: Json; _key: string; _value: string }
+        Returns: boolean
+      }
+      slack_is_admin: { Args: { _tenant: string }; Returns: boolean }
+      slack_is_member: { Args: { _tenant: string }; Returns: boolean }
+      slack_kick: { Args: never; Returns: undefined }
+      slack_message_context: { Args: { _ctx: Json }; Returns: Json }
+      slack_person: { Args: { _user: string }; Returns: Json }
+      slack_profile_reminders: { Args: never; Returns: number }
+      slack_queue_due: { Args: { _events: string[] }; Returns: number }
+      slack_reminders_waiting: {
+        Args: { _automation: string }
+        Returns: {
+          w_context: Json
+          w_match: Json
+          w_started: string
+          w_subject: string
+        }[]
+      }
+      slack_retry_delivery: { Args: { _delivery: string }; Returns: undefined }
+      slack_save_automation: {
+        Args: {
+          _destinations: Json
+          _event: string
+          _filters: Json
+          _id: string
+          _is_active?: boolean
+          _job: string
+          _message: string
+          _name: string
+          _preset?: string
+          _tenant: string
+        }
+        Returns: string
+      }
+      slack_scorecard_owed: {
+        Args: { _assoc: string; _stage: string; _user: string }
+        Returns: boolean
+      }
+      slack_scorecard_requested: {
+        Args: {
+          _association: string
+          _by: string
+          _stage: string
+          _users: string[]
+        }
+        Returns: number
+      }
+      slack_send_now: {
+        Args: { _automation: string; _dry?: boolean }
+        Returns: Json
+      }
+      slack_set_automation: {
+        Args: { _active?: boolean; _id: string; _removed?: boolean }
+        Returns: undefined
+      }
+      slack_status: { Args: { _tenant: string }; Returns: Json }
+      slack_token_key: { Args: never; Returns: string }
       soft_delete_job_stage: {
         Args: { stage_id_param: string }
         Returns: undefined
@@ -12962,6 +13370,8 @@ export type Database = {
         | "work_location"
         | "linkedin"
         | "score"
+        | "audio"
+        | "video"
       interview_answer_type:
         | "text"
         | "yes_no"
@@ -13386,6 +13796,8 @@ export const Constants = {
         "work_location",
         "linkedin",
         "score",
+        "audio",
+        "video",
       ],
       interview_answer_type: [
         "text",

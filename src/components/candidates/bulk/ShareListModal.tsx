@@ -72,6 +72,14 @@ function todayLabel() {
   return new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+function TitleWithDot({ children }: { children: ReactNode }) {
+  return (
+    <h2 className="text-h3 font-poppins font-semibold tracking-[-0.04em] text-foreground">
+      {children}<span className="text-virgilio-purple">.</span>
+    </h2>
+  )
+}
+
 export function ShareListModal({ candidateIds, candidateNames, candidates: candidateInfos, trigger }: ShareListModalProps) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<Step>(1)
@@ -232,12 +240,6 @@ export function ShareListModal({ candidateIds, candidateNames, candidates: candi
     setStep(1); setReviewers([]); setMessage('')
     setCreatedListId(null); setCreatedSlug(null)
   }
-
-  const TitleWithDot = ({ children }: { children: ReactNode }) => (
-    <h2 className="text-h3 font-poppins font-semibold tracking-[-0.04em] text-foreground">
-      {children}<span className="text-virgilio-purple">.</span>
-    </h2>
-  )
 
   return (
     <>

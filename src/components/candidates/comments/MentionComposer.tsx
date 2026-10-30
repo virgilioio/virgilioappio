@@ -37,7 +37,7 @@ const PANEL_W = 264
 const PANEL_MAX_H = 244
 
 /** Where the caret at `index` sits on screen (a hidden copy of the field, measured). */
-function caretRect(el: HTMLTextAreaElement, index: number) {
+export function caretRect(el: HTMLTextAreaElement, index: number) {
   const cs = getComputedStyle(el)
   const copy = document.createElement('div')
   const keep = [

@@ -1,13 +1,15 @@
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { buildJobPostingJsonLd } from '@/lib/jobPostingJsonLd'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { PlaceFieldsByName } from '@/components/ui/place-picker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { EmptyState } from '@/components/ui/empty-state'
-import { SoftFlag } from '@/components/ui/EmptyIllustrations'
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -41,6 +43,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
 import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
 import { EnhancedResumeDropzone, type ParsedResumeData } from '@/components/candidates/EnhancedResumeDropzone'
 import { ApplicationSubmittedScreen } from '@/components/careers/public/ApplicationSubmittedScreen'
 import { buildReferenceId, firstNameOf } from '@/utils/applicationReference'
@@ -50,11 +53,15 @@ import { JobVideoPopup } from '@/components/careers/public/job/JobVideoPopup'
 import { playableVideo, readBranding } from '@/lib/postingMedia'
 import { useCoreFields } from '@/hooks/useCoreFields'
 import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
-import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
+import { FieldMessage, YesNoField } from '@/components/careers/public/ApplyFieldParts'
+import { shakeFirstInvalid } from '@/lib/motion'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { sanitizeToE164 } from '@/utils/phoneUtils'
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
+import { MediaQuestionField } from '@/components/public/MediaQuestionField'
+import { StarScoreInput, type ScoreFieldConfig } from '@/components/forms/StarScoreInput'
+import { isMediaKind, type StagedMedia } from '@/lib/applicationMedia'
 
 function getViolationToast(violation: { type?: string; message?: string; cooldown_until?: string }) {
   const cooldownDate = violation.cooldown_until ? new Date(violation.cooldown_until) : null
@@ -90,7 +97,7 @@ function getViolationToast(violation: { type?: string; message?: string; cooldow
   }
 }
 
-type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location' | 'phone' | 'recruiter' | 'employment_type' | 'work_location' | 'linkedin'
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location' | 'phone' | 'recruiter' | 'employment_type' | 'work_location' | 'linkedin' | 'score' | 'audio' | 'video'
 
 interface Posting {
   id: string
@@ -126,11 +133,16 @@ interface SelectOption {
 export default function PublicJobPosting() {
   const params = useParams<{ slug?: string; postingSlug?: string }>()
   const slug = params.slug || params.postingSlug
-  // useNavigate previously used by old header; no longer needed
+  const navigate = useNavigate()
   const [posting, setPosting] = useState<Posting | null>(null)
   const [customFields, setCustomFields] = useState<PostingField[]>([])
   const [options, setOptions] = useState<Record<string, SelectOption[]>>({})
   const [loading, setLoading] = useState(true)
+  // A failed load is never "not found" (§16): it offers Retry, as does a load
+  // still going after 15s.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
+  const timedOut = useLoadTimeout(loading, retryKey)
   useReportSplashReady(!loading)
   const [scrolled, setScrolled] = useState(false)
   const [tab, setTab] = useState<'overview' | 'application'>('overview')
@@ -152,6 +164,15 @@ export default function PublicJobPosting() {
     disability_status: string | null
   }>({ gender: null, race_ethnicity: null, veteran_status: null, disability_status: null })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // §7: each field's problem sits in its own reserved line (keys: core field
+  // names, 'resume', or 'cf:<custom field id>'); a send that fails says why
+  // above the button.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const formRef = useRef<HTMLDivElement>(null)
+  // Audio, Video and File answers still uploading (Apply waits for them).
+  const [mediaBusy, setMediaBusy] = useState<Record<string, boolean>>({})
+  const uploadsRunning = Object.values(mediaBusy).some(Boolean)
   const [submittedMeta, setSubmittedMeta] = useState<{
     firstName: string
     email: string
@@ -197,8 +218,10 @@ export default function PublicJobPosting() {
   useEffect(() => {
     const load = async () => {
       if (!slug) return
+      setLoadFailed(false)
+      setLoading(true)
       // Only active postings are selectable publicly due to RLS
-      const { data: p } = await supabase
+      const { data: p, error: postingError } = await supabase
         .from('job_postings')
         .select(`
           id,
@@ -218,7 +241,22 @@ export default function PublicJobPosting() {
         .eq('is_active', true)
         .eq('jobs.status', 'open')
         .maybeSingle()
+      if (postingError) {
+        setLoadFailed(true)
+        setLoading(false)
+        return
+      }
       if (!p) {
+        // An old address of a posting whose URL changed goes to the current one,
+        // in the same careers-page form and with the same tracking tags.
+        const { data: current } = await supabase.rpc('posting_current_slug', { _slug: slug })
+        if (typeof current === 'string' && current && current !== slug) {
+          const { pathname, search, hash } = window.location
+          const parts = pathname.split('/')
+          parts[parts.length - 1] = encodeURIComponent(current)
+          navigate(`${parts.join('/')}${search}${hash}`, { replace: true })
+          return
+        }
         setPosting(null)
         setLoading(false)
         return
@@ -290,7 +328,7 @@ export default function PublicJobPosting() {
             // 'file' (resume) and core 'full_name'/'email'/'phone'/'linkedin' are already rendered
             // by the Basic Information section, so skip them here to avoid duplicates.
             .filter((it) => !['full_name', 'email', 'phone', 'linkedin', 'resume'].includes(it.id))
-            .filter((it) => it.type !== 'file')
+            .filter((it) => it.type !== 'file' && it.type !== 'audio' && it.type !== 'video')
             .map((it) => ({
               id: it.id,
               field_label: it.label || it.id,
@@ -327,7 +365,7 @@ export default function PublicJobPosting() {
       setLoading(false)
     }
     load()
-  }, [slug])
+  }, [slug, navigate, retryKey])
 
   const details = useMemo(() => {
     const d: any = (posting?.details as any) || {}
@@ -427,79 +465,6 @@ export default function PublicJobPosting() {
     })
   }
 
-  function JobDetailsCard({ details, className }: { className?: string; details: { location: string | null; additionalLocations: string[]; employmentType: string | null; locationType: string | null; salaryCurrency: string | null; salaryAmount: number | null; salaryMin: number | null; salaryMax: number | null; salaryPeriod: string | null; showSalary: boolean; hasCommissions: boolean; commissionsCurrency: string | null; commissionsAmount: number | null; } }) {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Job Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-start gap-3">
-            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-            <div>
-              <div className="text-sm font-medium">Location</div>
-              <div className="text-sm text-muted-foreground">
-                {details.location || 'Not specified'}
-                {details.additionalLocations.map((location) => (
-                  <span key={location} className="block">{location}</span>
-                ))}
-                {details.locationType && (
-                  <span> • {formatLabel(details.locationType)}</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
-            <div>
-              <div className="text-sm font-medium">Employment Type</div>
-              <div className="text-sm text-muted-foreground">
-                {formatLabel(details.employmentType) || 'Not specified'}
-              </div>
-            </div>
-          </div>
-
-          {(details.showSalary && (details.salaryAmount || details.salaryMin || details.salaryMax)) && (
-            <div className="flex items-start gap-3">
-              <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
-              <div>
-                <div className="text-sm font-medium">Compensation</div>
-                <div className="text-sm text-muted-foreground">
-                  {details.salaryCurrency || ''}{' '}
-                  {details.salaryMin && details.salaryMax && details.salaryMin !== details.salaryMax
-                    ? `${Number(details.salaryMin).toLocaleString()} – ${Number(details.salaryMax).toLocaleString()}`
-                    : Number(details.salaryAmount ?? details.salaryMax ?? details.salaryMin).toLocaleString()}
-                  {details.salaryPeriod ? ` ${formatPeriod(details.salaryPeriod)}` : ''}
-                </div>
-                {details.hasCommissions && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {details.commissionsAmount
-                      ? `Avg commissions: ${details.commissionsCurrency || ''} ${Number(details.commissionsAmount).toLocaleString()}`.trim()
-                      : 'Variable compensation included'}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          {/* Render commissions as its own row when salary is hidden or unset, so the toggle isn't silently dropped. */}
-          {details.hasCommissions && !(details.showSalary && (details.salaryAmount || details.salaryMin || details.salaryMax)) && (
-            <div className="flex items-start gap-3">
-              <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
-              <div>
-                <div className="text-sm font-medium">Variable compensation</div>
-                <div className="text-sm text-muted-foreground">
-                  {details.commissionsAmount
-                    ? `Avg commissions: ${details.commissionsCurrency || ''} ${Number(details.commissionsAmount).toLocaleString()}`.trim()
-                    : 'Included'}
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    )
-      }
   
   const handleApplyClick = () => {
     setTab('application')
@@ -533,79 +498,63 @@ export default function PublicJobPosting() {
     return null
   }
 
+  // Every problem with the form, by field. Required answers, the email and
+  // LinkedIn formats, and the resume (present and an accepted file).
+  const collectErrors = useCallback((): Record<string, string> => {
+    const errors: Record<string, string> = {}
+    const resume = uploadedFiles[0]
+    if (!resume) errors.resume = 'Add your resume or CV'
+    else {
+      const problem = validateFile(resume)
+      if (problem) errors.resume = problem
+    }
+    if (!coreFieldValues.candidate_name.trim()) errors.candidate_name = 'Add your full name'
+    const email = coreFieldValues.email.trim()
+    if (!email) errors.email = 'Add your email'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "That doesn't look like an email address"
+    // Phone and LinkedIn are required on applications (Allan, 2026-10-13).
+    if (!coreFieldValues.phone.trim()) errors.phone = 'Add your phone number'
+    const linkedin = coreFieldValues.linkedin_url.trim()
+    if (!linkedin) errors.linkedin_url = 'Add your LinkedIn profile'
+    else if (!/linkedin\.com\//i.test(linkedin)) errors.linkedin_url = 'Use the link to your linkedin.com profile'
+    customFields.forEach((field) => {
+      if (!field.is_required || field.field_type === 'recruiter') return
+      const value = customFieldResponses[field.id]
+      // Multiple-choice answers are a JSON array; "[]" means nothing picked.
+      const empty = value == null || (typeof value === 'string' && (!value.trim() || value.trim() === '[]'))
+      if (empty) errors[`cf:${field.id}`] = field.field_type === 'checkbox' ? 'Choose Yes or No' : 'Answer this question'
+    })
+    return errors
+  }, [uploadedFiles, coreFieldValues, customFields, customFieldResponses])
+
+  // A message clears as soon as its field is right (§7); new ones wait for Apply.
+  useEffect(() => {
+    setFieldErrors((prev) => {
+      const keys = Object.keys(prev)
+      if (!keys.length) return prev
+      const now = collectErrors()
+      const next: Record<string, string> = {}
+      for (const k of keys) if (now[k]) next[k] = now[k]
+      const same = Object.keys(next).length === keys.length && keys.every((k) => next[k] === prev[k])
+      return same ? prev : next
+    })
+  }, [collectErrors])
+
+  const fieldError = (key: string) => fieldErrors[key] || null
+
   const handleSubmitApplication = async () => {
     if (!posting) return
-    
-    // Validate core fields
-    const missingFields: string[] = []
-    if (!coreFieldValues.candidate_name.trim()) missingFields.push('Full Name')
-    if (!coreFieldValues.email.trim()) {
-      missingFields.push('Email')
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(coreFieldValues.email.trim())) {
-        missingFields.push('Valid Email Address')
-      }
-    }
-    
-    // Phone and LinkedIn are required on applications (Allan, 2026-10-13).
-    if (!coreFieldValues.phone.trim()) missingFields.push('Phone')
-    if (!coreFieldValues.linkedin_url.trim()) {
-      missingFields.push('LinkedIn Profile')
-    } else if (!/linkedin\.com\//i.test(coreFieldValues.linkedin_url)) {
-      missingFields.push('LinkedIn Profile (a linkedin.com link)')
-    }
+    setSubmitError(null)
+    // The line under the button already says the upload is still going.
+    if (uploadsRunning) return
 
-    // Validate resume upload (required)
-    if (uploadedFiles.length === 0) {
-      missingFields.push('Resume/CV')
-    }
-    
-    // Validate custom required fields
-    const missingCustomFields: string[] = []
-    customFields.forEach(field => {
-      if (field.is_required) {
-        const fieldValue = customFieldResponses[field.id]
-        // Multiple-choice answers are a JSON array; "[]" means nothing picked.
-        if (!fieldValue || (typeof fieldValue === 'string' && (!fieldValue.trim() || fieldValue.trim() === '[]'))) {
-          missingCustomFields.push(field.field_label)
-        }
-      }
-    })
-    
-    if (missingCustomFields.length > 0) {
-      missingFields.push(...missingCustomFields)
-    }
-    
-    // Validate uploaded files
-    const fileValidationErrors: string[] = []
-    for (const file of uploadedFiles) {
-      if (file) {
-        const error = validateFile(file)
-        if (error) {
-          fileValidationErrors.push(`Resume: ${error}`)
-        }
-      }
-    }
-    
-    if (missingFields.length > 0) {
-      toast({
-        title: 'Missing required fields',
-        description: `Please fill in the following required fields: ${missingFields.join(', ')}`,
-        variant: 'destructive'
-      })
+    const errors = collectErrors()
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      shakeFirstInvalid(formRef.current)
       return
     }
 
-    if (fileValidationErrors.length > 0) {
-      toast({
-        title: 'File validation errors',
-        description: fileValidationErrors.join('; '),
-        variant: 'destructive'
-      })
-      return
-    }
-    
     setIsSubmitting(true)
     try {
       console.log('🚀 Starting application submission')
@@ -689,17 +638,26 @@ export default function PublicJobPosting() {
       const response = (data as any) || (error ? (() => { try { return JSON.parse(error.message); } catch { return null; } })() : null)
       if (!response?.success && response?.violations?.length > 0) {
         const violation = response.violations[0]
-        const { title: violationTitle, description: violationDesc } = getViolationToast(violation)
-        
-        toast({
-          title: violationTitle,
-          description: violationDesc,
-          variant: 'destructive'
-        })
+        setSubmitError(getViolationToast(violation).description)
         return
       }
 
-      if (error) throw new Error(error.message || 'Submission failed')
+      if (error) {
+        // The server says what's wrong (a missing upload, a field), so show that.
+        let serverMessage = ''
+        try {
+          const ctx = (error as { context?: Response }).context
+          const parsed = ctx ? await ctx.json() : null
+          serverMessage = typeof parsed?.error === 'string' ? parsed.error : ''
+        } catch {
+          /* fall back to the general message */
+        }
+        if (serverMessage) {
+          setSubmitError(serverMessage)
+          return
+        }
+        throw new Error(error.message || 'Submission failed')
+      }
       if (response?.fileUploadResults) {
         const failedUploads = response.fileUploadResults.filter((result: any) => !result.success)
         if (failedUploads.length > 0) {
@@ -742,29 +700,33 @@ export default function PublicJobPosting() {
       })
     } catch (err) {
       console.error('Submit application error:', err)
-      toast({
-        title: 'Unable to submit application',
-        description: 'Please check your connection and try again. If the problem persists, contact the employer directly.',
-        variant: 'destructive'
-      })
+      setSubmitError("We couldn't send your application. Check your connection and try again.")
     } finally {
       setIsSubmitting(false)
     }
   }
   
-      if (loading) {
-    return <div className="max-w-3xl mx-auto p-6">Loading...</div>
+  if (loadFailed || timedOut) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-virgilio-cream px-4">
+        <div className="max-w-md w-full">
+          <LoadError what="this job" timedOut={timedOut} onRetry={() => setRetryKey((k) => k + 1)} />
+        </div>
+      </div>
+    )
   }
+
+  if (loading) return <PostingSkeleton />
 
   if (!posting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-4">
+      <div className="min-h-screen flex items-center justify-center bg-virgilio-cream px-4">
         <div className="max-w-md w-full">
-          <EmptyState
-            size="card"
-            illustration={<SoftFlag />}
-            title="Posting not found"
-            body="This job posting is no longer available or the link is incorrect."
+          <AnimatedEmpty
+            scene="search"
+            title="This job isn't open anymore"
+            body="It may have been filled, or the link is incomplete."
+            onceKey="careers-posting-missing"
           />
         </div>
       </div>
@@ -880,7 +842,7 @@ export default function PublicJobPosting() {
 
   if (submittedMeta) {
     return (
-      <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
+      <div className="min-h-screen bg-virgilio-cream flex flex-col">
         <CareersTopBar
           logoUrl={companyLogoUrl}
           companyName={organizationName || 'Company'}
@@ -937,7 +899,7 @@ export default function PublicJobPosting() {
     : null
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
+    <div className="min-h-screen bg-virgilio-cream flex flex-col">
       <Helmet>
         <title>{`${posting.title} — ${organizationName || 'Careers'}`}</title>
         {metaDescription ? <meta name="description" content={metaDescription} /> : null}
@@ -1065,7 +1027,7 @@ export default function PublicJobPosting() {
 
               <div className="order-2 lg:order-1 lg:col-span-7">
                 <section aria-labelledby="application-form">
-                  <div className="space-y-12">
+                  <div ref={formRef} className="space-y-12">
                     {/* Application limits — demoted to a small helper line */}
                     <p id="application-form" className="text-xs text-text-secondary">
                       Application limits: max 3 applications per 60 days · cannot re-apply to the same role within 90 days · 30-day cooldown after rejection.
@@ -1080,7 +1042,11 @@ export default function PublicJobPosting() {
                           <label className="text-[13px] font-semibold text-text-primary">
                             Resume/CV<span className="text-destructive ml-1">*</span>
                           </label>
-                          <div className="mt-2">
+                          <div
+                            className="mt-2"
+                            aria-invalid={fieldError('resume') ? true : undefined}
+                            tabIndex={fieldError('resume') ? -1 : undefined}
+                          >
                             <EnhancedResumeDropzone
                               variant="minimal"
                               onParsed={handleParsedData}
@@ -1096,6 +1062,7 @@ export default function PublicJobPosting() {
                               <p className="mt-2 text-xs text-text-secondary">Selected: {uploadedFiles[0].name}</p>
                             )}
                           </div>
+                          <FieldMessage error={fieldError('resume')} />
                         </div>
 
                         {/* Name Field */}
@@ -1107,8 +1074,10 @@ export default function PublicJobPosting() {
                             placeholder="Your full name"
                             value={coreFieldValues.candidate_name}
                             onChange={(e) => setCoreFieldValues(prev => ({ ...prev, candidate_name: e.target.value }))}
+                            aria-invalid={fieldError('candidate_name') ? true : undefined}
                             className="mt-2 h-11 text-[15px]"
                           />
+                          <FieldMessage error={fieldError('candidate_name')} />
                         </div>
 
                         {/* Email Field */}
@@ -1121,11 +1090,16 @@ export default function PublicJobPosting() {
                             placeholder="your.email@example.com"
                             value={coreFieldValues.email}
                             onChange={(e) => setCoreFieldValues(prev => ({ ...prev, email: e.target.value }))}
-                            className={`mt-2 h-11 text-[15px] ${coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                            onBlur={() => {
+                              const v = coreFieldValues.email.trim()
+                              if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+                                setFieldErrors((prev) => ({ ...prev, email: "That doesn't look like an email address" }))
+                              }
+                            }}
+                            aria-invalid={fieldError('email') ? true : undefined}
+                            className="mt-2 h-11 text-[15px]"
                           />
-                          {coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) && (
-                            <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
-                          )}
+                          <FieldMessage error={fieldError('email')} />
                         </div>
 
                         {/* Phone Field */}
@@ -1138,8 +1112,10 @@ export default function PublicJobPosting() {
                             placeholder="Your phone number"
                             value={coreFieldValues.phone}
                             onChange={(e) => setCoreFieldValues(prev => ({ ...prev, phone: e.target.value }))}
+                            aria-invalid={fieldError('phone') ? true : undefined}
                             className="mt-2 h-11 text-[15px]"
                           />
+                          <FieldMessage error={fieldError('phone')} />
                         </div>
 
                         {/* LinkedIn Field */}
@@ -1152,8 +1128,10 @@ export default function PublicJobPosting() {
                             placeholder="https://linkedin.com/in/yourprofile"
                             value={coreFieldValues.linkedin_url}
                             onChange={(e) => setCoreFieldValues(prev => ({ ...prev, linkedin_url: e.target.value }))}
+                            aria-invalid={fieldError('linkedin_url') ? true : undefined}
                             className="mt-2 h-11 text-[15px]"
                           />
+                          <FieldMessage error={fieldError('linkedin_url')} />
                         </div>
                       </div>
                     </div>
@@ -1165,11 +1143,15 @@ export default function PublicJobPosting() {
                         <div className="space-y-6">
                           {customFields.filter(field => field.field_type !== 'recruiter').map((field) => (
                             <div key={field.id}>
-                              <Label className="text-[13px] font-semibold text-text-primary">
+                              <Label id={`q-${field.id}`} className="text-[13px] font-semibold text-text-primary">
                                 {field.field_label}
                                 {field.is_required && <span className="text-destructive ml-1">*</span>}
                               </Label>
-                              <div className="mt-2">
+                              <div
+                                className={cn('mt-2', fieldError(`cf:${field.id}`) && 'gio-apply-invalid')}
+                                aria-invalid={fieldError(`cf:${field.id}`) ? true : undefined}
+                                tabIndex={fieldError(`cf:${field.id}`) ? -1 : undefined}
+                              >
                                 {field.field_type === 'text' && (
                                     <Input
                                       placeholder={field.placeholder_text || ''}
@@ -1225,13 +1207,12 @@ export default function PublicJobPosting() {
                                     </Select>
                                   )}
                                   {field.field_type === 'checkbox' && (
-                                    <div className="flex items-center gap-2">
-                                      <Checkbox
-                                        checked={customFieldResponses[field.id] === 'true'}
-                                        onCheckedChange={(checked) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: checked ? 'true' : 'false' }))}
-                                      />
-                                      <span className="text-sm text-muted-foreground">I acknowledge</span>
-                                    </div>
+                                    <YesNoField
+                                      value={customFieldResponses[field.id]}
+                                      onChange={(v) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: v }))}
+                                      invalid={!!fieldError(`cf:${field.id}`)}
+                                      labelledBy={`q-${field.id}`}
+                                    />
                                   )}
                                   {field.field_type === 'checkbox_group' && (
                                     <div className="space-y-2">
@@ -1262,8 +1243,29 @@ export default function PublicJobPosting() {
                                       placeholder="Pick a date"
                                     />
                                   )}
-                                  {field.field_type === 'file' && (
-                                    <Input type="file" />
+                                  {isMediaKind(field.field_type) && posting && (
+                                    <MediaQuestionField
+                                      postingId={posting.id}
+                                      fieldId={field.id}
+                                      kind={field.field_type}
+                                      label={field.field_label}
+                                      value={(customFieldResponses[field.id] as StagedMedia | undefined) ?? null}
+                                      onChange={(v) => setCustomFieldResponses(prev => {
+                                        const next = { ...prev }
+                                        if (v) next[field.id] = v
+                                        else delete next[field.id]
+                                        return next
+                                      })}
+                                      onBusyChange={(busy) => setMediaBusy(prev => ({ ...prev, [field.id]: busy }))}
+                                    />
+                                  )}
+                                  {field.field_type === 'score' && (
+                                    <StarScoreInput
+                                      value={customFieldResponses[field.id] ? Number(customFieldResponses[field.id]) : null}
+                                      onChange={(v) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: v == null ? '' : String(v) }))}
+                                      config={field.field_config as ScoreFieldConfig | null}
+                                      ariaLabel={field.field_label}
+                                    />
                                   )}
                                   {field.field_type === 'salary' && (() => {
                                     const config = field.field_config || {}
@@ -1401,6 +1403,7 @@ export default function PublicJobPosting() {
                                     </Select>
                                   )}
                                 </div>
+                                <FieldMessage error={fieldError(`cf:${field.id}`)} />
                               </div>
                             ))}
                           </div>
@@ -1465,22 +1468,25 @@ export default function PublicJobPosting() {
                     </p>
 
                     <div className="pt-4">
-                      <Button 
-                        type="button" 
-                        onClick={handleSubmitApplication} 
-                        className="w-full sm:w-auto h-11 px-8 text-base font-semibold" 
-                        aria-label="Submit application" 
-                        disabled={isSubmitting}
+                      <Button
+                        type="button"
+                        onClick={handleSubmitApplication}
+                        className="w-full sm:w-auto h-11 px-8 text-base font-semibold"
+                        loading={isSubmitting}
+                        disabled={uploadsRunning}
                       >
-                        {isSubmitting ? (
-                          <span className="inline-flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Submitting…
-                          </span>
-                        ) : (
-                          'Submit Application'
-                        )}
+                        Submit Application
                       </Button>
+                      <p
+                        className={cn(
+                          'mt-2 min-h-[18px] font-inter text-[12px]',
+                          submitError ? 'font-medium text-virgilio-error' : 'text-text-tertiary',
+                        )}
+                        role={submitError ? 'alert' : undefined}
+                        aria-live="polite"
+                      >
+                        {submitError || (uploadsRunning ? 'Waiting for your upload to finish…' : '')}
+                      </p>
                     </div>
                   </div>
                 </section>
@@ -1508,6 +1514,35 @@ export default function PublicJobPosting() {
       />
 
 
+    </div>
+  )
+}
+
+/** The job post's footprint while it loads (§6): header, then the two columns. */
+function PostingSkeleton() {
+  return (
+    <div className="min-h-screen bg-virgilio-cream" aria-busy="true" aria-label="Loading the job">
+      <div className="border-b border-black/5">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4">
+          <Skeleton className="h-6 w-32" />
+        </div>
+      </div>
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-10 pb-8 space-y-4">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-10 w-3/4 max-w-[640px]" />
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-7 w-28 rounded-full" />)}
+        </div>
+      </div>
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-7 space-y-3">
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-4" style={{ width: `${92 - (i % 3) * 14}%` }} />)}
+        </div>
+        <div className="lg:col-span-5 space-y-4">
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-56 rounded-2xl" />
+        </div>
+      </div>
     </div>
   )
 }

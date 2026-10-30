@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 /**
  * The invitation to fill in My profile (Allan, 2026-10-26): this dialog, once
  * per person (per browser), then the band under the top bar until the profile
- * is complete in HeaderContextBands. Who sees them is
+ * is complete in TopStrip. Who sees them is
  * `useProfileInvite` (`profileChecks.ts`).
  */
 export function ProfileInviteDialog() {
@@ -69,7 +69,7 @@ export function ProfileInviteDialog() {
   )
 }
 
-/** "2 of 6 done" over a bar that fills with scaleX (§8). */
+/** "2 of 7 done" over a bar that fills with scaleX (§8). */
 export function Progress({ done, total, className }: { done: number; total: number; className?: string }) {
   return (
     <div className={className}>

@@ -109,9 +109,8 @@ export function MonthCalendar({
               onClick={() => isSelectable && onDateSelect(day)}
               disabled={!isSelectable}
               className={`
-                relative aspect-square w-full rounded-lg text-[13px] font-poppins font-semibold
-                transition-all duration-150
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple
+                gio-pressable relative aspect-square w-full rounded-lg text-[13px] font-poppins font-semibold tabular-nums
+                transition-colors duration-hover
                 ${!isCurrentMonth ? 'text-transparent cursor-default' : ''}
                 ${isCurrentMonth && isPast ? 'text-virgilio-muted/30 cursor-not-allowed' : ''}
                 ${isCurrentMonth && !isPast && !isSelectable && !isAvailable ? 'text-virgilio-muted/40 cursor-not-allowed' : ''}

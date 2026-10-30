@@ -27,6 +27,7 @@ import {
   ListChecks,
   Hash,
   Lock,
+  MessageSquare,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { missingForPublish, isPublishGateError, type SalesTeam } from '@/lib/jobTeam'
@@ -43,8 +44,9 @@ import { archiveJob, closeJob } from './jobStatusActions'
 import { confirmRemoveMember } from './confirmRemoveMember'
 import { useToast } from '@/hooks/use-toast'
 import { SectionCard } from './wizard/_parts'
+import { JobSlackSection } from './settings/JobSlackSection'
 import { HiringPlanTab } from './HiringPlanTab'
-import { usePermissions } from '@/hooks/usePermissions'
+import { useJobManage } from '@/hooks/useJobManage'
 import { OfferApprovalChainConfig } from './OfferApprovalChainConfig'
 import { ClientViewSection } from './ClientViewSection'
 import { Eye } from 'lucide-react'
@@ -89,7 +91,13 @@ type SectionId =
   | 'offer-approval'
   | 'client-view'
   | 'notifications'
+  | 'slack'
   | 'danger'
+
+/** Where a section starts inside the scroller, whatever its offset parent. */
+function sectionTop(root: HTMLElement, el: HTMLElement): number {
+  return el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop
+}
 
 const NAV_CONFIG: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'openings', label: 'Openings', icon: Hash },
@@ -97,6 +105,7 @@ const NAV_CONFIG: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'hiring-team', label: 'Hiring team', icon: Users },
   { id: 'offer-approval', label: 'Offer approval', icon: ListChecks },
   { id: 'client-view', label: 'Client view', icon: Eye },
+  { id: 'slack', label: 'Slack', icon: MessageSquare },
 ]
 
 const NAV_QUICK = [
@@ -114,8 +123,10 @@ function getInitials(first?: string | null, last?: string | null, email?: string
 }
 
 export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }: JobSetupLayoutProps) {
-  const { isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
-  const isReadOnly = !(isAdmin || isWorkspaceOwner || isPlatformAdmin)
+  // Admins and the job's Recruiter run Setup; the offer approval chain, the
+  // Recruiter and Sourcer seats and closing the job stay with admins.
+  const { isJobAdmin, canManageJob, canManageSeat } = useJobManage(jobId)
+  const isReadOnly = !canManageJob
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -179,26 +190,52 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     }
   }
 
-  // Scroll spy
+  // Scroll spy. Section tops are measured inside the scroller (offsetTop is
+  // relative to the page, which put every link a header's height off). A
+  // clicked link stays lit while the scroll it started settles, so the last
+  // sections, which can't reach the top, still light up.
   const scrollRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState<SectionId>('openings')
+  const pinnedRef = useRef<SectionId | null>(null)
   useLayoutEffect(() => {
     const root = scrollRef.current
     if (!root) return
+    let settle: ReturnType<typeof setTimeout> | undefined
     const onScroll = () => {
-      const headers = Array.from(
-        root.querySelectorAll<HTMLElement>('[data-section]')
-      )
+      if (pinnedRef.current) {
+        clearTimeout(settle)
+        settle = setTimeout(() => { pinnedRef.current = null }, 150)
+        return
+      }
+      // Only the sections the menu lists: Screening, AI screen and
+      // Notifications read as part of the one above them.
+      const headers = Array.from(root.querySelectorAll<HTMLElement>('[data-section]'))
+        .filter((h) => NAV_CONFIG.some((n) => n.id === h.dataset.section))
       const top = root.scrollTop + 100
       let current: SectionId = 'openings'
       for (const h of headers) {
-        if (h.offsetTop <= top) current = (h.dataset.section as SectionId) || current
+        if (sectionTop(root, h) <= top) current = (h.dataset.section as SectionId) || current
+      }
+      // At the very bottom the last section is the one being read.
+      if (headers.length && root.scrollTop + root.clientHeight >= root.scrollHeight - 2) {
+        current = (headers[headers.length - 1].dataset.section as SectionId) || current
       }
       setActive(current)
     }
+    // Wheel, touch or keys mean the reader took over from a clicked link.
+    const release = () => { pinnedRef.current = null }
     root.addEventListener('scroll', onScroll, { passive: true })
+    root.addEventListener('wheel', release, { passive: true })
+    root.addEventListener('touchstart', release, { passive: true })
+    root.addEventListener('keydown', release)
     onScroll()
-    return () => root.removeEventListener('scroll', onScroll)
+    return () => {
+      clearTimeout(settle)
+      root.removeEventListener('scroll', onScroll)
+      root.removeEventListener('wheel', release)
+      root.removeEventListener('touchstart', release)
+      root.removeEventListener('keydown', release)
+    }
   }, [])
 
   // Deep link support: /jobs/:id/setup#hiring-team lands on the section.
@@ -206,8 +243,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   useEffect(() => {
     const hash = (typeof window !== 'undefined' ? window.location.hash : '').replace('#', '')
     if (!hash) return
-    const valid: SectionId[] = ['openings', 'hiring-plan', 'hiring-team', 'offer-approval']
-    if (!valid.includes(hash as SectionId)) return
+    if (!NAV_CONFIG.some((n) => n.id === hash)) return
     const t = setTimeout(() => {
       scrollTo(hash as SectionId)
       setHighlightSection(hash as SectionId)
@@ -234,7 +270,13 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     const root = scrollRef.current
     if (!root) return
     const el = root.querySelector<HTMLElement>(`[data-section="${id}"]`)
-    if (el) root.scrollTo({ top: Math.max(0, el.offsetTop - 16), behavior: 'smooth' })
+    if (!el) return
+    const target = Math.min(Math.max(0, sectionTop(root, el) - 16), root.scrollHeight - root.clientHeight)
+    setActive(id)
+    // Already there: nothing will scroll, so nothing would release the pin.
+    pinnedRef.current = Math.abs(target - root.scrollTop) > 1 ? id : null
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    root.scrollTo({ top: target, behavior: still ? 'auto' : 'smooth' })
   }
 
   // Quick-link handlers
@@ -371,7 +413,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
       <div className="mx-auto max-w-[1280px] px-6 sm:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-[224px_minmax(0,1fr)] items-start gap-[26px]">
           {/* Sidebar — flat rail */}
-          <aside className="lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100dvh-120px)] lg:overflow-auto">
+          <aside className="lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100dvh-120px-var(--gio-strip))] lg:overflow-auto">
             <div style={{ padding: '0 10px 12px' }}>
               <div
                 className="font-poppins"
@@ -389,7 +431,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
             <NavGroupLabel>Configuration</NavGroupLabel>
             <nav className="flex flex-col gap-px">
-              {NAV_CONFIG.map((item) => (
+              {NAV_CONFIG.filter((item) => item.id !== 'offer-approval' || isJobAdmin).map((item) => (
                 <NavItem
                   key={item.id}
                   icon={item.icon}
@@ -564,7 +606,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                       roleLabel="Recruiter"
                       seatOf={seatOf}
                       onChange={(v) => updatePrimary('recruiter', v)}
-                      disabled={isReadOnly}
+                      disabled={!isJobAdmin}
                     />
                     <OwnerPickerRow
                       label="Hiring manager"
@@ -645,7 +687,8 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                           <TeamMemberRow
                             key={m.assignmentId}
                             member={m}
-                            readOnly={isReadOnly}
+                            readOnly={isReadOnly || !canManageSeat(m.role)}
+                            canSeatRecruiters={isJobAdmin}
                             onRoleChange={(v) => handleRoleChange(m.assignmentId, v)}
                             onRemove={() => void handleRemoveMember(m)}
                             onPromotePrimary={() => updatePrimary('recruiter', m.userId)}
@@ -660,10 +703,12 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
             </div>
 
 
-            {/* Offer approval */}
-            <div data-section="offer-approval" className="pt-2">
-              <OfferApprovalChainConfig jobId={jobId} jobTitle={jobTitle} />
-            </div>
+            {/* Offer approval (admins only) */}
+            {isJobAdmin && (
+              <div data-section="offer-approval" className="pt-2">
+                <OfferApprovalChainConfig jobId={jobId} jobTitle={jobTitle} />
+              </div>
+            )}
 
             {/* Client view */}
             <div data-section="client-view" className="pt-2">
@@ -675,8 +720,13 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
               <TeamNotificationsCard jobId={jobId} readOnly={isReadOnly} />
             </div>
 
-            {/* Danger */}
-            {!isReadOnly && (
+            {/* Slack */}
+            <div data-section="slack">
+              <JobSlackSection jobId={jobId} jobTitle={jobTitle} readOnly={isReadOnly} />
+            </div>
+
+            {/* Danger (admins only) */}
+            {isJobAdmin && (
               <div data-section="danger">
                 <SectionCard title="Close or archive this job">
                   <div className="flex items-start gap-4">
@@ -760,6 +810,7 @@ function NavItem({
     <button
       type="button"
       onClick={onClick}
+      aria-current={active ? 'location' : undefined}
       className={cn(
         'group w-full flex items-center text-left font-inter transition-colors',
         active ? '' : 'hover:bg-[rgba(13,13,9,0.05)]'
@@ -1210,6 +1261,8 @@ interface TeamMemberRowProps {
     last?: string
   }
   readOnly: boolean
+  /** Admins also set Recruiter and Sourcer seats (hire credit). */
+  canSeatRecruiters: boolean
   onRoleChange: (role: 'sourcer' | 'recruiter' | 'hiring_manager' | 'interviewer') => void
   onRemove: () => void
   onPromotePrimary: () => void
@@ -1219,6 +1272,7 @@ interface TeamMemberRowProps {
 function TeamMemberRow({
   member: m,
   readOnly,
+  canSeatRecruiters,
   onRoleChange,
   onRemove,
   onPromotePrimary,
@@ -1291,8 +1345,8 @@ function TeamMemberRow({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="sourcer">Sourcer</SelectItem>
-            <SelectItem value="recruiter">Recruiter</SelectItem>
+            {(canSeatRecruiters || m.role === 'sourcer') && <SelectItem value="sourcer">Sourcer</SelectItem>}
+            {(canSeatRecruiters || m.role === 'recruiter') && <SelectItem value="recruiter">Recruiter</SelectItem>}
             <SelectItem value="hiring_manager">Hiring Manager</SelectItem>
             <SelectItem value="interviewer">Interviewer</SelectItem>
           </SelectContent>
@@ -1366,14 +1420,16 @@ function TeamMemberRow({
                 )
               }}
             />
-            <MenuItem
-              icon={Star}
-              label="Set as primary recruiter"
-              onClick={() => {
-                setMenuOpen(false)
-                onPromotePrimary()
-              }}
-            />
+            {canSeatRecruiters && (
+              <MenuItem
+                icon={Star}
+                label="Set as primary recruiter"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onPromotePrimary()
+                }}
+              />
+            )}
             <MenuItem
               icon={Crown}
               label="Set as hiring manager"

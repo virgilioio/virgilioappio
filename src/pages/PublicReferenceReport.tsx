@@ -26,6 +26,10 @@ import {
 } from 'lucide-react'
 
 import { PublicPageShell } from '@/components/public/PublicPageShell'
+import { PublicFormSkeleton } from '@/components/public/PublicFormSkeleton'
+import { LoadError } from '@/components/empty/LoadError'
+import { Loadable } from '@/components/ui/loadable'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import {
   Pips,
   RehirePill,
@@ -141,9 +145,14 @@ function Tile({
 export default function PublicReferenceReport() {
   const { token } = useParams<{ token: string }>()
   const [data, setData] = useState<ReportPayload | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // A gone link (unknown or expired token) is final; anything else can be retried.
+  const [gone, setGone] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
+  const loading = !data && !gone && !loadFailed
+  const timedOut = useLoadTimeout(loading, retryKey)
 
-  useReportSplashReady(!!data || !!error)
+  useReportSplashReady(!loading || timedOut)
 
   // This page must never be searchable, and must not leak the token by referrer.
   useEffect(() => {
@@ -162,18 +171,27 @@ export default function PublicReferenceReport() {
 
   useEffect(() => {
     let cancelled = false
+    setLoadFailed(false)
     supabase.functions
       .invoke('reference-report', { body: { action: 'resolve', token } })
       .then(({ data: res, error: err }) => {
         if (cancelled) return
-        if (err || !res || (res as { error?: string }).error) setError('not_found')
-        else setData(res as ReportPayload)
+        const code = (res as { error?: string } | null)?.error
+        if (!err && res && !code) {
+          setData(res as ReportPayload)
+          return
+        }
+        // Only the function's 404 means the link is gone; a network or server
+        // failure may pass on a second try.
+        const status = (err as { context?: { status?: number } } | null)?.context?.status
+        if (status === 404 || code === 'not_found') setGone(true)
+        else setLoadFailed(true)
       })
-      .catch(() => !cancelled && setError('not_found'))
+      .catch(() => !cancelled && setLoadFailed(true))
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, retryKey])
 
   const model = useMemo(() => {
     if (!data) return null
@@ -219,22 +237,32 @@ export default function PublicReferenceReport() {
     return { ratings, recQ, rehireQ, employmentQ, longText, factual, answerOf, scores, mean, ratingMeans, rehires, employment }
   }, [data])
 
-  if (error) {
+  // One shell for every state, so the report crossfades in over its skeleton (§16).
+  const failed = !data && (loadFailed || timedOut)
+  if (gone || !data || !model) {
     return (
-      <PublicPageShell agencyName="References" pageKind="Reference report" width={800}>
-        <div style={{ padding: '32px 4px' }}>
-          <h1 className="font-poppins" style={{ fontSize: 20, fontWeight: 600, color: INK }}>
-            This report link has expired
-          </h1>
-          <p className="font-inter" style={{ fontSize: 13, color: BODY, marginTop: 8 }}>
-            Contact the recruitment firm for an up-to-date copy.
-          </p>
-        </div>
+      <PublicPageShell agencyName={gone ? 'References' : ''} pageKind="Reference report" width={800}>
+        <Loadable loading={!gone && !failed} skeleton={<PublicFormSkeleton rows={4} />}>
+          {gone ? (
+            <div style={{ padding: '32px 4px' }}>
+              <h1 className="font-poppins" style={{ fontSize: 20, fontWeight: 600, color: INK }}>
+                This report link has expired
+              </h1>
+              <p className="font-inter" style={{ fontSize: 13, color: BODY, marginTop: 8 }}>
+                Contact the recruitment firm for an up-to-date copy.
+              </p>
+            </div>
+          ) : failed ? (
+            <LoadError
+              what="this report"
+              timedOut={timedOut && !loadFailed}
+              onRetry={() => setRetryKey((k) => k + 1)}
+            />
+          ) : null}
+        </Loadable>
       </PublicPageShell>
     )
   }
-
-  if (!data || !model) return null
 
   const agency = data.brand.agency_name
   const plural = data.outstanding === 1 ? 'reference is' : 'references are'
@@ -247,6 +275,7 @@ export default function PublicReferenceReport() {
       width={800}
       footnote={`Confidential — shared with you by ${agency}`}
     >
+      <Loadable loading={false} skeleton={<PublicFormSkeleton rows={4} />}>
       {/* ------------------------------------------------------------ masthead */}
       <div className="flex items-start" style={{ gap: 16 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
@@ -768,6 +797,7 @@ export default function PublicReferenceReport() {
           }
         }
       `}</style>
+      </Loadable>
     </PublicPageShell>
   )
 }

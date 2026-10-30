@@ -17,7 +17,6 @@ import { SettingsList, SettingsSidebar } from '@/components/settings/SettingsSid
 import { settingsLabel, useSettingsSections } from '@/components/settings/settingsSections'
 import { SetupTab } from '@/components/settings/tabs/SetupTab'
 import { NotificationsTab } from '@/components/settings/tabs/NotificationsTab'
-import { EmailCalendarTab } from '@/components/settings/tabs/EmailCalendarTab'
 import { BookingTab } from '@/components/settings/tabs/BookingTab'
 import { GioRecruitingSettings } from '@/components/settings/GioRecruitingSettings'
 import { useAuth } from '@/contexts/AuthContext'
@@ -44,7 +43,7 @@ const LEGACY_TAB_MAP: Record<string, string> = {
   automations: 'careers-page',
 }
 
-const EXTERNAL_TABS = ['setup', 'email-calendar', 'booking', 'notifications']
+const EXTERNAL_TABS = ['setup', 'booking', 'notifications']
 
 // Brand-new tabs that don't have content yet — render a small placeholder card.
 // (Will be replaced by real components in Phase 2.)
@@ -72,7 +71,7 @@ export default function Settings() {
   const pickDefaultTab = () => {
     if (essentialsRemaining > 0) return 'setup'
     if (userType === 'workspace_owner' && organizationId) return 'organization'
-    return 'email-calendar'
+    return 'booking'
   }
 
   const rawTab = searchParams.get('tab')
@@ -120,14 +119,12 @@ export default function Settings() {
 
 
   // External users (2026-10-24) have only their own settings.
-  const shownTab = isExternal && !EXTERNAL_TABS.includes(currentTab) ? 'email-calendar' : currentTab
+  const shownTab = isExternal && !EXTERNAL_TABS.includes(currentTab) ? 'booking' : currentTab
 
   const renderContent = () => {
     switch (shownTab) {
       case 'setup':
         return <SetupTab />
-      case 'email-calendar':
-        return <EmailCalendarTab />
       case 'booking':
         return <BookingTab />
       case 'notifications':
@@ -160,12 +157,14 @@ export default function Settings() {
         if (shownTab.startsWith('integration-')) {
           return <IntegrationsTab initialConfigureId={shownTab.replace('integration-', '')} />
         }
-        return <EmailCalendarTab />
+        return <BookingTab />
     }
   }
 
   // Settings › Profile is My profile's You card now (Allan, 2026-10-24): old links land there.
   if (rawTab === 'profile') return <Navigate to="/me?focus=card-you" replace />
+  // Email & calendar is My profile's Google Workspace card now (Allan, 2026-10-28).
+  if (rawTab === 'email-calendar') return <Navigate to="/me?focus=card-google" replace />
 
   const workspaceName = tenant?.name || 'Workspace'
 

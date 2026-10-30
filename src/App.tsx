@@ -1,6 +1,7 @@
 import { installAutoTitle } from '@/lib/autoTitle'
 import { PhoneSwitch, DesktopOnly } from '@/components/phone/PhoneSwitch'
 import { OfflineBanner } from '@/components/layout/OfflineBanner'
+import { CandidateLinkGuard } from '@/components/candidates/CandidateLinkGuard'
 import { ConfirmDialogHost } from '@/components/ui/confirm-dialog'
 import { CloseJobRejectHost } from '@/components/jobs/CloseJobRejectHost'
 import {
@@ -223,11 +224,11 @@ function AppContent() {
             <Route path="/jobs/:jobId/pipeline" element={<PhoneSwitch phone={<PhoneJobGlance />}><JobDetail /></PhoneSwitch>} />
             <Route path="/jobs/:jobId/setup" element={<JobDetail />} />
             <Route path="/jobs/:jobId/review" element={<ApplicationReviewPage />} />
-            <Route path="/jobs/:jobId/candidates/:candidateId" element={<PhoneSwitch phone={<PhoneCandidateGlance />}><CandidateProfile /></PhoneSwitch>} />
+            <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateLinkGuard><PhoneSwitch phone={<PhoneCandidateGlance />}><CandidateProfile /></PhoneSwitch></CandidateLinkGuard>} />
             <Route path="/jobs/:jobId/suggested/:candidateId" element={<SuggestedCandidateProfile />} />
 
             <Route path="/candidates" element={<TalentPoolOnly what="Candidates"><PhoneSwitch phone={<PhoneCandidates />}><Candidates /></PhoneSwitch></TalentPoolOnly>} />
-            <Route path="/candidates/:candidateId" element={<PhoneSwitch phone={<PhoneCandidateGlance />}><IndependentCandidateProfile /></PhoneSwitch>} />
+            <Route path="/candidates/:candidateId" element={<CandidateLinkGuard><PhoneSwitch phone={<PhoneCandidateGlance />}><IndependentCandidateProfile /></PhoneSwitch></CandidateLinkGuard>} />
             <Route path="/lists/:id" element={<SharedList />} />
             <Route path="/members" element={<Members />} />
             <Route path="/crm/*" element={<Navigate to="/" replace />} />

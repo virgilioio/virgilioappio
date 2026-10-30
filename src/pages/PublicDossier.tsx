@@ -16,6 +16,9 @@ import { SoftArchive } from '@/components/ui/EmptyIllustrations'
 import { PublicPageShell } from '@/components/public/PublicPageShell'
 import { PublicDossierBanner, PublicDossierBody } from '@/components/public/PublicDossierBody'
 import { DecisionDialog, type DecisionKind } from '@/components/public/DecisionDialog'
+import { PublicLoadFailed, PublicMissing, PublicPageSkeleton } from '@/components/public/PublicPageState'
+import { Loadable } from '@/components/ui/loadable'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 
 import { printDossier } from '@/components/candidates/insights/dossier/printDossier'
 import type { FitAnalysis } from '@/hooks/useCandidateFitInsights'
@@ -149,11 +152,15 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
   const extra = pipeline ? { slug: pipeline.slug, section: pipeline.section } : {}
   const [resolved, setResolved] = useState<Resolved | null>(null)
   const [notFound, setNotFound] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // The first load failed (Retry starts it again). A decision's error stays in its dialog.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const [decision, setDecision] = useState<string | null>(null)
   const [decisionOn, setDecisionOn] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
-  const [dialogKind, setDialogKind] = useState<DecisionKind | null>(null)
+  // The kind stays after closing, so the dialog can leave with its exit.
+  const [dialogKind, setDialogKind] = useState<DecisionKind>('interview_requested')
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [pending, setPending] = useState<{ decision: string; created_at: string } | null>(null)
 
 
@@ -162,6 +169,7 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
   useEffect(() => {
     let active = true
     setResolved(null)
+    setLoadFailed(false)
     setDecision(null)
     setDecisionOn(null)
     // One read receipt per browser session, not per render.
@@ -184,11 +192,11 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
           setDecisionOn(existing.created_at)
         }
       })
-      .catch((err) => { if (active) setError(err instanceof Error ? err.message : 'This dossier could not be loaded.') })
+      .catch(() => { if (active) setLoadFailed(true) })
 
     return () => { active = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, pipeline?.slug])
+  }, [token, pipeline?.slug, attempt])
 
   // While an assessment is being prepared, check back quietly until it's ready.
   const isPreparing = resolved?.state === 'preparing'
@@ -214,9 +222,8 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
   const submitDecision = useCallback(async (
     value: DecisionKind,
     input: { reasons: string[]; note: string },
-  ) => {
+  ): Promise<true | string> => {
     setIsSending(true)
-    setError(null)
     try {
       const result = await callEndpoint({
         action: 'feedback',
@@ -226,15 +233,14 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
         note: input.note || null,
         ...extra,
       }, endpoint)
-      if (result.notFound) throw new Error('This dossier is no longer accepting responses.')
+      if (result.notFound) return 'This dossier no longer takes answers. Nothing was sent.'
       setPending({
         decision: value,
         created_at: (result.data as { created_at?: string })?.created_at ?? new Date().toISOString(),
       })
       return true
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Your response could not be recorded.')
-      return false
+    } catch {
+      return 'We couldn\u2019t record your answer. Nothing was sent; try again.'
     } finally {
       setIsSending(false)
     }
@@ -242,7 +248,7 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
   }, [token, pipeline?.slug])
 
   const closeDialog = useCallback(() => {
-    setDialogKind(null)
+    setDialogOpen(false)
     if (pending) {
       setDecision(pending.decision)
       setDecisionOn(pending.created_at)
@@ -292,24 +298,21 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
     }, live.candidate.name)
   }, [live])
 
-  if (notFound) {
-    // A token that was never issued behaves like any other unknown address.
-    return (
-      <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', background: '#FAF8F3' }}>
-        <p className="font-inter" style={{ fontSize: 13, color: '#8B8F9E' }}>404 — page not found</p>
-      </div>
-    )
-  }
+  const loading = !resolved && !loadFailed && !notFound
+  const timedOut = useLoadTimeout(loading, attempt)
 
-  if (!resolved) {
-    return (
-      <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', background: '#FAF8F3' }}>
-        <p className="font-inter" style={{ fontSize: 13, color: '#8B8F9E' }}>
-          {error ?? 'Opening the dossier…'}
-        </p>
-      </div>
-    )
+  // A token that was never issued behaves like any other unknown address.
+  if (notFound) return <PublicMissing onceKey="public-dossier-missing" />
+  if (loadFailed || timedOut) {
+    return <PublicLoadFailed what="this dossier" timedOut={timedOut && !loadFailed} onRetry={() => setAttempt((n) => n + 1)} />
   }
+  return (
+    <Loadable loading={!resolved} skeleton={<PublicPageSkeleton />}>
+      {resolved ? renderResolved(resolved) : null}
+    </Loadable>
+  )
+
+  function renderResolved(resolved: Resolved) {
 
   if (resolved.state === 'preparing') {
     return (
@@ -385,13 +388,15 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
           decision={decision}
           decisionOn={decisionOn}
           isSending={isSending}
-          error={error}
           onDownload={handleDownload}
-          onDecision={setDialogKind}
+          onDecision={(kind) => {
+            setDialogKind(kind)
+            setDialogOpen(true)
+          }}
         />
       </PublicPageShell>
-      {dialogKind && (
-        <DecisionDialog
+      <DecisionDialog
+          open={dialogOpen}
           kind={dialogKind}
           candidateFirstName={resolved.candidate.name.split(' ')[0] || resolved.candidate.name}
           recruiterName={resolved.prepared_by || resolved.workspace_name}
@@ -399,8 +404,7 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
           onClose={closeDialog}
           onSubmit={(input) => submitDecision(dialogKind, input)}
         />
-      )}
     </>
   )
-
+  }
 }

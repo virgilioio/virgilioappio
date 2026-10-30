@@ -1124,6 +1124,8 @@ serve(async (req) => {
           hour: 'numeric',
           minute: '2-digit',
           timeZone: candidate_timezone,
+          // Name the zone: the candidate may be scheduled from another country.
+          timeZoneName: 'short',
         });
 
         const meetingDetails = [
@@ -1312,6 +1314,8 @@ serve(async (req) => {
           hour: 'numeric',
           minute: '2-digit',
           timeZone: candidate_timezone,
+          // Name the zone: the candidate may be scheduled from another country.
+          timeZoneName: 'short',
         });
 
         const guestMeetingDetails = [

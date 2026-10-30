@@ -6,7 +6,7 @@ import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandS
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { COUNTRIES } from '@/constants/countries'
 import { cn } from '@/lib/utils'
-import { countryCodeFor, countryName, foldPlace, placeChange, regionByName, useCitySearch, useDebounced, useRegions, type PlaceValue } from '@/lib/places'
+import { countryCodeFor, countryName, foldPlace, placeChange, placeFromText, placeToText, regionByName, useCitySearch, useDebounced, useRegions, type PlaceValue } from '@/lib/places'
 
 /**
  * Country → State or province → City (Allan, 2026-10-26). Three comboboxes
@@ -358,5 +358,40 @@ export function PlaceFieldsByName({
         />
       )}
     </div>
+  )
+}
+
+/**
+ * Country → State or province → City for an answer kept as one line of text
+ * ("Monterrey, Nuevo León, Mexico", placeToText), such as a scorecard's
+ * location question. Holds the three parts while you pick, so a country on
+ * its own isn't read back as a city.
+ */
+export function PlaceLineField({
+  idPrefix,
+  value,
+  onChange,
+  className,
+}: {
+  idPrefix: string
+  value: string
+  onChange: (line: string) => void
+  className?: string
+}) {
+  const [place, setPlace] = React.useState(() => placeFromText(value))
+  // Follow a value set from outside (a draft filled in, a reset), never our own.
+  React.useEffect(() => {
+    setPlace((cur) => (placeToText(cur) === (value ?? '').trim() ? cur : placeFromText(value)))
+  }, [value])
+  return (
+    <PlaceFieldsByName
+      idPrefix={idPrefix}
+      className={className}
+      value={place}
+      onChange={(next) => {
+        setPlace(next)
+        onChange(placeToText(next))
+      }}
+    />
   )
 }

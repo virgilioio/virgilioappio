@@ -28,6 +28,7 @@ import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { formSections, groupBySection, isWideField } from '@/lib/offerSections'
+import { PlaceFieldsByName } from '@/components/ui/place-picker'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -379,6 +380,23 @@ export function OfferComposerBody({
           const next = { ...locationValue, [key]: val }
           handleFieldChange(field.field_name, JSON.stringify(next))
         }
+        if (locationFields.includes('country')) {
+          // Country → State or province → City from the places list, as on the
+          // careers page; anything unlisted can be typed. Saved as before:
+          // { city, state, country } with the country's name.
+          return (
+            <PlaceFieldsByName
+              idPrefix={`offer-${field.field_name}`}
+              fields={(['country', 'state', 'city'] as const)
+                .filter((k) => locationFields.includes(k))
+                .map((k) => (k === 'state' ? 'region' : k))}
+              value={{ country: locationValue.country || '', region: locationValue.state || '', city: locationValue.city || '' }}
+              onChange={(next) =>
+                handleFieldChange(field.field_name, JSON.stringify({ ...locationValue, country: next.country, state: next.region, city: next.city }))
+              }
+            />
+          )
+        }
         const colsClass = ({ 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' } as Record<number, string>)[locationFields.length] || 'md:grid-cols-3'
         return (
           <div className={`grid grid-cols-1 ${colsClass} gap-3`}>
@@ -461,10 +479,13 @@ export function OfferComposerBody({
     }
   }
 
-  const Field = ({ field, wide }: { field: OfferFormField; wide?: boolean }) => {
+  // A plain function, not a component: defined in here it would be a new
+  // component type on every render, so React would remount each input and
+  // typing would lose focus after one character.
+  const renderField = (field: OfferFormField, wide?: boolean) => {
     const Icon = /title|role/.test(fieldKey(field)) ? Briefcase : /manager|reports/.test(fieldKey(field)) ? UserRound : /location/.test(fieldKey(field)) ? MapPin : /date/.test(fieldKey(field)) ? CalendarDays : null
-    if (field.field_type === 'checkbox') return <div className="flex items-center justify-between gap-4 border-b border-dup-rule py-2.5 last:border-0"><div><p className="font-inter text-[12.5px] font-medium text-dup-text">{field.field_label}</p>{field.help_text && <p className="mt-0.5 font-inter text-[11px] leading-[1.4] text-dup-subtle">{field.help_text}</p>}</div>{renderFieldInput(field)}</div>
-    return <div className={cn('min-w-0', wide && 'sm:col-span-2')}><Label htmlFor={field.field_name} className="mb-1.5 flex items-center gap-1 font-inter text-[11.5px] font-medium text-dup-text">{Icon && <Icon className="h-[13px] w-[13px] text-dup-subtle" />}{field.field_label}{field.is_required ? <span className="text-destructive">*</span> : <span className="text-[10.5px] text-dup-subtle">(optional)</span>}{field.triggers_approval_restart && <TooltipProvider><Tooltip><TooltipTrigger asChild><RefreshCcw className="h-3 w-3 text-warning-foreground" /></TooltipTrigger><TooltipContent>Editing this field restarts approval</TooltipContent></Tooltip></TooltipProvider>}</Label>{renderFieldInput(field)}{field.help_text && <p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-subtle">{field.help_text}</p>}</div>
+    if (field.field_type === 'checkbox') return <div key={field.id} className="flex items-center justify-between gap-4 border-b border-dup-rule py-2.5 last:border-0"><div><p className="font-inter text-[12.5px] font-medium text-dup-text">{field.field_label}</p>{field.help_text && <p className="mt-0.5 font-inter text-[11px] leading-[1.4] text-dup-subtle">{field.help_text}</p>}</div>{renderFieldInput(field)}</div>
+    return <div key={field.id} className={cn('min-w-0', wide && 'sm:col-span-2')}><Label htmlFor={field.field_name} className="mb-1.5 flex items-center gap-1 font-inter text-[11.5px] font-medium text-dup-text">{Icon && <Icon className="h-[13px] w-[13px] text-dup-subtle" />}{field.field_label}{field.is_required ? <span className="text-destructive">*</span> : <span className="text-[10.5px] text-dup-subtle">(optional)</span>}{field.triggers_approval_restart && <TooltipProvider><Tooltip><TooltipTrigger asChild><RefreshCcw className="h-3 w-3 text-warning-foreground" /></TooltipTrigger><TooltipContent>Editing this field restarts approval</TooltipContent></Tooltip></TooltipProvider>}</Label>{renderFieldInput(field)}{field.help_text && <p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-subtle">{field.help_text}</p>}</div>
   }
 
   const reqIdBlock = <div className="mb-3"><Label className="mb-1.5 block font-inter text-[11.5px] font-medium text-dup-text">Req ID <span className="text-destructive">*</span></Label><Select value={openingId} onValueChange={handleOpeningChange} disabled={openingsLoading || availableOpenings.length === 0}><SelectTrigger><SelectValue placeholder={openingsLoading ? 'Loading openings…' : 'Choose an opening…'} /></SelectTrigger><SelectContent>{openings.map((opening) => { const unavailable = opening.status === 'filled' || (opening.status === 'offer' && opening.candidate_id !== candidateId && opening.id !== currentOffer?.opening_id); return <SelectItem key={opening.id} value={opening.id} disabled={unavailable}>{opening.req_id} · {opening.status === 'open' ? 'Open' : opening.status === 'offer' ? 'Reserved' : 'Filled'}</SelectItem> })}</SelectContent></Select><p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-subtle">The opening this offer fills. It's reserved while the offer is out and filled when {firstName} is marked hired.</p></div>
@@ -490,8 +511,8 @@ export function OfferComposerBody({
                   {group.fields.length > 0 && (
                     <div className={cn('grid gap-3.5', two && 'sm:grid-cols-2')}>
                       {fieldRuns(group.fields).map((run) => run.checks
-                        ? <div key={run.fields[0].id} className={cn(two && 'sm:col-span-2')}>{run.fields.map((field) => <Field key={field.id} field={field} />)}</div>
-                        : run.fields.map((field) => <Field key={field.id} field={field} wide={two && isWideField(field)} />))}
+                        ? <div key={run.fields[0].id} className={cn(two && 'sm:col-span-2')}>{run.fields.map((field) => renderField(field))}</div>
+                        : run.fields.map((field) => renderField(field, two && isWideField(field))))}
                     </div>
                   )}
                   {comp.field && group.fields.includes(comp.field) && compCard}

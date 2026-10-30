@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { FileText, Link, Calendar, Hash, Type, List, Upload, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, Link, Calendar, Hash, Type, List, Upload, ChevronDown, ChevronUp, AudioLines, Clapperboard, Star } from "lucide-react";
+import { ApplicationFileAnswer } from "@/components/candidates/ApplicationFileAnswer";
 import { supabase } from "@/lib/supabaseClient";
 import { CURRENCY_SYMBOLS } from "@/constants/currencies";
 import { SalaryFieldConfig } from "@/hooks/useJobPostingFields";
@@ -37,6 +38,12 @@ const getFieldIcon = (fieldType: string) => {
       return <List className="h-4 w-4" />;
     case 'file':
       return <Upload className="h-4 w-4" />;
+    case 'audio':
+      return <AudioLines className="h-4 w-4 [color:#6F3FF5]" />;
+    case 'video':
+      return <Clapperboard className="h-4 w-4 [color:#BE185D]" />;
+    case 'score':
+      return <Star className="h-4 w-4" />;
     case 'textarea':
       return <FileText className="h-4 w-4" />;
     default:
@@ -111,6 +118,8 @@ const formatFieldValue = (value: string | null, fieldType: string, fieldConfig?:
   if (!value) return "Not provided";
 
   if (fieldType === 'select') return optionLabels?.[value] ?? value;
+  // Yes / No questions are stored as 'true' / 'false'.
+  if (fieldType === 'checkbox') return value === 'true' ? 'Yes' : value === 'false' ? 'No' : value;
   if (fieldType === 'checkbox_group') {
     const picked = parseChoices(value).map((v) => optionLabels?.[v] ?? v);
     if (!picked.length) return "Not provided";
@@ -122,6 +131,10 @@ const formatFieldValue = (value: string | null, fieldType: string, fieldConfig?:
   }
 
   if (fieldType === 'salary') return formatSalaryValue(value, fieldConfig ?? null);
+  if (fieldType === 'score') {
+    const max = (fieldConfig as { max?: number } | null)?.max === 10 ? 10 : 5;
+    return <span className="tabular-nums">{value} of {max}</span>;
+  }
 
   switch (fieldType) {
     case 'date':
@@ -210,7 +223,7 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
 
         // Fetch field_config for salary/location fields from posting fields
         const postingIds = [...new Set(filteredResponses.map(r => r.posting_id).filter(Boolean))];
-        const salaryFieldNames = filteredResponses.filter(r => r.field_type === 'salary').map(r => r.field_name);
+        const salaryFieldNames = filteredResponses.filter(r => r.field_type === 'salary' || r.field_type === 'score').map(r => r.field_name);
 
         if (postingIds.length > 0 && salaryFieldNames.length > 0) {
           const { data: fieldRows } = await supabase
@@ -293,7 +306,9 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
                 <span className="font-medium text-sm">{response.field_label}</span>
               </div>
               <div className="text-sm text-muted-foreground break-words">
-                {formatFieldValue(response.field_value, response.field_type, fieldConfigs[response.field_name], optionLabels[response.field_name])}
+                {response.field_type === 'audio' || response.field_type === 'video' || (response.field_type === 'file' && response.field_value?.trim().startsWith('{'))
+                  ? <ApplicationFileAnswer candidateId={candidateId} value={response.field_value} />
+                  : formatFieldValue(response.field_value, response.field_type, fieldConfigs[response.field_name], optionLabels[response.field_name])}
               </div>
             </div>
           </div>

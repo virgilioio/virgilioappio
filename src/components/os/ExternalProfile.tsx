@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
 import { LoadError } from '@/components/empty/LoadError'
 import { AccountCard } from '@/components/os/AccountCard'
+import { GoogleWorkspaceCard } from '@/components/os/GoogleWorkspaceCard'
 import { PersonAvatar } from '@/components/os/PeopleBits'
 import { ProfileCard } from '@/components/os/ProfileParts'
 import { useAuth } from '@/contexts/AuthContext'
@@ -88,8 +89,9 @@ export function ExternalProfile() {
             )}
           </ProfileCard>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-4">
           <AccountCard note="Virgilio's team sees these, and candidates see your name, title and photo on interview invitations." />
+          <GoogleWorkspaceCard note="Interviews land on your calendar and candidates book your real free times." />
         </div>
       </div>
     </ListPage>

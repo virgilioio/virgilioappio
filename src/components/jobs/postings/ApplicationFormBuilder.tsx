@@ -16,8 +16,9 @@ import {
   Sparkles, GripVertical, Lock, Trash2, Plus, Puzzle,
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare,
   Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type, MapPin, Linkedin, Users, Building2,
-  Check, X, Settings2, Star, ListChecks, ArrowUp, ArrowDown,
+  Check, X, Settings2, Star, ListChecks, ArrowUp, ArrowDown, AudioLines, Clapperboard,
 } from 'lucide-react'
+import { MEDIA_RULES, isMediaKind } from '@/lib/applicationMedia'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -42,6 +43,7 @@ import { IconTip, Tooltip, TooltipContent, TooltipTrigger } from '@/components/u
 export type FieldType =
   | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'multiselect' | 'number' | 'longtext' | 'date'
   | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location' | 'score'
+  | 'audio' | 'video'
 
 export interface AppField {
   id: string
@@ -106,7 +108,18 @@ export const BASIC_TYPES: { type: FieldType; label: string; icon: React.Componen
   { type: 'yesno',    label: 'Yes / No',      icon: ToggleLeft },
   { type: 'score',    label: 'Score (stars)', icon: Star },
   { type: 'file',     label: 'File upload',   icon: FileText },
+  { type: 'audio',    label: 'Audio',         icon: AudioLines },
+  { type: 'video',    label: 'Video',         icon: Clapperboard },
 ]
+
+/** Coloured types: the same tints as the candidate's file tiles (Audio purple, Video pink). */
+export const TYPE_TINT: Record<string, { icon: string; chip: string }> = {
+  audio: { icon: '[color:#6F3FF5]', chip: 'bg-[#F1ECFE]' },
+  video: { icon: '[color:#BE185D]', chip: 'bg-[#FCE7F3]' },
+}
+
+/** What a candidate may upload, under an upload question's label. */
+export const uploadHint = (t: string): string | null => (isMediaKind(t) ? MEDIA_RULES[t].hint : null)
 
 export const SMART_FIELD_TYPES_SET = new Set<FieldType>(SMART_FIELDS.map((s) => s.type))
 
@@ -114,7 +127,7 @@ const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   text: Type, longtext: AlignLeft, textarea: AlignLeft, number: Hash, email: Mail, url: Link2,
   date: CalendarIcon, select: List, multiselect: ListChecks, checkbox_group: ListChecks, yesno: ToggleLeft, checkbox: ToggleLeft, file: FileText, phone: Phone,
   linkedin: Linkedin, location: MapPin, salary: DollarSign, employment_type: Briefcase,
-  work_location: Building2, recruiter: Users, score: Star,
+  work_location: Building2, recruiter: Users, score: Star, audio: AudioLines, video: Clapperboard,
 }
 export const iconForType = (t: string): React.ComponentType<{ className?: string }> =>
   TYPE_ICON[t] || MessageSquare
@@ -301,7 +314,7 @@ export function ApplicationFormBuilder({
             const Icon = bt.icon
             return (
               <DropdownMenuItem key={bt.type} onSelect={() => addBasic(bt)}>
-                <Icon className="h-3.5 w-3.5 text-text-tertiary" />
+                <Icon className={cn('h-3.5 w-3.5', TYPE_TINT[bt.type]?.icon ?? 'text-text-tertiary')} />
                 <span className="flex-1 truncate">{bt.label}</span>
               </DropdownMenuItem>
             )
@@ -416,8 +429,8 @@ function FieldRow({
       )}
     >
       <GripVertical className={cn('h-4 w-4 text-text-tertiary shrink-0', !draggable && 'opacity-30')} />
-      <div className="h-8 w-8 shrink-0 rounded-lg bg-[#FAFAF7] inline-flex items-center justify-center">
-        <Icon className="h-4 w-4 text-text-secondary" />
+      <div className={cn('h-8 w-8 shrink-0 rounded-lg inline-flex items-center justify-center', TYPE_TINT[f.type]?.chip ?? 'bg-[#FAFAF7]')}>
+        <Icon className={cn('h-4 w-4', TYPE_TINT[f.type]?.icon ?? 'text-text-secondary')} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
@@ -470,7 +483,7 @@ function FieldRow({
               : 'No options yet'}
           </p>
         ) : (
-          f.hint && <p className="text-[11.5px] text-text-tertiary">{f.hint}</p>
+          (f.hint || uploadHint(f.type)) && <p className="text-[11.5px] text-text-tertiary">{f.hint || uploadHint(f.type)}</p>
         )}
       </div>
       {CHOICE_TYPES.has(f.type) && onOptionsChange && (

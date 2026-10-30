@@ -7,12 +7,11 @@ import { VirgilioCareersHero } from '@/components/careers/virgilio/VirgilioCaree
 import { CareersFilterBar } from '@/components/careers/public/CareersFilterBar'
 import { CareersRoleList, type CareersRole } from '@/components/careers/public/CareersRoleList'
 import { CareersHowWeHireCard } from '@/components/careers/public/CareersHowWeHireCard'
-import { CareersOpenApplicationBand } from '@/components/careers/public/CareersOpenApplicationBand'
 import { CareersFooter } from '@/components/careers/public/CareersFooter'
-import { EmptyState } from '@/components/ui/empty-state'
 import { AnimatedEmpty, EmptyCard } from '@/components/empty/AnimatedEmpty'
 import { LoadError } from '@/components/empty/LoadError'
-import { SoftFlag } from '@/components/ui/EmptyIllustrations'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { CareersSkeleton } from '@/components/careers/public/CareersSkeleton'
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 
 // Hardcoded so the duplicate "Virgilio" org (with 0 jobs) can never be selected.
@@ -155,25 +154,21 @@ export default function VirgilioCareersPage() {
   }, [filtered])
 
   useReportSplashReady(!isLoading)
+  const timedOut = useLoadTimeout(isLoading, reload)
 
   const handleOpen = (slug: string) => window.open(`/p/${slug}`, '_blank', 'noopener,noreferrer')
   const scrollToRoles = () => rolesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
-        <Loader2 className="h-8 w-8 animate-spin text-virgilio-purple" />
-      </div>
-    )
-  }
+  if (isLoading && !timedOut) return <CareersSkeleton />
 
-  if (loadFailed) {
+  if (loadFailed || timedOut) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-4">
+      <div className="min-h-screen flex items-center justify-center bg-virgilio-cream px-4">
         <div className="max-w-md w-full">
           <EmptyCard>
             <LoadError
               what="this careers page"
+              timedOut={timedOut}
               onRetry={() => { setLoadFailed(false); setIsLoading(true); setReload((n) => n + 1) }}
             />
           </EmptyCard>
@@ -184,14 +179,16 @@ export default function VirgilioCareersPage() {
 
   if (error || !settings) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-4">
+      <div className="min-h-screen flex items-center justify-center bg-virgilio-cream px-4">
         <div className="max-w-md w-full">
-          <EmptyState
-            size="card"
-            illustration={<SoftFlag />}
-            title={error || 'Page not found'}
-            body="The careers page you're looking for doesn't exist or is no longer available."
-          />
+          <EmptyCard>
+            <AnimatedEmpty
+              scene="search"
+              title="This careers page isn't here"
+              body="The link may be incomplete, or the page has moved."
+              onceKey="careers-page-missing"
+            />
+          </EmptyCard>
         </div>
       </div>
     )
@@ -200,7 +197,7 @@ export default function VirgilioCareersPage() {
   const companyName = tenantInfo?.name || settings.page_title || 'Virgilio'
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2]">
+    <div className="min-h-screen bg-virgilio-cream">
       <CareersTopBar
         logoUrl={settings.logo_url}
         companyName={companyName}
@@ -250,10 +247,6 @@ export default function VirgilioCareersPage() {
         )}
       </div>
       <CareersHowWeHireCard paragraph="Every applicant hears back within 48 hours. Most processes take 2–3 weeks, with the same small panel for everyone. We share scorecards ahead of time, we pay for take-home assignments, and we never ghost." />
-      <CareersOpenApplicationBand
-        companyName={companyName}
-        text="Don't see the right role yet? Send us a note about the kind of work you're looking for. A real person reads every one."
-      />
       <CareersFooter companyName={companyName} logoUrl={settings.logo_url} websiteUrl={settings.company_website_url} tagline="We're building the modern way to hire: AI for speed, people for judgement." />
     </div>
   )

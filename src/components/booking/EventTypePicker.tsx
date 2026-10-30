@@ -141,7 +141,7 @@ export function EventTypePicker({
                 key={et.id}
                 type="button"
                 onClick={() => onSelect(et)}
-                className={`group w-full text-left rounded-2xl border bg-white p-5 transition-all flex items-center gap-5 ${
+                className={`gio-pressable group w-full text-left rounded-2xl border bg-white p-5 transition-colors duration-hover flex items-center gap-5 ${
                   isSelected
                     ? 'border-virgilio-purple/40 shadow-sm'
                     : 'border-virgilio-border hover:border-virgilio-purple/30 hover:shadow-sm'
@@ -189,7 +189,7 @@ export function EventTypePicker({
             <button
               type="button"
               onClick={() => onSelect(introEvent)}
-              className="font-poppins font-semibold text-virgilio-text underline underline-offset-2 hover:text-virgilio-purple transition-colors"
+              className="gio-pressable font-poppins font-semibold text-virgilio-text underline underline-offset-2 hover:text-virgilio-purple transition-colors duration-hover"
             >
               Start with an {introEvent.title.toLowerCase()}
             </button>
@@ -217,7 +217,7 @@ export function EventTypePicker({
               key={et.id}
               type="button"
               onClick={() => onSelect(et)}
-              className={`w-full text-left rounded-xl border p-3.5 transition-all flex items-start gap-3 ${
+              className={`gio-pressable w-full text-left rounded-xl border p-3.5 transition-colors duration-hover flex items-start gap-3 ${
                 isSelected
                   ? 'bg-virgilio-purple/8 border-virgilio-purple/40 shadow-sm'
                   : 'bg-white border-virgilio-border hover:border-virgilio-purple/30 hover:bg-virgilio-purple/5'

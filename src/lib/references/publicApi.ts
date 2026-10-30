@@ -85,20 +85,32 @@ export class PublicRefError extends Error {
   }
 }
 
+/**
+ * Whether a failure means the link itself is gone (expired, unknown, used up),
+ * rather than the request not getting through: only those show the "expired"
+ * end state; anything else is a load error with Retry (§16).
+ */
+export function isGoneLink(e: unknown): boolean {
+  return e instanceof PublicRefError && e.code === 'not_found'
+}
+
 async function call<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('reference-public', { body })
   if (error) {
     // Edge errors arrive as FunctionsHttpError — read the JSON body when we can.
     const ctx = (error as { context?: Response }).context
     if (ctx && typeof ctx.json === 'function') {
+      const fallback = ctx.status === 404 ? 'not_found' : 'internal_error'
       try {
         const payload = await ctx.json()
-        throw new PublicRefError(payload?.error ?? 'not_found', payload)
+        throw new PublicRefError(payload?.error ?? fallback, payload)
       } catch (e) {
         if (e instanceof PublicRefError) throw e
       }
+      throw new PublicRefError(fallback)
     }
-    throw new PublicRefError('not_found')
+    // No response at all (offline, blocked, timed out): the link may be fine.
+    throw new PublicRefError('network')
   }
   if ((data as { error?: string })?.error) {
     throw new PublicRefError((data as { error: string }).error, data)

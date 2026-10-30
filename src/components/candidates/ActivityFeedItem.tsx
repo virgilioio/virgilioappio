@@ -1,7 +1,8 @@
 import { formatDistanceToNow } from 'date-fns';
 import { Paperclip, Zap } from 'lucide-react';
 import { Activity } from '@/hooks/useActivityFeed';
-import { activityMeta, ACTIVITY_TONES, isAutomated } from '@/lib/activityRegistry';
+import { activityMetaFor, ACTIVITY_TONES, isAutomated, isSlackActivity } from '@/lib/activityRegistry';
+import { SLACK_EVENT, TRIGGER_LABEL, type SlackEvent, type SlackTrigger } from '@/lib/slack';
 import { ActivityEmailCard } from './ActivityEmailCard';
 
 interface ActivityFeedItemProps {
@@ -33,11 +34,14 @@ function BodyBlock({ children }: { children: React.ReactNode }) {
 }
 
 export function ActivityFeedItem({ activity, isLast, onEmailAction }: ActivityFeedItemProps) {
-  const meta = activityMeta(activity.activity_type);
+  const meta = activityMetaFor(activity);
   const Icon = meta.icon;
   const tone = ACTIVITY_TONES[meta.tone];
 
-  const automated = isAutomated(activity);
+  // A Slack message (2026-10-28): by Gio, or by whoever pressed Send now,
+  // Remind, Request scorecard or Send again.
+  const slack = isSlackActivity(activity) ? (activity.metadata?.slack ?? {}) : null;
+  const automated = !slack && isAutomated(activity);
   const automation = activity.automation || null;
 
   /**
@@ -49,7 +53,10 @@ export function ActivityFeedItem({ activity, isLast, onEmailAction }: ActivityFe
   // A signer outside the team (the candidate signing in Gio Sign) is named by the database.
   const externalActor = activity.metadata?.external_actor && activity.metadata?.author_name
 
-  const authorName = sharedDossier
+  const person = `${activity.author_first_name || ''} ${activity.author_last_name || ''}`.trim();
+  const authorName = slack
+    ? person || 'Gio'
+    : sharedDossier
     ? 'via the shared dossier'
     : externalActor
     ? String(activity.metadata?.author_name)
@@ -66,7 +73,12 @@ export function ActivityFeedItem({ activity, isLast, onEmailAction }: ActivityFe
 
   // ---- Title ------------------------------------------------------------
   let title: string = activity.title;
-  if (email) {
+  const slackEvent = slack ? SLACK_EVENT[activity.metadata?.slack_event as SlackEvent] : null;
+  if (slack) {
+    title = slack.status === 'failed'
+      ? 'Slack message didn’t go out'
+      : slackEvent?.repeats ? 'Slack reminder sent' : 'Sent to Slack';
+  } else if (email) {
     title = email.subject;
   } else if (activity.activity_type === 'candidate_stage_changed' && md.to_stage) {
     title = md.from_stage ? `${md.from_stage} → ${md.to_stage}` : `Moved to ${md.to_stage}`;
@@ -74,7 +86,10 @@ export function ActivityFeedItem({ activity, isLast, onEmailAction }: ActivityFe
 
   // ---- Detail lines (system facts) --------------------------------------
   const detailLines: (string | null)[] = [];
-  if (activity.activity_type === 'candidate_stage_changed') {
+  if (slack) {
+    detailLines.push(slack.automation_name || slackEvent?.when || null);
+    if (activity.description) detailLines.push(activity.description);
+  } else if (activity.activity_type === 'candidate_stage_changed') {
     if (md.job_title) detailLines.push(md.job_title);
   } else if (email) {
     // The card carries the participants; nothing to repeat here.
@@ -122,6 +137,11 @@ export function ActivityFeedItem({ activity, isLast, onEmailAction }: ActivityFe
           <span className="font-inter text-[11px] text-[#8B8F9E]">
             · {authorName} · {when}
           </span>
+          {slack && TRIGGER_LABEL[slack.trigger as SlackTrigger] && (
+            <span className="inline-flex items-center rounded-full bg-[#F1F0EC] px-[7px] py-[2px] font-inter text-[10.5px] font-semibold text-[#5A6072]">
+              {TRIGGER_LABEL[slack.trigger as SlackTrigger]}
+            </span>
+          )}
           {automated && (
             <span
               className="inline-flex items-center gap-1 font-inter text-[10.5px] font-semibold"

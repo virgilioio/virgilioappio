@@ -23,6 +23,8 @@ export function IconSwap({ swapped, from, to, className }: { swapped: boolean; f
 
 /** A stable icon component for Button's `icon` prop; the swap follows `[data-swapped]` on an ancestor. */
 export function makeSwapIcon(From: LucideIcon, To: LucideIcon) {
+  // A factory called once at module level, so the component is stable.
+  // eslint-disable-next-line no-restricted-syntax
   function SwapIcon(props: LucideProps) {
     return (
       <span className="gio-icon-swap" aria-hidden>

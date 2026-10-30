@@ -142,3 +142,24 @@ export function placeChange(prev: PlaceValue, key: keyof PlaceValue, value: stri
   if (key === 'region') return foldPlace(value) === foldPlace(prev.region) ? prev : { ...prev, region: value, city: '' }
   return { ...prev, city: value, region: regionOfCity && !prev.region ? regionOfCity : prev.region }
 }
+
+/** A place by name ({ country, region, city } with the country's name) as one readable line: "Monterrey, Nuevo León, Mexico". */
+export function placeToText(p: PlaceValue): string {
+  return [p.city, p.region, p.country].map((s) => s.trim()).filter(Boolean).join(', ')
+}
+
+/**
+ * Reads a line written by placeToText (or typed by hand) back into a place by
+ * name. The last part counts as the country only when it is one; a line that
+ * doesn't end in a country is kept whole as the city, so nothing typed is lost.
+ */
+export function placeFromText(text: string | null | undefined): PlaceValue {
+  const raw = (text ?? '').trim()
+  const parts = raw.split(',').map((s) => s.trim()).filter(Boolean)
+  const last = parts[parts.length - 1]
+  if (!last || !countryCodeFor(last)) return { country: '', region: '', city: raw }
+  const country = countryName(countryCodeFor(last))
+  if (parts.length === 1) return { country, region: '', city: '' }
+  if (parts.length === 2) return { country, region: '', city: parts[0] }
+  return { country, region: parts[parts.length - 2], city: parts.slice(0, -2).join(', ') }
+}

@@ -21,9 +21,11 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'url', label: 'URL' },
   { value: 'textarea', label: 'Textarea' },
   { value: 'select', label: 'Select' },
-  { value: 'checkbox', label: 'Checkbox' },
+  { value: 'checkbox', label: 'Yes / No' },
   { value: 'date', label: 'Date' },
   { value: 'file', label: 'File Upload' },
+  { value: 'audio', label: 'Audio' },
+  { value: 'video', label: 'Video' },
 ]
 
 const FILE_TYPES = [

@@ -36,7 +36,7 @@ export function JobHeader({
   const accent = accentColor || '#6F3FF5'
 
   return (
-    <section className="border-b border-black/5 bg-[#FAF7F2]">
+    <section className="border-b border-black/5 bg-virgilio-cream">
       {bannerUrl && (
         <div
           className="w-full aspect-[16/5] sm:aspect-[16/4] bg-center bg-cover"
@@ -102,7 +102,7 @@ export function JobHeader({
               {onWatchVideo && (
                 <button
                   onClick={onWatchVideo}
-                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white border border-black/10 text-[12.5px] font-poppins font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
+                  className="gio-pressable inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white border border-black/10 text-[12.5px] font-poppins font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
                 >
                   <Play className="h-3.5 w-3.5" />
                   Watch video
@@ -110,14 +110,14 @@ export function JobHeader({
               )}
               <button
                 onClick={onShare}
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white border border-black/10 text-[12.5px] font-poppins font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
+                className="gio-pressable inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white border border-black/10 text-[12.5px] font-poppins font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
               >
                 <Share2 className="h-3.5 w-3.5" />
                 Share
               </button>
               <button
                 onClick={onSave}
-                className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-[12.5px] font-poppins font-medium ${
+                className={`gio-pressable inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-[12.5px] font-poppins font-medium ${
                   saved
                     ? ''
                     : 'bg-white border-black/10 text-[#0d0d09] hover:bg-[#FAFAF7]'
@@ -131,7 +131,7 @@ export function JobHeader({
             </div>
             <button
               onClick={onApply}
-              className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-lg bg-[#0d0d09] text-[#FFFCF9] text-[13px] font-poppins font-medium hover:bg-black"
+              className="gio-pressable inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-lg bg-[#0d0d09] text-[#FFFCF9] text-[13px] font-poppins font-medium hover:bg-black"
             >
               Apply for this role
               <ArrowRight className="h-3.5 w-3.5" />

@@ -102,7 +102,7 @@ export function PhoneShell() {
       {current ? (
         <PhoneTopTabs sections={sections} current={current.id} me={me} onAccount={() => setYouOpen(true)} />
       ) : (
-        <div className="gio-phone-top sm:hidden pointer-events-none fixed inset-x-0 top-0 z-50 flex items-center">
+        <div className="gio-phone-top gio-strip-follow sm:hidden pointer-events-none fixed inset-x-0 top-[var(--gio-strip)] z-50 flex items-center">
           <Circle label="Back" onClick={back} size={48}>
             <ArrowLeft className="h-[22px] w-[22px]" strokeWidth={2} />
           </Circle>
@@ -238,7 +238,7 @@ function PhoneTopTabs({ sections, current, me, onAccount }: {
     <nav
       ref={navRef}
       aria-label="Sections"
-      className="gio-phone-tabs sm:hidden fixed inset-x-0 top-0 z-50 flex items-center bg-virgilio-cream"
+      className="gio-phone-tabs gio-strip-follow sm:hidden fixed inset-x-0 top-[var(--gio-strip)] z-50 flex items-center bg-virgilio-cream"
       onPointerDownCapture={capture}
       onClickCapture={capture}
     >

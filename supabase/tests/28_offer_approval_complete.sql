@@ -1,4 +1,4 @@
--- Run after 20261019011108_offer_approval_complete inside a transaction that is rolled back.
+-- Run after 20261019011108_offer_approval_complete (link as of 20261028042537_offer_approval_links) inside a transaction that is rolled back.
 -- Fake offers and approval requests on a real job and candidate in Virgilio's workspace:
 -- Allan asks, the support account and another teammate approve. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
@@ -57,7 +57,7 @@ insert into t_results select 'chain complete: one bell for the person who asked,
      and actor_user_id = (select v from t_ids where k = 'third')
      and category = 'offer_event' and title like 'Offer approved for %'
      and preview = 'Both approvers approved it. You can send it for signature.'
-     and action_url = '/jobs/' || (select v from t_ids where k = 'job') || '?candidate=' || (select v from t_ids where k = 'cand') || '&tab=offer');
+     and action_url = '/jobs/' || (select v from t_ids where k = 'job') || '/candidates/' || (select v from t_ids where k = 'cand') || '?tab=offer');
 
 -- r2: the request marked approved first, the step after (the other order): still announced.
 update public.offer_approval_requests set status = 'approved' where id = (select v from t_ids where k = 'r2');

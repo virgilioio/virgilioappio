@@ -102,7 +102,7 @@ export function ApplicationSubmittedScreen({
   }
 
   return (
-    <main className="flex-1 w-full animate-in fade-in-50 duration-500">
+    <main className="flex-1 w-full">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
         {/* Hero */}
         <div className="flex flex-col items-center text-center">

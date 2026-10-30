@@ -16,7 +16,7 @@ export function CareersTopBar({ logoUrl, companyName, websiteUrl, showCompanyNam
   const domain = websiteUrl ? websiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '') : null
 
   return (
-    <header className="border-b border-black/5 bg-[#FAF7F2]">
+    <header className="border-b border-black/5 bg-virgilio-cream">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div
           className={`flex items-center gap-3 ${websiteUrl ? 'cursor-pointer' : ''}`}

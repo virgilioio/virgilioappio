@@ -13,6 +13,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Calendar, Check, Lock, UserX } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 
 export type DecisionKind = 'interview_requested' | 'not_a_fit'
 
@@ -29,12 +31,15 @@ const GAP_OPTIONS = [
 ]
 
 interface DecisionDialogProps {
+  /** Kept mounted so it can leave with the dialog's exit; reset each time it opens. */
+  open: boolean
   kind: DecisionKind
   candidateFirstName: string
   recruiterName: string
   workspaceName: string
   onClose: () => void
-  onSubmit: (input: { reasons: string[]; note: string }) => Promise<boolean>
+  /** Resolves true once recorded, or with the message to show in the dialog. */
+  onSubmit: (input: { reasons: string[]; note: string }) => Promise<true | string>
 }
 
 const LABEL: React.CSSProperties = {
@@ -59,20 +64,17 @@ function Chip({
   label,
   selected,
   onClick,
-  autoFocus,
 }: {
   label: string
   selected: boolean
   onClick: () => void
-  autoFocus?: boolean
 }) {
   return (
     <button
       type="button"
-      autoFocus={autoFocus}
       aria-pressed={selected}
       onClick={onClick}
-      className="font-inter"
+      className="gio-pressable font-inter"
       style={{
         padding: '7px 12px',
         borderRadius: 8,
@@ -82,7 +84,6 @@ function Chip({
         background: selected ? '#0d0d09' : '#fff',
         border: selected ? '1px solid #0d0d09' : '1px solid #E0DDD3',
         color: selected ? '#fffcf9' : '#1F2230',
-        transition: 'background 120ms ease, color 120ms ease, border-color 120ms ease',
       }}
     >
       {label}
@@ -91,6 +92,7 @@ function Chip({
 }
 
 export function DecisionDialog({
+  open,
   kind,
   candidateFirstName,
   recruiterName,
@@ -104,40 +106,16 @@ export function DecisionDialog({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [recorded, setRecorded] = useState(false)
-  const panel = useRef<HTMLDivElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
 
-  // O5 (Block B §16, Form): passing on someone starts on Cancel, like every
-  // destructive dialog. Requesting an interview starts on the first chip.
+  // Each opening starts clean.
   useEffect(() => {
-    if (!accept) cancelRef.current?.focus()
-  }, [accept])
-
-  // Escape closes; Tab stays inside.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !busy) {
-        onClose()
-        return
-      }
-      if (event.key !== 'Tab' || !panel.current) return
-      const focusable = panel.current.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), textarea, [href], input, select, [tabindex]:not([tabindex="-1"])',
-      )
-      if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [busy, onClose])
+    if (!open) return
+    setReasons([])
+    setNote('')
+    setError(null)
+    setRecorded(false)
+  }, [open])
 
   const toggle = (value: string) => {
     setReasons((current) => {
@@ -149,44 +127,28 @@ export function DecisionDialog({
   const submit = async () => {
     setBusy(true)
     setError(null)
-    const ok = await onSubmit({ reasons, note: note.trim() })
+    const result = await onSubmit({ reasons, note: note.trim() })
     setBusy(false)
-    if (ok) setRecorded(true)
-    else setError('We couldn\u2019t record your answer. Nothing was sent; try again.')
+    if (result === true) setRecorded(true)
+    else setError(result)
   }
 
   return (
-    <div
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose()
-      }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 120,
-        background: 'rgba(13,13,9,0.35)',
-        display: 'grid',
-        // One shrinkable column, so the panel never runs off a phone screen (O5, 390px check).
-        gridTemplateColumns: 'minmax(0, 1fr)',
-        placeItems: 'center',
-        padding: 16,
-        overflowY: 'auto',
-      }}
-    >
-      <div
-        ref={panel}
-        role="dialog"
-        aria-modal="true"
-        aria-label={accept ? 'Request an interview' : `Pass on ${candidateFirstName}`}
-        style={{
-          width: '100%',
-          maxWidth: 520,
-          background: '#fff',
-          border: '1px solid #E7E8EE',
-          borderRadius: 16,
-          boxShadow: '0 30px 70px -24px rgba(13,13,9,0.3), 0 2px 8px rgba(13,13,9,0.06)',
+    <Dialog open={open} onOpenChange={(next) => { if (!next && !busy) onClose() }}>
+      <DialogContent
+        aria-describedby={undefined}
+        closeClassName="hidden"
+        className="w-[calc(100vw-32px)] max-w-[520px] gap-0 rounded-2xl border-[#E7E8EE] p-0 sm:rounded-2xl"
+        style={{ boxShadow: '0 30px 70px -24px rgba(13,13,9,0.3), 0 2px 8px rgba(13,13,9,0.06)' }}
+        // O5 (Block B §16, Form): passing on someone starts on Cancel, like every
+        // destructive dialog. Requesting an interview starts on the first chip.
+        onOpenAutoFocus={(event) => {
+          if (accept) return
+          event.preventDefault()
+          cancelRef.current?.focus()
         }}
+        onEscapeKeyDown={(event) => { if (busy) event.preventDefault() }}
+        onInteractOutside={(event) => { if (busy) event.preventDefault() }}
       >
         {recorded ? (
           <div style={{ padding: '32px 28px', textAlign: 'center' }}>
@@ -204,12 +166,12 @@ export function DecisionDialog({
             >
               <Check size={20} />
             </span>
-            <h2
+            <DialogTitle
               className="font-poppins"
               style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.03em', color: '#1F2230', margin: '14px 0 0' }}
             >
               {accept ? 'Interview requested' : "Thanks — that's recorded"}
-            </h2>
+            </DialogTitle>
             <p
               className="font-inter"
               style={{ fontSize: 13, lineHeight: 1.6, color: '#5A6072', margin: '8px auto 0', maxWidth: 360 }}
@@ -226,12 +188,12 @@ export function DecisionDialog({
           <>
             {accept ? (
               <div style={{ padding: '20px 24px 0' }}>
-                <h2
+                <DialogTitle
                   className="font-poppins"
                   style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.03em', color: '#1F2230', margin: 0 }}
                 >
                   {`Request an interview with ${candidateFirstName}`}
-                </h2>
+                </DialogTitle>
                 <p className="font-inter" style={{ fontSize: 12.5, lineHeight: 1.55, color: '#5A6072', margin: '6px 0 0' }}>
                   {`We will let ${recruiterName} know and they will come back to you with times.`}
                 </p>
@@ -246,13 +208,12 @@ export function DecisionDialog({
                   <UserX className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h2
-                    id="decision-dialog-title"
+                  <DialogTitle
                     className="mt-0.5 line-clamp-2 break-words font-poppins text-[17px] font-semibold leading-snug text-text-primary [text-wrap:pretty]"
                     style={{ margin: 0 }}
                   >
                     {`Pass on ${candidateFirstName}?`}
-                  </h2>
+                  </DialogTitle>
                   <p className="mt-1 font-inter text-[13px] leading-[1.5] text-text-secondary [text-wrap:pretty]" style={{ marginBottom: 0 }}>
                     {`${recruiterName} is told you\u2019re passing, and you can\u2019t change your answer on this link. Telling us why takes ten seconds and sharpens the next shortlist. Nothing here is shown to ${candidateFirstName}.`}
                   </p>
@@ -266,11 +227,10 @@ export function DecisionDialog({
                 <Qualifier>{accept ? 'optional' : 'pick any that apply'}</Qualifier>
               </p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 9 }}>
-                {(accept ? TIMING_OPTIONS : GAP_OPTIONS).map((option, index) => (
+                {(accept ? TIMING_OPTIONS : GAP_OPTIONS).map((option) => (
                   <Chip
                     key={option}
                     label={option}
-                    autoFocus={accept && index === 0}
                     selected={reasons.includes(option)}
                     onClick={() => toggle(option)}
                   />
@@ -282,44 +242,31 @@ export function DecisionDialog({
               <p style={LABEL}>
                 Anything to add<Qualifier>optional</Qualifier>
               </p>
-              <textarea
+              <Textarea
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 maxLength={2000}
-                className="font-inter"
+                aria-label="Anything to add"
+                className="mt-2 min-h-[78px] rounded-[10px] border-[#E0DDD3] bg-[#FBFAF7] px-3 py-2.5 font-inter text-[12.5px] leading-[1.6] text-[#1F2230]"
                 placeholder={
                   accept
                     ? `Anything you'd like ${recruiterName} to know before the call — people to include, areas to probe…`
                     : 'Anything that would help us calibrate the next few candidates…'
                 }
-                style={{
-                  width: '100%',
-                  minHeight: 78,
-                  marginTop: 8,
-                  border: '1px solid #E0DDD3',
-                  borderRadius: 10,
-                  background: '#FBFAF7',
-                  padding: '10px 12px',
-                  fontSize: 12.5,
-                  lineHeight: 1.6,
-                  color: '#1F2230',
-                  resize: 'vertical',
-                  outline: 'none',
-                }}
               />
             </div>
 
-            {error && (
-              <p
-                role="alert"
-                className="font-inter"
-                style={{ padding: '10px 24px 0', margin: 0, fontSize: 11.5, color: '#B42318' }}
-              >
-                {error}
-              </p>
-            )}
+            {/* A reserved line (two on phones, where the message wraps), so an error never moves the buttons (§7). */}
+            <p
+              role={error ? 'alert' : undefined}
+              aria-live="polite"
+              className="min-h-[46px] font-inter sm:min-h-[28px]"
+              style={{ padding: '10px 24px 0', margin: 0, fontSize: 11.5, lineHeight: '18px', color: '#B42318' }}
+            >
+              {error}
+            </p>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, padding: '18px 24px 20px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, padding: '8px 24px 20px' }}>
               <span
                 className="font-inter"
                 style={{ flex: '1 1 140px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#8B8F9E' }}
@@ -342,7 +289,7 @@ export function DecisionDialog({
             </div>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -25,7 +25,7 @@ export function JobAsideReplyCard({ onApply, responseHours = 48, medianHours = 1
       </div>
       <button
         onClick={onApply}
-        className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-[#0d0d09] text-[#FFFCF9] text-[13px] font-poppins font-medium hover:bg-black"
+        className="gio-pressable w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-[#0d0d09] text-[#FFFCF9] text-[13px] font-poppins font-medium hover:bg-black"
       >
         Apply for this role
         <ArrowRight className="h-3.5 w-3.5" />

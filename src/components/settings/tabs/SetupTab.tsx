@@ -47,17 +47,17 @@ function buildTiers(c: SetupChecks, isAdminOrOwner: boolean, isExternal = false)
     },
     {
       id: 'mail', icon: Mail, title: 'Email connection',
-      description: 'Reply to candidates as you. Send-only access.',
+      description: 'In My profile. Reply to candidates as you.',
       estimate: '1 min', blocks: 'Replying to candidates',
       status: c.mail ? 'done' : 'todo',
-      tab: 'email-calendar',
+      href: '/me?focus=card-google',
     },
     {
       id: 'calendar', icon: Calendar, title: 'Calendar connection',
-      description: 'Busy blocks in, interviews written back.',
+      description: 'In My profile. Busy blocks in, interviews written back.',
       estimate: '1 min', blocks: 'Scheduling & holds',
       status: c.calendar ? 'done' : 'todo',
-      tab: 'email-calendar',
+      href: '/me?focus=card-google',
     },
     {
       id: 'booking', icon: Clock, title: 'Booking link & event types',

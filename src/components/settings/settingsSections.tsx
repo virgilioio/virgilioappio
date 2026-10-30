@@ -1,5 +1,5 @@
 import {
-  Zap, Mail, Clock, Bell,
+  Zap, Clock, Bell,
   Building2, Users, Folder, Plug,
   GitBranch, ListChecks, FileText, Globe, Megaphone, Sparkles,
   Building, ShieldCheck, type LucideIcon,
@@ -53,7 +53,6 @@ export function useSettingsSections(essentialsRemaining = 0) {
       label: 'YOU',
       show: true,
       items: [
-        { id: 'email-calendar', label: 'Email & calendar', icon: Mail, show: true },
         { id: 'booking', label: permissions.isExternal ? 'Availability' : 'Booking & event types', icon: Clock, show: true },
         { id: 'notifications', label: 'Notifications', icon: Bell, show: true },
       ],

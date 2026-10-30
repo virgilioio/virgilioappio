@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -31,6 +31,10 @@ interface CandidateOfferApprovalsProps {
   organizationId?: string | null
   candidateFirstName?: string
   jobTitle?: string
+  /** Opened from a link to the approval (?focus=approval): scroll to whose
+   * turn it is and flash that row once the chain is drawn. */
+  focus?: boolean
+  onFocused?: () => void
 }
 
 function initialsOf(name?: string | null) {
@@ -149,8 +153,11 @@ export function CandidateOfferApprovals({
   jobId,
   candidateFirstName,
   jobTitle,
+  focus,
+  onFocused,
 }: CandidateOfferApprovalsProps) {
   const navigate = useNavigate()
+  const listRef = useRef<HTMLDivElement>(null)
   const permissions = usePermissions()
   const isAdmin = permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin
 
@@ -170,6 +177,28 @@ export function CandidateOfferApprovals({
 
   const { isCurrentUserActiveApprover, activeStep, approveStep, declineStep, isApproving, isDeclining } =
     useOfferApprovalRequest(offerLetter?.id, jobId)
+
+  // A link to the approval lands on your row (or whoever's turn it is), flashed once.
+  useEffect(() => {
+    if (!focus || isLoading) return
+    const raf = requestAnimationFrame(() => {
+      const list = listRef.current
+      const row = list?.querySelector<HTMLElement>('[data-approval-row="mine"]')
+        ?? list?.querySelector<HTMLElement>('[data-approval-row="awaiting"]')
+      const target = row ?? list
+      if (target) {
+        const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        target.scrollIntoView({ block: 'center', behavior: still ? 'auto' : 'smooth' })
+        if (row) {
+          row.classList.remove('gio-saved-flash')
+          void row.offsetWidth
+          row.classList.add('gio-saved-flash')
+        }
+      }
+      onFocused?.()
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [focus, isLoading, onFocused])
 
   const [declineNotes, setDeclineNotes] = useState('')
   const [showDeclineForm, setShowDeclineForm] = useState(false)
@@ -368,7 +397,7 @@ export function CandidateOfferApprovals({
         ) : null
       }
     >
-      <div className="pb-3">
+      <div className="pb-3" ref={listRef}>
         {displaySteps.map((s, i) => {
           const prev = displaySteps[i - 1]
           const dim = s.runStatus === 'queued' || s.runStatus === 'skipped'
@@ -380,7 +409,11 @@ export function CandidateOfferApprovals({
                 <div className="flex-1 w-[1.5px]" style={{ backgroundColor: '#EDECE6' }} />
               </div>
 
-              <div className="pb-3 pl-3" style={{ opacity: dim ? 0.62 : 1 }}>
+              <div
+                className="relative pb-3 pl-3 rounded-[10px]"
+                style={{ opacity: dim ? 0.62 : 1 }}
+                data-approval-row={isMine ? 'mine' : s.runStatus === 'awaiting' ? 'awaiting' : undefined}
+              >
                 <div
                   className={cn('flex items-center gap-3')}
                   style={
