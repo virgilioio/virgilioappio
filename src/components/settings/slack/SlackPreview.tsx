@@ -90,7 +90,9 @@ export function SlackPreview({
       <p className="mt-2.5 border-t border-[#F1F0EC] pt-2 font-inter text-[11.5px] text-text-tertiary">
         {open
           ? <>“{open.label}” opens {open.where}.</>
-          : 'Posted in a channel, a welcome has no link: My profile is different for everyone who reads it.'}
+          : event === 'member.birthday'
+            ? 'A birthday wish has no link: there’s nothing to open.'
+            : 'Posted in a channel, a welcome has no link: My profile is different for everyone who reads it.'}
       </p>
     </div>
   )

@@ -8,7 +8,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Briefcase, CalendarClock, CalendarX2, CheckCircle2, ClipboardCheck, ClipboardList, FileCheck2, FileSignature,
+  Briefcase, Cake, CalendarClock, CalendarX2, CheckCircle2, ClipboardCheck, ClipboardList, FileCheck2, FileSignature,
   FileX2, Hourglass, Inbox, ListTodo, MailWarning, MoveRight, PartyPopper, Send, UserPlus, UserX, XCircle, type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
@@ -21,7 +21,7 @@ export type SlackEvent =
   | 'interview.scheduled' | 'interview.cancelled' | 'scorecard.submitted' | 'scorecard.due'
   | 'offer.approval_requested' | 'offer.approval_waiting' | 'offer.approved' | 'offer.sent' | 'offer.signed' | 'offer.declined'
   | 'job.opened' | 'job.closed'
-  | 'member.joined' | 'member.profile_incomplete' | 'member.google_broken'
+  | 'member.joined' | 'member.profile_incomplete' | 'member.google_broken' | 'member.birthday'
 
 export type SlackDetail =
   | 'who' | 'candidate' | 'job' | 'client' | 'department' | 'stage' | 'previous_stage'
@@ -57,6 +57,8 @@ export interface SlackEventDef {
   /** Repeats every `filters.every_days` until it no longer applies: the
    * choices, the default, whether "Only once" is one, and from when. */
   repeats?: { options: readonly number[]; initial: number; once?: boolean; from: string }
+  /** When a scheduled event goes out, under the event picker. */
+  timing?: string
   message: string
 }
 
@@ -131,6 +133,11 @@ export const SLACK_EVENTS: SlackEventDef[] = [
     repeats: { options: [3, 5, 7, 14], initial: 7, from: 'From the day they join, until their profile is complete.' },
     details: ['member', 'missing', 'progress', 'my_profile_link'], roles: ['member'],
     message: 'Hey {member}! 👋 Your Gio profile is {progress}. Still to add: {missing}. It only takes a few minutes, and it helps the whole team ✨' },
+  // 2026-10-30: on the day, about 9:00 Mexico City; never the year or their age.
+  { key: 'member.birthday', group: 'People', label: 'It’s someone’s birthday', when: 'When it’s someone’s birthday', icon: Cake, people: true,
+    details: ['member'], roles: ['member'],
+    timing: 'On their birthday, at about 9:00 AM Mexico City time, once a year. Never their age or birth year.',
+    message: 'Happy birthday, {member}! 🎂🎉 Wishing you a great day from the whole team.' },
   // 2026-10-28: the moment Gio notices someone's Gmail or Calendar needs reconnecting.
   { key: 'member.google_broken', group: 'People', label: 'Someone’s Google stops working', when: 'When someone’s Google stops working', icon: MailWarning,
     people: true, dmOnly: 'member',
@@ -193,6 +200,7 @@ export function linkLabel(key: SlackDetail, event: SlackEvent | null | undefined
 export function openLabel(event: SlackEvent | null | undefined, dm = false): { label: string; where: string } | null {
   switch (event) {
     case 'member.joined': return dm ? { label: 'Open your profile', where: 'My profile' } : null
+    case 'member.birthday': return null
     case 'member.profile_incomplete': return { label: 'Finish your profile', where: 'the first card still to fill in on My profile' }
     case 'member.google_broken': return { label: 'Reconnect Google', where: 'their Google Workspace card on My profile' }
     case 'offer.approval_requested': return { label: 'Review the offer', where: 'the approval, at whose turn it is' }

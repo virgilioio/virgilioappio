@@ -363,6 +363,7 @@ export function SlackAutomationSheet({
             )
           })}
         </div>
+        {def.timing && <p className="mt-2 font-inter text-[12px] text-text-tertiary">{def.timing}</p>}
       </FormSection>
 
       {hasFilters && (

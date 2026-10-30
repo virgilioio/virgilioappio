@@ -48,6 +48,7 @@ const PEOPLE_STARTERS: Array<{ event: SlackEvent; title: string; body: string }>
   { event: 'member.joined', title: 'Welcome new teammates', body: 'DM them a welcome the day they join Gio.' },
   { event: 'member.profile_incomplete', title: 'Profile reminders', body: 'Nudge them every few days until their profile is complete.' },
   { event: 'member.google_broken', title: 'Google alerts', body: 'DM them the moment their Google stops working, so they reconnect.' },
+  { event: 'member.birthday', title: 'Birthdays', body: 'Wish them a happy birthday in a channel on the day.' },
 ]
 
 /** Disconnect Slack? (the card's ⋯ and the sheet's Settings ask the same). */
@@ -66,7 +67,7 @@ function starterRow(event: SlackEvent): SlackAutomation {
   const def = SLACK_EVENT[event]
   return {
     id: '', job_id: null, job_title: null, name: null, event, filters: def.repeats ? { every_days: def.repeats.initial } : {},
-    destinations: def.dmOnly ? [{ type: 'role', role: def.dmOnly }] : event === 'candidate.hired' ? [] : [{ type: 'role', role: 'recruiter' }],
+    destinations: def.dmOnly ? [{ type: 'role', role: def.dmOnly }] : event === 'candidate.hired' || event === 'member.birthday' ? [] : [{ type: 'role', role: 'recruiter' }],
     message: def.message, is_active: true, preset: null, created_by_name: null, updated_at: '',
     last_sent_at: null, last_error: null, last_error_at: null, can_edit: true,
   }
@@ -228,7 +229,7 @@ export function SlackSheet({
                       </FormSection>
                     )}
                     {(people.length > 0 || (isAdmin && working)) && (
-                      <FormSection title="People" subtitle="Virgilio’s own team, never external users: welcomes, profile reminders and Google alerts." bare>
+                      <FormSection title="People" subtitle="Virgilio’s own team, never external users: welcomes, profile reminders, Google alerts and birthdays." bare>
                         {people.length > 0 ? (
                           <SlackAutomationList
                             tenantId={tenantId}
@@ -240,7 +241,7 @@ export function SlackSheet({
                             onDuplicate={(row) => newOne(row)}
                           />
                         ) : (
-                          <StarterCards starters={PEOPLE_STARTERS} columns={3} onPick={(e) => newOne(starterRow(e))} />
+                          <StarterCards starters={PEOPLE_STARTERS} columns={2} onPick={(e) => newOne(starterRow(e))} />
                         )}
                       </FormSection>
                     )}
