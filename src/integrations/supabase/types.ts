@@ -6174,6 +6174,77 @@ export type Database = {
           },
         ]
       }
+      os_commission_payouts: {
+        Row: {
+          created_at: string
+          currency: string
+          historical: boolean
+          id: string
+          invoice_number: string | null
+          lines: number
+          month: string
+          note: string | null
+          paid_on: string | null
+          person_email: string | null
+          person_name: string | null
+          sales_payout_id: string
+          sales_sent_at: string
+          status: string
+          tenant_id: string
+          total: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          historical?: boolean
+          id?: string
+          invoice_number?: string | null
+          lines?: number
+          month: string
+          note?: string | null
+          paid_on?: string | null
+          person_email?: string | null
+          person_name?: string | null
+          sales_payout_id: string
+          sales_sent_at: string
+          status: string
+          tenant_id: string
+          total: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          historical?: boolean
+          id?: string
+          invoice_number?: string | null
+          lines?: number
+          month?: string
+          note?: string | null
+          paid_on?: string | null
+          person_email?: string | null
+          person_name?: string | null
+          sales_payout_id?: string
+          sales_sent_at?: string
+          status?: string
+          tenant_id?: string
+          total?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_commission_payouts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_commission_rates: {
         Row: {
           created_at: string
@@ -6890,6 +6961,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "os_person_shipping_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_person_tax_address: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          created_at: string
+          line1: string | null
+          line2: string | null
+          postal_code: string | null
+          region: string | null
+          same_as_shipping: boolean
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          line1?: string | null
+          line2?: string | null
+          postal_code?: string | null
+          region?: string | null
+          same_as_shipping?: boolean
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          line1?: string | null
+          line2?: string | null
+          postal_code?: string | null
+          region?: string | null
+          same_as_shipping?: boolean
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_person_tax_address_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -12381,6 +12505,14 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      os_member_bank_reveal: {
+        Args: { _actor_email: string; _email: string; _payout: string }
+        Returns: string
+      }
+      os_member_invoice_details: {
+        Args: { _actor_email: string; _email: string; _invoice: string }
+        Returns: Json
+      }
       os_my_bundle_id: { Args: { _tenant_id: string }; Returns: string }
       os_next_occurrence: {
         Args: { _d: string; _from: string }
@@ -12665,6 +12797,7 @@ export type Database = {
         Args: { _attribution: Json; _deal_id: string; _tenant_id: string }
         Returns: Json
       }
+      sales_commission_payout_upsert: { Args: { payload: Json }; Returns: Json }
       sales_company_upsert: { Args: { payload: Json }; Returns: Json }
       sales_deal_won: { Args: { _p: Json; _tenant_id: string }; Returns: Json }
       sales_earnings_upsert: { Args: { payload: Json }; Returns: Json }
@@ -13041,6 +13174,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      slack_birthdays: { Args: never; Returns: number }
       slack_can_change: { Args: { _automation: string }; Returns: boolean }
       slack_check_destinations: { Args: { _d: Json }; Returns: boolean }
       slack_check_edit: {

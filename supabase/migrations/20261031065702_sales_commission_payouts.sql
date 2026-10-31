@@ -1,10 +1,5 @@
 -- Commissions phase 2, Gio ATS side (plan "Gio Sales commissions module", 2026-10-31).
 --
--- Dry run (rolled back, 2026-10-31): the same payout sent twice is kept once and
--- found Javier; Allan's and Javier's invoice details are complete (nothing
--- missing); an unknown email says "a Gio ATS account"; a non-admin is refused
--- the bank account (GBK01); three reads in the audit log.
---
 -- 1. os_commission_payouts: a read-only copy of each member's payouts from Gio
 --    Sales, so their Earnings tab shows Paid (what they've made) and Payment
 --    history. Gio Sales sends commissions.payout each time a payout is marked
@@ -16,7 +11,121 @@
 --    to pay it (os_member_bank_reveal), for Gio Sales' server only, through the
 --    sales-commission-gateway function. Both are written to the audit log, as
 --    a reveal in Gio ATS is today; the full bank account never leaves Gio ATS
---    except to the person paying it.
+--    except to the person paying it. The tax ID prints in full (it's the
+--    member's own invoice); only the bank account is masked (Allan, 2026-10-31).
+-- 3. os_person_tax_address: the address on a member's invoices, beside the
+--    shipping address, with "Same as shipping address" (Allan, 2026-10-31).
+--    Kept like the shipping address: the person and People & Access admins
+--    only, never external users (GEX02), the history names the fields that
+--    changed and never their values, rows never removed.
+--
+-- Dry run (rolled back, 2026-10-31): the same payout sent twice is kept once and
+-- found Javier; with no tax address the invoice can't be written ("tax address"
+-- missing, no tax ID read); "Same as shipping address" fills it from the
+-- shipping address; an address of their own is trimmed and its country upper
+-- cased, and turning "Same as shipping" back on clears it; an unknown email
+-- says "a Gio ATS account"; a non-admin is refused the bank account (GBK01);
+-- every change and reveal is in the audit log.
+
+-- ── 0. Tax address ─────────────────────────────────────────────────────────
+create table public.os_person_tax_address (
+  tenant_id uuid not null references public.tenants(id),
+  user_id uuid not null references auth.users(id),
+  -- On: the invoice uses the shipping address; the fields below stay empty.
+  same_as_shipping boolean not null default true,
+  line1 text check (line1 is null or length(line1) <= 200),
+  line2 text check (line2 is null or length(line2) <= 200),
+  city text check (city is null or length(city) <= 100),
+  region text check (region is null or length(region) <= 100),
+  postal_code text check (postal_code is null or length(postal_code) <= 20),
+  country_code text check (country_code is null or country_code ~ '^[A-Z]{2}$'),
+  updated_by uuid default auth.uid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (tenant_id, user_id)
+);
+comment on table public.os_person_tax_address is
+  'The address on a person''s invoices to Virgilio, or the shipping address: People & Access admins and the person themself only.';
+
+create or replace function public.os_person_tax_address_validate()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+begin
+  if new.same_as_shipping then
+    new.line1 := null; new.line2 := null; new.city := null; new.region := null;
+    new.postal_code := null; new.country_code := null;
+  else
+    new.line1 := nullif(btrim(new.line1), '');
+    new.line2 := nullif(btrim(new.line2), '');
+    new.city := nullif(btrim(new.city), '');
+    new.region := nullif(btrim(new.region), '');
+    new.postal_code := nullif(upper(btrim(new.postal_code)), '');
+    new.country_code := nullif(upper(btrim(new.country_code)), '');
+  end if;
+  if tg_op = 'UPDATE' and (new.tenant_id <> old.tenant_id or new.user_id <> old.user_id) then
+    raise exception 'A tax address can''t move to another person.' using errcode = 'GOS02';
+  end if;
+  if not exists (select 1 from public.members m where m.tenant_id = new.tenant_id and m.user_id = new.user_id) then
+    raise exception 'This person is not a member of the workspace.' using errcode = 'GOS02';
+  end if;
+  new.updated_by := auth.uid();
+  new.updated_at := now();
+  return new;
+end;
+$function$;
+
+create trigger a0_os_person_tax_address_external
+  before insert or update on public.os_person_tax_address
+  for each row execute function public.os_refuse_external();
+create trigger os_person_tax_address_validate
+  before insert or update on public.os_person_tax_address
+  for each row execute function public.os_person_tax_address_validate();
+
+-- History: which fields changed, by whom. No values.
+create or replace function public.os_person_tax_address_audit()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  changed text[] := '{}';
+begin
+  if new.same_as_shipping is distinct from (case when tg_op = 'UPDATE' then old.same_as_shipping end) then changed := array_append(changed, 'same_as_shipping'); end if;
+  if new.line1 is distinct from (case when tg_op = 'UPDATE' then old.line1 end)
+     or new.line2 is distinct from (case when tg_op = 'UPDATE' then old.line2 end) then changed := array_append(changed, 'street'); end if;
+  if new.city is distinct from (case when tg_op = 'UPDATE' then old.city end) then changed := array_append(changed, 'city'); end if;
+  if new.region is distinct from (case when tg_op = 'UPDATE' then old.region end) then changed := array_append(changed, 'region'); end if;
+  if new.postal_code is distinct from (case when tg_op = 'UPDATE' then old.postal_code end) then changed := array_append(changed, 'postal_code'); end if;
+  if new.country_code is distinct from (case when tg_op = 'UPDATE' then old.country_code end) then changed := array_append(changed, 'country'); end if;
+  if cardinality(changed) = 0 then
+    return new;
+  end if;
+  insert into public.os_audit_log (tenant_id, actor_id, subject_user_id, action, detail)
+  values (new.tenant_id, auth.uid(), new.user_id, 'person.tax_address_updated', jsonb_build_object('fields', to_jsonb(changed)));
+  return new;
+end;
+$function$;
+create trigger os_person_tax_address_audit
+  after insert or update on public.os_person_tax_address
+  for each row execute function public.os_person_tax_address_audit();
+
+alter table public.os_person_tax_address enable row level security;
+create policy os_person_tax_address_read on public.os_person_tax_address
+  for select to authenticated
+  using (public.is_os_admin(tenant_id) or user_id = auth.uid());
+create policy os_person_tax_address_insert on public.os_person_tax_address
+  for insert to authenticated
+  with check (public.is_os_admin(tenant_id) or user_id = auth.uid());
+create policy os_person_tax_address_update on public.os_person_tax_address
+  for update to authenticated
+  using (public.is_os_admin(tenant_id) or user_id = auth.uid())
+  with check (public.is_os_admin(tenant_id) or user_id = auth.uid());
+revoke all on public.os_person_tax_address from anon, authenticated;
+grant select, insert, update on public.os_person_tax_address to authenticated;
 
 -- ── 1. Payouts ─────────────────────────────────────────────────────────────
 create table public.os_commission_payouts (
@@ -100,8 +209,8 @@ grant execute on function public.sales_commission_payout_upsert(jsonb) to servic
 
 -- ── 2. What Gio Sales prints, and the account Billing pays ─────────────────
 -- A Virgilio member (by work email) as they'll appear on their invoice: name,
--- work email, address (the shipping address, which is where they live unless
--- they say otherwise; else their city and country), their tax ID in full (it's
+-- work email, tax address (their own, or the shipping address when they say
+-- it's the same; street, city and country at least), their tax ID in full (it's
 -- their own invoice; written to the audit log as a reveal for that invoice) and
 -- the bank account with only its last four. Says what's missing instead of
 -- guessing, and then reads no tax ID at all.
@@ -131,13 +240,16 @@ begin
   select nullif(btrim(coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, '')), '') into _name
     from public.profiles p where p.user_id = _user;
 
-  select concat_ws(', ', nullif(s.line1, ''), nullif(s.line2, ''), nullif(s.city, ''), nullif(s.region, ''),
-                   nullif(s.postal_code, ''), nullif(s.country_code, '')) into _address
-    from public.os_person_shipping s where s.tenant_id = _t and s.user_id = _user and nullif(s.line1, '') is not null;
-  if _address is null then
-    select nullif(concat_ws(', ', nullif(d.city, ''), nullif(d.region, ''), nullif(d.country_code, '')), '') into _address
-      from public.os_person_details d where d.tenant_id = _t and d.user_id = _user;
-  end if;
+  -- The tax address, or the shipping address when they're the same.
+  select case when a.same_as_shipping then
+           (select concat_ws(', ', s.line1, s.line2, s.city, s.region, s.postal_code, s.country_code)
+              from public.os_person_shipping s
+             where s.tenant_id = _t and s.user_id = _user and s.line1 is not null and s.city is not null and s.country_code is not null)
+         when a.line1 is not null and a.city is not null and a.country_code is not null then
+           concat_ws(', ', a.line1, a.line2, a.city, a.region, a.postal_code, a.country_code)
+         end
+    into _address
+    from public.os_person_tax_address a where a.tenant_id = _t and a.user_id = _user;
 
   -- Their tax ID: the one for the country they live in first.
   select x.type_key, ty.label, x.value_enc into _tax
@@ -152,10 +264,10 @@ begin
     into _bank
     from public.os_person_bank b where b.tenant_id = _t and b.user_id = _user;
 
-  if _name is null then _missing := _missing || 'name'; end if;
-  if _address is null then _missing := _missing || 'address'; end if;
-  if _tax.type_key is null then _missing := _missing || 'tax ID'; end if;
-  if _bank.account_last4 is null then _missing := _missing || 'bank details'; end if;
+  if _name is null then _missing := array_append(_missing, 'name'); end if;
+  if _address is null then _missing := array_append(_missing, 'tax address'); end if;
+  if _tax.type_key is null then _missing := array_append(_missing, 'tax ID'); end if;
+  if _bank.account_last4 is null then _missing := array_append(_missing, 'bank details'); end if;
 
   -- The tax ID is read (and logged) only when the invoice can actually be written.
   if cardinality(_missing) = 0 then
