@@ -12,9 +12,10 @@ import { sendRatesNow } from '@/lib/os/commissions'
  * People & Access admins edit them; everyone in the workspace reads them.
  */
 
-export type PersonSource = 'deal_sales' | 'deal_es' | 'deal_sdr' | 'partner_owner' | 'hire_sourcer' | 'hire_recruiter'
+export type PersonSource = 'deal_sales' | 'deal_es' | 'deal_sdr' | 'partner_owner' | 'hire_sourcer' | 'hire_recruiter' | 'named_person'
 export type SyncStatus = 'pending' | 'done' | 'refused'
-export type FeeKey = 'engagement' | 'success' | 'ta-other' | 'consulting' | 'c-other'
+/** Engagement fees (retainers) are Virgilio's and never earn commission (Allan, 2026-10-31). */
+export type FeeKey = 'success' | 'ta-other' | 'consulting' | 'c-other'
 
 export interface CommissionRole {
   id: string
@@ -22,6 +23,8 @@ export interface CommissionRole {
   label: string
   description: string | null
   person_source: PersonSource
+  /** The person a 'named_person' role credits (F&A Manager); null otherwise. */
+  holder_user_id: string | null
   built_in: boolean
   active: boolean
   position: number
@@ -61,12 +64,12 @@ export const PERSON_SOURCES: { key: PersonSource; label: string; group: string }
   { key: 'partner_owner', label: "The partner's owner", group: 'From the partner in Gio Sales' },
   { key: 'hire_sourcer', label: 'Sourcer on the hire', group: 'From the hire in Gio ATS' },
   { key: 'hire_recruiter', label: 'Recruiter on the hire', group: 'From the hire in Gio ATS' },
+  { key: 'named_person', label: 'A person you name', group: 'Someone at Virgilio' },
 ]
 export const sourceLabel = (k: PersonSource) => PERSON_SOURCES.find((s) => s.key === k)?.label ?? k
 
 /** Virgilio's fees, as Gio Sales names them. */
 export const FEES: { key: FeeKey; label: string }[] = [
-  { key: 'engagement', label: 'Engagement fees' },
   { key: 'success', label: 'Success fees' },
   { key: 'ta-other', label: 'Other TA fees' },
   { key: 'consulting', label: 'Consulting fees' },
@@ -125,7 +128,7 @@ export function useCommissionRoles(tenantId: string | undefined) {
     queryFn: async (): Promise<CommissionRole[]> => {
       const { data, error } = await supabase
         .from('os_commission_roles')
-        .select('id, key, label, description, person_source, built_in, active, position, sync_status, sync_error')
+        .select('id, key, label, description, person_source, holder_user_id, built_in, active, position, sync_status, sync_error')
         .eq('tenant_id', tenantId!)
         .order('position')
         .order('label')
@@ -220,6 +223,8 @@ export interface RoleInput {
   label: string
   description: string | null
   person_source?: PersonSource
+  /** Who holds a 'named_person' role. */
+  holder_user_id?: string | null
 }
 
 export function useSaveRole(tenantId: string | undefined) {
@@ -227,7 +232,14 @@ export function useSaveRole(tenantId: string | undefined) {
   return useMutation({
     mutationFn: async ({ id, input }: { id?: string; input: RoleInput }) => {
       const { error } = id
-        ? await supabase.from('os_commission_roles').update({ label: input.label, description: input.description }).eq('id', id)
+        ? await supabase
+            .from('os_commission_roles')
+            .update({
+              label: input.label,
+              description: input.description,
+              ...(input.holder_user_id !== undefined ? { holder_user_id: input.holder_user_id } : {}),
+            } as never)
+            .eq('id', id)
         : await supabase.from('os_commission_roles').insert(
             // The key is made from the name by the database (signed-in users can't write it).
             {
@@ -235,6 +247,7 @@ export function useSaveRole(tenantId: string | undefined) {
               label: input.label,
               description: input.description,
               person_source: input.person_source!,
+              holder_user_id: input.person_source === 'named_person' ? input.holder_user_id ?? null : null,
             } as never,
           )
       if (error) {

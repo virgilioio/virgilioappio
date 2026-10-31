@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { AffixInput } from '@/components/ui/affix-input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { shakeFirstInvalid } from '@/lib/motion'
 import {
@@ -25,6 +26,7 @@ import {
   type PersonSource,
   type RuleInput,
 } from '@/lib/os/commissionRules'
+import { personName, personState, usePeople } from '@/lib/os/peopleAccess'
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const fromIso = (s: string) => {
@@ -311,7 +313,14 @@ export function RoleDialog({
   const [label, setLabel] = useState('')
   const [description, setDescription] = useState('')
   const [source, setSource] = useState<PersonSource | null>(null)
+  const [holder, setHolder] = useState('')
   const [tried, setTried] = useState(false)
+  // A role held by one named person: one of Virgilio's own active people.
+  const people = usePeople(tenantId)
+  const holders = (people.data ?? [])
+    .filter((p) => p.user_id && p.user_type !== 'external' && personState(p) === 'active')
+    .map((p) => ({ value: p.user_id!, label: personName(p), hint: p.email ?? undefined }))
+    .sort((a, b) => a.label.localeCompare(b.label))
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -319,6 +328,7 @@ export function RoleDialog({
     setLabel(role?.label ?? '')
     setDescription(role?.description ?? '')
     setSource(role?.person_source ?? null)
+    setHolder(role?.holder_user_id ?? '')
     setTried(false)
     setError(null)
   }, [open, role])
@@ -326,15 +336,24 @@ export function RoleDialog({
   const problems = {
     label: !label.trim() ? 'Name the role.' : label.trim().length > 60 ? 'Keep the name to 60 characters.' : undefined,
     source: !source ? 'Choose where its person comes from.' : undefined,
+    holder: source === 'named_person' && !holder ? 'Choose who holds this role.' : undefined,
   }
-  const ready = !problems.label && !problems.source
+  const ready = !problems.label && !problems.source && !problems.holder
   const close = () => onOpenChange(false)
   const submit = async () => {
     setTried(true)
     setError(null)
     if (!ready) return shakeFirstInvalid()
     try {
-      await save.mutateAsync({ id: role?.id, input: { label: label.trim(), description: description.trim() || null, person_source: source! } })
+      await save.mutateAsync({
+        id: role?.id,
+        input: {
+          label: label.trim(),
+          description: description.trim() || null,
+          person_source: source!,
+          ...(source === 'named_person' ? { holder_user_id: holder } : {}),
+        },
+      })
       toast(role ? `${label.trim()} saved` : `${label.trim()} added. Give it a rule so it earns something.`)
       close()
     } catch (e) {
@@ -435,6 +454,21 @@ export function RoleDialog({
         )}
         <FieldMessage>{tried ? problems.source : undefined}</FieldMessage>
       </section>
+      {source === 'named_person' && (
+        <section>
+          <FieldLabel hint={role ? 'A change applies to invoices issued from now on' : 'Someone active on Virgilio\'s team'}>Who holds it</FieldLabel>
+          <SearchableSelect
+            options={holders}
+            value={holder}
+            onValueChange={setHolder}
+            placeholder={people.isLoading ? 'Loading people…' : 'Choose a person'}
+            searchPlaceholder="Search people…"
+            emptyMessage="Nobody by that name."
+            disabled={save.isPending || people.isLoading}
+          />
+          <FieldMessage>{tried ? problems.holder : undefined}</FieldMessage>
+        </section>
+      )}
       <ErrorBox>{error}</ErrorBox>
     </Frame>
   )
@@ -463,7 +497,7 @@ const blank: Draft = {
   currency: 'USD',
   payable_on: 'payment',
   applies_to: 'services',
-  fees: FEES.filter((f) => f.key !== 'engagement').map((f) => f.key),
+  fees: FEES.map((f) => f.key),
   client: 'any',
   partner_items: 'any',
   timed: false,
@@ -513,6 +547,8 @@ export function RuleDialog({
   const [tried, setTried] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const termsLocked = role.built_in && mode !== 'add'
+  // A role held by one named person earns on Virgilio's services only (GCR11).
+  const namedPerson = role.person_source === 'named_person'
 
   useEffect(() => {
     if (!open) return
@@ -679,14 +715,14 @@ export function RuleDialog({
                   onChange={(v) => setD((x) => ({ ...x, payable_on: v, ...(v === 'lead_accepted' ? { applies_to: 'partner_items' as const, partner_items: 'fixed' as const } : {}) }))}
                   options={[
                     { id: 'payment', label: 'As each payment is recorded' },
-                    { id: 'lead_accepted', label: 'When a partner accepts the lead', disabled: d.basis !== 'fixed' },
+                    { id: 'lead_accepted', label: 'When a partner accepts the lead', disabled: d.basis !== 'fixed' || namedPerson },
                   ]}
                 />
                 <FieldMessage />
               </section>
 
               <section>
-                <FieldLabel>On what</FieldLabel>
+                <FieldLabel hint={d.applies_to === 'services' ? 'Retainers never earn commission' : undefined}>On what</FieldLabel>
                 <Seg
                   label="On what"
                   value={d.applies_to}
@@ -694,7 +730,7 @@ export function RuleDialog({
                   onChange={(v) => set('applies_to', v)}
                   options={[
                     { id: 'services', label: "Virgilio's services", disabled: d.payable_on === 'lead_accepted' },
-                    { id: 'partner_items', label: 'Partner items' },
+                    { id: 'partner_items', label: 'Partner items', disabled: namedPerson },
                   ]}
                 />
                 {d.applies_to === 'services' ? (

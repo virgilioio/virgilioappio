@@ -187,7 +187,9 @@ export function CommissionsPanel() {
                             {!role.active && <Chip tone="off">Off</Chip>}
                           </div>
                           <p className="mt-0.5 truncate font-inter text-[12px] text-[#6B7080]">
-                            {sourceLabel(role.person_source)}
+                            {role.person_source === 'named_person' && role.holder_user_id
+                              ? nameOf(role.holder_user_id)
+                              : sourceLabel(role.person_source)}
                             {role.description ? ` · ${role.description}` : ''}
                           </p>
                           {role.sync_status === 'pending' && (
