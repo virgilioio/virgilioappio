@@ -42,6 +42,13 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-31 (Gio Sales) — Phone phase 4: finishing — applied
+
+- **No database change.** Checked every phone screen in the browser with worst-case data (long and single-word names, an unnamed contact, $0 to $12.45M, 140 deals) at 320, 375, 768×1024 and 1024×768, plus the CLAUDE.md rules (16px fields, named icon buttons, no native titles, nothing under 10.5px), the offline banner and reduced motion.
+- **Fixed:** sheets and the full-screen composer sit above the iPhone keyboard (`installKeyboardSafe` keeps `--gio-kb` / `--gio-vv-top` from `visualViewport`; Gio ATS has the same gap and could take this); bottom sheets and the composer keep to the 640px column on a sideways tablet (composer page dimmed); below 360px the tabs and bottom bar tighten so Search and the tab names fit; a long company website ends in "…"; the composer's Subject and recipient fields lost a grey inner focus box.
+- **Next:** commissions steps 3 and 4, to review with Allan.
+- **On main 2026-10-31** (Gio Sales).
+
 ## Done 2026-10-31 (Gio Sales) — Inbox plan phase 5: Inbox on phones, and the Credits warning — applied
 
 - **Inbox on phones** (no database change): `InboxPage phone` through `PhoneOr`, the Inbox glyph with its unread number in the phone's bottom bar (Search folds to its icon on narrow phones), Gio ATS's three-line rows with stars, folders and deals as chips, Unread and Refresh, the reader under the shell's Back (Done moves on; Back returns to the list at its scroll). The composer and Compose's contact picker fill the screen with 16px fields. Email on a phone contact and deal opens the composer when Gmail is connected. No checkboxes or bulk bar on phones (a choice; Allan can ask for them). CLAUDE.md "Phones" updated. The Inbox plan's five phases are done.
