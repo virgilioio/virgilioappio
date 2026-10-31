@@ -189,6 +189,7 @@ const MISSING_LABEL: Record<string, string> = {
   tax: 'tax ID',
   bank: 'bank details',
   shipping: 'shipping address',
+  tax_address: 'tax address',
 }
 
 /** "birthday, tax ID and bank details". */
@@ -249,6 +250,7 @@ const MISSING_CARD: Record<string, string> = {
   tax: 'card-tax-ids',
   bank: 'card-bank',
   shipping: 'card-shipping',
+  tax_address: 'card-tax-address',
 }
 
 // One query parameter per link, so nothing in an address needs escaping for Slack.

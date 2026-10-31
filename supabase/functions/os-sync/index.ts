@@ -17,7 +17,9 @@
  * (only the version that was sent) and os_commission_rule_record. Roles go first;
  * a rule whose role Gio Sales doesn't have yet answers 409 and waits.
  * On the cron run it also emails people whose bank details or tax IDs someone
- * else changed (os_bank_alerts through os_account_alerts_claim, see bankAlert.ts).
+ * else changed (os_bank_alerts through os_account_alerts_claim, see bankAlert.ts),
+ * and commission emails: a payout paid, an adjustment added (os_commission_alerts
+ * through os_commission_alerts_claim, see commissionAlert.ts; phase 3, 2026-10-31).
  *
  * Called by:
  *   - People & Access right after a change: POST { tenant_id } with the admin's token;
@@ -26,6 +28,7 @@
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { bankAlertMessage, taxIdAlertMessage, type BankAlert } from './bankAlert.ts'
+import { commissionAlertMessage, type CommissionAlert } from './commissionAlert.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -95,6 +98,43 @@ async function sendBankAlerts(admin: any): Promise<Array<{ id: string; result: s
   return out
 }
 
+/** Claims waiting commission emails (os_commission_alerts_claim: a payout paid,
+ *  an adjustment added), sends each from Gio's no-reply address and settles it,
+ *  as bank alerts do. A failure is retried, up to five times. */
+// deno-lint-ignore no-explicit-any
+async function sendCommissionAlerts(admin: any): Promise<Array<{ id: string; result: string }>> {
+  const out: Array<{ id: string; result: string }> = []
+  const { data, error } = await admin.rpc('os_commission_alerts_claim', { _limit: 20 })
+  if (error) {
+    console.error('os-sync commission alerts', error.message)
+    return out
+  }
+  const key = Deno.env.get('RESEND_API_KEY')
+  const address = Deno.env.get('EMAIL_DEFAULT_FROM_ADDRESS') || 'noreply@app.gogio.io'
+  for (const a of (data ?? []) as CommissionAlert[]) {
+    try {
+      if (!a.to_email) {
+        await admin.rpc('os_commission_alerts_finish', { _id: a.alert_id, _ok: true })
+        out.push({ id: a.alert_id, result: 'no email' })
+        continue
+      }
+      if (!key) throw new Error('RESEND_API_KEY missing')
+      const m = commissionAlertMessage(a)
+      const { Resend } = await import('npm:resend@2.0.0')
+      const res = await new Resend(key).emails.send({ from: `Gio <${address}>`, to: [a.to_email], subject: m.subject, html: m.html, text: m.text })
+      // deno-lint-ignore no-explicit-any
+      const err = (res as any)?.error
+      if (err) throw new Error(JSON.stringify(err).slice(0, 400))
+      await admin.rpc('os_commission_alerts_finish', { _id: a.alert_id, _ok: true })
+      out.push({ id: a.alert_id, result: 'sent' })
+    } catch (e) {
+      await admin.rpc('os_commission_alerts_finish', { _id: a.alert_id, _ok: false, _error: String(e).slice(0, 480) })
+      out.push({ id: a.alert_id, result: 'retry' })
+    }
+  }
+  return out
+}
+
 /** Plain words for what the app did, kept short for the person's page. */
 function refusalText(app: string, body: Record<string, unknown>): string {
   const detail = typeof body.detail === 'string' ? body.detail : typeof body.error === 'string' ? body.error : ''
@@ -128,7 +168,8 @@ Deno.serve(async (req) => {
   }
 
   // Bank details or tax IDs changed by someone else: email the person (the bell rang already).
-  const alerts = isCron ? await sendBankAlerts(admin) : []
+  // A payout paid or an adjustment added: email the member (the bell rang already).
+  const alerts = isCron ? [...(await sendBankAlerts(admin)), ...(await sendCommissionAlerts(admin))] : []
 
   const apps = ['sales', 'docs'].filter((a) => target(a))
   if (apps.length === 0) return json({ error: 'No app is configured to receive grants.', alerts }, 503)

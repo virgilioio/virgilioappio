@@ -6174,6 +6174,216 @@ export type Database = {
           },
         ]
       }
+      os_commission_adjustments: {
+        Row: {
+          added_at: string
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          kind: string
+          month: string
+          person_email: string | null
+          person_name: string | null
+          reason: string
+          sales_adjustment_id: string
+          sales_payout_id: string | null
+          sales_sent_at: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          added_at: string
+          amount: number
+          created_at?: string
+          currency: string
+          id?: string
+          kind: string
+          month: string
+          person_email?: string | null
+          person_name?: string | null
+          reason: string
+          sales_adjustment_id: string
+          sales_payout_id?: string | null
+          sales_sent_at: string
+          status: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          added_at?: string
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          kind?: string
+          month?: string
+          person_email?: string | null
+          person_name?: string | null
+          reason?: string
+          sales_adjustment_id?: string
+          sales_payout_id?: string | null
+          sales_sent_at?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_commission_adjustments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_commission_alerts: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          detail: Json
+          id: string
+          kind: string
+          last_error: string | null
+          sent_at: string | null
+          status: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          detail?: Json
+          id?: string
+          kind: string
+          last_error?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          detail?: Json
+          id?: string
+          kind?: string
+          last_error?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_commission_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_commission_payouts: {
+        Row: {
+          approved_on: string | null
+          created_at: string
+          currency: string
+          has_invoice_pdf: boolean
+          has_own_invoice: boolean
+          historical: boolean
+          id: string
+          invoice_due_on: string | null
+          invoice_issued_on: string | null
+          invoice_number: string | null
+          items: Json
+          lines: number
+          month: string
+          note: string | null
+          paid_on: string | null
+          person_email: string | null
+          person_name: string | null
+          sales_credit_ids: string[]
+          sales_payout_id: string
+          sales_sent_at: string
+          status: string
+          tenant_id: string
+          total: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          approved_on?: string | null
+          created_at?: string
+          currency: string
+          has_invoice_pdf?: boolean
+          has_own_invoice?: boolean
+          historical?: boolean
+          id?: string
+          invoice_due_on?: string | null
+          invoice_issued_on?: string | null
+          invoice_number?: string | null
+          items?: Json
+          lines?: number
+          month: string
+          note?: string | null
+          paid_on?: string | null
+          person_email?: string | null
+          person_name?: string | null
+          sales_credit_ids?: string[]
+          sales_payout_id: string
+          sales_sent_at: string
+          status: string
+          tenant_id: string
+          total: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          approved_on?: string | null
+          created_at?: string
+          currency?: string
+          has_invoice_pdf?: boolean
+          has_own_invoice?: boolean
+          historical?: boolean
+          id?: string
+          invoice_due_on?: string | null
+          invoice_issued_on?: string | null
+          invoice_number?: string | null
+          items?: Json
+          lines?: number
+          month?: string
+          note?: string | null
+          paid_on?: string | null
+          person_email?: string | null
+          person_name?: string | null
+          sales_credit_ids?: string[]
+          sales_payout_id?: string
+          sales_sent_at?: string
+          status?: string
+          tenant_id?: string
+          total?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_commission_payouts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_commission_rates: {
         Row: {
           created_at: string
@@ -6890,6 +7100,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "os_person_shipping_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_person_tax_address: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          created_at: string
+          line1: string | null
+          line2: string | null
+          postal_code: string | null
+          region: string | null
+          same_as_shipping: boolean
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          line1?: string | null
+          line2?: string | null
+          postal_code?: string | null
+          region?: string | null
+          same_as_shipping?: boolean
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          line1?: string | null
+          line2?: string | null
+          postal_code?: string | null
+          region?: string | null
+          same_as_shipping?: boolean
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_person_tax_address_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -12302,6 +12565,21 @@ export type Database = {
       }
       os_bank_key: { Args: never; Returns: string }
       os_can_see_bank: { Args: { _tenant_id: string }; Returns: boolean }
+      os_commission_alerts_claim: {
+        Args: { _limit?: number }
+        Returns: {
+          alert_id: string
+          created_at: string
+          detail: Json
+          kind: string
+          person_name: string
+          to_email: string
+        }[]
+      }
+      os_commission_alerts_finish: {
+        Args: { _error?: string; _id: string; _ok: boolean }
+        Returns: undefined
+      }
       os_commission_rate: {
         Args: { _on?: string; _role_key: string; _tenant_id: string }
         Returns: number
@@ -12380,6 +12658,18 @@ export type Database = {
       os_is_external: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
+      }
+      os_member_bank_reveal: {
+        Args: { _actor_email: string; _email: string; _payout: string }
+        Returns: string
+      }
+      os_member_invoice_details: {
+        Args: { _actor_email: string; _email: string; _invoice: string }
+        Returns: Json
+      }
+      os_money_text: {
+        Args: { _amount: number; _currency: string }
+        Returns: string
       }
       os_my_bundle_id: { Args: { _tenant_id: string }; Returns: string }
       os_next_occurrence: {
@@ -12665,6 +12955,11 @@ export type Database = {
         Args: { _attribution: Json; _deal_id: string; _tenant_id: string }
         Returns: Json
       }
+      sales_commission_adjustment_upsert: {
+        Args: { payload: Json }
+        Returns: Json
+      }
+      sales_commission_payout_upsert: { Args: { payload: Json }; Returns: Json }
       sales_company_upsert: { Args: { payload: Json }; Returns: Json }
       sales_deal_won: { Args: { _p: Json; _tenant_id: string }; Returns: Json }
       sales_earnings_upsert: { Args: { payload: Json }; Returns: Json }
@@ -13041,6 +13336,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      slack_birthdays: { Args: never; Returns: number }
       slack_can_change: { Args: { _automation: string }; Returns: boolean }
       slack_check_destinations: { Args: { _d: Json }; Returns: boolean }
       slack_check_edit: {

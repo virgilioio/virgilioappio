@@ -12,9 +12,14 @@ import type { CandidateAttachment } from '@/hooks/useCandidateAttachments'
  * client dossier (PDF and Word pages, the audio player, the video player,
  * images), on a short-lived signed link so a long video streams instead of
  * downloading first. Left and right arrows move between the files.
+ * Files kept elsewhere (a commission invoice in Gio Sales, 2026-10-31) pass
+ * `signedUrl`, which hands back their own short-lived link.
  */
 
-const toPublic = (a: CandidateAttachment, url: string | null): PublicFile => ({
+/** What the viewer needs from a file. */
+export type ViewerFile = Pick<CandidateAttachment, 'id' | 'file_name' | 'file_type' | 'file_size_bytes' | 'created_at' | 'file_url'>
+
+const toPublic = (a: ViewerFile, url: string | null): PublicFile => ({
   id: a.id, name: a.file_name, type: a.file_type, size: a.file_size_bytes, created_at: a.created_at, url,
 })
 
@@ -28,33 +33,43 @@ export function FileTypeTile({ file, size = 28 }: { file: Pick<CandidateAttachme
   return <Tile t={typeOf(toPublic(file as CandidateAttachment, null))} size={size} />
 }
 
-export function CandidateFileViewer({
+export function CandidateFileViewer<F extends ViewerFile = CandidateAttachment>({
   files,
   index,
   onIndex,
   onClose,
   onDownload,
+  signedUrl,
+  addedLabel = 'Added',
 }: {
-  files: CandidateAttachment[]
+  files: F[]
   index: number | null
   onIndex: (i: number) => void
   onClose: () => void
-  onDownload: (a: CandidateAttachment) => void
+  onDownload: (a: F) => void
+  /** A link for files outside candidate-attachments; null when it can't be had. */
+  signedUrl?: (a: F) => Promise<string | null>
+  /** The word before the file's date in the header ("Issued" for an invoice). */
+  addedLabel?: string
 }) {
   const a = index === null ? null : files[index] ?? null
   const [url, setUrl] = useState<{ id: string; url: string | null } | null>(null)
   const [info, setInfo] = useState<Record<string, string>>({})
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!a) return
     let cancelled = false
     setUrl(null)
-    supabase.storage
-      .from('candidate-attachments')
-      .createSignedUrl(a.file_url, 3600)
-      .then(({ data }) => { if (!cancelled) setUrl({ id: a.id, url: data?.signedUrl ?? null }) })
+    const link = signedUrl
+      ? signedUrl(a).catch(() => null)
+      : supabase.storage
+          .from('candidate-attachments')
+          .createSignedUrl(a.file_url, 3600)
+          .then(({ data }) => data?.signedUrl ?? null)
+    link.then((u) => { if (!cancelled) setUrl({ id: a.id, url: u }) })
     return () => { cancelled = true }
-  }, [a?.id, a?.file_url]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [a?.id, a?.file_url, attempt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (index === null) return
@@ -87,7 +102,7 @@ export function CandidateFileViewer({
               <div className="min-w-0 flex-1">
                 <DialogTitle className="truncate font-poppins text-[14px] font-semibold text-[#0d0d09]">{a.file_name}</DialogTitle>
                 <div className="truncate font-inter text-[11px] text-[#8B8F9E]">
-                  {[info[a.id] || t.name, fmtSize(a.file_size_bytes), `Added ${added}`].filter(Boolean).join(' · ')}
+                  {[info[a.id] || t.name, fmtSize(a.file_size_bytes), `${addedLabel} ${added}`].filter(Boolean).join(' · ')}
                 </div>
               </div>
               {files.length > 1 && (
@@ -106,7 +121,12 @@ export function CandidateFileViewer({
                 <Button variant="ghost" size="sm" iconOnly icon={X} aria-label="Close" onClick={onClose} />
               </IconTip>
             </header>
-            {ready ? (
+            {ready && !url!.url && signedUrl ? (
+              <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 bg-[#EDEBE5] px-6 text-center">
+                <p className="font-inter text-[13px] text-[#5A6072]">Couldn't open this file.</p>
+                <Button variant="outline" size="sm" onClick={() => setAttempt((n) => n + 1)}>Try again</Button>
+              </div>
+            ) : ready ? (
               <FileStage f={f} onInfo={(id, v) => setInfo((m) => (m[id] === v ? m : { ...m, [id]: v }))} />
             ) : (
               <div className="flex min-h-[360px] items-center justify-center bg-[#EDEBE5]">

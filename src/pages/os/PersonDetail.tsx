@@ -56,6 +56,7 @@ import {
 import { BankDetailsCard } from '@/components/os/BankDetailsCard'
 import { TaxIdsCard } from '@/components/os/TaxIdsCard'
 import { ShippingAddressCard } from '@/components/os/ShippingAddressCard'
+import { TaxAddressCard } from '@/components/os/TaxAddressCard'
 import { AccountCard } from '@/components/os/AccountCard'
 import { GoogleWorkspaceCard } from '@/components/os/GoogleWorkspaceCard'
 import { ComingUpCard, ToDoCard, UsefulLinksCard } from '@/components/os/MyProfileCards'
@@ -427,6 +428,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                     {renderAgreements()}
                     {renderRole(tenant.id)}
                     {renderAccess()}
+                    {renderGeneral()}
                   </>
                 ) : (
                   // Someone else's profile: an admin looks at their role first.
@@ -452,10 +454,11 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                     fullName={[person.first_name, person.last_name].filter(Boolean).join(' ') || undefined}
                   />
                 )}
+                {joined && person.user_type !== 'external' && (
+                  <TaxAddressCard tenantId={tenant.id} userId={person.user_id!} self={isSelf} name={person.first_name ?? undefined} />
+                )}
                 {joined && <BankDetailsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
                 {joined && <TaxIdsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
-                {/* My profile: General, set once, closes the right column so the two even out under Commissions. */}
-                {self && renderGeneral()}
                 {/* An admin's rating of someone else; it sits here so that view's columns even out. */}
                 {joined && !self && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
               </div>

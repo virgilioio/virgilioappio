@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Cake, Camera, IdCard, Landmark, Mail, MapPin, Package, type LucideIcon } from 'lucide-react'
+import { Cake, Camera, IdCard, Landmark, Mail, MapPin, Package, ReceiptText, type LucideIcon } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 
 import { useAuth } from '@/contexts/AuthContext'
@@ -15,16 +15,18 @@ import { useBankDetails } from '@/lib/os/bank'
 import { usePersonDetails } from '@/lib/os/peopleAccess'
 import { useTaxIds } from '@/lib/os/taxIds'
 import { shippingComplete, useShipping } from '@/lib/os/shipping'
+import { addressComplete, useTaxAddress } from '@/lib/os/taxAddress'
 
 /**
  * What a complete profile has (Allan, 2026-10-26): photo and title, Google
  * Workspace (2026-10-28), country and contact, birthday, a tax ID, bank
- * details and a shipping address. My
- * profile's To do card, the welcome dialog and the banner all read this one
+ * details, a shipping address and the tax address on their commission
+ * invoices (2026-10-31; "same as shipping" counts when the shipping address
+ * is complete, as the database's os_profile_missing says). My profile's To do card, the welcome dialog and the banner all read this one
  * list, so they always agree. Each check links to the card that fixes it.
  */
 export interface ProfileCheck {
-  key: 'you' | 'google' | 'personal' | 'birthday' | 'tax' | 'bank' | 'shipping'
+  key: 'you' | 'google' | 'personal' | 'birthday' | 'tax' | 'bank' | 'shipping' | 'tax_address'
   icon: LucideIcon
   /** Short name, for the checklist ("Photo and title"). */
   label: string
@@ -43,9 +45,10 @@ export function useProfileChecks(tenantId: string | undefined, userId: string | 
   const tax = useTaxIds(tenantId, userId)
   const bank = useBankDetails(tenantId, userId)
   const shipping = useShipping(tenantId, userId)
+  const taxAddress = useTaxAddress(tenantId, userId)
   const mail = useMailIdentities()
   const calendar = useCalendarIdentities()
-  const queries = [details, tax, bank, shipping]
+  const queries = [details, tax, bank, shipping, taxAddress]
   const loading = !profile || queries.some((q) => q.isLoading) || mail.isLoading || calendar.isLoading
   const failed = queries.some((q) => q.isError)
 
@@ -60,6 +63,7 @@ export function useProfileChecks(tenantId: string | undefined, userId: string | 
     const google = [...(mail.identities ?? []), ...(calendar.identities ?? [])]
     const googleConnected = google.length > 0
     const googleBroken = google.some(hasTokenFailure)
+    const taxSame = taxAddress.data?.same_as_shipping ?? true
     checks.push(
       {
         key: 'you',
@@ -136,6 +140,18 @@ export function useProfileChecks(tenantId: string | undefined, userId: string | 
         body: 'Where Virgilio sends you swag and mail.',
         to: '/me?focus=card-shipping',
         done: shippingComplete(shipping.data),
+      },
+      {
+        key: 'tax_address',
+        icon: ReceiptText,
+        label: 'Tax address',
+        inline: 'tax address',
+        title: 'Add the address for your invoices',
+        body: taxSame
+          ? 'It’s your shipping address unless you change it. Add that, or an address of its own.'
+          : 'Printed on your commission invoices to Virgilio.',
+        to: '/me?focus=card-tax-address',
+        done: taxSame ? shippingComplete(shipping.data) : addressComplete(taxAddress.data),
       },
     )
   }

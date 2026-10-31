@@ -312,6 +312,10 @@ verify_jwt = false
 # Called by People & Access with the admin's token; the database checks who may offboard whom.
 verify_jwt = false
 
+[functions.sales-commission-gateway]
+# Called only by Gio Sales' server, signed with GIO_LINK_SECRET over `${timestamp}.${body}`.
+verify_jwt = false
+
 [functions.google-gateway]
 # Called only by Gio Sales' server, signed with GIO_LINK_SECRET over `${timestamp}.${body}`.
 verify_jwt = false
@@ -361,3 +365,7 @@ verify_jwt = false
 [functions.slack-deliver]
 # Sends queued Slack messages; called by the database with x-internal-secret.
 verify_jwt = false
+
+[functions.commission-invoice-link]
+# A member (or a People & Access admin) asks for a 5-minute link to their commission invoice in Gio Sales.
+verify_jwt = true

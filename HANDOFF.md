@@ -42,6 +42,46 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-31 (Gio Sales + Gio ATS) — Commissions phase 3: My profile commission portal — applied
+
+- **Plan:** "Phase 3 plan: My profile in Gio ATS" in the commissions plan doc (https://claude.ai/artifact/2ajNzucHTbMRCLEn5exp8Y); Allan agreed with all six recommendations (drafts hidden, no Expected lines, proposed clawbacks stay in Gio Sales, bell for approved/paid/adjustment and email for paid/adjustment, invoices in the file viewer, tax address as the eighth profile check).
+- **Applied:** Gio ATS `20261031155826_os_commission_portal` (payout `items` and invoice dates, `os_commission_adjustments`, `sales_commission_adjustment_upsert`, bells and `os_commission_alerts`, `tax_address` in `os_profile_missing`, Slack "of 8"); Gio Sales `20261031160035_commission_member_portal` (approved payouts sent with their lines and invoice through deferred triggers, `commissions.adjustment`, the old payout trigger disabled, one resend). The five past payouts arrived with their lines; no bells or emails for them.
+- **Deployed:** Gio ATS `sales-earnings` v11, `commission-invoice-link` v1, `os-sync` v40 (commission emails), `slack-deliver` v14 (the tax address in profile reminders); Gio Sales `deliver-outbox` v17, `commission-member-file` v1.
+- **Screens (branch):** Earnings tab bar (Overview · Commissions · Payouts · Invoices · Adjustments), the payout sheet, invoices in the file viewer with Download, the tax address in To do, the invitation and the top strip. Checked in the browser with fake data at 1440 and 390: every view, the In a payout filter, the sheet from a row and from a bell link, a missing payout, a failed invoice link (toast), the PDF in the viewer (served locally: this sandbox can't reach cdnjs for pdf.js's worker); no sideways scroll. `tsc`: the same 17 files with errors as `main`, none touched; lint clean apart from fast-refresh warnings; Slack links tests 40 of 40.
+- **Noticed, not changed:** a tab in any `TabsList` (the profile's own included) reads as `:focus-visible` after a mouse click in headless Chrome, so the purple ring shows; worth a look on a real browser.
+- **On main 2026-10-31** (both apps), with Gio Sales' fix for grid tab bars (the adjustment dialog's Kind showed its highlight only on Bonus).
+- **First real test:** approve an October draft in Gio Sales (VIR-2026-0001): the member's bell rings, Earnings shows it under Next payout and Invoices; mark it paid: the email goes out.
+
+## Done 2026-10-31 (Gio Sales + Gio ATS) — Commissions phase 2: payouts, invoices, adjustments — applied
+
+- **Applied:** Gio Sales `20261031063815_commission_payouts` (payouts, adjustments, holds, invoices, history, `commission_ledger`, clawback proposals, outbox `commissions.payout`), `20261031063826_commission_past_payouts` (the five past payouts on the client's dates), `20261031065705_payout_files` (private bucket); Gio ATS `20261031065702_sales_commission_payouts` (`os_commission_payouts`, `os_person_tax_address`, `os_member_invoice_details`, `os_member_bank_reveal`) and `20261031055228_req_1111_sourcer_once` (Javier as Sourcer on REQ-1111, once).
+- **Deployed:** Gio Sales `deliver-outbox` (v16, routes `commissions.payout`, adds `event` / `sent_at`) and `commission-payout` (v2: approve with Gio ATS's invoice details, the pdf-lib invoice, reveal bank, uploads, links); Gio ATS `sales-commission-gateway` (v1) and `sales-earnings` (v9). The five past payouts reached Gio ATS.
+- **Applied after review ("Go!", 2026-10-31):** Gio ATS `20261031144012_os_commission_payout_credits` and Gio Sales `20261031144153_commission_payout_credit_ids`: a payout names the commissions it paid (`sales_credit_ids`), so Gio ATS's Earnings moves them from Payable to Paid. Gio ATS `sales-earnings` v10 keeps them; the five past payouts were resent and each matches its commissions to the cent.
+- **Screens (branch):** Gio Sales Commissions › Payouts and a payout's page, `AdjustmentDialog`, clawback decisions, Paid on the Overview, a person's Payouts and invoices; Gio ATS `TaxAddressCard` and Earnings' Paid, Payment history and filters.
+- **Next:** phase 3, the My profile views in Gio ATS (Balances, Payouts, Invoices, My adjustments). First real test: approve one October draft (it takes VIR-2026-0001).
+- **On main 2026-10-31** (both apps).
+
+## Done 2026-10-31 (Gio Sales) — Commissions module, phase 1: see every commission — applied
+
+- **Plan:** "Gio Sales commissions module: plan" (Claude Docs, https://claude.ai/artifact/2ajNzucHTbMRCLEn5exp8Y). Commissions is a module of its own in Gio Sales, separate from Billing; Billing, admins and owners only. All of Allan's decisions are in the plan: monthly payouts per member per currency (Billing prepares, an admin or owner approves, Billing marks paid, no currency conversion); Gio writes each member's invoice to Virgilio Technologies LLC (a Delaware LLC, 131 Continental Dr., Suite 305, Newark, Delaware, EIN 36-5104223), numbered VIR-YYYY-NNNN, the bank account masked; adjustments (Bonus, Correction, Clawback, Other) are approved with the payout, with proposed clawbacks and carry-over; members see it all on My profile in Gio ATS. Partner invoicing stays on the back burner.
+- **Database** (`20261031051706_commission_lines`): each credit stores its `amount`; `invoice_credit_plan(request)` is the one calculation (issuing inserts exactly what it returns, unchanged on R-1004, R-1009 and R-1011); `commission_lines()` lists invoice credits, lead credits and Expected lines (requests not issued yet) as expected · pending · payable · void (`GCM01` for anyone else).
+- **Screens:** the rail's money group (Partners, a divider, then Billing and Commissions with the People & Access glyph; Billing members see only those two); Overview, People, a person (My profile's frame) and the Commissions list with a line's sheet; the request's Credits card shows amounts and links to each line. Read only.
+- **Next:** phase 2, payouts, invoices and adjustments (migration for review first; the invoice PDF needs Allan's approval for pdf-lib). Phase 3 is the My profile views in Gio ATS.
+- **On main 2026-10-31** (Gio Sales).
+
+## Done 2026-10-31 (Gio Sales) — Phone phase 4: finishing — applied
+
+- **No database change.** Checked every phone screen in the browser with worst-case data (long and single-word names, an unnamed contact, $0 to $12.45M, 140 deals) at 320, 375, 768×1024 and 1024×768, plus the CLAUDE.md rules (16px fields, named icon buttons, no native titles, nothing under 10.5px), the offline banner and reduced motion.
+- **Fixed:** sheets and the full-screen composer sit above the iPhone keyboard (`installKeyboardSafe` keeps `--gio-kb` / `--gio-vv-top` from `visualViewport`; Gio ATS has the same gap and could take this); bottom sheets and the composer keep to the 640px column on a sideways tablet (composer page dimmed); below 360px the tabs and bottom bar tighten so Search and the tab names fit; a long company website ends in "…"; the composer's Subject and recipient fields lost a grey inner focus box.
+- **Next:** the commissions module (planned the same day, above).
+- **On main 2026-10-31** (Gio Sales).
+
+## Done 2026-10-31 (Gio Sales) — Inbox plan phase 5: Inbox on phones, and the Credits warning — applied
+
+- **Inbox on phones** (no database change): `InboxPage phone` through `PhoneOr`, the Inbox glyph with its unread number in the phone's bottom bar (Search folds to its icon on narrow phones), Gio ATS's three-line rows with stars, folders and deals as chips, Unread and Refresh, the reader under the shell's Back (Done moves on; Back returns to the list at its scroll). The composer and Compose's contact picker fill the screen with 16px fields. Email on a phone contact and deal opens the composer when Gmail is connected. No checkboxes or bulk bar on phones (a choice; Allan can ask for them). CLAUDE.md "Phones" updated. The Inbox plan's five phases are done.
+- **Credits incomplete warning** (screens only): issued requests store Sourcer and Recruiter as one person each in `attribution_team`, but the screens read them as lists, so R-1004, R-1005, R-1007 and R-1009 said "Credits incomplete · Sourcer, Recruiter" though all four credits were written. `parseAttributionTeam` now reads both shapes (Billing detail, list, CSV export, a deal's openings card); a voided request shows no warning; a deal's openings use the live team until the invoice is issued.
+- **On main 2026-10-31** (Gio Sales).
+
 ## Done 2026-10-30 (Gio Sales) — Inbox plan phase 4: Inbox screens on the computer — applied
 
 - **Gio Sales screens** (no database change): `/inbox` and `/inbox/:threadId` (`InboxPage`, `src/components/inbox/`): folders (Inbox · Needs reply · Starred · Sent · Done · All mail, Your deals; icons below 1280px), Gmail's one-line list with stars, the Unread filter, search and Refresh, the reader (folded earlier messages, received HTML through DOMPurify, files in the file viewer, Reply · Reply all · Forward into the composer), Compose picks a contact first, the bulk bar, Gmail's keys. The rail has an Inbox tile with the unread number, live over Realtime; a "replied" bell item opens the conversation. Billing never sees it. CLAUDE.md records the rail item and routes.
@@ -69,7 +109,7 @@ Hard limits:
 
 ## Done 2026-10-31 (ATS) — My profile: Commissions card — on main
 
-- `CommissionsCard` first in My profile's left column (under To do): Paid · Pending · Potential, a period picker (This month · This quarter · This year, the default · All time), an eye that hides the amounts (hidden until shown, remembered per browser), View all → Earnings. Same numbers as the Earnings tab (`useEarningsSummary`; `commissionTotals` / `periodRange` with unit tests). General moved to the bottom of the right column to even the columns (complete profile: right 74px longer; was left 180px). No database change. Checked in the browser with fake data: every choice, no commissions, several currencies, hidden, a phone.
+- `CommissionsCard` first in My profile's left column (under To do): Paid · Payable · Pending · Potential (Allan, after the commission portal landed: Paid is payouts Virgilio paid, never a client's payment; Payable includes commissions already in an approved payout), a period picker (This month · This quarter · This year, the default · All time), an eye that hides the amounts (hidden until shown, remembered per browser), View all → Earnings. The Earnings tab's own statuses (`useEarningsSummary` `statusOf`, payouts) through `commissionTotals` / `periodRange` (unit tests). No database change. Columns: left about 90px longer with the Tax address card on the right. Checked in the browser with fake data: every choice, payouts, no commissions, several currencies, hidden, a phone.
 
 ## Done 2026-10-31 (Gio Sales) — Success fees always reach Billing — on main
 

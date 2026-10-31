@@ -19,12 +19,14 @@ import {
 } from '@/lib/os/earnings'
 
 /**
- * My profile's Commissions card (2026-10-31): Paid · Pending · Potential over
- * a period, with the eye to hide the amounts (kept per browser, hidden until
- * shown). The numbers are the Earnings tab's; View all opens it.
+ * My profile's Commissions card (2026-10-31): Paid · Payable · Pending ·
+ * Potential over a period, with the eye to hide the amounts (kept per browser,
+ * hidden until shown). The Earnings tab's numbers and statuses (paid comes
+ * from payouts, never from a client's payment); View all opens it.
  */
 const VIEWS: { id: CommissionView; label: string }[] = [
   { id: 'paid', label: 'Paid' },
+  { id: 'payable', label: 'Payable' },
   { id: 'pending', label: 'Pending' },
   { id: 'potential', label: 'Potential' },
 ]
@@ -60,9 +62,12 @@ function sourceLine(view: CommissionView, t: CommissionTotals) {
     const missing = t.unestimated ? ` · ${n(t.unestimated, 'has', 'have')} no estimate yet` : ''
     return `From ${n(t.seats, 'open seat', 'open seats')}${missing}`
   }
-  if (!t.invoices && !t.leads) return view === 'paid' ? 'Nothing paid in this period' : 'Nothing waiting to be paid'
-  const parts = [t.invoices ? n(t.invoices, 'invoice', 'invoices') : null, t.leads ? n(t.leads, 'accepted lead', 'accepted leads') : null]
-  return `From ${parts.filter(Boolean).join(' and ')}`
+  if (view === 'paid') return t.payouts ? `From ${n(t.payouts, 'payout', 'payouts')}` : 'Nothing paid in this period'
+  if (view === 'payable') {
+    if (!t.lines) return 'Nothing payable in this period'
+    return `From ${n(t.lines, 'commission', 'commissions')}${t.inPayout ? ` · ${t.inPayout} already in a payout` : ''}`
+  }
+  return t.lines ? `From ${n(t.lines, 'invoice', 'invoices')} the client hasn't paid in full` : 'Nothing pending in this period'
 }
 
 export function CommissionsCard({
@@ -84,10 +89,21 @@ export function CommissionsCard({
   const segRef = useSegmentLayer<HTMLDivElement>()
   const summary = useEarningsSummary(userId, tenantId, jobs, jobsLoading)
 
-  const loading = view === 'potential' ? summary.loading : summary.earnings.isLoading
-  const failed = view === 'potential' ? summary.earnings.isError || summary.openings.isError : summary.earnings.isError
+  const loading =
+    view === 'potential'
+      ? summary.jobsLoading || summary.openings.isLoading || summary.rates.isLoading
+      : summary.payouts.isLoading || (view !== 'paid' && summary.earnings.isLoading)
+  const failed =
+    view === 'potential'
+      ? summary.openings.isError || summary.rates.isError
+      : summary.payouts.isError || (view !== 'paid' && summary.earnings.isError)
   const seats = summary.list.map((o) => ({ status: o.status, target_hire_date: o.target_hire_date, estimate: summary.estimates.get(o.id) }))
-  const totals = commissionTotals(view, period, summary.rows, seats, new Date())
+  const totals = commissionTotals(
+    view,
+    period,
+    { rows: summary.rows, statusOf: summary.statusOf, payouts: summary.payouts.data ?? [], seats },
+    new Date(),
+  )
   const [first, ...rest] = totals.sums.length ? totals.sums : [{ amount: 0, currency: 'USD' }]
 
   const toggle = () => {
@@ -169,7 +185,9 @@ export function CommissionsCard({
             compact
             onRetry={() => {
               void summary.earnings.refetch()
+              void summary.payouts.refetch()
               void summary.openings.refetch()
+              void summary.rates.refetch()
             }}
           />
         ) : loading ? (

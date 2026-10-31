@@ -20,6 +20,8 @@ import type { PersonJob } from '@/lib/os/peopleAccess'
 
 export interface Earning {
   id: string
+  /** Gio Sales' credit id: a paid payout names the ones it paid. */
+  sales_credit_id: string
   source: 'invoice' | 'lead'
   request_number: string | null
   invoice_number: string | null
@@ -54,7 +56,7 @@ export function usePersonEarnings(userId: string | null | undefined) {
       const { data, error } = await supabase
         .from('os_earnings')
         .select(
-          'id, source, request_number, invoice_number, client_name, deal_title, opening_id, job_id, role_key, role_label, share_pct, basis, currency, invoice_amount, collected_amount, earned_amount, pending_amount, status, void_reason, issued_on, paid_on, partner_name, item_name, earned_on',
+          'id, sales_credit_id, source, request_number, invoice_number, client_name, deal_title, opening_id, job_id, role_key, role_label, share_pct, basis, currency, invoice_amount, collected_amount, earned_amount, pending_amount, status, void_reason, issued_on, paid_on, partner_name, item_name, earned_on',
         )
         .eq('user_id', userId!)
         .order('issued_on', { ascending: false, nullsFirst: false })
@@ -201,12 +203,14 @@ export function money(amount: number, currency: string) {
 }
 
 /* ------------------------------------------------------------------ *
- * The Commissions card on My profile (2026-10-31): Paid · Pending ·
- * Potential over a period. The same numbers as the Earnings tab.
+ * The Commissions card on My profile (2026-10-31): Paid · Payable ·
+ * Pending · Potential over a period, on the Earnings tab's own rules.
  * ------------------------------------------------------------------ */
 
-export type CommissionView = 'paid' | 'pending' | 'potential'
+export type CommissionView = 'paid' | 'payable' | 'pending' | 'potential'
 export type CommissionPeriod = 'month' | 'quarter' | 'year' | 'all'
+/** A commission line's status as the Earnings tab works it out (paid and in-payout come from payouts). */
+export type CommissionLineStatus = 'pending' | 'payable' | 'in_payout' | 'paid' | 'void'
 
 const ymd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -226,42 +230,65 @@ const within = (day: string | null | undefined, range: { from: string; to: strin
 
 export interface CommissionTotals {
   sums: { amount: number; currency: string }[]
-  invoices: number
-  leads: number
+  /** Paid: payouts. */
+  payouts: number
+  /** Payable and Pending: commission lines (invoices and accepted leads). */
+  lines: number
+  /** Payable lines already in an approved payout. */
+  inPayout: number
+  /** Potential: open seats in the period, and how many have no estimate. */
   seats: number
-  /** Open seats in the period with no estimate (no fee, salary or period). */
   unestimated: number
 }
 
 /**
- * Paid: what was earned (an invoice paid, a lead accepted) in the period, by
- * when it was paid or accepted. Pending: invoices issued in the period and not
- * yet paid. Potential: open seats by their target hire date (all time takes
- * every open seat, dated or not).
+ * Paid: payouts Virgilio paid, by the day paid (their totals, adjustments
+ * included). Payable: commissions ready to pay or already in an approved
+ * payout, by the day they became payable (client paid in full, lead
+ * accepted). Pending: client invoices not paid in full, by the issue day.
+ * Potential: open seats by their target hire date (all time takes every open
+ * seat, dated or not).
  */
 export function commissionTotals(
   view: CommissionView,
   period: CommissionPeriod,
-  rows: Earning[],
-  seats: { status: OpeningStatus; target_hire_date: string | null; estimate: Estimate | undefined }[],
+  input: {
+    rows: Earning[]
+    statusOf: (e: Earning) => CommissionLineStatus
+    payouts: { status: 'approved' | 'paid'; total: number; currency: string; paid_on: string | null }[]
+    seats: { status: OpeningStatus; target_hire_date: string | null; estimate: Estimate | undefined }[]
+  },
   today: Date,
 ): CommissionTotals {
   const range = periodRange(period, today)
-  if (view === 'potential') {
-    const open = seats.filter((s) => s.status !== 'filled' && within(s.target_hire_date, range))
-    const priced = open.flatMap((s) => (s.estimate && 'amount' in s.estimate ? [{ amount: s.estimate.amount, currency: s.estimate.currency }] : []))
-    return { sums: byCurrency(priced), invoices: 0, leads: 0, seats: open.length, unestimated: open.length - priced.length }
+  const none = { payouts: 0, lines: 0, inPayout: 0, seats: 0, unestimated: 0 }
+  if (view === 'paid') {
+    const paid = input.payouts.filter((p) => p.status === 'paid' && within(p.paid_on, range))
+    return { ...none, sums: byCurrency(paid.map((p) => ({ amount: p.total, currency: p.currency }))), payouts: paid.length }
   }
-  const live = rows.filter((e) => e.status !== 'void')
-  const picked =
-    view === 'paid'
-      ? live.filter((e) => e.earned_amount > 0 && within(e.paid_on ?? e.earned_on ?? e.issued_on, range))
-      : live.filter((e) => e.pending_amount > 0 && within(e.issued_on, range))
+  if (view === 'potential') {
+    const open = input.seats.filter((s) => s.status !== 'filled' && within(s.target_hire_date, range))
+    const priced = open.flatMap((s) => (s.estimate && 'amount' in s.estimate ? [{ amount: s.estimate.amount, currency: s.estimate.currency }] : []))
+    return { ...none, sums: byCurrency(priced), seats: open.length, unestimated: open.length - priced.length }
+  }
+  if (view === 'payable') {
+    const ready = input.rows.filter((e) => {
+      const st = input.statusOf(e)
+      return (st === 'payable' || st === 'in_payout') && within(e.paid_on ?? e.earned_on ?? e.issued_on, range)
+    })
+    return {
+      ...none,
+      sums: byCurrency(ready.map((e) => ({ amount: e.earned_amount, currency: e.currency }))),
+      lines: ready.length,
+      inPayout: ready.filter((e) => input.statusOf(e) === 'in_payout').length,
+    }
+  }
+  const waiting = input.rows.filter(
+    (e) => input.statusOf(e) === 'pending' && (e.status === 'issued' || e.status === 'partly_paid') && within(e.issued_on, range),
+  )
   return {
-    sums: byCurrency(picked.map((e) => ({ amount: view === 'paid' ? e.earned_amount : e.pending_amount, currency: e.currency }))),
-    invoices: picked.filter((e) => e.source !== 'lead').length,
-    leads: picked.filter((e) => e.source === 'lead').length,
-    seats: 0,
-    unestimated: 0,
+    ...none,
+    sums: byCurrency(waiting.map((e) => ({ amount: e.earned_amount + e.pending_amount, currency: e.currency }))),
+    lines: waiting.length,
   }
 }

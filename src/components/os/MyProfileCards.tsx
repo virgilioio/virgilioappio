@@ -100,7 +100,7 @@ export function ToDoCard({ tenantId, person }: { tenantId: string; person: Perso
     >
       {loading ? (
         <div className="flex flex-col gap-1.5" aria-busy>
-          {Array.from({ length: Math.min(seen ?? 3, 7) }, (_, i) => (
+          {Array.from({ length: Math.min(seen ?? 3, 8) }, (_, i) => (
             <Skeleton key={i} className="h-[56px] w-full rounded-[10px]" />
           ))}
         </div>
