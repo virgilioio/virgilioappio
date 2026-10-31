@@ -42,13 +42,14 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## In progress 2026-10-31 (Gio Sales + Gio ATS) — Commissions phase 3: My profile commission portal — on the branch, waiting for Apply!
+## Done 2026-10-31 (Gio Sales + Gio ATS) — Commissions phase 3: My profile commission portal — applied
 
 - **Plan:** "Phase 3 plan: My profile in Gio ATS" in the commissions plan doc (https://claude.ai/artifact/2ajNzucHTbMRCLEn5exp8Y); Allan agreed with all six recommendations (drafts hidden, no Expected lines, proposed clawbacks stay in Gio Sales, bell for approved/paid/adjustment and email for paid/adjustment, invoices in the file viewer, tax address as the eighth profile check).
 - **Applied:** Gio ATS `20261031155826_os_commission_portal` (payout `items` and invoice dates, `os_commission_adjustments`, `sales_commission_adjustment_upsert`, bells and `os_commission_alerts`, `tax_address` in `os_profile_missing`, Slack "of 8"); Gio Sales `20261031160035_commission_member_portal` (approved payouts sent with their lines and invoice through deferred triggers, `commissions.adjustment`, the old payout trigger disabled, one resend). The five past payouts arrived with their lines; no bells or emails for them.
 - **Deployed:** Gio ATS `sales-earnings` v11, `commission-invoice-link` v1, `os-sync` v40 (commission emails), `slack-deliver` v14 (the tax address in profile reminders); Gio Sales `deliver-outbox` v17, `commission-member-file` v1.
 - **Screens (branch):** Earnings tab bar (Overview · Commissions · Payouts · Invoices · Adjustments), the payout sheet, invoices in the file viewer with Download, the tax address in To do, the invitation and the top strip. Checked in the browser with fake data at 1440 and 390: every view, the In a payout filter, the sheet from a row and from a bell link, a missing payout, a failed invoice link (toast), the PDF in the viewer (served locally: this sandbox can't reach cdnjs for pdf.js's worker); no sideways scroll. `tsc`: the same 17 files with errors as `main`, none touched; lint clean apart from fast-refresh warnings; Slack links tests 40 of 40.
 - **Noticed, not changed:** a tab in any `TabsList` (the profile's own included) reads as `:focus-visible` after a mouse click in headless Chrome, so the purple ring shows; worth a look on a real browser.
+- **On main 2026-10-31** (both apps), with Gio Sales' fix for grid tab bars (the adjustment dialog's Kind showed its highlight only on Bonus).
 - **First real test:** approve an October draft in Gio Sales (VIR-2026-0001): the member's bell rings, Earnings shows it under Next payout and Invoices; mark it paid: the email goes out.
 
 ## Done 2026-10-31 (Gio Sales + Gio ATS) — Commissions phase 2: payouts, invoices, adjustments — applied
