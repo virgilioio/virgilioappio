@@ -41,6 +41,7 @@ import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { DangerZone } from '@/components/os/DangerZone'
 import { PersonJobsTable } from '@/components/os/PersonJobsTable'
 import { PersonEarnings } from '@/components/os/PersonEarnings'
+import { CommissionsCard } from '@/components/os/CommissionsCard'
 import { PersonPerformance } from '@/components/os/PersonPerformance'
 import { ProfileCard } from '@/components/os/ProfileParts'
 import {
@@ -412,6 +413,15 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                   // reference cards last.
                   <>
                     {joined && <ToDoCard tenantId={tenant.id} person={person} />}
+                    {joined && person.user_id && (
+                      <CommissionsCard
+                        userId={person.user_id}
+                        tenantId={tenant.id}
+                        jobs={jobList}
+                        jobsLoading={jobs.isLoading}
+                        onSeeAll={() => setTab('earnings')}
+                      />
+                    )}
                     <UsefulLinksCard tenantId={tenant.id} />
                     {joined && <ComingUpCard tenantId={tenant.id} />}
                     {renderCurrentWork()}

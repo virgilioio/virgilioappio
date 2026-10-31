@@ -201,3 +201,94 @@ export function money(amount: number, currency: string) {
   const compact = `${formatMoney(Math.round(amount / 10_000) / 100, currency, { decimals: 2 })}M${currency !== 'USD' ? ` ${currency}` : ''}`
   return { text: compact, title: exact }
 }
+
+/* ------------------------------------------------------------------ *
+ * The Commissions card on My profile (2026-10-31): Paid · Payable ·
+ * Pending · Potential over a period, on the Earnings tab's own rules.
+ * ------------------------------------------------------------------ */
+
+export type CommissionView = 'paid' | 'payable' | 'pending' | 'potential'
+export type CommissionPeriod = 'month' | 'quarter' | 'year' | 'all'
+/** A commission line's status as the Earnings tab works it out (paid and in-payout come from payouts). */
+export type CommissionLineStatus = 'pending' | 'payable' | 'in_payout' | 'paid' | 'void'
+
+const ymd = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** The calendar month, quarter or year around `today`, as "YYYY-MM-DD" bounds; null for all time. */
+export function periodRange(period: CommissionPeriod, today: Date): { from: string; to: string } | null {
+  if (period === 'all') return null
+  const y = today.getFullYear()
+  const m = today.getMonth()
+  const startMonth = period === 'month' ? m : period === 'quarter' ? m - (m % 3) : 0
+  const months = period === 'month' ? 1 : period === 'quarter' ? 3 : 12
+  return { from: ymd(new Date(y, startMonth, 1)), to: ymd(new Date(y, startMonth + months, 0)) }
+}
+
+const within = (day: string | null | undefined, range: { from: string; to: string } | null) =>
+  !range || (!!day && day.slice(0, 10) >= range.from && day.slice(0, 10) <= range.to)
+
+export interface CommissionTotals {
+  sums: { amount: number; currency: string }[]
+  /** Paid: payouts. */
+  payouts: number
+  /** Payable and Pending: commission lines (invoices and accepted leads). */
+  lines: number
+  /** Payable lines already in an approved payout. */
+  inPayout: number
+  /** Potential: open seats in the period, and how many have no estimate. */
+  seats: number
+  unestimated: number
+}
+
+/**
+ * Paid: payouts Virgilio paid, by the day paid (their totals, adjustments
+ * included). Payable: commissions ready to pay or already in an approved
+ * payout, by the day they became payable (client paid in full, lead
+ * accepted). Pending: client invoices not paid in full, by the issue day.
+ * Potential: open seats by their target hire date (all time takes every open
+ * seat, dated or not).
+ */
+export function commissionTotals(
+  view: CommissionView,
+  period: CommissionPeriod,
+  input: {
+    rows: Earning[]
+    statusOf: (e: Earning) => CommissionLineStatus
+    payouts: { status: 'approved' | 'paid'; total: number; currency: string; paid_on: string | null }[]
+    seats: { status: OpeningStatus; target_hire_date: string | null; estimate: Estimate | undefined }[]
+  },
+  today: Date,
+): CommissionTotals {
+  const range = periodRange(period, today)
+  const none = { payouts: 0, lines: 0, inPayout: 0, seats: 0, unestimated: 0 }
+  if (view === 'paid') {
+    const paid = input.payouts.filter((p) => p.status === 'paid' && within(p.paid_on, range))
+    return { ...none, sums: byCurrency(paid.map((p) => ({ amount: p.total, currency: p.currency }))), payouts: paid.length }
+  }
+  if (view === 'potential') {
+    const open = input.seats.filter((s) => s.status !== 'filled' && within(s.target_hire_date, range))
+    const priced = open.flatMap((s) => (s.estimate && 'amount' in s.estimate ? [{ amount: s.estimate.amount, currency: s.estimate.currency }] : []))
+    return { ...none, sums: byCurrency(priced), seats: open.length, unestimated: open.length - priced.length }
+  }
+  if (view === 'payable') {
+    const ready = input.rows.filter((e) => {
+      const st = input.statusOf(e)
+      return (st === 'payable' || st === 'in_payout') && within(e.paid_on ?? e.earned_on ?? e.issued_on, range)
+    })
+    return {
+      ...none,
+      sums: byCurrency(ready.map((e) => ({ amount: e.earned_amount, currency: e.currency }))),
+      lines: ready.length,
+      inPayout: ready.filter((e) => input.statusOf(e) === 'in_payout').length,
+    }
+  }
+  const waiting = input.rows.filter(
+    (e) => input.statusOf(e) === 'pending' && (e.status === 'issued' || e.status === 'partly_paid') && within(e.issued_on, range),
+  )
+  return {
+    ...none,
+    sums: byCurrency(waiting.map((e) => ({ amount: e.earned_amount + e.pending_amount, currency: e.currency }))),
+    lines: waiting.length,
+  }
+}
