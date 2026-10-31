@@ -99,6 +99,8 @@ const Payout = z.object({
   note: z.string().max(500).nullish(),
   lines: z.coerce.number().int().min(0).nullish(),
   invoice_number: z.string().max(40).nullish(),
+  // The invoice credits and lead credits it paid (os_earnings.sales_credit_id).
+  credit_ids: z.array(z.string().uuid()).max(1000).nullish(),
 })
 
 const Body = z.discriminatedUnion('event', [Invoice, Lead, Payout])

@@ -20,6 +20,8 @@ import type { PersonJob } from '@/lib/os/peopleAccess'
 
 export interface Earning {
   id: string
+  /** Gio Sales' credit id: a paid payout names the ones it paid. */
+  sales_credit_id: string
   source: 'invoice' | 'lead'
   request_number: string | null
   invoice_number: string | null
@@ -54,7 +56,7 @@ export function usePersonEarnings(userId: string | null | undefined) {
       const { data, error } = await supabase
         .from('os_earnings')
         .select(
-          'id, source, request_number, invoice_number, client_name, deal_title, opening_id, job_id, role_key, role_label, share_pct, basis, currency, invoice_amount, collected_amount, earned_amount, pending_amount, status, void_reason, issued_on, paid_on, partner_name, item_name, earned_on',
+          'id, sales_credit_id, source, request_number, invoice_number, client_name, deal_title, opening_id, job_id, role_key, role_label, share_pct, basis, currency, invoice_amount, collected_amount, earned_amount, pending_amount, status, void_reason, issued_on, paid_on, partner_name, item_name, earned_on',
         )
         .eq('user_id', userId!)
         .order('issued_on', { ascending: false, nullsFirst: false })
