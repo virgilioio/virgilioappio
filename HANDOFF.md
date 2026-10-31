@@ -51,6 +51,8 @@ Hard limits:
 - **Noticed, not changed:** a tab in any `TabsList` (the profile's own included) reads as `:focus-visible` after a mouse click in headless Chrome, so the purple ring shows; worth a look on a real browser.
 - **On main 2026-10-31** (both apps), with Gio Sales' fix for grid tab bars (the adjustment dialog's Kind showed its highlight only on Bonus).
 - **Fix (applied 2026-10-31, `20261031172211_os_invoice_tax_address_default`):** the first approval was refused for a missing tax address: `os_member_invoice_details` needed an `os_person_tax_address` row, and a member who never touched the card has none. A missing row now reads as "Same as shipping address", like `os_profile_missing`.
+- **First approval (2026-10-31 17:26 UTC):** Allan's October payout reached Gio ATS as approved with VIR-2026-0001, its lines and PDF, and rang the bell. Then, for testing, it went back to draft (Gio Sales `20261031174827_payout_back_to_draft_testing`: invoice removed, counter back to 0, history line; Gio ATS `20261031174835_payout_back_to_draft_testing`: the copy and its bell removed). The next approval writes VIR-2026-0001 again.
+- **Move to next month (Gio Sales, 2026-10-31):** asks first (`MoveLineDialog`) and its toast has Undo (`undo_move_payout_line`, `20261031174100`); Javier's two moved commissions went back to October through it.
 - **First real test:** approve an October draft in Gio Sales (VIR-2026-0001): the member's bell rings, Earnings shows it under Next payout and Invoices; mark it paid: the email goes out.
 
 ## Done 2026-10-31 (Gio Sales + Gio ATS) — Commissions phase 2: payouts, invoices, adjustments — applied
