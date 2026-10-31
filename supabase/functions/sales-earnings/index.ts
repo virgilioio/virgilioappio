@@ -6,6 +6,10 @@
 // what it is on (basis, base_amount, its own currency), and `earnings.lead`
 // brings one credit earned when a partner accepted a lead
 // (sales_lead_earning_upsert).
+// Since the commissions module (phase 2, 2026-10-31) `commissions.payout`
+// brings each payout when it's marked paid, or when Billing undoes that
+// (sales_commission_payout_upsert), for the Earnings tab's Paid and Payment
+// history. Payable is never earned: only a paid payout counts.
 import { z } from 'npm:zod@3'
 import { admin, inboxGet, json, linkCors, verify } from '../_shared/gioLink.ts'
 
@@ -78,7 +82,26 @@ const Lead = z.object({
   }),
 })
 
-const Body = z.discriminatedUnion('event', [Invoice, Lead])
+const Payout = z.object({
+  idempotency_key: z.string().min(1).max(200),
+  event: z.literal('commissions.payout'),
+  sent_at: z.string().datetime({ offset: true }),
+  payout_id: z.string().uuid(),
+  member_email: z.string().max(320),
+  member_name: z.string().max(200).nullish(),
+  ats_user_id: z.string().uuid().nullish(),
+  month: z.string().date(),
+  currency: Currency,
+  total: z.coerce.number().finite(),
+  status: z.enum(['draft', 'approved', 'paid']),
+  paid_on: z.string().date().nullish(),
+  historical: z.boolean().nullish(),
+  note: z.string().max(500).nullish(),
+  lines: z.coerce.number().int().min(0).nullish(),
+  invoice_number: z.string().max(40).nullish(),
+})
+
+const Body = z.discriminatedUnion('event', [Invoice, Lead, Payout])
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: linkCors })
@@ -97,7 +120,12 @@ Deno.serve(async (req) => {
   if (prior) return prior
 
   // The RPC records the idempotency key itself, in the same transaction.
-  const fn = parsed.data.event === 'earnings.lead' ? 'sales_lead_earning_upsert' : 'sales_earnings_upsert'
+  const fn =
+    parsed.data.event === 'earnings.lead'
+      ? 'sales_lead_earning_upsert'
+      : parsed.data.event === 'commissions.payout'
+        ? 'sales_commission_payout_upsert'
+        : 'sales_earnings_upsert'
   const { data, error } = await db.rpc(fn, { payload: parsed.data })
   if (error) {
     console.error(`${fn} failed`, error)

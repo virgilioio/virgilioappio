@@ -312,6 +312,10 @@ verify_jwt = false
 # Called by People & Access with the admin's token; the database checks who may offboard whom.
 verify_jwt = false
 
+[functions.sales-commission-gateway]
+# Called only by Gio Sales' server, signed with GIO_LINK_SECRET over `${timestamp}.${body}`.
+verify_jwt = false
+
 [functions.google-gateway]
 # Called only by Gio Sales' server, signed with GIO_LINK_SECRET over `${timestamp}.${body}`.
 verify_jwt = false
