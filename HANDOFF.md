@@ -42,11 +42,19 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-31 (Gio Sales) — Commissions module, phase 1: see every commission — applied
+
+- **Plan:** "Gio Sales commissions module: plan" (Claude Docs, https://claude.ai/artifact/2ajNzucHTbMRCLEn5exp8Y). Commissions is a module of its own in Gio Sales, separate from Billing; Billing, admins and owners only. All of Allan's decisions are in the plan: monthly payouts per member per currency (Billing prepares, an admin or owner approves, Billing marks paid, no currency conversion); Gio writes each member's invoice to Virgilio Technologies LLC (a Delaware LLC, 131 Continental Dr., Suite 305, Newark, Delaware, EIN 36-5104223), numbered VIR-YYYY-NNNN, the bank account masked; adjustments (Bonus, Correction, Clawback, Other) are approved with the payout, with proposed clawbacks and carry-over; members see it all on My profile in Gio ATS. Partner invoicing stays on the back burner.
+- **Database** (`20261031051706_commission_lines`): each credit stores its `amount`; `invoice_credit_plan(request)` is the one calculation (issuing inserts exactly what it returns, unchanged on R-1004, R-1009 and R-1011); `commission_lines()` lists invoice credits, lead credits and Expected lines (requests not issued yet) as expected · pending · payable · void (`GCM01` for anyone else).
+- **Screens:** the rail's money group (Partners, a divider, then Billing and Commissions with the People & Access glyph; Billing members see only those two); Overview, People, a person (My profile's frame) and the Commissions list with a line's sheet; the request's Credits card shows amounts and links to each line. Read only.
+- **Next:** phase 2, payouts, invoices and adjustments (migration for review first; the invoice PDF needs Allan's approval for pdf-lib). Phase 3 is the My profile views in Gio ATS.
+- **On main 2026-10-31** (Gio Sales).
+
 ## Done 2026-10-31 (Gio Sales) — Phone phase 4: finishing — applied
 
 - **No database change.** Checked every phone screen in the browser with worst-case data (long and single-word names, an unnamed contact, $0 to $12.45M, 140 deals) at 320, 375, 768×1024 and 1024×768, plus the CLAUDE.md rules (16px fields, named icon buttons, no native titles, nothing under 10.5px), the offline banner and reduced motion.
 - **Fixed:** sheets and the full-screen composer sit above the iPhone keyboard (`installKeyboardSafe` keeps `--gio-kb` / `--gio-vv-top` from `visualViewport`; Gio ATS has the same gap and could take this); bottom sheets and the composer keep to the 640px column on a sideways tablet (composer page dimmed); below 360px the tabs and bottom bar tighten so Search and the tab names fit; a long company website ends in "…"; the composer's Subject and recipient fields lost a grey inner focus box.
-- **Next:** commissions steps 3 and 4, to review with Allan.
+- **Next:** the commissions module (planned the same day, above).
 - **On main 2026-10-31** (Gio Sales).
 
 ## Done 2026-10-31 (Gio Sales) — Inbox plan phase 5: Inbox on phones, and the Credits warning — applied
