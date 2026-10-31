@@ -29,13 +29,21 @@ const OPENING_STATUS = {
 } as const
 const OPENING_ORDER = { offer: 0, open: 1, filled: 2 } as const
 
+// The commission's status, not the client's invoice (Allan, 2026-10-31): it's
+// payable once the client has paid in full (or a partner accepted the lead), and
+// earned only when Virgilio pays it out, which reaches Gio ATS with payouts.
 const INVOICE_STATUS: Record<Earning['status'], { label: string; dot: string }> = {
-  issued: { label: 'Invoiced', dot: '#0EA5E9' },
-  partly_paid: { label: 'Partly paid', dot: '#F59E0B' },
-  paid: { label: 'Paid', dot: '#12B886' },
+  issued: { label: 'Pending · invoiced', dot: '#0EA5E9' },
+  partly_paid: { label: 'Pending · client partly paid', dot: '#F59E0B' },
+  paid: { label: 'Payable', dot: '#12B886' },
   void: { label: 'Void', dot: '#9CA3AF' },
-  earned: { label: 'Earned', dot: '#12B886' },
+  earned: { label: 'Payable', dot: '#12B886' },
 }
+
+/** What can be paid out: a commission whose invoice the client paid in full, or an accepted lead. Never counted as earned. */
+const payableOf = (e: Earning) => (e.status === 'paid' || e.status === 'earned' ? e.earned_amount : 0)
+/** What waits on the client: the whole commission until its invoice is paid in full. */
+const pendingOf = (e: Earning) => (e.status === 'issued' || e.status === 'partly_paid' ? e.earned_amount + e.pending_amount : 0)
 
 function day(iso: string | null) {
   if (!iso) return null
@@ -81,8 +89,8 @@ function moneyMetric(label: string, icon: LucideIcon, tone: MetricTone, sums: { 
  * Filled openings count only when the hire credits them.
  */
 /**
- * Earned, Pending and Potential for one person, worked out once from the
- * invoices, the openings and today's rates.
+ * Payable, Pending and Potential for one person, worked out once from the
+ * invoices, the openings and today's rates. Paid (earned) joins with payouts.
  */
 export function useEarningsSummary(userId: string | null, tenantId: string | undefined, jobs: PersonJob[], jobsLoading: boolean) {
   const earnings = usePersonEarnings(userId)
@@ -91,8 +99,8 @@ export function useEarningsSummary(userId: string | null, tenantId: string | und
 
   const rows = earnings.data ?? []
   const live = rows.filter((e) => e.status !== 'void')
-  const earned = byCurrency(live.filter((e) => e.earned_amount > 0).map((e) => ({ amount: e.earned_amount, currency: e.currency })))
-  const pending = byCurrency(live.filter((e) => e.pending_amount > 0).map((e) => ({ amount: e.pending_amount, currency: e.currency })))
+  const payable = byCurrency(live.filter((e) => payableOf(e) > 0).map((e) => ({ amount: payableOf(e), currency: e.currency })))
+  const pending = byCurrency(live.filter((e) => pendingOf(e) > 0).map((e) => ({ amount: pendingOf(e), currency: e.currency })))
 
   const list = (openings.data ?? [])
     .slice()
@@ -101,7 +109,7 @@ export function useEarningsSummary(userId: string | null, tenantId: string | und
   const potential = byCurrency([...estimates.values()].flatMap((e) => ('amount' in e ? [{ amount: e.amount, currency: e.currency }] : [])))
   const unestimated = [...estimates.values()].filter((e) => 'missing' in e).length
   const loading = earnings.isLoading || jobsLoading || openings.isLoading || rates.isLoading
-  return { earnings, openings, rates, rows, live, list, estimates, earned, pending, potential, unestimated, loading }
+  return { earnings, openings, rates, rows, live, list, estimates, payable, pending, potential, unestimated, loading }
 }
 
 export function PersonEarnings({
@@ -120,7 +128,7 @@ export function PersonEarnings({
 }) {
   const their = self ? 'your' : 'their'
   const them = self ? 'you' : 'them'
-  const { earnings, openings, rates, rows, live, list, estimates, earned, pending, potential, unestimated } = useEarningsSummary(
+  const { earnings, openings, rates, rows, live, list, estimates, payable, pending, potential, unestimated } = useEarningsSummary(
     userId,
     tenantId,
     jobs,
@@ -147,13 +155,14 @@ export function PersonEarnings({
             id={`os-earnings-${userId}`}
             loading={loadingMoney || loadingPotential}
             items={[
-              moneyMetric('Earned', CircleDollarSign, 'green', earned),
+              moneyMetric('Payable', CircleDollarSign, 'green', payable),
               moneyMetric('Pending', Clock, 'yellow', pending),
               moneyMetric('Potential', TrendingUp, 'purple', potential),
             ]}
           />
         <p className="px-1 pt-2 font-inter text-[12px] leading-[1.5] text-[#6B7080]">
-          Earned and pending come from Gio Sales invoices and the leads partners accept, for every role that credits {them}. Potential estimates the
+          Payable and pending come from Gio Sales invoices and the leads partners accept, for every role that credits {them}. A commission is
+          payable once the client has paid its invoice in full, and earned when Virgilio pays it out. Potential estimates the
           openings still open where {self ? "you're" : "they're"} a Sourcer or a Recruiter: the job's salary × the opening's fee × today's rate
           {sp != null && tap != null ? ` (Sourcer ${sp}%, Recruiter ${tap}%)` : ''}.
           {!loadingPotential && unestimated > 0
@@ -186,7 +195,7 @@ export function PersonEarnings({
                   <TableHead>Invoice or lead</TableHead>
                   <TableHead className="hidden md:table-cell">Role</TableHead>
                   <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead className="text-right">Earned</TableHead>
+                  <TableHead className="text-right">Payable</TableHead>
                   <TableHead className="hidden sm:table-cell text-right">Pending</TableHead>
                 </TableRow>
               </TableHeader>
@@ -224,18 +233,18 @@ export function PersonEarnings({
                             : lead
                               ? day(e.earned_on)
                               : e.status === 'paid'
-                                ? day(e.paid_on)
+                                ? e.paid_on && `Client paid ${day(e.paid_on)}`
                                 : day(e.issued_on)}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        {isVoid ? <span className="text-[#8B8F9E]">—</span> : <Money amount={e.earned_amount} currency={e.currency} muted={e.earned_amount === 0} />}
+                        {isVoid ? <span className="text-[#8B8F9E]">—</span> : <Money amount={payableOf(e)} currency={e.currency} muted={payableOf(e) === 0} />}
                       </TableCell>
                       <TableCell className="hidden whitespace-nowrap text-right sm:table-cell">
-                        {isVoid || e.pending_amount === 0 ? (
+                        {isVoid || pendingOf(e) === 0 ? (
                           <span className="text-[#8B8F9E]">—</span>
                         ) : (
-                          <Money amount={e.pending_amount} currency={e.currency} />
+                          <Money amount={pendingOf(e)} currency={e.currency} />
                         )}
                       </TableCell>
                     </TableRow>
@@ -279,7 +288,7 @@ export function PersonEarnings({
               <TableBody>
                 {list.map((o) => {
                   const est = estimates.get(o.id)
-                  const paid = earningsOf(o)
+                  const credits = earningsOf(o)
                   return (
                     <TableRow key={o.id}>
                       <TableCell className="max-w-[190px] sm:max-w-[280px]">
@@ -313,16 +322,16 @@ export function PersonEarnings({
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         {o.status === 'filled' ? (
-                          paid.length ? (
+                          credits.length ? (
                             <>
-                              {byCurrency(paid.map((e) => ({ amount: e.earned_amount, currency: e.currency }))).map((s) => (
+                              {byCurrency(credits.map((e) => ({ amount: payableOf(e), currency: e.currency }))).map((s) => (
                                 <span key={s.currency} className="block">
                                   <Money amount={s.amount} currency={s.currency} muted={s.amount === 0} />
                                 </span>
                               ))}
-                              {paid.some((e) => e.pending_amount > 0) && (
+                              {credits.some((e) => pendingOf(e) > 0) && (
                                 <span className="block text-[11.5px] text-[#6B7080]">
-                                  {byCurrency(paid.map((e) => ({ amount: e.pending_amount, currency: e.currency })))
+                                  {byCurrency(credits.map((e) => ({ amount: pendingOf(e), currency: e.currency })))
                                     .map((s) => `${money(s.amount, s.currency).text} pending`)
                                     .join(' · ')}
                                 </span>
