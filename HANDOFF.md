@@ -42,6 +42,14 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## In progress 2026-10-31 (Gio Sales + Gio ATS) — Commissions phase 2: payouts, invoices, adjustments — on the branch, waiting for "Apply!"
+
+- **Applied:** Gio Sales `20261031063815_commission_payouts` (payouts, adjustments, holds, invoices, history, `commission_ledger`, clawback proposals, outbox `commissions.payout`), `20261031063826_commission_past_payouts` (the five past payouts on the client's dates), `20261031065705_payout_files` (private bucket); Gio ATS `20261031065702_sales_commission_payouts` (`os_commission_payouts`, `os_person_tax_address`, `os_member_invoice_details`, `os_member_bank_reveal`) and `20261031055228_req_1111_sourcer_once` (Javier as Sourcer on REQ-1111, once).
+- **Deployed:** Gio Sales `deliver-outbox` (v16, routes `commissions.payout`, adds `event` / `sent_at`) and `commission-payout` (v2: approve with Gio ATS's invoice details, the pdf-lib invoice, reveal bank, uploads, links); Gio ATS `sales-commission-gateway` (v1) and `sales-earnings` (v9). The five past payouts reached Gio ATS.
+- **For review, not applied:** Gio Sales `20261031080000_commission_payout_credit_ids` and Gio ATS `20261031080001_os_commission_payout_credits` (a payout names the commissions it paid, so Gio ATS's Earnings moves them from Payable to Paid; resends the paid payouts). Both dry-run. After applying: regenerate both types files and deploy Gio ATS `sales-earnings` (it now keeps `credit_ids`).
+- **Screens (branch):** Gio Sales Commissions › Payouts and a payout's page, `AdjustmentDialog`, clawback decisions, Paid on the Overview, a person's Payouts and invoices; Gio ATS `TaxAddressCard` and Earnings' Paid, Payment history and filters.
+- **Next:** phase 3, the My profile views in Gio ATS (Balances, Payouts, Invoices, My adjustments).
+
 ## Done 2026-10-31 (Gio Sales) — Commissions module, phase 1: see every commission — applied
 
 - **Plan:** "Gio Sales commissions module: plan" (Claude Docs, https://claude.ai/artifact/2ajNzucHTbMRCLEn5exp8Y). Commissions is a module of its own in Gio Sales, separate from Billing; Billing, admins and owners only. All of Allan's decisions are in the plan: monthly payouts per member per currency (Billing prepares, an admin or owner approves, Billing marks paid, no currency conversion); Gio writes each member's invoice to Virgilio Technologies LLC (a Delaware LLC, 131 Continental Dr., Suite 305, Newark, Delaware, EIN 36-5104223), numbered VIR-YYYY-NNNN, the bank account masked; adjustments (Bonus, Correction, Clawback, Other) are approved with the payout, with proposed clawbacks and carry-over; members see it all on My profile in Gio ATS. Partner invoicing stays on the back burner.
