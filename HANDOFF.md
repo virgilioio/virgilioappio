@@ -67,6 +67,12 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-10-31 (Gio Sales) — Success fees always reach Billing — waiting for Apply!
+
+- Why: REQ-1111 was marked hired; Gio ATS delivered `opening.filled`, but Gio Sales' `create_success_fee_request` skipped the request because the company had no earlier invoice request to copy billing details from (the deal was won with "nothing to invoice now"), leaving only a note on the deal.
+- Gio Sales branch `claude/vibrant-galileo-wjbdxd`: migration `20261031052151_success_fee_always_drafted.sql` (drafts the request anyway with the legal name and billing email empty; "Needs billing details" in Billing; `issue_invoice` waits for both; `request_success_fee(p_opening_id)` behind a **Request success fee** button on the deal's Openings & billing card for the deal owner, Billing, admins and owners; a voided request no longer blocks a new one). `ats-opening-event` now accepts Gio ATS's `job.team_changed` (20 stuck in the ATS outbox since Oct 4 clear on their next retry). Dry run passed (rolled back); browser check with fake data.
+- On Apply: apply the migration (no drops), deploy `ats-opening-event`, push Gio Sales to main, then draft REQ-1111's request (USD 2,125.56 from MXN 40,032) and confirm the stuck ATS outbox rows deliver.
+
 ## Done 2026-10-30 (ATS) — Slack: "It's someone's birthday" (People) — on main
 
 - New People event `member.birthday`, workspace-wide only (the database refuses People automations on a job, and job pages don't list them). Goes to any channel, Slack people and/or the person by DM; message has `{member}` only, never the year or age, and no link. Starter "Birthdays" posts to a channel (you pick it).
