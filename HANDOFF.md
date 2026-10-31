@@ -67,6 +67,10 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-10-31 (ATS) — My profile: Commissions card — waiting for Apply!
+
+- `CommissionsCard` first in My profile's left column (under To do): Paid · Pending · Potential, a period picker (This month · This quarter · This year, the default · All time), an eye that hides the amounts (hidden until shown, remembered per browser), View all → Earnings. Same numbers as the Earnings tab (`useEarningsSummary`; `commissionTotals` / `periodRange` with unit tests). General moved to the bottom of the right column to even the columns (complete profile: right 74px longer; was left 180px). No database change. Checked in the browser with fake data: every choice, no commissions, several currencies, hidden, a phone.
+
 ## Done 2026-10-31 (Gio Sales) — Success fees always reach Billing — on main
 
 - Why: REQ-1111 was marked hired; Gio ATS delivered `opening.filled`, but Gio Sales' `create_success_fee_request` skipped the request because the company had no earlier invoice request to copy billing details from (the deal was won with "nothing to invoice now"), leaving only a note on the deal.
