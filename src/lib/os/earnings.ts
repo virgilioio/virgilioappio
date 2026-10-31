@@ -199,3 +199,69 @@ export function money(amount: number, currency: string) {
   const compact = `${formatMoney(Math.round(amount / 10_000) / 100, currency, { decimals: 2 })}M${currency !== 'USD' ? ` ${currency}` : ''}`
   return { text: compact, title: exact }
 }
+
+/* ------------------------------------------------------------------ *
+ * The Commissions card on My profile (2026-10-31): Paid · Pending ·
+ * Potential over a period. The same numbers as the Earnings tab.
+ * ------------------------------------------------------------------ */
+
+export type CommissionView = 'paid' | 'pending' | 'potential'
+export type CommissionPeriod = 'month' | 'quarter' | 'year' | 'all'
+
+const ymd = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** The calendar month, quarter or year around `today`, as "YYYY-MM-DD" bounds; null for all time. */
+export function periodRange(period: CommissionPeriod, today: Date): { from: string; to: string } | null {
+  if (period === 'all') return null
+  const y = today.getFullYear()
+  const m = today.getMonth()
+  const startMonth = period === 'month' ? m : period === 'quarter' ? m - (m % 3) : 0
+  const months = period === 'month' ? 1 : period === 'quarter' ? 3 : 12
+  return { from: ymd(new Date(y, startMonth, 1)), to: ymd(new Date(y, startMonth + months, 0)) }
+}
+
+const within = (day: string | null | undefined, range: { from: string; to: string } | null) =>
+  !range || (!!day && day.slice(0, 10) >= range.from && day.slice(0, 10) <= range.to)
+
+export interface CommissionTotals {
+  sums: { amount: number; currency: string }[]
+  invoices: number
+  leads: number
+  seats: number
+  /** Open seats in the period with no estimate (no fee, salary or period). */
+  unestimated: number
+}
+
+/**
+ * Paid: what was earned (an invoice paid, a lead accepted) in the period, by
+ * when it was paid or accepted. Pending: invoices issued in the period and not
+ * yet paid. Potential: open seats by their target hire date (all time takes
+ * every open seat, dated or not).
+ */
+export function commissionTotals(
+  view: CommissionView,
+  period: CommissionPeriod,
+  rows: Earning[],
+  seats: { status: OpeningStatus; target_hire_date: string | null; estimate: Estimate | undefined }[],
+  today: Date,
+): CommissionTotals {
+  const range = periodRange(period, today)
+  if (view === 'potential') {
+    const open = seats.filter((s) => s.status !== 'filled' && within(s.target_hire_date, range))
+    const priced = open.flatMap((s) => (s.estimate && 'amount' in s.estimate ? [{ amount: s.estimate.amount, currency: s.estimate.currency }] : []))
+    return { sums: byCurrency(priced), invoices: 0, leads: 0, seats: open.length, unestimated: open.length - priced.length }
+  }
+  const live = rows.filter((e) => e.status !== 'void')
+  const picked =
+    view === 'paid'
+      ? live.filter((e) => e.earned_amount > 0 && within(e.paid_on ?? e.earned_on ?? e.issued_on, range))
+      : live.filter((e) => e.pending_amount > 0 && within(e.issued_on, range))
+  return {
+    sums: byCurrency(picked.map((e) => ({ amount: view === 'paid' ? e.earned_amount : e.pending_amount, currency: e.currency }))),
+    invoices: picked.filter((e) => e.source !== 'lead').length,
+    leads: picked.filter((e) => e.source === 'lead').length,
+    seats: 0,
+    unestimated: 0,
+  }
+}
