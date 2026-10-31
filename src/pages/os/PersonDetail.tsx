@@ -41,6 +41,7 @@ import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { DangerZone } from '@/components/os/DangerZone'
 import { PersonJobsTable } from '@/components/os/PersonJobsTable'
 import { PersonEarnings } from '@/components/os/PersonEarnings'
+import { CommissionsCard } from '@/components/os/CommissionsCard'
 import { PersonPerformance } from '@/components/os/PersonPerformance'
 import { ProfileCard } from '@/components/os/ProfileParts'
 import {
@@ -411,13 +412,21 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                   // reference cards last.
                   <>
                     {joined && <ToDoCard tenantId={tenant.id} person={person} />}
+                    {joined && person.user_id && (
+                      <CommissionsCard
+                        userId={person.user_id}
+                        tenantId={tenant.id}
+                        jobs={jobList}
+                        jobsLoading={jobs.isLoading}
+                        onSeeAll={() => setTab('earnings')}
+                      />
+                    )}
                     <UsefulLinksCard tenantId={tenant.id} />
                     {joined && <ComingUpCard tenantId={tenant.id} />}
                     {renderCurrentWork()}
                     {renderAgreements()}
                     {renderRole(tenant.id)}
                     {renderAccess()}
-                    {renderGeneral()}
                   </>
                 ) : (
                   // Someone else's profile: an admin looks at their role first.
@@ -445,6 +454,8 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                 )}
                 {joined && <BankDetailsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
                 {joined && <TaxIdsCard tenantId={tenant.id} userId={person.user_id} self={self} name={person.first_name ?? undefined} />}
+                {/* My profile: General, set once, closes the right column so the two even out under Commissions. */}
+                {self && renderGeneral()}
                 {/* An admin's rating of someone else; it sits here so that view's columns even out. */}
                 {joined && !self && <RatingCard tenantId={tenant.id} person={person} isSelf={isSelf} nameOf={nameOf} />}
               </div>
