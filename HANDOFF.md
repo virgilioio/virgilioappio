@@ -42,6 +42,12 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
+## Done 2026-10-31 (Gio Sales) — Inbox plan phase 5: Inbox on phones, and the Credits warning — applied
+
+- **Inbox on phones** (no database change): `InboxPage phone` through `PhoneOr`, the Inbox glyph with its unread number in the phone's bottom bar (Search folds to its icon on narrow phones), Gio ATS's three-line rows with stars, folders and deals as chips, Unread and Refresh, the reader under the shell's Back (Done moves on; Back returns to the list at its scroll). The composer and Compose's contact picker fill the screen with 16px fields. Email on a phone contact and deal opens the composer when Gmail is connected. No checkboxes or bulk bar on phones (a choice; Allan can ask for them). CLAUDE.md "Phones" updated. The Inbox plan's five phases are done.
+- **Credits incomplete warning** (screens only): issued requests store Sourcer and Recruiter as one person each in `attribution_team`, but the screens read them as lists, so R-1004, R-1005, R-1007 and R-1009 said "Credits incomplete · Sourcer, Recruiter" though all four credits were written. `parseAttributionTeam` now reads both shapes (Billing detail, list, CSV export, a deal's openings card); a voided request shows no warning; a deal's openings use the live team until the invoice is issued.
+- **On main 2026-10-31** (Gio Sales).
+
 ## Done 2026-10-30 (Gio Sales) — Inbox plan phase 4: Inbox screens on the computer — applied
 
 - **Gio Sales screens** (no database change): `/inbox` and `/inbox/:threadId` (`InboxPage`, `src/components/inbox/`): folders (Inbox · Needs reply · Starred · Sent · Done · All mail, Your deals; icons below 1280px), Gmail's one-line list with stars, the Unread filter, search and Refresh, the reader (folded earlier messages, received HTML through DOMPurify, files in the file viewer, Reply · Reply all · Forward into the composer), Compose picks a contact first, the bulk bar, Gmail's keys. The rail has an Inbox tile with the unread number, live over Realtime; a "replied" bell item opens the conversation. Billing never sees it. CLAUDE.md records the rail item and routes.
