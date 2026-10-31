@@ -42,13 +42,14 @@ Hard limits:
 - UI follows `CLAUDE.md` Motion & Feel: use the primitives in its Implementation map, never per-component animation classes.
 - Before Allan tests, verify UI in a real browser (Playwright, Chromium preinstalled) with fake data. The dev server is `npx vite --port 8091 --strictPort --host 127.0.0.1`.
 
-## In progress 2026-10-31 (Gio Sales + Gio ATS) — Commissions phase 2: payouts, invoices, adjustments — on the branch, waiting for "Apply!"
+## In progress 2026-10-31 (Gio Sales + Gio ATS) — Commissions phase 2: payouts, invoices, adjustments — applied
 
 - **Applied:** Gio Sales `20261031063815_commission_payouts` (payouts, adjustments, holds, invoices, history, `commission_ledger`, clawback proposals, outbox `commissions.payout`), `20261031063826_commission_past_payouts` (the five past payouts on the client's dates), `20261031065705_payout_files` (private bucket); Gio ATS `20261031065702_sales_commission_payouts` (`os_commission_payouts`, `os_person_tax_address`, `os_member_invoice_details`, `os_member_bank_reveal`) and `20261031055228_req_1111_sourcer_once` (Javier as Sourcer on REQ-1111, once).
 - **Deployed:** Gio Sales `deliver-outbox` (v16, routes `commissions.payout`, adds `event` / `sent_at`) and `commission-payout` (v2: approve with Gio ATS's invoice details, the pdf-lib invoice, reveal bank, uploads, links); Gio ATS `sales-commission-gateway` (v1) and `sales-earnings` (v9). The five past payouts reached Gio ATS.
 - **Applied after review ("Go!", 2026-10-31):** Gio ATS `20261031144012_os_commission_payout_credits` and Gio Sales `20261031144153_commission_payout_credit_ids`: a payout names the commissions it paid (`sales_credit_ids`), so Gio ATS's Earnings moves them from Payable to Paid. Gio ATS `sales-earnings` v10 keeps them; the five past payouts were resent and each matches its commissions to the cent.
 - **Screens (branch):** Gio Sales Commissions › Payouts and a payout's page, `AdjustmentDialog`, clawback decisions, Paid on the Overview, a person's Payouts and invoices; Gio ATS `TaxAddressCard` and Earnings' Paid, Payment history and filters.
-- **Next:** phase 3, the My profile views in Gio ATS (Balances, Payouts, Invoices, My adjustments).
+- **Next:** phase 3, the My profile views in Gio ATS (Balances, Payouts, Invoices, My adjustments). First real test: approve one October draft (it takes VIR-2026-0001).
+- **On main 2026-10-31** (both apps).
 
 ## Done 2026-10-31 (Gio Sales) — Commissions module, phase 1: see every commission — applied
 
