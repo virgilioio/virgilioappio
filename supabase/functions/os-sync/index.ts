@@ -321,7 +321,7 @@ Deno.serve(async (req) => {
 
     let rq = admin
       .from('os_commission_roles')
-      .select('id, key, label, description, person_source, built_in, active, position, updated_at, sync_attempts')
+      .select('id, key, label, description, person_source, built_in, active, position, updated_at, sync_attempts, holder_user_id')
       .eq('sync_status', 'pending')
       .order('created_at')
       .limit(50)
@@ -330,6 +330,14 @@ Deno.serve(async (req) => {
     for (const role of (roles ?? []) as Array<Record<string, unknown> & { id: string; updated_at: string; sync_attempts: number }>) {
       if (!isCron && role.sync_attempts >= 3) continue
       const { sync_attempts: _attempts, ...item } = role
+      // A role held by one named person (F&A Manager): Gio Sales credits that
+      // person by email, so the role carries who they are.
+      if (typeof role.holder_user_id === 'string') {
+        const holderId = role.holder_user_id
+        const { data: prof } = await admin.from('profiles').select('first_name, last_name').eq('user_id', holderId).maybeSingle()
+        const holderName = [prof?.first_name, prof?.last_name].map((x) => String(x ?? '').trim()).filter(Boolean).join(' ')
+        Object.assign(item, { holder_email: (await emailOf(holderId)) ?? '', holder_name: holderName })
+      }
       const r = await post('commission_role', item)
       await admin.rpc('os_commission_role_record', { _id: role.id, _updated_at: role.updated_at, _ok: r.ok, _detail: r.detail, _retry: r.retry })
       commissions.push({ kind: 'role', id: role.id, result: r.result, detail: r.detail })
