@@ -108,6 +108,11 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-10-31 (ATS) — Balance card + sanitizer tests — on the branch, waiting for Apply!
+
+- The My profile card is titled **Balance** (Allan: future-proof; same `CommissionsCard`, `#card-commissions`, View all). Every amount names its currency beside it: the big number as `$1,200 USD` (code 15px grey), other currencies as `+ $18,500 MXN`, hidden as `••••• USD`.
+- The 16 HTML sanitizer tests failed on main (node has no DOM). `jsdom` 26.1.0 is a new dev-only package, the test file runs under `// @vitest-environment jsdom`, and `vitest.config.ts` keeps `.agents/` and `.claude/` out of the run. Full suite: 29 files, 263 tests pass. Only `package.json` changed: `package-lock.json` was already ~350 packages behind and Lovable installs from `bun.lockb`, which it re-resolves on sync (this container can't reach Lovable's package mirror).
+
 ## Done 2026-10-31 (ATS) — My profile: Commissions card — on main
 
 - `CommissionsCard` first in My profile's left column (under To do): Paid · Payable · Pending · Potential (Allan, after the commission portal landed: Paid is payouts Virgilio paid, never a client's payment; Payable includes commissions already in an approved payout), a period picker (This month · This quarter · This year, the default · All time), an eye that hides the amounts (hidden until shown, remembered per browser), View all → Earnings. The Earnings tab's own statuses (`useEarningsSummary` `statusOf`, payouts) through `commissionTotals` / `periodRange` (unit tests). No database change. Columns: left about 90px longer with the Tax address card on the right. Checked in the browser with fake data: every choice, payouts, no commissions, several currencies, hidden, a phone.
