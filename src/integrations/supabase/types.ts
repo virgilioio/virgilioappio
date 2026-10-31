@@ -6187,6 +6187,7 @@ export type Database = {
           paid_on: string | null
           person_email: string | null
           person_name: string | null
+          sales_credit_ids: string[]
           sales_payout_id: string
           sales_sent_at: string
           status: string
@@ -6207,6 +6208,7 @@ export type Database = {
           paid_on?: string | null
           person_email?: string | null
           person_name?: string | null
+          sales_credit_ids?: string[]
           sales_payout_id: string
           sales_sent_at: string
           status: string
@@ -6227,6 +6229,7 @@ export type Database = {
           paid_on?: string | null
           person_email?: string | null
           person_name?: string | null
+          sales_credit_ids?: string[]
           sales_payout_id?: string
           sales_sent_at?: string
           status?: string
