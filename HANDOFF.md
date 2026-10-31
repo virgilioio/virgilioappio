@@ -108,7 +108,7 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-10-31 (ATS) — Balance card + sanitizer tests — on the branch, waiting for Apply!
+## Done 2026-10-31 (ATS) — Balance card + sanitizer tests — on main
 
 - The My profile card is titled **Balance** (Allan: future-proof; same `CommissionsCard`, `#card-commissions`, View all). Every amount names its currency beside it: the big number as `$1,200 USD` (code 15px grey), other currencies as `+ $18,500 MXN`, hidden as `••••• USD`.
 - The 16 HTML sanitizer tests failed on main (node has no DOM). `jsdom` 26.1.0 is a new dev-only package, the test file runs under `// @vitest-environment jsdom`, and `vitest.config.ts` keeps `.agents/` and `.claude/` out of the run. Full suite: 29 files, 263 tests pass. Only `package.json` changed: `package-lock.json` was already ~350 packages behind and Lovable installs from `bun.lockb`, which it re-resolves on sync (this container can't reach Lovable's package mirror).
