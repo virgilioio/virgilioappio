@@ -10,6 +10,10 @@
 // brings each payout when it's marked paid, or when Billing undoes that
 // (sales_commission_payout_upsert), for the Earnings tab's Paid and Payment
 // history. Payable is never earned: only a paid payout counts.
+// Since phase 3 (2026-10-31) a payout also comes when it's approved, with its
+// lines as they read on the invoice and the invoice's dates, and
+// `commissions.adjustment` brings each adjustment on a member's pay
+// (sales_commission_adjustment_upsert) for My profile's Earnings views.
 import { z } from 'npm:zod@3'
 import { admin, inboxGet, json, linkCors, verify } from '../_shared/gioLink.ts'
 
@@ -101,9 +105,44 @@ const Payout = z.object({
   invoice_number: z.string().max(40).nullish(),
   // The invoice credits and lead credits it paid (os_earnings.sales_credit_id).
   credit_ids: z.array(z.string().uuid()).max(1000).nullish(),
+  // Each line as it reads on the invoice (phase 3).
+  items: z
+    .array(
+      z.object({
+        kind: z.enum(['credit', 'lead', 'adjustment']),
+        id: z.string().uuid(),
+        description: z.string().max(500),
+        amount: z.coerce.number().finite(),
+      }),
+    )
+    .max(1000)
+    .nullish(),
+  approved_on: z.string().date().nullish(),
+  invoice_issued_on: z.string().date().nullish(),
+  invoice_due_on: z.string().date().nullish(),
+  has_invoice_pdf: z.boolean().nullish(),
+  has_own_invoice: z.boolean().nullish(),
 })
 
-const Body = z.discriminatedUnion('event', [Invoice, Lead, Payout])
+const Adjustment = z.object({
+  idempotency_key: z.string().min(1).max(200),
+  event: z.literal('commissions.adjustment'),
+  sent_at: z.string().datetime({ offset: true }),
+  adjustment_id: z.string().uuid(),
+  member_email: z.string().max(320),
+  member_name: z.string().max(200).nullish(),
+  ats_user_id: z.string().uuid().nullish(),
+  kind: z.enum(['bonus', 'correction', 'clawback', 'other', 'carry_over']),
+  amount: z.coerce.number().finite(),
+  currency: Currency,
+  reason: z.string().max(2000),
+  month: z.string().date(),
+  status: z.enum(['active', 'removed']),
+  payout_id: z.string().uuid().nullish(),
+  added_at: z.string().nullish(),
+})
+
+const Body = z.discriminatedUnion('event', [Invoice, Lead, Payout, Adjustment])
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: linkCors })
@@ -127,7 +166,9 @@ Deno.serve(async (req) => {
       ? 'sales_lead_earning_upsert'
       : parsed.data.event === 'commissions.payout'
         ? 'sales_commission_payout_upsert'
-        : 'sales_earnings_upsert'
+        : parsed.data.event === 'commissions.adjustment'
+          ? 'sales_commission_adjustment_upsert'
+          : 'sales_earnings_upsert'
   const { data, error } = await db.rpc(fn, { payload: parsed.data })
   if (error) {
     console.error(`${fn} failed`, error)
