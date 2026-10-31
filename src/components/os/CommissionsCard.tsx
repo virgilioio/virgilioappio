@@ -19,10 +19,12 @@ import {
 } from '@/lib/os/earnings'
 
 /**
- * My profile's Commissions card (2026-10-31): Paid · Payable · Pending ·
- * Potential over a period, with the eye to hide the amounts (kept per browser,
- * hidden until shown). The Earnings tab's numbers and statuses (paid comes
- * from payouts, never from a client's payment); View all opens it.
+ * My profile's Balance card (2026-10-31; "Balance" so it can hold more than
+ * commissions later): Paid · Payable · Pending · Potential over a period, each
+ * amount with its currency code beside it, and the eye to hide the amounts
+ * (kept per browser, hidden until shown). The Earnings tab's numbers and
+ * statuses (paid comes from payouts, never from a client's payment); View all
+ * opens it.
  */
 const VIEWS: { id: CommissionView; label: string }[] = [
   { id: 'paid', label: 'Paid' },
@@ -38,6 +40,12 @@ const PERIODS: { id: CommissionPeriod; label: string }[] = [
 ]
 const HIDE_KEY = 'gio:commissions-hidden'
 const MASK = '•••••'
+
+/** The amount without a currency code (the card shows the code on its own, beside it). */
+function amountOnly(amount: number, currency: string) {
+  const text = money(amount, currency).text
+  return text.endsWith(` ${currency}`) ? text.slice(0, -currency.length - 1) : text
+}
 
 function readHidden() {
   try {
@@ -116,7 +124,7 @@ export function CommissionsCard({
   return (
     <ProfileCard
       id="card-commissions"
-      title="Commissions"
+      title="Balance"
       icon={Coins}
       tone="green"
       aside={
@@ -204,14 +212,15 @@ export function CommissionsCard({
                 <BlendNumber
                   id={`my-commissions-${userId}`}
                   value={first.amount}
-                  format={(v) => money(v, first.currency).text}
+                  format={(v) => amountOnly(v, first.currency)}
                   title={money(first.amount, first.currency).title}
                 />
               )}
+              <span className="ml-1.5 font-inter text-[15px] font-medium tracking-normal text-[#6B7080]">{first.currency}</span>
             </p>
             {rest.length > 0 && (
               <p className="mt-0.5 font-inter text-[12.5px] text-[#5A6072] tabular-nums">
-                {hidden ? `+ ${MASK}` : rest.map((s) => `+ ${money(s.amount, s.currency).text}`).join(' · ')}
+                {rest.map((s) => `+ ${hidden ? MASK : amountOnly(s.amount, s.currency)} ${s.currency}`).join(' · ')}
               </p>
             )}
             <p className="mt-1.5 font-inter text-[12px] text-[#6B7080]">{sourceLine(view, totals)}</p>
