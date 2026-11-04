@@ -112,6 +112,14 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-04 (ATS) — Self-identification report (totals only) — on the branch, waiting for Apply!
+
+- Allan found self-identification answers saved but shown nowhere (the per-person card lived only on the old candidate panel). After talking through the standard (keep it apart from hiring decisions; report in totals), he chose an admin-only report and no per-person view.
+- Migration `20261104210000_eeo_report.sql` (NOT applied; rename to the applied version): `eeo_report` and the table's admin read rule set to `using (false)`. Dry run rolled back: totals as expected (67 applications all time, 3 with answers), small groups hidden, direct reads 0, non-admin refused `GEE01`.
+- Screens: `SelfIdReport` at `/analytics/self-identification`, button in Analytics; the old `EeoResponseCard` and `useCandidateEeo` removed. Regenerate `types.ts` after applying (the hook calls the function untyped until then).
+- Test candidate "EEO Test (delete me)" (`1b66a67d-f338-4d0a-bf0a-41e6cabfc3f3`, Head of Marketing) is waiting for Allan to delete.
+- Known limit: one set of answers per candidate (a later application replaces the earlier answers).
+
 ## Done 2026-11-04 (ATS) — In-job candidate profile on phones — on main
 
 - Allan asked for the phone profile: Overview with the application, Resume, Scorecards and Activity; moving candidates between stages and booking links from the phone; no reference check card on the phone Overview; the stage strip as a dropdown.
