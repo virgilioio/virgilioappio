@@ -112,7 +112,7 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-11-04 (ATS) — In-job candidate profile on phones — on the branch, waiting for Apply!
+## Done 2026-11-04 (ATS) — In-job candidate profile on phones — on main
 
 - Allan asked for the phone profile: Overview with the application, Resume, Scorecards and Activity; moving candidates between stages and booking links from the phone; no reference check card on the phone Overview; the stage strip as a dropdown.
 - Built (no database change): one Back, round contact buttons (Call, Email, WhatsApp, LinkedIn), four tabs that fit, the stage dropdown with Undo and Retry, Overview order (application first when they applied, details from the right column last), résumé ⋯ menu, wrapping card headers, Share link on the booking link menu. See CLAUDE.md "In-job profile on phones".
