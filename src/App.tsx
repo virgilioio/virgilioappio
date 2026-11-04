@@ -81,6 +81,7 @@ const SaaSCustomerDetail = lazy(() =>
   import('./pages/settings/saas-customers/SaaSCustomerDetail').then(m => ({ default: m.SaaSCustomerDetail }))
 )
 const Analytics = lazy(() => import('./pages/Analytics'))
+const SelfIdReport = lazy(() => import('./pages/SelfIdReport'))
 const References = lazy(() => import('./pages/References'))
 const OsPeople = lazy(() => import('./pages/os/People'))
 const OsPersonDetail = lazy(() => import('./pages/os/PersonDetail'))
@@ -218,6 +219,7 @@ function AppContent() {
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/calendar" element={<PhoneSwitch phone={<PhoneCalendar />}><Calendar /></PhoneSwitch>} />
             <Route path="/analytics" element={<PhoneSwitch phone={<DesktopOnly what="Analytics" />}><TalentPoolOnly what="Analytics"><Analytics /></TalentPoolOnly></PhoneSwitch>} />
+            <Route path="/analytics/self-identification" element={<PhoneSwitch phone={<DesktopOnly what="Analytics" />}><TalentPoolOnly what="Analytics"><SelfIdReport /></TalentPoolOnly></PhoneSwitch>} />
             <Route path="/insights" element={<Navigate to="/analytics" replace />} />
             <Route path="/talent-intelligence" element={<PhoneSwitch phone={<DesktopOnly what="Intelligence" />}><TalentPoolOnly what="Intelligence"><TalentIntelligence /></TalentPoolOnly></PhoneSwitch>} />
             <Route path="/jobs/:id" element={<PhoneSwitch phone={<PhoneJobGlance />}><JobDetail /></PhoneSwitch>} />

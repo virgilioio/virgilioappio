@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useToast } from '@/hooks/use-toast'
 import { useSavedViews, type SavedView } from '@/hooks/useSavedViews'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
 import { supabase } from '@/lib/supabaseClient'
-import { Sparkles, LayoutGrid, Download, Plus, Loader2 } from 'lucide-react'
+import { Sparkles, LayoutGrid, Download, Plus, Loader2, ShieldCheck } from 'lucide-react'
 import { subDays } from 'date-fns'
 import { AnalyticsDataProvider, type PageFilters } from '@/components/analytics/model/AnalyticsDataContext'
 import { AnalyticsViewSwitcher } from '@/components/analytics/AnalyticsViewSwitcher'
@@ -279,6 +279,13 @@ export default function Analytics() {
               currentFilters={filters as unknown as Record<string, unknown>}
               currentExtraState={currentExtraState}
             />
+            <Link
+              to="/analytics/self-identification"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[8px] border border-[#E7E8EE] bg-white hover:bg-[#FAFAF7] font-poppins font-medium text-[12.5px] text-[#0d0d09]"
+            >
+              <ShieldCheck size={13} />
+              Self-identification report
+            </Link>
             <button
               onClick={handleExport}
               disabled={isExporting}
