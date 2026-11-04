@@ -42,8 +42,9 @@ export function ProfileCard({
       )}
     >
       {hasHeader && (
-        <header className="flex items-start gap-3 pl-5 pr-3.5 pt-3.5 pb-3 border-b border-[#F1F0EC]">
-          <div className="min-w-0 flex-1">
+        <header className="flex flex-wrap items-start gap-x-3 gap-y-2 pl-5 pr-3.5 pt-3.5 pb-3 border-b border-[#F1F0EC]">
+          {/* On a narrow screen the actions wrap under the title instead of squeezing it. */}
+          <div className="min-w-[min(100%,180px)] flex-1">
             <div className="flex items-center gap-2 min-w-0">
               {title && (
                 <h3 className="font-poppins font-semibold text-[14px] tracking-[-0.01em] text-[#1F2230] leading-tight truncate">
@@ -58,7 +59,7 @@ export function ProfileCard({
               </p>
             )}
           </div>
-          {action && <div className="shrink-0 flex items-center gap-1.5">{action}</div>}
+          {action && <div className="shrink-0 flex flex-wrap items-center gap-1.5">{action}</div>}
         </header>
       )}
       <div className={cn(bodyPad, bodyClassName)}>{children}</div>

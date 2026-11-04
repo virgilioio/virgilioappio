@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
@@ -306,9 +307,9 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
   return (
     <div className={className}>
       {/* Toolbar strip */}
-      <div className="flex items-center gap-2 border-b border-[#F1F0EC] bg-[#FAFAF7] px-3.5 py-2.5">
-        <span className={pillClass}>
-          <FileText className="h-[11px] w-[11px] text-[#8B8F9E]" strokeWidth={2} />
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#F1F0EC] bg-[#FAFAF7] px-3.5 py-2.5">
+        <span className={cn(pillClass, 'min-w-0 max-w-full')}>
+          <FileText className="h-[11px] w-[11px] shrink-0 text-[#8B8F9E]" strokeWidth={2} />
           <span className="truncate max-w-[220px]">{fileName}</span>
         </span>
 
@@ -355,7 +356,7 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
             disabled={!previewUrl && !signedUrl}
           >
             <ExternalLink className="h-[11px] w-[11px]" strokeWidth={2} />
-            Open in new tab
+            <span className="whitespace-nowrap">Open in new tab</span>
           </button>
           {convertedPdfUrl && conversionStatus === 'completed' && needsConversion && (
             <button type="button" className={pillClass} onClick={downloadConverted}>

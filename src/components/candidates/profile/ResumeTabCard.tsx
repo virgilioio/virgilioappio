@@ -79,7 +79,8 @@ export function ResumeDropSlot({ parsing, disabled, accept = '.pdf,.doc,.docx,.p
         <UploadCloud className="h-[18px] w-[18px]" strokeWidth={1.85} />
       </div>
       <p className="font-inter text-[12.5px] font-medium text-[#1F2230]">
-        Drop resume here, or <span className="text-[#6F3FF5]">browse</span>
+        <span className="hidden sm:inline">Drop resume here, or <span className="text-[#6F3FF5]">browse</span></span>
+        <span className="sm:hidden text-[#6F3FF5]">Upload résumé</span>
       </p>
       <p className="mt-1 font-inter text-[10.5px] text-[#8B8F9E]">
         PDF, DOCX, or image · up to 10 MB · Gio will parse contact info, skills, and experience
