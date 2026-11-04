@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Copy,
+  Share2,
   ExternalLink,
   Link2,
   MoreHorizontal,
@@ -126,6 +127,7 @@ export function CurrentStageCard({
   const {
     contextualLink,
     copyToClipboard,
+    shareLink,
     renewLink,
     hasBookingConfig,
   } = useContextualBookingLink(
@@ -183,7 +185,7 @@ export function CurrentStageCard({
   const eventTriggerRef = useRef<HTMLButtonElement>(null)
   const [linkFlash, setLinkFlash] = useState<null | 'copied' | 'renewed'>(null)
   const [flash, setFlash] = useState<string | null>(null)
-  const [busy, setBusy] = useState<'copy' | 'renew' | 'cancel' | null>(null)
+  const [busy, setBusy] = useState<'copy' | 'share' | 'renew' | 'cancel' | null>(null)
 
   // Detect new/replaced upcoming event to show "Event scheduled/rescheduled" flash
   const lastEventKeyRef = useRef<string | null>(null)
@@ -226,6 +228,19 @@ export function CurrentStageCard({
   }
 
   const firstName = (candidateName || '').trim().split(/\s+/)[0] || ''
+
+  // Phones and tablets: the share sheet, so the link goes straight to WhatsApp or Messages.
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function' &&
+    typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+  const handleShareLink = async () => {
+    closeMenus()
+    setBusy('share')
+    try {
+      await shareLink(firstName || null)
+    } finally {
+      setBusy(null)
+    }
+  }
 
   // C11 (Block B §16, Pattern 1): renewing kills the link the candidate has.
   const handleRenew = async () => {
@@ -394,6 +409,15 @@ export function CurrentStageCard({
                           {displayLink || 'Generating link…'}
                         </div>
                       </div>
+                      {canShare && (
+                        <MenuItem
+                          icon={Share2}
+                          label="Share link"
+                          meta="WhatsApp, Messages, Mail…"
+                          onClick={() => void handleShareLink()}
+                          disabled={busy === 'share'}
+                        />
+                      )}
                       <MenuItem
                         icon={Copy}
                         label="Copy link"

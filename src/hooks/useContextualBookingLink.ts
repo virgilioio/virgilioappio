@@ -337,9 +337,52 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     return null;
   }, [activeConfig?.short_code, context, params?.jobId, params?.candidateId, params?.associationId, params?.jhsId, queryClient]);
 
+  // Phones (2026-11-04): hand the link to the phone's share sheet (WhatsApp, Messages,
+  // Mail…). A link that's still good goes straight away, while the tap still counts as
+  // the user's; a stale one is minted first, as Copy does, and if the browser then
+  // refuses to open the sheet the link is copied instead.
+  const shareLink = useCallback(async (candidateFirstName?: string | null) => {
+    if (!activeConfig?.short_code || typeof navigator === 'undefined' || typeof navigator.share !== 'function') return false;
+    let link = contextualLink;
+    if (!link || (context && (tokenStatus.status === 'expired' || !shortToken))) {
+      try {
+        const fresh = context ? await createShortBookingToken({ shortCode: activeConfig.short_code, context }) : null;
+        if (fresh) {
+          setShortToken(fresh);
+          if (context) tokenContextKeyRef.current = `${context.jobId}-${context.candidateId}-${context.jhsId}-${activeConfig.short_code}`;
+          link = generateShortBookingLink({ shortCode: activeConfig.short_code, token: fresh });
+        }
+      } catch (e) {
+        console.error('Failed to mint fresh token before share:', e);
+      }
+    }
+    if (!link) {
+      toast({ title: 'Couldn\u2019t make the link', description: 'Try again in a moment.', variant: 'destructive' });
+      return false;
+    }
+    const text = candidateFirstName
+      ? `Hi ${candidateFirstName}, pick a time that works for you here:`
+      : 'Pick a time that works for you here:';
+    try {
+      await navigator.share({ title: 'Book a time', text, url: link });
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return false;
+      const copied = await copyToClipboardSilent(link);
+      toast(copied ? { title: 'Link copied', description: 'Paste it wherever you like.' } : { title: 'Copy the link manually', description: link, duration: 15000 });
+      return copied;
+    }
+    if (params) {
+      queryClient.invalidateQueries({
+        queryKey: latestTokenStatusKey({ jobId: params.jobId, candidateId: params.candidateId, associationId: params.associationId, jhsId: params.jhsId }),
+      });
+    }
+    return true;
+  }, [activeConfig?.short_code, contextualLink, context, tokenStatus.status, shortToken, params, queryClient]);
+
   return {
     contextualLink,
     copyToClipboard,
+    shareLink,
     renewLink,
     hasBookingConfig:
       (!!assignedInterviewer?.bookingConfig?.short_code && assignedInterviewer.bookingConfig.is_active) ||
