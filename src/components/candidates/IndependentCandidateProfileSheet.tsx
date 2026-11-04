@@ -42,7 +42,6 @@ import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Separator } from '@/components/ui/separator'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
-import { EeoResponseCard } from './EeoResponseCard'
 import { confirmDeleteResume, confirmReplaceResume } from '@/lib/removeOldResumes'
 import { useResumeRefresh } from '@/hooks/useResumeRefresh'
 import { ResumeStatusLine } from '@/components/candidates/profile/ResumeStatus'
@@ -701,8 +700,6 @@ export function IndependentCandidateProfileSheet({
                         </CardContent>
                       </Card>
 
-                      {/* EEO (Self-Identification) — admin/owner only, never visible in the in-job profile */}
-                      <EeoResponseCard candidateId={candidate?.id} />
 
                       {/* Career Summary */}
                       {(candidate?.current_job_title || candidate?.seniority_level || candidate?.functional_area) && (
