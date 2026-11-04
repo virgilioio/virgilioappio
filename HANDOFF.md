@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-04 (ATS) — In-job candidate profile on phones — on the branch, waiting for Apply!
+
+- Allan asked for the phone profile: Overview with the application, Resume, Scorecards and Activity; moving candidates between stages and booking links from the phone; no reference check card on the phone Overview; the stage strip as a dropdown.
+- Built (no database change): one Back, round contact buttons (Call, Email, WhatsApp, LinkedIn), four tabs that fit, the stage dropdown with Undo and Retry, Overview order (application first when they applied, details from the right column last), résumé ⋯ menu, wrapping card headers, Share link on the booking link menu. See CLAUDE.md "In-job profile on phones".
+- Checked with fake data at 390 and 320px (no sideways scrolling; only the tab bar scrolls, by design) and at 1440 (unchanged); stage move, Undo and a failed save checked; a real PDF résumé renders at phone width. Not checked in a browser: Share link (needs a touch screen with a share sheet) — the code falls back to copying.
+- Not changed: Schedule interview stays the desktop day grid, opened full screen on phones.
+
 ## Done 2026-10-31 (ATS) — Balance card + sanitizer tests — on main
 
 - The My profile card is titled **Balance** (Allan: future-proof; same `CommissionsCard`, `#card-commissions`, View all). Every amount names its currency beside it: the big number as `$1,200 USD` (code 15px grey), other currencies as `+ $18,500 MXN`, hidden as `••••• USD`.
