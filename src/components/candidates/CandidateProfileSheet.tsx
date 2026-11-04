@@ -101,6 +101,10 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 
 import { ProfileHeroCard } from '@/components/candidates/profile/ProfileHeroCard'
 import { ProfileStageStrip } from '@/components/candidates/profile/ProfileStageStrip'
+import { PhoneContactRow, PhoneStageSelect, ResumePhoneMenu } from '@/components/candidates/profile/PhoneProfileParts'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { undoToast } from '@/lib/undoToast'
+import { toast as sonnerToast } from 'sonner'
 
 import { ProfileActionMenu, type ActionMenuItem } from '@/components/candidates/profile/ProfileActionMenu'
 import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
@@ -193,6 +197,14 @@ interface CandidateProfileSheetProps {
   asPage?: boolean
 }
 
+/** Phones: Overview · Resume · Scorecards · Activity first, then Gio Fit and the status tabs. */
+const PHONE_FIRST = ['job', 'resume', 'scorecards', 'activity']
+function phoneTabOrder<T extends { value: string }>(isPhone: boolean, tabs: T[]): T[] {
+  if (!isPhone) return tabs
+  const first = PHONE_FIRST.map((v) => tabs.find((t) => t.value === v)).filter(Boolean) as T[]
+  return [...first, ...tabs.filter((t) => !PHONE_FIRST.includes(t.value))]
+}
+
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange, currentIndex, totalCount, asPage = false }: CandidateProfileSheetProps) {
   const summaryQueryClient = useQueryClient()
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
@@ -201,6 +213,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { organizationId, user } = useAuth()
   const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(jobId)
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !isAdmin && !isWorkspaceOwner && !isPlatformAdmin
+  // Phones (below the shell's 640px line) get their own header, stage dropdown and tab order.
+  const isPhone = useIsMobile()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
@@ -226,6 +240,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationId, setAssociationId] = useState<string | null>(null)
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | 'offer' | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
+  // When they applied through a form (null when added by the team): phones show the application first.
+  const [assocAppliedAt, setAssocAppliedAt] = useState<string | null>(null)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
   const [enteredStageAt, setEnteredStageAt] = useState<string | null>(null)
   const [stageWindowStartAt, setStageWindowStartAt] = useState<string | null>(null)
@@ -728,6 +744,7 @@ const stageHasAutomation = useMemo(() => {
     // This fixes a data integrity bug where booking links could contain wrong candidate info
     setCandidate(null)
     setAssociationId(null)
+    setAssocAppliedAt(null)
     setAssociationStatus(null)
     setIsFavorite(false)
     setCurrentStageId(null)
@@ -905,7 +922,8 @@ const stageHasAutomation = useMemo(() => {
             hire_start_date,
             opening:job_openings!job_candidate_associations_opening_id_fkey(req_id),
             whatsapp_template_sent_at,
-            is_favorite
+            is_favorite,
+            applied_at
           `)
           .eq('job_id', jobId)
           .eq('candidate_id', candidateId)
@@ -917,6 +935,7 @@ const stageHasAutomation = useMemo(() => {
         setStageWindowStartAt((assoc as any)?.entered_stage_at ?? (assoc as any)?.created_at ?? null)
         setWhatsAppTemplateSentAt((assoc as any)?.whatsapp_template_sent_at ?? null)
         setIsFavorite((assoc as any)?.is_favorite ?? false)
+        setAssocAppliedAt((assoc as { applied_at?: string | null } | null)?.applied_at ?? null)
         
         // Set rejection details if rejected
         if (assoc?.status === 'rejected' && assoc?.rejected_at) {
@@ -1241,6 +1260,62 @@ const stageHasAutomation = useMemo(() => {
     checkOfferAndProceed(doReturnToPipeline)
   }
 
+  // Phones: the stage dropdown moves the candidate at once, with Undo. A move forward
+  // checks the stage's scorecard rule first, as Advance does.
+  const moveOnPhone = async (jhsId: string) => {
+    if (!associationId || jhsId === currentStageId) return
+    const sorted = [...planStages].sort((a, b) => a.position - b.position)
+    const to = sorted.find((s) => s.jhsId === jhsId)
+    const fromIdx = currentStageId ? sorted.findIndex((s) => s.jhsId === currentStageId) : -1
+    const toIdx = sorted.findIndex((s) => s.jhsId === jhsId)
+    if (fromIdx >= 0 && toIdx > fromIdx) {
+      const gate = await checkScorecardGate(currentStageId, associationId)
+      if (gate.blocked) {
+        sonnerToast('Scorecard required', {
+          description: gate.reason,
+          action: currentStageId
+            ? {
+                label: 'Submit scorecard',
+                onClick: () => {
+                  const cur = sorted[fromIdx]
+                  setScoreStageInstId(cur.jhsId)
+                  setScoreStageName(cur.stage.stage_name)
+                  setScoreOpen(true)
+                },
+              }
+            : undefined,
+        })
+        return
+      }
+    }
+    const from = currentStageId
+    const fromEntered = enteredStageAt
+    const name = to?.stage.stage_name ?? 'the stage'
+    try {
+      await moveAssociationToStage(associationId, jhsId, { silent: true })
+    } catch {
+      sonnerToast(`Couldn't move to ${name}`, { action: { label: 'Retry', onClick: () => void moveOnPhone(jhsId) } })
+      return
+    }
+    setCurrentStageId(jhsId)
+    setEnteredStageAt(new Date().toISOString())
+    onStageChanged?.()
+    if (!from) return
+    undoToast(`Moved to ${name}`, async () => {
+      const { error } = await supabase
+        .from('job_candidate_associations')
+        .update({ current_stage_id: from, pipeline_position: null, entered_stage_at: fromEntered ?? new Date().toISOString() })
+        .eq('id', associationId)
+      if (error) {
+        sonnerToast("Couldn't undo the move")
+        return
+      }
+      setCurrentStageId(from)
+      setEnteredStageAt(fromEntered)
+      onStageChanged?.()
+    })
+  }
+
   const handleReject = async () => {
     if (!associationId) return
     const offers = associationStatus === 'offer' && (await hasOfferLetters())
@@ -1461,6 +1536,38 @@ const stageHasAutomation = useMemo(() => {
   }
 
 
+  // The Job overview's details (contact, links, files, tags): the right column from lg,
+  // and the last card of the phone Overview, where that column is hidden.
+  const renderJobDetails = () => {
+    const urls = (candidateUrls || []).map((u) => ({ label: u.label, url: u.url }))
+    return (
+                              <JobOverviewSidebar
+                                candidate={candidate}
+                                job={job}
+                                appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                                source={candidate?.job_board_source || candidate?.source || null}
+                                urls={urls}
+                                filesCount={attachments.length}
+                                onFilesSelected={canEditCandidates ? handleSidebarFiles : undefined}
+                                fileSlots={<SidebarFileList attachments={attachments} uploading={uploadingFiles} canDelete={!!canEditCandidates} onDownload={downloadAttachment} onDelete={deleteAttachment} resumeStatus={resumeStatusLine} />}
+                                location={[(candidate as any)?.location_city, (candidate as any)?.location_state, (candidate as any)?.location_country].filter(Boolean).join(', ') || (candidate as any)?.location || null}
+                                email={candidate?.email || null}
+                                phone={candidate?.phone || null}
+                                 whatsAppEnabled={whatsAppEnabled}
+                                 onWhatsAppClick={handleWhatsAppClick}
+                                 onEdit={canEditCandidates ? () => setEditOpen(true) : undefined}
+                                 tagsSlot={
+                                   (independentCandidateId || candidateId) ? (
+                                     <CandidateTagsBlock
+                                       candidateId={(independentCandidateId || candidateId)!}
+                                       candidateName={(candidate as any)?.candidate_name ?? null}
+                                     />
+                                   ) : undefined
+                                 }
+                               />
+    )
+  }
+
   if (!open) return null
 
   return (
@@ -1501,7 +1608,8 @@ const stageHasAutomation = useMemo(() => {
           {/* Job Navigation Sidebar removed — single-job profile only */}
 
           {/* Main Profile Content */}
-          <div className="flex-1 flex flex-col min-w-0 min-h-0">
+          {/* Phones: the whole profile scrolls as one page, header included. */}
+          <div className={cn("flex-1 flex flex-col min-w-0 min-h-0", asPage && "max-sm:overflow-y-auto")}>
             {loading || !candidate ? (
               <div className={cn("flex-1 p-6", asPage ? "" : "overflow-y-auto")}>
                 <CandidateProfileSkeleton />
@@ -1524,8 +1632,20 @@ const stageHasAutomation = useMemo(() => {
                       jobTitle={job?.title}
                       source={candidate?.job_board_source || candidate?.source || null}
                       appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
-                      currentStageName={currentStage?.stage.stage_name || null}
+                      currentStageName={isPhone && associationStatus === 'active' ? null : currentStage?.stage.stage_name || null}
                       daysInStage={daysInStage}
+                      hideBackOnPhone={asPage}
+                      phoneContact={
+                        <PhoneContactRow
+                          email={candidate.email || null}
+                          phone={candidate.phone || null}
+                          linkedinUrl={candidate.linkedin_url || (candidateUrls || []).find((u) => /linkedin\.com/i.test(u.url))?.url || null}
+                          onEmail={() => {
+                            resetEmailComposer()
+                            setEmailComposerOpen(true)
+                          }}
+                        />
+                      }
                       isFavorite={isFavorite}
                       onToggleFavorite={jobId ? handleToggleFavorite : undefined}
                       onOpenFullProfile={() => navigate(`/candidates?openCandidate=${candidate.id}`)}
@@ -1544,7 +1664,8 @@ const stageHasAutomation = useMemo(() => {
                         <ProfileTabs
                           activeTab={activeTab}
                           onTabChange={(v) => setActiveTab(v as typeof activeTab)}
-                          tabs={[
+                          phoneCompact
+                          tabs={phoneTabOrder(isPhone, [
                             ...(associationStatus === 'offer' && canViewOffers
                               ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
                               : []),
@@ -1557,12 +1678,12 @@ const stageHasAutomation = useMemo(() => {
                                   ...(canViewOffers ? [{ value: 'offer', label: 'Offer', Icon: FileText }] : []),
                                 ]
                               : []),
-                            { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
+                            { value: 'job', label: 'Job overview', phoneLabel: 'Overview', Icon: ClipboardCheckIconAlias },
                             { value: 'resume', label: 'Resume', Icon: FileText },
                             ...(!isRestrictedViewer ? [{ value: 'fit', label: 'Gio Fit', Icon: Sparkles }] : []),
                             { value: 'scorecards', label: 'Scorecards', Icon: Star },
                             { value: 'activity', label: 'Activity', Icon: Activity, count: activity.isLoading ? null : activity.events.length },
-                          ]}
+                          ])}
                         />
                       }
                       actionMenu={(() => {
@@ -1668,7 +1789,16 @@ const stageHasAutomation = useMemo(() => {
                       })()}
                     />
                     {/* Card 2 — stages OR status banner (active = stages, otherwise banner replaces it) */}
-                    {associationStatus === 'active' ? (
+                    {associationStatus === 'active' && isPhone ? (
+                      <PhoneStageSelect
+                        stages={planStages}
+                        currentStageId={currentStageId}
+                        daysInStage={daysInStage}
+                        disabled={!associationId}
+                        onMove={(jhsId) => void moveOnPhone(jhsId)}
+                        onReject={handleReject}
+                      />
+                    ) : associationStatus === 'active' ? (
                       <ProfileStageStrip
                         stages={planStages}
                         currentStageId={currentStageId}
@@ -1749,8 +1879,8 @@ const stageHasAutomation = useMemo(() => {
               })()}
             </div>
 
-               <div className={cn("flex-1 min-h-0", asPage ? "overflow-y-auto" : "overflow-y-auto")}>
-                <div className={cn("pb-10 mx-auto w-full", asPage ? "layout-container max-w-[1400px]" : "px-4 sm:px-6 pt-4 max-w-[1400px]")}>
+               <div className={cn("flex-1 min-h-0 overflow-y-auto", asPage && "max-sm:flex-none max-sm:overflow-visible")}>
+                <div className={cn("pb-10 mx-auto w-full", asPage ? "layout-container max-w-[1400px] max-sm:pb-[calc(env(safe-area-inset-bottom,0px)+96px)]" : "px-4 sm:px-6 pt-4 max-w-[1400px]")}>
                 {/* Mobile job selector removed — single-job profile only */}
 
                 {/* Status banners moved into Card 2 (replacing stage strip) */}
@@ -1766,8 +1896,24 @@ const stageHasAutomation = useMemo(() => {
                       const currentIdx = currentStageId ? sortedStages.findIndex(s => s.jhsId === currentStageId) : -1
                       const currentStage = currentIdx >= 0 ? sortedStages[currentIdx] : null
                       const stageSupportsScorecard = currentStage ? supportsScorecard(currentStage.stage.stage_type) : false
+                      // Phones: someone who applied reads their application first.
+                      const applicationFirst = isPhone && !!assocAppliedAt
+                      const applicationCard = !isRestrictedViewer && candidateId ? (
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle>Application Details</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <CandidateApplicationResponses
+                              candidateId={candidateId}
+                              jobId={jobId}
+                            />
+                          </CardContent>
+                        </Card>
+                      ) : null
                       return (
                         <>
+                          {applicationFirst && applicationCard}
                           <ClientVerdictBanner
                             verdict={clientVerdict}
                             onFollowUp={() => setEmailComposerOpen(true)}
@@ -1853,7 +1999,8 @@ const stageHasAutomation = useMemo(() => {
                             />
                           )}
 
-                          {candidateId && (
+                          {/* Phones leave reference checks to the desktop. */}
+                          {candidateId && !isPhone && (
                             <CandidateReferenceCheckSection
                               candidateId={candidateId}
                               candidateName={candidate?.candidate_name || null}
@@ -1867,24 +2014,14 @@ const stageHasAutomation = useMemo(() => {
                             />
                           )}
 
-                          {!isRestrictedViewer && candidateId && (
-                            <Card className="bg-surface-primary border-border">
-                              <CardHeader>
-                                <CardTitle>Application Details</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <CandidateApplicationResponses
-                                  candidateId={candidateId}
-                                  jobId={jobId}
-                                />
-                              </CardContent>
-                            </Card>
-                          )}
+                          {!applicationFirst && applicationCard}
 
                           {/* Below lg the sidebar is hidden, so the Comments card sits here. */}
                           {candidateId && (
                             <CommentsCard className="lg:hidden" candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
                           )}
+                          {/* …and on phones the details from it come last. */}
+                          {isPhone && renderJobDetails()}
                         </>
                       )
                     })()}
@@ -1909,12 +2046,22 @@ const stageHasAutomation = useMemo(() => {
                                 onChange={handleReplaceResumeChange}
                                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
                               />
-                              <Button variant="ghost" size="sm" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading || resumeRefresh.busy} loading={resumeRefresh.status?.phase === 'uploading'}>
-                                Replace
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={handleDeleteResume} disabled={resumeRefresh.busy}>
-                                Delete
-                              </Button>
+                              {isPhone ? (
+                                <ResumePhoneMenu
+                                  busy={isResumeUploading || resumeRefresh.busy}
+                                  onReplace={() => replaceResumeInputRef.current?.click()}
+                                  onDelete={handleDeleteResume}
+                                />
+                              ) : (
+                                <>
+                                  <Button variant="ghost" size="sm" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading || resumeRefresh.busy} loading={resumeRefresh.status?.phase === 'uploading'}>
+                                    Replace
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={handleDeleteResume} disabled={resumeRefresh.busy}>
+                                    Delete
+                                  </Button>
+                                </>
+                              )}
                             </>
                           }
                         />
@@ -2196,32 +2343,7 @@ const stageHasAutomation = useMemo(() => {
                             ) : null
                           case 'job':
                           default:
-                            return (
-                              <JobOverviewSidebar
-                                candidate={candidate}
-                                job={job}
-                                appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
-                                source={candidate?.job_board_source || candidate?.source || null}
-                                urls={urls}
-                                filesCount={attachments.length}
-                                onFilesSelected={canEditCandidates ? handleSidebarFiles : undefined}
-                                fileSlots={<SidebarFileList attachments={attachments} uploading={uploadingFiles} canDelete={!!canEditCandidates} onDownload={downloadAttachment} onDelete={deleteAttachment} resumeStatus={resumeStatusLine} />}
-                                location={[(candidate as any)?.location_city, (candidate as any)?.location_state, (candidate as any)?.location_country].filter(Boolean).join(', ') || (candidate as any)?.location || null}
-                                email={candidate?.email || null}
-                                phone={candidate?.phone || null}
-                                 whatsAppEnabled={whatsAppEnabled}
-                                 onWhatsAppClick={handleWhatsAppClick}
-                                 onEdit={canEditCandidates ? () => setEditOpen(true) : undefined}
-                                 tagsSlot={
-                                   (independentCandidateId || candidateId) ? (
-                                     <CandidateTagsBlock
-                                       candidateId={(independentCandidateId || candidateId)!}
-                                       candidateName={(candidate as any)?.candidate_name ?? null}
-                                     />
-                                   ) : undefined
-                                 }
-                               />
-                            )
+                            return renderJobDetails()
                         }
                       })()}
                     </div>

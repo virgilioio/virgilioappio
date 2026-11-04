@@ -58,6 +58,10 @@ interface ProfileHeroCardProps {
   favoriteMuted?: boolean
   prevLabel?: string
   nextLabel?: string
+  /** Phones: the round contact buttons under the job line (the in-job profile). */
+  phoneContact?: ReactNode
+  /** Phones: the shell's round Back already leaves the page, so the card's own is hidden. */
+  hideBackOnPhone?: boolean
 }
 
 export function ProfileHeroCard({
@@ -68,14 +72,15 @@ export function ProfileHeroCard({
   tabs, actionMenu,
   backLabel = 'Back to job', breadcrumbLast = 'Candidates', breadcrumb, contextLine,
   identityBadges, favoriteMuted, prevLabel = 'Previous candidate', nextLabel = 'Next candidate',
+  phoneContact, hideBackOnPhone,
 }: ProfileHeroCardProps) {
 
 
   return (
-    <section className="bg-white border border-[#E7E8EE] rounded-[16px] shadow-[0_1px_2px_rgba(13,13,9,0.04)] pt-3.5 px-6 pb-0">
+    <section className={cn('bg-white border border-[#E7E8EE] rounded-[16px] shadow-[0_1px_2px_rgba(13,13,9,0.04)] pt-3.5 px-6 pb-0', hideBackOnPhone && 'max-sm:px-4')}>
       {/* Row 1 — breadcrumb · spacer · actions */}
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className={cn('flex items-center gap-2 min-w-0', hideBackOnPhone && 'max-sm:hidden')}>
           {onClose && (
             <button
               type="button"
@@ -108,7 +113,7 @@ export function ProfileHeroCard({
           </nav>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className={cn('flex items-center gap-2 shrink-0', hideBackOnPhone && 'max-sm:ml-auto')}>
           <ClientVerdictPill state={clientVerdictState} />
           {((typeof fitScore === 'number' && fitScore > 0) || fitPillState === 'loading') && (
             <Button
@@ -144,16 +149,17 @@ export function ProfileHeroCard({
             </Button>
           )}
           {onOpenFullProfile && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              iconOnly
-              aria-label="Open full profile"
-              title="Open full profile"
-              icon={UserRound}
-              onClick={onOpenFullProfile}
-            />
+            <IconTip label="Open full profile">
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                iconOnly
+                aria-label="Open full profile"
+                icon={UserRound}
+                onClick={onOpenFullProfile}
+              />
+            </IconTip>
           )}
           {onOpenFullProfile && (onNavigatePrev || onNavigateNext) && (
             <span aria-hidden="true" className="mx-[2px] h-[18px] w-px bg-[#E7E8EE] shrink-0" />
@@ -217,9 +223,10 @@ export function ProfileHeroCard({
           )}
           {linkedinUrl && (
             <button
+              data-linkedin-inline
               type="button"
               onClick={() => window.open(ensureAbsoluteUrl(linkedinUrl), '_blank')}
-              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-[#F1F0EC] transition-colors text-[#8B8F9E] hover:text-[#5A6072]"
+              className={cn('flex h-7 w-7 items-center justify-center rounded-md hover:bg-[#F1F0EC] transition-colors text-[#8B8F9E] hover:text-[#5A6072]', phoneContact && 'max-sm:hidden')}
               aria-label="Open LinkedIn profile"
             >
               <LinkedInFilled className="h-4 w-4" />
@@ -239,6 +246,7 @@ export function ProfileHeroCard({
             />
           )}
         </div>
+        {phoneContact && <div className="sm:hidden">{phoneContact}</div>}
       </div>
 
       {/* Row 4 — tabs sit flush on the card bottom edge */}

@@ -7,6 +7,8 @@ export interface ProfileTabDef {
   Icon: LucideIcon
   count?: number | null
   unread?: boolean
+  /** Phones: a shorter label ("Overview" for "Job overview"). */
+  phoneLabel?: string
 }
 
 interface ProfileTabsProps {
@@ -14,6 +16,8 @@ interface ProfileTabsProps {
   activeTab: string
   onTabChange: (v: string) => void
   className?: string
+  /** Phones: no icons and tighter tabs, so the first four fit the width. */
+  phoneCompact?: boolean
 }
 
 /**
@@ -21,11 +25,11 @@ interface ProfileTabsProps {
  * Visual language matches the Job profile tab strip in the mockup:
  * icon + label, optional count, optional purple unread dot, animated underline.
  */
-export function ProfileTabs({ tabs, activeTab, onTabChange, className }: ProfileTabsProps) {
+export function ProfileTabs({ tabs, activeTab, onTabChange, className, phoneCompact }: ProfileTabsProps) {
   return (
     <div className={cn('border-b border-virgilio-border', className)}>
       <div className="flex items-end gap-1 overflow-x-auto scrollbar-none -mb-px">
-        {tabs.map(({ value, label, Icon, count, unread }) => {
+        {tabs.map(({ value, label, Icon, count, unread, phoneLabel }) => {
           const isActive = activeTab === value
           return (
             <button
@@ -35,6 +39,7 @@ export function ProfileTabs({ tabs, activeTab, onTabChange, className }: Profile
               className={cn(
                 'group relative inline-flex items-center gap-2 px-4 py-3 font-poppins text-[13.5px] tracking-[-0.005em] transition-colors whitespace-nowrap',
                 'border-b-2 -mb-px',
+                phoneCompact && 'max-sm:px-2 max-sm:gap-1 max-sm:text-[13px]',
                 isActive
                   ? 'border-text-primary text-text-primary font-semibold'
                   : 'border-transparent text-text-secondary hover:text-text-primary'
@@ -42,8 +47,15 @@ export function ProfileTabs({ tabs, activeTab, onTabChange, className }: Profile
               aria-selected={isActive}
               role="tab"
             >
-              <Icon className={cn('h-4 w-4', isActive ? 'text-text-primary' : 'text-text-tertiary group-hover:text-text-primary')} />
-              <span>{label}</span>
+              <Icon className={cn('h-4 w-4', isActive ? 'text-text-primary' : 'text-text-tertiary group-hover:text-text-primary', phoneCompact && 'max-sm:hidden')} />
+              {phoneCompact && phoneLabel ? (
+                <>
+                  <span className="max-sm:hidden">{label}</span>
+                  <span className="sm:hidden">{phoneLabel}</span>
+                </>
+              ) : (
+                <span>{label}</span>
+              )}
               {typeof count === 'number' && count > 0 && (
                 <span className={cn(
                   'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-poppins font-medium tabular-nums',
