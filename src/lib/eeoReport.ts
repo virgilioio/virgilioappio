@@ -120,19 +120,14 @@ export function useEeoReport(tenantId: string | undefined, period: EeoPeriod, jo
     placeholderData: (prev) => prev,
     queryFn: async (): Promise<EeoReport> => {
       const range = eeoPeriodRange(period, new Date())
-      // `eeo_report` arrives in the generated types once the migration is applied.
-      const rpc = supabase.rpc.bind(supabase) as unknown as (
-        fn: string,
-        args: Record<string, unknown>,
-      ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>
-      const { data, error } = await rpc('eeo_report', {
-        p_tenant: tenantId,
-        p_from: range?.from ?? null,
-        p_to: range?.to ?? null,
-        p_job: jobId,
+      const { data, error } = await supabase.rpc('eeo_report', {
+        p_tenant: tenantId!,
+        p_from: range?.from,
+        p_to: range?.to,
+        p_job: jobId ?? undefined,
       })
       if (error) throw error
-      return data as EeoReport
+      return data as unknown as EeoReport
     },
   })
 }

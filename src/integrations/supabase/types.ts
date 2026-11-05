@@ -544,6 +544,7 @@ export type Database = {
           min_notice_hours: number | null
           organization_id: string
           short_code: string
+          start_interval_minutes: number | null
           start_time: string
           timezone: string
           updated_at: string | null
@@ -566,6 +567,7 @@ export type Database = {
           min_notice_hours?: number | null
           organization_id: string
           short_code: string
+          start_interval_minutes?: number | null
           start_time?: string
           timezone?: string
           updated_at?: string | null
@@ -588,6 +590,7 @@ export type Database = {
           min_notice_hours?: number | null
           organization_id?: string
           short_code?: string
+          start_interval_minutes?: number | null
           start_time?: string
           timezone?: string
           updated_at?: string | null
@@ -620,6 +623,7 @@ export type Database = {
           min_notice_hours: number
           slug: string
           sort_order: number | null
+          start_interval_minutes: number | null
           timezone: string
           title: string
           updated_at: string | null
@@ -640,6 +644,7 @@ export type Database = {
           min_notice_hours?: number
           slug: string
           sort_order?: number | null
+          start_interval_minutes?: number | null
           timezone?: string
           title: string
           updated_at?: string | null
@@ -660,6 +665,7 @@ export type Database = {
           min_notice_hours?: number
           slug?: string
           sort_order?: number | null
+          start_interval_minutes?: number | null
           timezone?: string
           title?: string
           updated_at?: string | null
@@ -11862,6 +11868,15 @@ export type Database = {
           source_posting_id: string
         }
         Returns: string
+      }
+      eeo_report: {
+        Args: {
+          p_from?: string
+          p_job?: string
+          p_tenant: string
+          p_to?: string
+        }
+        Returns: Json
       }
       email_attachment_orphans: {
         Args: { p_limit?: number }
