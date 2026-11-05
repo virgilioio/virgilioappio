@@ -11,6 +11,7 @@ function utf8ToBase64(text: string): string {
   return btoa(binary);
 }
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { startInterval } from '../_shared/bookingSlots.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -51,11 +52,13 @@ interface ValidationParams {
   effectiveMinNotice: number;
   effectiveMaxDays: number;
   effectiveDuration: number;
+  /** 15, 30 or 60 when the link offers times on that grid; null for back to back. */
+  effectiveInterval?: number | null;
 }
 
 function validateRequestedSlot(p: ValidationParams): { ok: true } | { ok: false; code: string; message: string } {
   const { scheduledStart, scheduledEnd, effectiveTimezone, effectiveSchedule,
-    effectiveBuffer, effectiveMinNotice, effectiveMaxDays, effectiveDuration } = p;
+    effectiveBuffer, effectiveMinNotice, effectiveMaxDays, effectiveDuration, effectiveInterval } = p;
 
   if (isNaN(scheduledStart.getTime()) || isNaN(scheduledEnd.getTime())) {
     return { ok: false, code: 'SLOT_INVALID', message: 'Invalid scheduled_start or scheduled_end.' };
@@ -95,6 +98,15 @@ function validateRequestedSlot(p: ValidationParams): { ok: true } | { ok: false;
   if (startMin < dayStart || endMin > dayEnd) {
     return { ok: false, code: 'SLOT_OUTSIDE_SCHEDULE',
       message: `Slot is outside the host's working hours (${dayConfig.start}–${dayConfig.end} ${effectiveTimezone}).` };
+  }
+
+  // On a grid, a time is valid when it falls on it (counted from midnight, as offered).
+  if (effectiveInterval) {
+    if (startMin % effectiveInterval !== 0) {
+      return { ok: false, code: 'SLOT_NOT_ALIGNED',
+        message: `Slot does not align with the available time grid.` };
+    }
+    return { ok: true };
   }
 
   const stride = effectiveDuration + (effectiveBuffer || 0);
@@ -464,6 +476,12 @@ serve(async (req) => {
       const effectiveMinNotice = eventType?.min_notice_hours ?? config.min_notice_hours ?? 24;
       const effectiveMaxDays = eventType?.max_days_ahead ?? config.max_days_ahead ?? 30;
       const effectiveDuration = eventType?.duration_minutes ?? config.duration_minutes;
+      // An event type's start times win when set (0 = back to back); otherwise the link's.
+      const effectiveInterval = startInterval(
+        eventType?.start_interval_minutes !== undefined && eventType?.start_interval_minutes !== null
+          ? eventType.start_interval_minutes
+          : config.start_interval_minutes,
+      );
 
       const validation = validateRequestedSlot({
         scheduledStart: new Date(scheduled_start),
@@ -474,6 +492,7 @@ serve(async (req) => {
         effectiveMinNotice,
         effectiveMaxDays,
         effectiveDuration,
+        effectiveInterval,
       });
 
       if (!validation.ok) {

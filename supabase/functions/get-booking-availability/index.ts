@@ -1,14 +1,18 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import {
+  freeSlots,
+  generatePotentialSlots,
+  getDatePartsInTz,
+  startInterval,
+  wallClockToUTC,
+  type WeeklySchedule,
+} from '../_shared/bookingSlots.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-interface WeeklySchedule {
-  [key: string]: { enabled: boolean; start: string; end: string };
-}
 
 interface EventTypeOverrides {
   weekly_schedule?: WeeklySchedule;
@@ -16,6 +20,8 @@ interface EventTypeOverrides {
   min_notice_hours?: number;
   max_days_ahead?: number;
   timezone?: string;
+  /** 15, 30 or 60: times on that grid; null or absent: back to back. */
+  start_interval_minutes?: number | null;
 }
 
 interface GetAvailabilityRequest {
@@ -27,58 +33,6 @@ interface GetAvailabilityRequest {
   candidate_timezone: string;
   internal_scheduling?: boolean;
   event_type_overrides?: EventTypeOverrides;
-}
-
-// =============================================================
-// Timezone helpers (Intl-based, DST-safe)
-// =============================================================
-
-/**
- * Returns the offset in minutes that the given timezone is from UTC at the given instant.
- * Convention: offset such that wallClockAsIfUTC - trueUTC = offsetMinutes.
- * For America/Chicago in CDT (UTC-5), this returns -300.
- */
-function getTzOffsetMinutes(instant: Date, tz: string): number {
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-  });
-  const parts = fmt.formatToParts(instant);
-  const get = (t: string) => parseInt(parts.find(p => p.type === t)?.value || '0');
-  let hour = get('hour');
-  if (hour === 24) hour = 0;
-  const asUTC = Date.UTC(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second'));
-  return (asUTC - instant.getTime()) / 60000;
-}
-
-/**
- * Convert a wall-clock (date + time) in the given timezone to a true UTC Date.
- * Two-pass to self-correct around DST transitions.
- */
-function wallClockToUTC(dateStr: string, timeStr: string, tz: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const [hh, mm] = timeStr.split(':').map(Number);
-  const naive = Date.UTC(y, m - 1, d, hh, mm, 0);
-  let offset = getTzOffsetMinutes(new Date(naive), tz);
-  let utc = naive - offset * 60000;
-  offset = getTzOffsetMinutes(new Date(utc), tz);
-  utc = naive - offset * 60000;
-  return new Date(utc);
-}
-
-/**
- * Get YYYY-MM-DD and lowercase weekday name as observed in the given timezone.
- */
-function getDatePartsInTz(instant: Date, tz: string): { dateStr: string; weekday: string } {
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'long',
-  });
-  const parts = fmt.formatToParts(instant);
-  const get = (t: string) => parts.find(p => p.type === t)?.value || '';
-  return {
-    dateStr: `${get('year')}-${get('month')}-${get('day')}`,
-    weekday: get('weekday').toLowerCase(),
-  };
 }
 
 // =============================================================
@@ -110,30 +64,6 @@ function resolveEffectiveTz(opts: {
 // =============================================================
 // Slot generators
 // =============================================================
-
-function generatePotentialSlots(
-  startDate: Date, endDate: Date, weeklySchedule: WeeklySchedule,
-  durationMinutes: number, bufferMinutes: number, timezone: string
-): Array<{ start: Date; end: Date }> {
-  const slots: Array<{ start: Date; end: Date }> = [];
-  let cursor = new Date(startDate);
-  while (cursor <= endDate) {
-    const { dateStr, weekday } = getDatePartsInTz(cursor, timezone);
-    const dayConfig = weeklySchedule[weekday];
-    if (dayConfig && dayConfig.enabled) {
-      const slotStart = wallClockToUTC(dateStr, dayConfig.start, timezone);
-      const dayEnd = wallClockToUTC(dateStr, dayConfig.end, timezone);
-      let cur = new Date(slotStart);
-      while (cur.getTime() + durationMinutes * 60000 <= dayEnd.getTime()) {
-        const end = new Date(cur.getTime() + durationMinutes * 60000);
-        slots.push({ start: new Date(cur), end });
-        cur = new Date(cur.getTime() + (durationMinutes + bufferMinutes) * 60000);
-      }
-    }
-    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
-  }
-  return slots;
-}
 
 /**
  * Internal scheduling: generates the FULL 24h window per day, host-local.
@@ -248,7 +178,8 @@ serve(async (req) => {
           : generatePotentialSlots(
               new Date(start_date), new Date(end_date),
               cfg.weekly_schedule as WeeklySchedule,
-              duration_minutes, cfg.buffer_time_minutes ?? 0, tz
+              duration_minutes, cfg.buffer_time_minutes ?? 0, tz,
+              startInterval(cfg.start_interval_minutes),
             );
 
         const keys = new Set(slots.map(s => `${s.start.toISOString()}|${s.end.toISOString()}`));
@@ -307,9 +238,10 @@ serve(async (req) => {
       }));
 
       const blockers = [...allBusy, ...bookedSlots];
-      const availableSlots = filteredSlots.filter(slot =>
-        !blockers.some(b => slot.start < b.end && slot.end > b.start)
-      );
+      // On a grid, keep each host's buffer around what's already there (the largest of them).
+      const onGrid = !internal_scheduling && configs.some((c: any) => startInterval(c.start_interval_minutes));
+      const groupBuffer = Math.max(0, ...configs.map((c: any) => c.buffer_time_minutes ?? 0));
+      const availableSlots = freeSlots(filteredSlots, blockers, groupBuffer, onGrid);
 
       const formattedSlots = availableSlots.map(s => ({
         start: s.start.toISOString(), end: s.end.toISOString(),
@@ -437,10 +369,13 @@ serve(async (req) => {
     const effectiveBuffer = event_type_overrides?.buffer_time_minutes ?? config.buffer_time_minutes ?? 0;
     const effectiveMinNotice = event_type_overrides?.min_notice_hours ?? config.min_notice_hours ?? 24;
     const effectiveMaxDays = event_type_overrides?.max_days_ahead ?? config.max_days_ahead ?? 30;
+    // An event type's start times win when set (0 = back to back); otherwise the link's.
+    const ovInterval = event_type_overrides?.start_interval_minutes;
+    const effectiveInterval = startInterval(ovInterval !== undefined && ovInterval !== null ? ovInterval : config.start_interval_minutes);
 
     const potentialSlots = generatePotentialSlots(
       new Date(start_date), new Date(end_date),
-      effectiveSchedule, duration_minutes, effectiveBuffer, effectiveTimezone
+      effectiveSchedule, duration_minutes, effectiveBuffer, effectiveTimezone, effectiveInterval,
     );
     console.log('[get-booking-availability] PUBLIC generated', potentialSlots.length, 'slots');
 
@@ -486,9 +421,7 @@ serve(async (req) => {
     }));
 
     const blockers = [...googleBusySlots, ...bookedSlots];
-    const availableSlots = filteredSlots.filter(slot =>
-      !blockers.some(b => slot.start < b.end && slot.end > b.start)
-    );
+    const availableSlots = freeSlots(filteredSlots, blockers, effectiveBuffer, effectiveInterval !== null);
 
     console.log('[get-booking-availability] PUBLIC final:', availableSlots.length, 'slots');
 
