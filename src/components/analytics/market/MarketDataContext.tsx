@@ -9,6 +9,7 @@ import {
   type MarketRow, type MarketSelection, type SalaryBands, type ValueContext,
 } from './marketData'
 import { buildJobIndex, type JobIndex, type JobLink } from './jobLinks'
+import { pages } from './pages'
 
 /**
  * The talent database for the Intelligence widgets (Find Phase 4,
@@ -22,6 +23,8 @@ import { buildJobIndex, type JobIndex, type JobLink } from './jobLinks'
  */
 export interface MarketBundle {
   loading: boolean
+  /** The jobs and clients you can see are still loading (the filter bar and ?job= links wait only for these). */
+  jobsLoading: boolean
   error: unknown
   refetch: () => void
   rows: MarketRow[]
@@ -40,20 +43,6 @@ export interface MarketBundle {
 }
 
 const Ctx = createContext<MarketBundle | null>(null)
-
-const PAGE = 1000
-
-async function pages<T>(fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
-  const all: T[] = []
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await fetchPage(from, from + PAGE - 1)
-    if (error) throw error
-    const batch = data ?? []
-    all.push(...batch)
-    if (batch.length < PAGE) break
-  }
-  return all
-}
 
 export function MarketDataProvider({
   selections,
@@ -143,6 +132,7 @@ export function MarketDataProvider({
 
   const value = useMemo<MarketBundle>(() => ({
     loading: rowsQuery.isLoading || pastQuery.isLoading || linksQuery.isLoading || !tenantId,
+    jobsLoading: linksQuery.isLoading || !tenantId,
     error: rowsQuery.error ?? pastQuery.error ?? linksQuery.error ?? null,
     refetch: () => { void rowsQuery.refetch(); void pastQuery.refetch(); void linksQuery.refetch() },
     rows,

@@ -161,7 +161,13 @@ function IntelligencePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultView?.id, views.length])
 
-  const clearDeepLink = useCallback(() => {
+  // A link's filter is for this visit: it never overwrites the view's own saved filters.
+  const linkFilter = useRef<string | null>(null)
+  const clearDeepLink = useCallback((next: MarketSelection[] | null) => {
+    if (next) {
+      linkFilter.current = JSON.stringify(next)
+      setSelections(next)
+    }
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
       next.delete('job')
@@ -169,6 +175,10 @@ function IntelligencePage() {
       return next
     }, { replace: true })
   }, [setSearchParams])
+  const setActiveView = useCallback((v: SavedView) => {
+    linkFilter.current = null
+    activateView(v)
+  }, [activateView])
 
   // Save widgets and filters to the view (debounced; only views you own).
   const persistTimer = useRef<number | null>(null)
@@ -176,11 +186,14 @@ function IntelligencePage() {
     if (!activeViewId) return
     const active = views.find(v => v.id === activeViewId)
     if (!active || active.user_id !== user?.id) return
+    const linked = linkFilter.current !== null && linkFilter.current === JSON.stringify(selections)
     if (persistTimer.current) window.clearTimeout(persistTimer.current)
     persistTimer.current = window.setTimeout(() => {
+      // While the link's filter is on, only the widgets are saved.
+      if (!linked) linkFilter.current = null
       updateView.mutate({
         id: activeViewId,
-        filters: { selections } as unknown as Record<string, unknown>,
+        ...(linked ? {} : { filters: { selections } as unknown as Record<string, unknown> }),
         extra_state: { widgets } as unknown as Record<string, unknown>,
       })
     }, 600)
@@ -195,7 +208,7 @@ function IntelligencePage() {
       <IntelligenceBody
         viewName={viewName}
         activeViewId={activeViewId}
-        onActivate={activateView}
+        onActivate={setActiveView}
         widgets={widgets}
         setWidgets={setWidgets}
         selections={selections}
@@ -218,21 +231,26 @@ function IntelligenceBody({
   selections: MarketSelection[]
   setSelections: (next: MarketSelection[]) => void
   deepLink: { job: string | null; client: string | null } | null
-  onDeepLinkApplied: () => void
+  /** The filter a ?job= / ?client= link opens with (null when it names nothing you can see). */
+  onDeepLinkApplied: (selections: MarketSelection[] | null) => void
 }) {
   const m = useMarketBundle()
 
-  // Apply a ?job= / ?client= link once the view and the job list are in.
+  // Apply a ?job= / ?client= link as soon as the view and the job list are in: it never
+  // waits for the people and past companies, which take longer (2026-11-06).
   useEffect(() => {
-    if (!deepLink || !activeViewId || m.loading) return
+    if (!deepLink || !activeViewId || m.jobsLoading) return
+    if (m.error && m.jobs.jobs.length === 0) return
     const job = deepLink.job ? m.jobs.jobs.find(j => j.id === deepLink.job) : null
     const client = !job && deepLink.client ? m.jobs.clients.find(c => c.id === deepLink.client) : null
-    if (job) setSelections([{ dimension: 'mkt_job', value: job.label }])
-    else if (client) setSelections([{ dimension: 'mkt_client', value: client.label }])
-    else toast("That job has no candidates you can see yet", { description: 'Showing everyone instead.' })
-    onDeepLinkApplied()
+    if (job) onDeepLinkApplied([{ dimension: 'mkt_job', value: job.label }])
+    else if (client) onDeepLinkApplied([{ dimension: 'mkt_client', value: client.label }])
+    else {
+      toast(deepLink.job ? 'That job has no candidates you can see yet' : 'That client has no candidates you can see yet', { description: 'Showing everyone instead.' })
+      onDeepLinkApplied(null)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deepLink, activeViewId, m.loading])
+  }, [deepLink, activeViewId, m.jobsLoading, m.error])
   const navigate = useNavigate()
   const { canManageCandidates } = usePermissions()
   const [retry, setRetry] = useState(0)
