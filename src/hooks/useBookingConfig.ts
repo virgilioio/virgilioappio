@@ -37,6 +37,8 @@ export interface BookingConfig {
   timezone: string;
   duration_minutes: number;
   buffer_time_minutes: number;
+  /** Start times: 15, 30 or 60 = on that grid; 0 or null = back to back. */
+  start_interval_minutes?: number | null;
   min_notice_hours: number;
   max_days_ahead: number;
   meeting_location: string | null;

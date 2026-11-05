@@ -170,6 +170,7 @@ export function BookingTab() {
       color: et.color,
       duration_minutes: et.duration_minutes,
       buffer_time_minutes: et.buffer_time_minutes,
+      start_interval_minutes: et.start_interval_minutes ?? null,
       min_notice_hours: et.min_notice_hours,
       max_days_ahead: et.max_days_ahead,
       meeting_location: et.meeting_location || undefined,
@@ -463,6 +464,7 @@ export function BookingTab() {
         isSaving={isCreatingEventType || isUpdatingEventType}
         isDeleting={isDeletingEventType}
         parentTimezone={config?.timezone}
+        parentStartInterval={config?.start_interval_minutes ?? null}
       />
     </>
   )

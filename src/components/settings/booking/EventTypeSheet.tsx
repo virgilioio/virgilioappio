@@ -17,6 +17,7 @@ import {
   GitCommitHorizontal,
   Bell,
   CalendarRange,
+  Clock3,
 } from 'lucide-react';
 import { WeeklyScheduleEditor } from './WeeklyScheduleEditor';
 import { SchedulePresets } from './SchedulePresets';
@@ -24,6 +25,7 @@ import { TimezoneSelector } from './TimezoneSelector';
 import { cn } from '@/lib/utils';
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented';
 import { BookingEventType } from '@/hooks/useBookingEventTypes';
+import { SAME_AS_LINK, START_TIME_OPTIONS, eventStartTimes, startTimesLabel } from '@/lib/bookingStartTimes';
 import { WeeklySchedule, getDefaultWeeklySchedule } from '@/hooks/useBookingConfig';
 import { confirmDestructive } from '@/components/ui/confirm-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
@@ -48,6 +50,8 @@ interface EventTypeSheetProps {
   isSaving: boolean;
   isDeleting?: boolean;
   parentTimezone?: string;
+  /** The booking link's start times, shown on "Same as booking link". */
+  parentStartInterval?: number | null;
 }
 
 type TabKey = 'weekly-hours' | 'meeting' | 'rules';
@@ -221,6 +225,7 @@ export function EventTypeSheet({
   isSaving,
   isDeleting,
   parentTimezone,
+  parentStartInterval,
 }: EventTypeSheetProps) {
   const isNew = !eventType;
   const defaultTz = parentTimezone || 'UTC';
@@ -234,6 +239,7 @@ export function EventTypeSheet({
   const [timezone, setTimezone] = useState(defaultTz);
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [bufferMinutes, setBufferMinutes] = useState(15);
+  const [startTimes, setStartTimes] = useState<string>(SAME_AS_LINK);
   const [minNoticeHours, setMinNoticeHours] = useState(24);
   const [maxDaysAhead, setMaxDaysAhead] = useState(30);
   const [meetingLocation, setMeetingLocation] = useState('');
@@ -249,7 +255,8 @@ export function EventTypeSheet({
       setWeeklySchedule(eventType.weekly_schedule || getDefaultWeeklySchedule());
       setTimezone(eventType.timezone || defaultTz);
       setDurationMinutes(eventType.duration_minutes || 30);
-      setBufferMinutes(eventType.buffer_time_minutes || 15);
+      setBufferMinutes(eventType.buffer_time_minutes ?? 15);
+      setStartTimes(String(eventStartTimes(eventType.start_interval_minutes)));
       setMinNoticeHours(eventType.min_notice_hours || 24);
       setMaxDaysAhead(eventType.max_days_ahead || 30);
       setMeetingLocation(eventType.meeting_location || '');
@@ -263,6 +270,7 @@ export function EventTypeSheet({
       setTimezone(defaultTz);
       setDurationMinutes(30);
       setBufferMinutes(15);
+      setStartTimes(SAME_AS_LINK);
       setMinNoticeHours(24);
       setMaxDaysAhead(30);
       setMeetingLocation('');
@@ -282,6 +290,7 @@ export function EventTypeSheet({
       timezone,
       duration_minutes: durationMinutes,
       buffer_time_minutes: bufferMinutes,
+      start_interval_minutes: startTimes === SAME_AS_LINK ? null : Number(startTimes),
       min_notice_hours: minNoticeHours,
       max_days_ahead: maxDaysAhead,
       meeting_location: meetingLocation || null,
@@ -503,6 +512,28 @@ export function EventTypeSheet({
                     </Select>
                     <FieldHelp>Padding between meetings.</FieldHelp>
                   </div>
+                </div>
+                <div>
+                  <FieldLabel>Start times</FieldLabel>
+                  <Select value={startTimes} onValueChange={setStartTimes}>
+                    <SelectTrigger className="h-9" aria-label="Start times">
+                      <span className="inline-flex min-w-0 items-center gap-1.5">
+                        <Clock3 className="w-3.5 h-3.5 shrink-0 text-[#8B8F9E]" />
+                        <SelectValue />
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SAME_AS_LINK}>
+                        Same as booking link ({startTimesLabel(parentStartInterval).toLowerCase()})
+                      </SelectItem>
+                      {START_TIME_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={String(o.value)}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldHelp>When the times offered can start, in this event's time zone.</FieldHelp>
                 </div>
               </SectionBlock>
 

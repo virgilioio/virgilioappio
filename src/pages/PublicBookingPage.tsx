@@ -250,6 +250,7 @@ export default function PublicBookingPage() {
     return {
       weekly_schedule: selectedEventType.weekly_schedule,
       buffer_time_minutes: selectedEventType.buffer_time_minutes,
+      start_interval_minutes: selectedEventType.start_interval_minutes ?? null,
       min_notice_hours: selectedEventType.min_notice_hours,
       max_days_ahead: selectedEventType.max_days_ahead,
       timezone: selectedEventType.timezone,

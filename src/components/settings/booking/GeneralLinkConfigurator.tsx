@@ -9,6 +9,7 @@ import {
   Bell,
   CalendarRange,
   GitCommitHorizontal,
+  Clock3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -23,6 +24,7 @@ import {
 import { cn } from '@/lib/utils'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { BookingConfig, WeeklySchedule } from '@/hooks/useBookingConfig'
+import { START_TIME_OPTIONS, linkStartTimes, type StartInterval } from '@/lib/bookingStartTimes'
 import { WeeklyScheduleEditor } from './WeeklyScheduleEditor'
 import { TimezoneSelector } from './TimezoneSelector'
 
@@ -136,6 +138,7 @@ export function GeneralLinkConfigurator({
   const [minNoticeHours, setMinNoticeHours] = useState<number>(config.min_notice_hours)
   const [maxDaysAhead, setMaxDaysAhead] = useState<number>(config.max_days_ahead)
   const [bufferMinutes, setBufferMinutes] = useState<number>(config.buffer_time_minutes)
+  const [startTimes, setStartTimes] = useState<StartInterval>(linkStartTimes(config.start_interval_minutes))
 
   useEffect(() => {
     setWeeklySchedule(config.weekly_schedule)
@@ -145,6 +148,7 @@ export function GeneralLinkConfigurator({
     setMinNoticeHours(config.min_notice_hours)
     setMaxDaysAhead(config.max_days_ahead)
     setBufferMinutes(config.buffer_time_minutes)
+    setStartTimes(linkStartTimes(config.start_interval_minutes))
   }, [config.id])
 
   const handleSave = () => {
@@ -156,6 +160,7 @@ export function GeneralLinkConfigurator({
       min_notice_hours: minNoticeHours,
       max_days_ahead: maxDaysAhead,
       buffer_time_minutes: bufferMinutes,
+      start_interval_minutes: startTimes,
     })
     onBack()
   }
@@ -333,6 +338,29 @@ export function GeneralLinkConfigurator({
                   {[7, 14, 30, 60, 90].map((d) => (
                     <SelectItem key={d} value={String(d)}>
                       {d} days
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingRow>
+            <SettingRow
+              label="Start times"
+              hint="When the times offered can start."
+            >
+              <Select
+                value={String(startTimes)}
+                onValueChange={(v) => setStartTimes(Number(v) as StartInterval)}
+              >
+                <SelectTrigger className="h-9" aria-label="Start times">
+                  <span className="inline-flex min-w-0 items-center gap-1.5">
+                    <Clock3 className="w-3.5 h-3.5 shrink-0 text-[#8B8F9E]" />
+                    <SelectValue />
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {START_TIME_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={String(o.value)}>
+                      {o.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

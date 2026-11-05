@@ -24,6 +24,8 @@ interface AvailabilityResponse {
 export interface EventTypeOverrides {
   weekly_schedule?: Record<string, { enabled: boolean; start: string; end: string }>;
   buffer_time_minutes?: number;
+  /** null = same as the booking link. */
+  start_interval_minutes?: number | null;
   min_notice_hours?: number;
   max_days_ahead?: number;
   timezone?: string;

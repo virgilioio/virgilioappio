@@ -13,6 +13,8 @@ export interface BookingEventType {
   description: string | null;
   duration_minutes: number;
   buffer_time_minutes: number;
+  /** null = same as the booking link; 0 = back to back; 15, 30 or 60 = on that grid. */
+  start_interval_minutes?: number | null;
   min_notice_hours: number;
   max_days_ahead: number;
   meeting_location: string | null;
@@ -63,6 +65,7 @@ export function useBookingEventTypes(bookingConfigId: string | undefined) {
       weekly_schedule?: WeeklySchedule;
       timezone?: string;
       buffer_time_minutes?: number;
+      start_interval_minutes?: number | null;
       min_notice_hours?: number;
       max_days_ahead?: number;
       meeting_location?: string;
@@ -87,6 +90,7 @@ export function useBookingEventTypes(bookingConfigId: string | undefined) {
           weekly_schedule: (input.weekly_schedule ?? getDefaultWeeklySchedule()) as any,
           timezone: input.timezone ?? 'America/New_York',
           buffer_time_minutes: input.buffer_time_minutes ?? 15,
+          start_interval_minutes: input.start_interval_minutes ?? null,
           min_notice_hours: input.min_notice_hours ?? 24,
           max_days_ahead: input.max_days_ahead ?? 30,
           meeting_location: input.meeting_location || null,

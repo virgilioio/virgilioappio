@@ -312,6 +312,7 @@ export function BookingLinkSection() {
         isSaving={isCreatingEventType || isUpdatingEventType}
         isDeleting={isDeletingEventType}
         parentTimezone={config?.timezone}
+        parentStartInterval={config?.start_interval_minutes ?? null}
       />
     </>
   );
