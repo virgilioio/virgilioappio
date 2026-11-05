@@ -28,7 +28,10 @@ interface ProfileTabsProps {
 export function ProfileTabs({ tabs, activeTab, onTabChange, className, phoneCompact }: ProfileTabsProps) {
   return (
     <div className={cn('border-b border-virgilio-border', className)}>
-      <div className="flex items-end gap-1 overflow-x-auto scrollbar-none -mb-px">
+      {/* Sideways only: each tab hangs 1px below the strip (its underline sits on the
+          line), which made the strip scroll 1px up and down too, so on a phone it could
+          be dragged in any direction. A swipe that reaches the end stays in the strip. */}
+      <div className="flex items-end gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none -mb-px">
         {tabs.map(({ value, label, Icon, count, unread, phoneLabel }) => {
           const isActive = activeTab === value
           return (
