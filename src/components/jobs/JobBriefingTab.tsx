@@ -17,6 +17,8 @@ import {
   type BriefingStatTile,
 } from './JobDashboardBriefingLoader';
 import { CandidatePreview } from '@/components/previews/EntityPreview'
+import { GioAnswer } from '@/components/ui/gio-answer'
+import { gioAnswerPlainText } from '@/lib/gioAnswerText'
 
 // ---- shapes mirroring the edge function payload --------------------------
 
@@ -522,7 +524,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   const dataRef = useRef<Payload | null>(null);
   dataRef.current = data;
   const [ask, setAsk] = useState('');
-  const [chat, setChat] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [chat, setChat] = useState<ChatMsg[]>([]);
   const [pending, setPending] = useState(false);
   const askInputRef = useRef<HTMLInputElement | null>(null);
   const askBoxRef = useRef<HTMLDivElement | null>(null);
@@ -537,11 +539,13 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   }, []);
 
   const submitAsk = useCallback(
-    async (text: string) => {
+    async (text: string, base?: ChatMsg[]) => {
       const q = text.trim();
       if (!q || pending) return;
-      const history = chat;
-      setChat((prev) => [...prev, { role: 'user', content: q }]);
+      // `base` is the conversation to continue (Retry drops the failed turn first).
+      const before = base ?? chat;
+      const history = before.filter((m) => !m.failed);
+      setChat([...before, { role: 'user', content: q }]);
       setAsk('');
       setPending(true);
       try {
@@ -552,14 +556,10 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
         const answer = (res as { answer?: string })?.answer?.trim();
         if (!answer) throw new Error('Empty response.');
         setChat((prev) => [...prev, { role: 'assistant', content: answer }]);
-      } catch (err: any) {
-        setChat((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: `_Something went wrong: ${err?.message ?? 'unknown error'}_`,
-          },
-        ]);
+      } catch (err) {
+        // Never the server's own words: a plain line with Retry (§5).
+        console.error('[job-ask-gio]', err);
+        setChat((prev) => [...prev, { role: 'assistant', content: '', failed: q }]);
       } finally {
         setPending(false);
       }
@@ -1210,6 +1210,12 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
         suggestions={suggestions}
         insertPrompt={insertPrompt}
         submitAsk={submitAsk}
+        retryAsk={(i: number) => {
+          const failed = chat[i]?.failed;
+          if (!failed) return;
+          // Drop the question and its failed answer, then ask again.
+          void submitAsk(failed, chat.slice(0, Math.max(0, i - 1)));
+        }}
       />
 
 
@@ -1218,7 +1224,8 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
 }
 
 // ── Ask box: scrollable transcript above a sticky composer ────────────
-type ChatMsg = { role: 'user' | 'assistant'; content: string };
+/** `failed` holds the question when Gio couldn't answer it (shown with Retry). */
+type ChatMsg = { role: 'user' | 'assistant'; content: string; failed?: string };
 interface AskBoxProps {
   askBoxRef: React.RefObject<HTMLDivElement>;
   askInputRef: React.RefObject<HTMLInputElement>;
@@ -1230,6 +1237,7 @@ interface AskBoxProps {
   suggestions: { label: string; prompt: string }[];
   insertPrompt: (p: string) => void;
   submitAsk: (t: string) => void | Promise<void>;
+  retryAsk: (index: number) => void;
 }
 
 function AskBox({
@@ -1243,6 +1251,7 @@ function AskBox({
   suggestions,
   insertPrompt,
   submitAsk,
+  retryAsk,
 }: AskBoxProps) {
   const transcriptRef = useRef<HTMLDivElement | null>(null);
 
@@ -1269,35 +1278,59 @@ function AskBox({
             paddingBottom: 14,
           }}
         >
-          {chat.map((m, i) => (
-            <div
-              key={i}
-              style={{
-                position: 'relative',
-                alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                maxWidth: '92%',
-                padding: m.role === 'user' ? '8px 12px' : '10px 14px',
-                borderRadius: 12,
-                background: m.role === 'user' ? '#0d0d09' : '#FFFCF9',
-                color: m.role === 'user' ? '#fffcf9' : '#1F2230',
-                border: m.role === 'user' ? 'none' : '1px solid #EDE4FF',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: 13.5,
-                lineHeight: 1.55,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
-              <span className={m.role === 'assistant' ? 'pb-5' : ''}>
-                {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
-              </span>
-              {m.role === 'assistant' && (
-                <div className="absolute bottom-0 right-0">
-                  <CopyButton text={m.content.replace(/\*\*/g, '')} label="Copy response" size={12} />
+          {chat.map((m, i) => {
+            const isGio = m.role === 'assistant';
+            if (m.failed) {
+              return (
+                <div
+                  key={i}
+                  role="alert"
+                  className="inline-flex items-center gap-1.5 self-start font-inter text-[12.5px] text-[#C2372B]"
+                  style={{ padding: '6px 2px' }}
+                >
+                  Couldn't get an answer
+                  <span aria-hidden className="text-[#8B8F9E]">·</span>
+                  <button
+                    type="button"
+                    onClick={() => retryAsk(i)}
+                    disabled={pending}
+                    className="font-medium text-[#0d0d09] underline decoration-[#E0DDD3] underline-offset-2 hover:decoration-[#0d0d09] disabled:opacity-50"
+                  >
+                    Retry
+                  </button>
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            }
+            return (
+              <div
+                key={i}
+                style={{
+                  position: 'relative',
+                  alignSelf: isGio ? 'flex-start' : 'flex-end',
+                  maxWidth: '92%',
+                  minWidth: 0,
+                  padding: isGio ? '10px 14px 26px' : '8px 12px',
+                  borderRadius: 12,
+                  background: isGio ? '#FFFCF9' : '#0d0d09',
+                  color: isGio ? '#1F2230' : '#fffcf9',
+                  border: isGio ? '1px solid #EDE4FF' : 'none',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 13.5,
+                  lineHeight: 1.55,
+                  // Your question as typed; Gio's answer is Markdown, drawn by GioAnswer.
+                  whiteSpace: isGio ? 'normal' : 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {isGio ? <GioAnswer content={m.content} /> : m.content}
+                {isGio && (
+                  <div className="absolute bottom-0 right-0">
+                    <CopyButton text={gioAnswerPlainText(m.content)} label="Copy response" size={12} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
           {pending && (
             <div
               style={{
