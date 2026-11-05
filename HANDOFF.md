@@ -125,6 +125,7 @@ Hard limits:
 - Migration `20261105145242_market_job_links.sql`, applied as written: read-only `market_job_links(tenant)` (live: anon can't run it, signed-in can; 1,651 rows for the workspace). Dry run rolled back: admins and platform admins 1,651 links (69 jobs, 15 clients); members without a Recruiter or Sourcer seat and outsiders refused (42501); recruiters see every job their client access opens (0 rows outside `can_access_job_pipeline`); 63 of 69 jobs carry a pay range.
 - Known data gap: jobs saved without a salary period are read as monthly (as candidate salaries already are), so a yearly range typed without its period reads as monthly.
 - Screens and logic: see CLAUDE.md "Intelligence by job and client". Types regenerated; `MarketDataContext` calls it typed.
+- Fix 2026-11-06 (on main): Talent insights opened unfiltered because the `?job=` link waited for every list and past companies loaded page by page (37 pages, about 16 seconds in the logs). The link now waits only for the job list, its filter is never saved into the shared view, and the RPC pages load six at a time (`market/pages.ts`, tested).
 
 ## Done 2026-11-05 (ATS) — Booking start times + phone taps open the in-job profile — on main
 
