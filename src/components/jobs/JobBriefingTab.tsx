@@ -3,8 +3,9 @@ import { IconSwap } from '@/components/ui/icon-swap'
 import {
   Check, RefreshCw, ArrowUp, ArrowUpRight, Sparkles, Info, Calendar,
   Hourglass, Megaphone, Scale, Banknote, AlertTriangle,
-  Copy,
+  Copy, BarChart3,
 } from 'lucide-react';
+import { useTalentPoolAccess } from '@/hooks/useTalentPoolAccess';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAnonKey, supabaseUrl } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -506,6 +507,8 @@ interface JobBriefingTabProps {
 
 export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   const navigate = useNavigate();
+  // Intelligence narrowed to this job (2026-11-05); only for people who can open Intelligence.
+  const canSeeIntelligence = useTalentPoolAccess() === true;
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1004,6 +1007,16 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
             Updated {relativeFromIso(data.generated_at)} from pipeline activity
           </span>
           <div className="flex items-center" style={{ gap: 2 }}>
+            {canSeeIntelligence && (
+              <button
+                type="button"
+                onClick={() => navigate(`/talent-intelligence?job=${jobId}`)}
+                className="gio-pressable mr-1 inline-flex items-center gap-1.5 rounded-[7px] px-2 py-1 font-inter text-[12px] font-medium text-[#5A6072] hover:bg-[#F1F0EC] hover:text-[#0d0d09] whitespace-nowrap"
+              >
+                <BarChart3 size={13} strokeWidth={2} aria-hidden />
+                Talent insights
+              </button>
+            )}
             <CopyButton text={dashboardCopyText} label="Copy briefing" />
             <button
               type="button"
