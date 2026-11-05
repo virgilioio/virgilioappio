@@ -5,6 +5,7 @@ import { fmt } from '../model/format'
 import type { NormalizedData, SalaryRange, SeriesPoint, WidgetConfig } from '../model/types'
 import { useMarketBundle } from './MarketDataContext'
 import { MIN_SALARIES, median, orderFor, percentile, valuesOf, type MarketRow } from './marketData'
+import { singleJob } from './jobLinks'
 
 /**
  * One Intelligence widget's numbers (Find Phase 4, 2026-10-12): people,
@@ -12,6 +13,8 @@ import { MIN_SALARIES, median, orderFor, percentile, valuesOf, type MarketRow } 
  * market dimension, with one insight line that states the answer, its number
  * and its sample size. A salary figure is never shown from fewer than five
  * salaries; groups below that are left out and counted in a note.
+ * By job and client (2026-11-05): job values follow the page's job filters, and a
+ * Job or Client chart counts someone once per job (the note says so when it happens).
  */
 
 export interface SalaryUnit {
@@ -49,6 +52,9 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
   const meta = METRICS[cfg.metric] ?? METRICS.mkt_people
   const dim = cfg.groupBy
   const rows = useMemo(() => m.rowsFor(dim === 'none' ? undefined : dim), [m, dim])
+  const ctx = useMemo(() => m.ctxFor(dim === 'none' ? undefined : dim), [m, dim])
+  // "Added to Gio over time" and "Added to a job over time" are both the last 12 months.
+  const isTime = dim === 'time' || dim === 'mkt_job_month'
 
   return useMemo<NormalizedData>(() => {
     const unit = salaryUnit(cfg, m.baseCurrency, m.rates)
@@ -72,6 +78,22 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
     }
     if (m.loading) return base
 
+    // One job picked: salary widgets say its pay range and how many salaries fall inside it.
+    const job = singleJob(ctx.jobScope, ctx.jobs)
+    const budgetNote = (() => {
+      if (!job || (job.budgetMin === null && job.budgetMax === null)) return undefined
+      if (cfg.metric !== 'mkt_salary' && dim !== 'mkt_salary_band') return undefined
+      const lo = job.budgetMin === null ? null : job.budgetMin * unit.factor
+      const hi = job.budgetMax === null ? null : job.budgetMax * unit.factor
+      const range = lo !== null && hi !== null && lo !== hi ? `${money(lo)}–${money(hi)}` : money((lo ?? hi)!)
+      const s = salaries(rows)
+      const inside = s.filter(v => (lo === null || v >= lo) && (hi === null || v <= hi)).length
+      const above = hi === null ? 0 : s.filter(v => v > hi).length
+      return s.length
+        ? `${job.title}'s pay: ${range} ${perWord}. ${count(inside)} of ${plural(s.length, 'salary', 'salaries')} inside it, ${count(above)} above.`
+        : `${job.title}'s pay: ${range} ${perWord}.`
+    })()
+
     // ── No split: one number ──
     if (dim === 'none') {
       if (cfg.metric === 'mkt_people') {
@@ -92,17 +114,21 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
         base.caption = y.length ? `from ${plural(y.length, 'person', 'people')} with experience on file` : 'No experience on file here yet'
       }
       base.empty = base.value === null && cfg.metric !== 'mkt_salary'
+      base.note = budgetNote
       return base
     }
 
     // ── Groups ──
     const groups = new Map<string, MarketRow[]>()
-    if (dim === 'time') {
+    if (isTime) {
       for (const label of lastTwelveMonths()) groups.set(label, [])
     }
+    let countedTwice = false
     for (const r of rows) {
-      for (const v of valuesOf(r, dim, m.ctx)) {
-        if (dim === 'time' && !groups.has(v)) continue
+      const vals = valuesOf(r, dim, ctx)
+      if (vals.length > 1 && (dim === 'mkt_job' || dim === 'mkt_client')) countedTwice = true
+      for (const v of vals) {
+        if (isTime && !groups.has(v)) continue
         const list = groups.get(v) ?? []
         list.push(r)
         groups.set(v, list)
@@ -134,7 +160,7 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
       }
     }
 
-    const order = dim === 'time' ? lastTwelveMonths() : orderFor(dim, m.ctx.bands)
+    const order = isTime ? lastTwelveMonths() : orderFor(dim, ctx)
     if (order) points.sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label))
     else points.sort((a, b) => b.value - a.value || b.n - a.n)
     if (ranges) {
@@ -142,7 +168,7 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
       ranges.sort((a, b) => (rank.get(a.label) ?? 0) - (rank.get(b.label) ?? 0))
     }
 
-    if (dim === 'time') {
+    if (isTime) {
       base.series = points.map(({ label, value }) => ({ label, value }))
       base.breakdown = base.series
     } else {
@@ -151,7 +177,11 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
     base.ranges = ranges
     base.empty = points.length === 0
     if (hidden > 0) {
-      base.note = `${plural(hidden, (DIMENSIONS[dim]?.label ?? 'group').toLowerCase())} left out: fewer than 5 salaries each.`
+      base.note = `${plural(hidden, 'group')} left out: fewer than 5 salaries each.`
+    } else if (countedTwice) {
+      base.note = 'Someone in more than one job counts once for each.'
+    } else if (budgetNote) {
+      base.note = budgetNote
     }
 
     // ── The insight line ──
@@ -161,11 +191,13 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
       ? new Set([...groups.values()].flat().map(r => r.id)).size
       : 0
     if (points.length > 0) {
-      if (dim === 'time') {
+      if (isTime) {
         const recent = points.slice(-3).reduce((s, p) => s + p.value, 0)
-        base.insight = cfg.metric === 'mkt_people'
-          ? `${plural(recent, 'person', 'people')} joined ${scopeWord} in the last three months.`
-          : undefined
+        base.insight = cfg.metric !== 'mkt_people'
+          ? undefined
+          : dim === 'mkt_job_month'
+            ? `${plural(recent, 'person', 'people')} joined ${filtered ? 'these jobs' : 'a job'} in the last three months.`
+            : `${plural(recent, 'person', 'people')} joined ${scopeWord} in the last three months.`
       } else if (cfg.metric === 'mkt_people') {
         const top = [...points].sort((a, b) => b.value - a.value)[0]
         const multi = DIMENSIONS[dim]?.multi
@@ -173,6 +205,9 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
           dim === 'mkt_company' ? `${top.label} is where most people work now: ${count(top.value)}`
           : dim === 'mkt_past_company' ? `${top.label} is the most common past employer: ${plural(top.value, 'person', 'people')}`
           : dim === 'mkt_skills' ? `${top.label} is the most common skill: ${plural(top.value, 'person', 'people')}`
+          : dim === 'mkt_job' ? `${top.label} has the most people: ${count(top.value)}`
+          : dim === 'mkt_client' ? `${top.label} has the most people across its jobs: ${count(top.value)}`
+          : dim === 'mkt_rejection' ? `${top.label} is the most common reason: ${plural(top.value, 'person', 'people')}`
           : `${top.label} leads with ${plural(top.value, 'person', 'people')}`
         base.insight = multi
           ? `${lead}.`
@@ -193,5 +228,5 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
     }
 
     return base
-  }, [m, rows, cfg, meta.format, dim])
+  }, [m, rows, ctx, isTime, cfg, meta.format, dim])
 }

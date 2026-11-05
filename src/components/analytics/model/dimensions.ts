@@ -35,6 +35,16 @@ export const DIMENSIONS: Record<DimensionId, DimensionDef> = {
   mkt_experience:     { id: 'mkt_experience',     label: 'Experience',         kind: 'categorical', group: 'market' },
   mkt_skills:         { id: 'mkt_skills',         label: 'Skill',              kind: 'categorical', group: 'market', multi: true },
   mkt_source:         { id: 'mkt_source',         label: 'Source',             kind: 'categorical', group: 'market' },
+  // By job and client (2026-11-05). Job and Client count a person once per job.
+  mkt_client:         { id: 'mkt_client',         label: 'Client',             kind: 'categorical', group: 'market', multi: true },
+  mkt_job:            { id: 'mkt_job',            label: 'Job',                kind: 'categorical', group: 'market', multi: true },
+  mkt_job_status:     { id: 'mkt_job_status',     label: 'Job status',         kind: 'categorical', group: 'market', multi: true },
+  mkt_job_state:      { id: 'mkt_job_state',      label: 'Status in the job',  kind: 'categorical', group: 'market', multi: true },
+  mkt_stage:          { id: 'mkt_stage',          label: 'Stage',              kind: 'categorical', group: 'market', multi: true },
+  mkt_came_in:        { id: 'mkt_came_in',        label: 'How they came in',   kind: 'categorical', group: 'market', multi: true },
+  mkt_rejection:      { id: 'mkt_rejection',      label: 'Rejection reason',   kind: 'categorical', group: 'market', multi: true },
+  mkt_added:          { id: 'mkt_added',          label: 'Added to the job',   kind: 'categorical', group: 'market', multi: true },
+  mkt_job_month:      { id: 'mkt_job_month',      label: 'Added to a job over time', kind: 'time', group: 'market', multi: true },
 }
 
 // Dimensions a user can choose in the config popover (NOT 'none', that is the default no-split).
@@ -52,7 +62,15 @@ export const SPLITTABLE_DIMENSIONS: DimensionDef[] = [
 
 // Intelligence: what market metrics split by ('time' = when people joined Gio).
 export const MARKET_DIMENSIONS: DimensionDef[] = [
-  { ...DIMENSIONS.time, label: 'Added over time' },
+  { ...DIMENSIONS.time, label: 'Added to Gio over time' },
+  DIMENSIONS.mkt_job_month,
+  DIMENSIONS.mkt_client,
+  DIMENSIONS.mkt_job,
+  DIMENSIONS.mkt_stage,
+  DIMENSIONS.mkt_job_state,
+  DIMENSIONS.mkt_came_in,
+  DIMENSIONS.mkt_rejection,
+  DIMENSIONS.mkt_job_status,
   DIMENSIONS.mkt_country,
   DIMENSIONS.mkt_city,
   DIMENSIONS.mkt_role_family,

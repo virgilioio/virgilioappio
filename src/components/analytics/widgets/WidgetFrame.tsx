@@ -37,6 +37,8 @@ export function autoTitle(cfg: WidgetConfig): string {
   const m = (METRICS[cfg.metric] ?? METRICS.applications).label
   if (cfg.groupBy === 'none') return m
   if (cfg.groupBy === 'time') return `${m} over time`
+  // "People added to a job over time"
+  if (DIMENSIONS[cfg.groupBy]?.kind === 'time') return `${m} ${DIMENSIONS[cfg.groupBy].label.charAt(0).toLowerCase()}${DIMENSIONS[cfg.groupBy].label.slice(1)}`
   return `${m} by ${(DIMENSIONS[cfg.groupBy] ?? DIMENSIONS.none).label.toLowerCase()}`
 }
 

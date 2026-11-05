@@ -9,7 +9,7 @@ import { useMarketWidgetData } from './useMarketWidgetData'
 /** Click a bar, slice, row or country to filter the whole page by it. */
 function useMarketSelection(cfg: WidgetConfig): WidgetSelection {
   const m = useMarketBundle()
-  if (cfg.groupBy === 'none' || cfg.groupBy === 'time') return { selected: [] }
+  if (cfg.groupBy === 'none' || cfg.groupBy === 'time' || cfg.groupBy === 'mkt_job_month') return { selected: [] }
   return {
     selected: m.selections.filter(s => s.dimension === cfg.groupBy).map(s => s.value),
     onSelect: (label: string) => m.toggle({ dimension: cfg.groupBy, value: label }),

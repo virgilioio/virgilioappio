@@ -5,9 +5,10 @@ import { useBaseCurrency } from '@/hooks/useBaseCurrency'
 import { useCurrencyRates } from '@/hooks/useCurrencyRates'
 import type { DimensionId } from '../model/types'
 import {
-  applySelections, companyLabel, salaryBands,
+  applySelections, companyLabel, contextFor, salaryBands,
   type MarketRow, type MarketSelection, type SalaryBands, type ValueContext,
 } from './marketData'
+import { buildJobIndex, type JobIndex, type JobLink } from './jobLinks'
 
 /**
  * The talent database for the Intelligence widgets (Find Phase 4,
@@ -16,6 +17,8 @@ import {
  * the page's click-to-filter selections. Each widget reads the people that
  * match the selections on every other dimension, so the chart you clicked
  * keeps all its bars and highlights the one you picked.
+ * By job and client (2026-11-05): also where each person stands in the jobs you can
+ * see (market_job_links), for the filter bar and the job dimensions.
  */
 export interface MarketBundle {
   loading: boolean
@@ -28,7 +31,12 @@ export interface MarketBundle {
   rates: Record<string, number>
   selections: MarketSelection[]
   toggle: (sel: MarketSelection) => void
+  /** Replace one dimension's picks (the filter bar's popovers). */
+  setDimension: (dimension: DimensionId, values: string[]) => void
   rowsFor: (exceptDimension?: DimensionId) => MarketRow[]
+  /** The value context for a widget split by `exceptDimension` (job values follow the job filters). */
+  ctxFor: (exceptDimension?: DimensionId) => ValueContext
+  jobs: JobIndex
 }
 
 const Ctx = createContext<MarketBundle | null>(null)
@@ -75,7 +83,18 @@ export function MarketDataProvider({
       supabase.rpc('market_past_companies', { p_tenant: tenantId! }).range(from, to) as unknown as PromiseLike<{ data: { candidate_id: string; company: string }[] | null; error: unknown }>),
   })
 
+  const linksQuery = useQuery({
+    queryKey: ['market-job-links', tenantId],
+    enabled: !!tenantId,
+    staleTime: 5 * 60_000,
+    queryFn: () => pages<JobLink>((from, to) =>
+      // `market_job_links` arrives in the generated types once the migration is applied.
+      (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => { range: (a: number, b: number) => PromiseLike<{ data: JobLink[] | null; error: unknown }> })
+        .call(supabase, 'market_job_links', { p_tenant: tenantId! }).range(from, to)),
+  })
+
   const rows = useMemo(() => rowsQuery.data ?? [], [rowsQuery.data])
+  const jobs = useMemo(() => buildJobIndex(linksQuery.data ?? []), [linksQuery.data])
   const base = rows[0]?.base_currency || baseCurrency
 
   const ctx = useMemo<ValueContext>(() => {
@@ -92,8 +111,8 @@ export function MarketDataProvider({
       rows.map(r => r.salary_month_base).filter((v): v is number => typeof v === 'number' && v > 0),
       base,
     )
-    return { pastCompanies, bands }
-  }, [rows, pastQuery.data, base])
+    return { pastCompanies, bands, jobs, jobScope: [], now: new Date() }
+  }, [rows, pastQuery.data, base, jobs])
 
   const rates = useMemo(() => {
     const out: Record<string, number> = {}
@@ -108,23 +127,37 @@ export function MarketDataProvider({
       : [...selections, sel])
   }, [selections, onSelectionsChange])
 
+  const setDimension = useCallback((dimension: DimensionId, values: string[]) => {
+    onSelectionsChange([
+      ...selections.filter(s => s.dimension !== dimension),
+      ...values.map(value => ({ dimension, value })),
+    ])
+  }, [selections, onSelectionsChange])
+
   const rowsFor = useCallback(
     (exceptDimension?: DimensionId) => applySelections(rows, selections, ctx, exceptDimension),
     [rows, selections, ctx],
   )
+  const ctxFor = useCallback(
+    (exceptDimension?: DimensionId) => contextFor(ctx, selections, exceptDimension),
+    [ctx, selections],
+  )
 
   const value = useMemo<MarketBundle>(() => ({
-    loading: rowsQuery.isLoading || pastQuery.isLoading || !tenantId,
-    error: rowsQuery.error ?? pastQuery.error ?? null,
-    refetch: () => { void rowsQuery.refetch(); void pastQuery.refetch() },
+    loading: rowsQuery.isLoading || pastQuery.isLoading || linksQuery.isLoading || !tenantId,
+    error: rowsQuery.error ?? pastQuery.error ?? linksQuery.error ?? null,
+    refetch: () => { void rowsQuery.refetch(); void pastQuery.refetch(); void linksQuery.refetch() },
     rows,
     ctx,
     baseCurrency: base,
     rates,
     selections,
     toggle,
+    setDimension,
     rowsFor,
-  }), [rowsQuery, pastQuery, tenantId, rows, ctx, base, rates, selections, toggle, rowsFor])
+    ctxFor,
+    jobs,
+  }), [rowsQuery, pastQuery, linksQuery, tenantId, rows, ctx, base, rates, selections, toggle, setDimension, rowsFor, ctxFor, jobs])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

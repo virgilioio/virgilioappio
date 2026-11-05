@@ -1,4 +1,5 @@
 import type { DimensionId } from '../model/types'
+import { EMPTY_JOB_INDEX, isJobDimension, jobDimensionValues, jobOrderFor, linkMatches, type JobIndex, type JobScope } from './jobLinks'
 
 /**
  * Intelligence (Find Phase 4, 2026-10-12): the market view of the whole
@@ -147,10 +148,20 @@ function bandOf(value: number | null, bands: SalaryBands): string | null {
 export interface ValueContext {
   pastCompanies: Map<string, string[]>
   bands: SalaryBands
+  /** Where people stand in the jobs you can see (market_job_links). */
+  jobs: JobIndex
+  /** The job filters a job value is read under (see `contextFor`). */
+  jobScope: JobScope
+  now: Date
 }
+
+export const emptyValueContext = (bands: SalaryBands = { edges: [], labels: [] }): ValueContext => ({
+  pastCompanies: new Map(), bands, jobs: EMPTY_JOB_INDEX, jobScope: [], now: new Date(),
+})
 
 /** The values one person has for a dimension (several for skills and past companies). */
 export function valuesOf(row: MarketRow, dim: DimensionId, ctx: ValueContext): string[] {
+  if (isJobDimension(dim)) return jobDimensionValues(row.id, dim, ctx.jobScope, ctx.jobs, ctx.now)
   const one = (v: string | null | undefined) => (v ? [v] : [])
   switch (dim) {
     case 'mkt_country': return one(row.country)
@@ -171,11 +182,11 @@ export function valuesOf(row: MarketRow, dim: DimensionId, ctx: ValueContext): s
 }
 
 /** Dimensions with a natural order sort by it; the rest by size. */
-export function orderFor(dim: DimensionId, bands: SalaryBands): string[] | null {
+export function orderFor(dim: DimensionId, ctx: Pick<ValueContext, 'bands' | 'jobs'>): string[] | null {
   if (dim === 'mkt_seniority') return SENIORITY_ORDER
   if (dim === 'mkt_experience') return EXPERIENCE_BANDS
-  if (dim === 'mkt_salary_band') return bands.labels
-  return null
+  if (dim === 'mkt_salary_band') return ctx.bands.labels
+  return jobOrderFor(dim, ctx.jobs)
 }
 
 export function median(xs: number[]): number | null {
@@ -194,21 +205,41 @@ export function percentile(xs: number[], p: number): number | null {
   return lo === hi ? s[lo] : s[lo] + (s[hi] - s[lo]) * (idx - lo)
 }
 
-/** People matching every selection (except on the given dimension). */
+function groupSelections(selections: MarketSelection[], exceptDimension?: DimensionId) {
+  // Values within one dimension are alternatives (OR); dimensions combine (AND).
+  const byDim = new Map<DimensionId, Set<string>>()
+  for (const s of selections) {
+    if (s.dimension === exceptDimension) continue
+    const set = byDim.get(s.dimension) ?? new Set<string>()
+    set.add(s.value)
+    byDim.set(s.dimension, set)
+  }
+  const person: JobScope = []
+  const job: JobScope = []
+  for (const entry of byDim) (isJobDimension(entry[0]) ? job : person).push(entry)
+  return { person, job }
+}
+
+/** The context a widget reads values under: job values come from the jobs that meet the job filters. */
+export function contextFor(ctx: ValueContext, selections: MarketSelection[], exceptDimension?: DimensionId): ValueContext {
+  const { job } = groupSelections(selections, exceptDimension)
+  return job.length === 0 && ctx.jobScope.length === 0 ? ctx : { ...ctx, jobScope: job }
+}
+
+/**
+ * People matching every selection (except on the given dimension). Job filters must
+ * all hold for the same job of theirs.
+ */
 export function applySelections(
   rows: MarketRow[],
   selections: MarketSelection[],
   ctx: ValueContext,
   exceptDimension?: DimensionId,
 ): MarketRow[] {
-  const active = selections.filter(s => s.dimension !== exceptDimension)
-  if (active.length === 0) return rows
-  // Values within one dimension are alternatives (OR); dimensions combine (AND).
-  const byDim = new Map<DimensionId, Set<string>>()
-  for (const s of active) {
-    const set = byDim.get(s.dimension) ?? new Set<string>()
-    set.add(s.value)
-    byDim.set(s.dimension, set)
-  }
-  return rows.filter(r => [...byDim.entries()].every(([dim, wanted]) => valuesOf(r, dim, ctx).some(v => wanted.has(v))))
+  const { person, job } = groupSelections(selections, exceptDimension)
+  if (person.length === 0 && job.length === 0) return rows
+  return rows.filter(r =>
+    person.every(([dim, wanted]) => valuesOf(r, dim, ctx).some(v => wanted.has(v)))
+    && (job.length === 0 || (ctx.jobs.byPerson.get(r.id) ?? []).some(l => linkMatches(l, job, ctx.jobs, ctx.now))),
+  )
 }

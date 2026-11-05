@@ -50,6 +50,16 @@ export type DimensionId =
   | 'mkt_experience'
   | 'mkt_skills'
   | 'mkt_source'
+  // Market by job and client (2026-11-05): where people stand in the jobs you can see
+  | 'mkt_client'
+  | 'mkt_job'
+  | 'mkt_job_status'
+  | 'mkt_job_state'
+  | 'mkt_stage'
+  | 'mkt_came_in'
+  | 'mkt_rejection'
+  | 'mkt_added'
+  | 'mkt_job_month'
 
 export type VizId = 'kpi' | 'line' | 'bars' | 'columns' | 'donut' | 'funnel' | 'table' | 'aging' | 'list' | 'salary_range' | 'map'
 
