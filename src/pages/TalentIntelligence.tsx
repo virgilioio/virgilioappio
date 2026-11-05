@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Download, LayoutGrid, MousePointerClick, Plus, RotateCcw, Upload, X } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -15,8 +15,10 @@ import { WidgetGrid } from '@/components/analytics/WidgetGrid'
 import { WidgetCatalogProvider } from '@/components/analytics/widgets/WidgetCatalog'
 import { MarketDataProvider, useMarketBundle } from '@/components/analytics/market/MarketDataContext'
 import { marketCatalog } from '@/components/analytics/market/marketCatalog'
-import { seedMarketWidgets } from '@/components/analytics/market/seedMarketView'
+import { seedMarketWidgets, seedSearchWidgets } from '@/components/analytics/market/seedMarketView'
 import { applySelections, companyLabel, SENIORITY_LABEL, type MarketSelection } from '@/components/analytics/market/marketData'
+import { IntelligenceFilterBar } from '@/components/analytics/market/IntelligenceFilterBar'
+import { JOB_STATE_LABEL, linksInScope } from '@/components/analytics/market/jobLinks'
 import { METRICS } from '@/components/analytics/model/metrics'
 import { DIMENSIONS } from '@/components/analytics/model/dimensions'
 import { VIZ, defaultSpan } from '@/components/analytics/model/viz'
@@ -33,9 +35,14 @@ import { IconTip } from '@/components/ui/tooltip'
  * not one period's pipeline. Click a bar, slice, row or country to filter
  * the page; views save widgets and filters, and "Market" is seeded for the
  * workspace.
+ * By job and client (2026-11-05): a filter bar (client, job, job status, in the job as,
+ * came in, added to the job) over every widget, a seeded "Search" view, and
+ * `?job=<id>` / `?client=<id>` links (the Job Dashboard's Talent insights) that open
+ * Search narrowed to that job or client.
  */
 
 const SEED_NAME = 'Market'
+const SEARCH_NAME = 'Search'
 
 interface ViewFilters { selections?: MarketSelection[] }
 interface ExtraState { widgets?: WidgetConfig[] }
@@ -94,7 +101,7 @@ function IntelligencePage() {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([])
   const [selections, setSelections] = useState<MarketSelection[]>([])
 
-  // One shared "Market" view per workspace, seeded by whoever opens it first.
+  // Shared "Market" and "Search" views per workspace, seeded by whoever opens it first.
   const seededRef = useRef(false)
   useEffect(() => {
     if (seededRef.current || !user || !tenant) return
@@ -102,20 +109,30 @@ function IntelligencePage() {
     ;(async () => {
       const { data: existing } = await supabase
         .from('saved_views')
-        .select('id')
+        .select('name')
         .eq('tenant_id', tenant.id)
         .eq('page_context', 'talent-intelligence')
         .eq('visibility', 'shared')
-        .eq('name', SEED_NAME)
-        .limit(1)
-      if (existing && existing.length > 0) return
-      createView.mutate({
-        name: SEED_NAME,
-        filters: { selections: [] },
-        extra_state: { widgets: seedMarketWidgets() },
-        is_default: true,
-        visibility: 'shared',
-      })
+        .in('name', [SEED_NAME, SEARCH_NAME])
+      const have = new Set((existing ?? []).map(v => v.name))
+      if (!have.has(SEED_NAME)) {
+        createView.mutate({
+          name: SEED_NAME,
+          filters: { selections: [] },
+          extra_state: { widgets: seedMarketWidgets() },
+          is_default: true,
+          visibility: 'shared',
+        })
+      }
+      if (!have.has(SEARCH_NAME)) {
+        createView.mutate({
+          name: SEARCH_NAME,
+          filters: { selections: [] },
+          extra_state: { widgets: seedSearchWidgets() },
+          is_default: false,
+          visibility: 'shared',
+        })
+      }
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, tenant?.id])
@@ -127,13 +144,31 @@ function IntelligencePage() {
     setWidgets(sanitizeWidgets((v.extra_state as ExtraState | null)?.widgets) ?? seedMarketWidgets())
   }, [])
 
+  // A link from a job or client (?job= / ?client=) opens Search narrowed to it.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const deepLink = useMemo(() => {
+    const job = searchParams.get('job')
+    const client = searchParams.get('client')
+    return job || client ? { job, client } : null
+  }, [searchParams])
+
   useEffect(() => {
     if (activeViewId) return
     const market = views.find(v => v.name === SEED_NAME && v.visibility === 'shared')
-    const first = defaultView ?? market ?? views[0]
+    const search = views.find(v => v.name === SEARCH_NAME && v.visibility === 'shared')
+    const first = (deepLink ? search : null) ?? defaultView ?? market ?? views[0]
     if (first) activateView(first)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultView?.id, views.length])
+
+  const clearDeepLink = useCallback(() => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.delete('job')
+      next.delete('client')
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
 
   // Save widgets and filters to the view (debounced; only views you own).
   const persistTimer = useRef<number | null>(null)
@@ -165,13 +200,15 @@ function IntelligencePage() {
         setWidgets={setWidgets}
         selections={selections}
         setSelections={setSelections}
+        deepLink={deepLink}
+        onDeepLinkApplied={clearDeepLink}
       />
     </MarketDataProvider>
   )
 }
 
 function IntelligenceBody({
-  viewName, activeViewId, onActivate, widgets, setWidgets, selections, setSelections,
+  viewName, activeViewId, onActivate, widgets, setWidgets, selections, setSelections, deepLink, onDeepLinkApplied,
 }: {
   viewName: string
   activeViewId: string | null
@@ -180,8 +217,22 @@ function IntelligenceBody({
   setWidgets: (next: WidgetConfig[] | ((prev: WidgetConfig[]) => WidgetConfig[])) => void
   selections: MarketSelection[]
   setSelections: (next: MarketSelection[]) => void
+  deepLink: { job: string | null; client: string | null } | null
+  onDeepLinkApplied: () => void
 }) {
   const m = useMarketBundle()
+
+  // Apply a ?job= / ?client= link once the view and the job list are in.
+  useEffect(() => {
+    if (!deepLink || !activeViewId || m.loading) return
+    const job = deepLink.job ? m.jobs.jobs.find(j => j.id === deepLink.job) : null
+    const client = !job && deepLink.client ? m.jobs.clients.find(c => c.id === deepLink.client) : null
+    if (job) setSelections([{ dimension: 'mkt_job', value: job.label }])
+    else if (client) setSelections([{ dimension: 'mkt_client', value: client.label }])
+    else toast("That job has no candidates you can see yet", { description: 'Showing everyone instead.' })
+    onDeepLinkApplied()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLink, activeViewId, m.loading])
   const navigate = useNavigate()
   const { canManageCandidates } = usePermissions()
   const [retry, setRetry] = useState(0)
@@ -198,14 +249,21 @@ function IntelligenceBody({
   const withSalary = useMemo(() => matching.filter(r => typeof r.salary_month_base === 'number').length, [matching])
 
   const exportCsv = () => {
-    const header = ['Country', 'State', 'City', 'Title', 'Role family', 'Seniority', 'Current company', 'Years of experience', `Salary per month (${m.baseCurrency})`, 'Source', 'Added']
-    const lines = matching.map(r => [
+    const header = ['Country', 'State', 'City', 'Title', 'Role family', 'Seniority', 'Current company', 'Years of experience', `Salary per month (${m.baseCurrency})`, 'Source', 'Added', 'Jobs', 'In the job as']
+    // The jobs each person is in that meet the job filters (all their jobs you can see when there are none).
+    const scope = m.ctxFor().jobScope
+    const lines = matching.map(r => {
+      const links = linksInScope(r.id, scope, m.jobs, m.ctxFor().now)
+      return [
       r.country, r.state, r.city, r.title, r.role_family,
       r.seniority ? SENIORITY_LABEL[r.seniority] ?? r.seniority : '',
       companyLabel(r.company), r.years_experience,
       typeof r.salary_month_base === 'number' ? Math.round(r.salary_month_base) : '',
       r.source, r.created_at.slice(0, 10),
-    ].map(csvCell).join(','))
+      links.map(l => m.jobs.jobLabel.get(l.job_id) ?? l.job_title).join('; '),
+      links.map(l => JOB_STATE_LABEL[l.status] ?? l.status).join('; '),
+    ].map(csvCell).join(',')
+    })
     const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -265,6 +323,9 @@ function IntelligenceBody({
             </button>
           </div>
         </div>
+
+        {/* Client, job and how people stand in it: the same filters as clicking a chart. */}
+        <IntelligenceFilterBar />
 
         {/* Click-to-filter chips, in reserved space so nothing jumps. */}
         <div className="mb-5 min-h-[32px] flex flex-wrap items-center gap-2">
