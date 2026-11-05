@@ -13329,11 +13329,11 @@ export type Database = {
           needed: boolean
         }[]
       }
-      sign_template_uses: { Args: { _template_id: string }; Returns: Json }
       sign_template_set_single_use: {
         Args: { _template_id: string }
         Returns: undefined
       }
+      sign_template_uses: { Args: { _template_id: string }; Returns: Json }
       sign_undo_send: { Args: { _envelope_id: string }; Returns: boolean }
       sign_unschedule: { Args: { _envelope_id: string }; Returns: undefined }
       sign_value_variant: {
