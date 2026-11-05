@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## In progress 2026-11-06 (ATS) — Gio Sign: General agreements and New envelope — on the working branch, waiting for Apply!
+
+- Allan asked whether Gio Sign can send standalone envelopes like DocuSign (it couldn't: every envelope came from a template on a candidate, member or deal), then said Go! to the sketch: a fourth kind, General (`standalone`), sent by admins from Sign › Envelopes.
+- Two migrations, not applied: `20261106010000_sign_standalone_kind.sql` (the enum values; can't be used in the same transaction) then `20261106010100_sign_standalone.sql` (`sign_templates.single_use`, `sign_template_set_single_use` (admins, a new General template only, GSN17), the `standalone` branch of `sign_record_values` (the record is the workspace, only today and the sender fill in), record → typed in `sign_role_person`, and `sign_send` titling by the template's name and archiving a single-use template once sent). Dry run of part 2 rolled back: an existing offer's preview is unchanged, the candidate-source refusal is unchanged (GSN16), only the intended lines changed, GSN17 on a candidate template.
+- On Apply: apply part 1, then part 2; rename both files to their applied versions; run a live rolled-back test of a General send (template, preview, send, archive of a one-off); regenerate types (the branch has them hand-mirrored); push to main.
+- Screens: see CLAUDE.md "General agreements".
+
 ## Done 2026-11-05 (ATS) — Intelligence by job and client — on main
 
 - Allan asked to filter Intelligence and its widgets by job, client and more, to see insights for real searches. Agreed scope: everything (filter bar, new group-bys, Search view, Talent insights link); someone in several jobs counts once, except in Job and Client charts (once per job, with a note).

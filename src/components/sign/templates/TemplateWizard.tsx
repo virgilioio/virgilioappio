@@ -277,6 +277,8 @@ export function TemplateWizard({
 /** The Document step's sentence, by which sources the template uses (§3). */
 function documentSub(e: TplDraft) {
   if (e.use_written && e.use_uploads) return STEP_SUB[STEP.document]
-  if (e.use_uploads) return 'Drag offer fields onto the pages where the values should go, or click one to place it.'
-  return 'Write the agreement. Type / to add offer fields, signer fields, signature blocks and conditional sections.'
+  // Only candidate templates have offer fields.
+  const what = e.kind === 'candidate' ? 'offer fields' : 'fields'
+  if (e.use_uploads) return `Drag ${what} onto the pages where the values should go, or click one to place it.`
+  return `Write the agreement. Type / to add ${e.kind === 'candidate' ? 'offer fields, ' : ''}signer fields, signature blocks and conditional sections.`
 }
