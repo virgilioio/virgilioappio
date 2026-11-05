@@ -9474,6 +9474,7 @@ export type Database = {
           offer_form_id: string | null
           ordered: boolean
           reminder_days: number
+          single_use: boolean
           subject: string
           tenant_id: string
           updated_at: string
@@ -9495,6 +9496,7 @@ export type Database = {
           offer_form_id?: string | null
           ordered?: boolean
           reminder_days?: number
+          single_use?: boolean
           subject?: string
           tenant_id: string
           updated_at?: string
@@ -9516,6 +9518,7 @@ export type Database = {
           offer_form_id?: string | null
           ordered?: boolean
           reminder_days?: number
+          single_use?: boolean
           subject?: string
           tenant_id?: string
           updated_at?: string
@@ -13327,6 +13330,10 @@ export type Database = {
         }[]
       }
       sign_template_uses: { Args: { _template_id: string }; Returns: Json }
+      sign_template_set_single_use: {
+        Args: { _template_id: string }
+        Returns: undefined
+      }
       sign_undo_send: { Args: { _envelope_id: string }; Returns: boolean }
       sign_unschedule: { Args: { _envelope_id: string }; Returns: undefined }
       sign_value_variant: {
@@ -13806,7 +13813,7 @@ export type Database = {
         | "director"
         | "vp"
         | "c_level"
-      sign_kind: "customer" | "candidate" | "member"
+      sign_kind: "customer" | "candidate" | "member" | "standalone"
       sign_recipient_role: "signer" | "approver" | "cc"
       sign_recipient_status:
         | "waiting"
@@ -13815,7 +13822,13 @@ export type Database = {
         | "signed"
         | "approved"
         | "declined"
-      sign_source: "deal" | "company" | "ats_offer" | "candidate" | "member"
+      sign_source:
+        | "deal"
+        | "company"
+        | "ats_offer"
+        | "candidate"
+        | "member"
+        | "standalone"
       sign_status:
         | "draft"
         | "scheduled"
@@ -14243,7 +14256,7 @@ export const Constants = {
         "vp",
         "c_level",
       ],
-      sign_kind: ["customer", "candidate", "member"],
+      sign_kind: ["customer", "candidate", "member", "standalone"],
       sign_recipient_role: ["signer", "approver", "cc"],
       sign_recipient_status: [
         "waiting",
@@ -14253,7 +14266,14 @@ export const Constants = {
         "approved",
         "declined",
       ],
-      sign_source: ["deal", "company", "ats_offer", "candidate", "member"],
+      sign_source: [
+        "deal",
+        "company",
+        "ats_offer",
+        "candidate",
+        "member",
+        "standalone",
+      ],
       sign_status: [
         "draft",
         "scheduled",

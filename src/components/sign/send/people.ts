@@ -1,5 +1,5 @@
 import { okEmail } from '@/lib/sign/templates'
-import type { SendRole } from '@/lib/sign/send'
+import type { SendKind, SendRole } from '@/lib/sign/send'
 
 export type Source = NonNullable<SendRole['source']>
 export type People = Record<string, { name: string; email: string }>
@@ -15,7 +15,7 @@ export function personOf(r: SendRole, people: People) {
 }
 
 /** Why a locked role has nobody to send to, or null. */
-export function lockedProblem(r: SendRole, isOffer: boolean, kind: 'candidate' | 'member'): string | null {
+export function lockedProblem(r: SendRole, isOffer: boolean, kind: SendKind): string | null {
   if (!isLocked(r) || (r.email && okEmail(r.email))) return null
   switch (sourceOf(r)) {
     case 'hiring_manager':

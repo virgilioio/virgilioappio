@@ -139,6 +139,7 @@ export default function SignTemplates() {
             <MetaDot color="#6F3FF5">{kindCount('candidate')} candidate</MetaDot>
             <MetaDot color="#12B886">{kindCount('member')} member</MetaDot>
             <MetaDot color="#0d0d09">{kindCount('customer')} customer</MetaDot>
+            <MetaDot color="#8B8F9E">{kindCount('standalone')} general</MetaDot>
             <span className="tabular-nums">{live.reduce((a, t) => a + t.uses, 0)} envelopes sent from templates</span>
           </>
         )

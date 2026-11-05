@@ -7,6 +7,7 @@ import { WizardSheet } from '@/components/ui/wizard-sheet'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabaseClient'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import {
   STEP,
@@ -37,7 +38,22 @@ const STEP_SUB = [
   'One last look. Jump back to any step to change it.',
 ]
 
-export type WizardMode = 'new' | 'edit' | 'duplicate'
+// A one-off envelope (2026-11-06) uses the same steps; it's saved as a hidden, single-use General template.
+const ENVELOPE_SUB: Partial<Record<number, string>> = {
+  0: 'The name the signers see in their email, and the documents they sign.',
+  1: 'Who signs, in what order. You type in their names and emails when you send it, or set one here.',
+  4: 'One last look. Next you check who gets it and send it.',
+}
+const stepTitle = (i: number, envelope: boolean) =>
+  envelope && i === STEP.info ? 'Envelope info' : envelope && i === STEP.review ? 'Review' : WIZARD_STEPS[i]
+
+/** Mark the template as a one-off envelope's: never listed, archived when it's sent (admins only). */
+async function markSingleUse(templateId: string) {
+  const { error } = await supabase.rpc('sign_template_set_single_use', { _template_id: templateId })
+  if (error) throw error
+}
+
+export type WizardMode = 'new' | 'edit' | 'duplicate' | 'envelope'
 
 export function TemplateWizard({
   open,
@@ -45,6 +61,7 @@ export function TemplateWizard({
   mode,
   onClose,
   onSaved,
+  onEnvelopeReady,
 }: {
   open: boolean
   init: TplDraft | null
@@ -52,6 +69,8 @@ export function TemplateWizard({
   onClose: () => void
   /** After a successful save (the Templates page brings the card in, or flashes it). */
   onSaved?: (id: string, how: 'created' | 'saved') => void
+  /** Envelope mode: the one-off is saved and ready to send (the caller opens the send sheet). */
+  onEnvelopeReady?: (d: TplDraft) => void
 }) {
   const { organizationId, user } = useAuth()
   const { profile } = useUserProfile()
@@ -99,6 +118,7 @@ export function TemplateWizard({
     setSeen((x) => new Set(x).add(i))
   }
   const isEdit = mode === 'edit'
+  const envelope = mode === 'envelope'
   const me = {
     name: [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user?.email?.split('@')[0] || '',
     email: user?.email ?? '',
@@ -110,6 +130,13 @@ export function TemplateWizard({
     setSaveError(null)
     try {
       await saveTemplate(d, organizationId)
+      if (envelope) {
+        await markSingleUse(d.id)
+        await qc.invalidateQueries({ queryKey: ['sign'] })
+        setDirty(false)
+        onEnvelopeReady?.(d)
+        return
+      }
       await qc.invalidateQueries({ queryKey: ['sign'] })
       toast.success(isEdit ? `Template saved · ${d.name.trim()}` : `Template created · ${d.name.trim()}`, {
         description: isEdit
@@ -124,14 +151,20 @@ export function TemplateWizard({
     } catch (e) {
       // The database's own checks (GSN12) say exactly what's wrong; anything else is a connection problem.
       const err = e as { code?: string; message?: string }
-      setSaveError(err?.code === 'GSN12' && err.message ? err.message : 'Couldn’t save the template. Nothing was lost; try again.')
+      setSaveError(
+        (err?.code === 'GSN12' || err?.code === 'GSN17') && err.message
+          ? err.message
+          : envelope
+          ? 'Couldn’t save the envelope. Nothing was lost; try again.'
+          : 'Couldn’t save the template. Nothing was lost; try again.',
+      )
     } finally {
       setBusy(false)
     }
   }
 
-  const title = WIZARD_STEPS[step]
-  const eyebrow = `${isEdit ? 'Edit template' : mode === 'duplicate' ? 'Duplicate template' : 'New template'} · step ${step + 1} of ${WIZARD_STEPS.length}`
+  const title = stepTitle(step, envelope)
+  const eyebrow = `${envelope ? 'New envelope' : isEdit ? 'Edit template' : mode === 'duplicate' ? 'Duplicate template' : 'New template'} · step ${step + 1} of ${WIZARD_STEPS.length}`
   const docs = e.docs.length + e.written.length
   const formName = forms.data?.find((f) => f.id === d.offer_form_id)?.name
   const cov = d.kind === 'candidate' && d.offer_form_id && formTags.data?.length ? offerCoverage(usedTags(e), formTags.data, d.not_needed) : null
@@ -181,11 +214,11 @@ export function TemplateWizard({
           </Badge>
         ) : undefined
       }
-      subtitle={step === STEP.document ? documentSub(e) : STEP_SUB[step]}
-      steps={WIZARD_STEPS.map((t, i) => {
+      subtitle={step === STEP.document ? documentSub(e) : (envelope && ENVELOPE_SUB[step]) || STEP_SUB[step]}
+      steps={WIZARD_STEPS.map((_, i) => {
         const mine = issues.filter((x) => x.step === i)
         return {
-          title: t,
+          title: stepTitle(i, envelope),
           state: !reachable(i)
             ? 'locked'
             : i < STEP.review && mine.length && (seen.has(i) || isEdit) && i !== step
@@ -198,14 +231,18 @@ export function TemplateWizard({
       current={step}
       onStep={go}
       railNote={
-        isEdit
+        envelope
+          ? { title: 'Sent once', body: 'It isn’t saved as a template. To reuse a document, make a General template in Sign › Templates.' }
+          : isEdit
           ? { title: 'Live template', body: 'Changes apply to new envelopes only. Envelopes already sent aren’t affected.' }
           : { title: 'Not saved yet', body: 'Close any time. You’ll be asked before anything is discarded.' }
       }
       hint={hint}
       dirty={dirty}
       guard={
-        isEdit
+        envelope
+          ? { title: 'Discard this envelope?', detail: 'Nothing has been sent.' }
+          : isEdit
           ? { title: `Discard your changes to ${d.name.trim() || 'this template'}?`, detail: 'The saved version stays as it is.' }
           : { title: 'Discard this template?', detail: 'Nothing has been saved, so it won’t appear in Templates.' }
       }
@@ -220,12 +257,14 @@ export function TemplateWizard({
       }
       primary={
         step < STEP.review
-          ? { label: step === STEP.review - 1 ? 'Review & save' : 'Continue', onClick: () => go(step + 1), disabled: !!issue || busy }
+          ? { label: step === STEP.review - 1 ? (envelope ? 'Review' : 'Review & save') : 'Continue', onClick: () => go(step + 1), disabled: !!issue || busy }
+          : envelope
+          ? { label: 'Continue to send', onClick: save, disabled: anyIssue, loading: busy, className: 'min-w-[150px]' }
           : { label: isEdit ? 'Save changes' : 'Save template', icon: Check, onClick: save, disabled: anyIssue, loading: busy, className: 'min-w-[140px]' }
       }
     >
       {step === STEP.info && organizationId && (
-        <InfoStep d={d} set={set} tenantId={organizationId} onWrite={reachable(STEP.document) ? () => go(STEP.document) : undefined} />
+        <InfoStep d={d} set={set} tenantId={organizationId} envelope={envelope} onWrite={reachable(STEP.document) ? () => go(STEP.document) : undefined} />
       )}
       {step === STEP.signers && <RolesStep d={d} set={set} me={me} />}
       {step === STEP.document && <DocumentStep d={e} set={set} />}

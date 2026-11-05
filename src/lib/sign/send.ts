@@ -15,6 +15,14 @@ export type SendSource =
   | { type: 'member'; id: string }
   /** An offer going out for signature (2026-10-17): gated by offer_can_send, filled from the offer. */
   | { type: 'ats_offer'; id: string; candidateId: string; jobId: string; formId: string | null }
+  /**
+   * A General agreement (2026-11-06): no record, so the id is the workspace's. Admins only.
+   * `templateId` keeps the sheet on one template (a one-off envelope's own).
+   */
+  | { type: 'standalone'; id: string; templateId?: string | null }
+
+/** Who an agreement sent from the ATS is for (customer agreements go out from Gio Sales). */
+export type SendKind = 'candidate' | 'member' | 'standalone'
 
 /** Why an offer can't be sent right now (offer_can_send). */
 export type OfferSendReason =
@@ -123,17 +131,21 @@ export function templateFit(t: SendTemplate, source: SendSource | null): Templat
   return 'other_form'
 }
 
-const kindOf = (s: SendSource): SignKind => (s.type === 'member' ? 'member' : 'candidate')
-const jobOf = (s: SendSource | null) => (s && s.type !== 'member' ? s.jobId : null)
+export const kindOf = (s: SendSource): SendKind => (s.type === 'member' ? 'member' : s.type === 'standalone' ? 'standalone' : 'candidate')
+const jobOf = (s: SendSource | null) => (s && 'jobId' in s ? s.jobId : null)
 
-/** Live ATS templates of the record's type (members can read these; RLS decides). */
+/**
+ * Live ATS templates of the record's type (members can read these; RLS decides).
+ * One-off envelopes' templates never show, except the one a sheet is kept on.
+ */
 export function useSendTemplates(source: SendSource | null) {
   const kind = source ? kindOf(source) : null
+  const only = source?.type === 'standalone' ? source.templateId ?? null : null
   return useQuery({
-    queryKey: ['sign', 'send-templates', kind],
+    queryKey: ['sign', 'send-templates', kind, only],
     enabled: !!kind,
     queryFn: async (): Promise<SendTemplate[]> => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('sign_templates')
         .select(`
           id, name, description, kind, ordered, subject, body, offer_form_id, offer_fields_not_needed,
@@ -145,7 +157,8 @@ export function useSendTemplates(source: SendSource | null) {
         .eq('app', 'ats')
         .eq('kind', kind!)
         .is('archived_at', null)
-        .order('name')
+      q = only ? q.eq('id', only) : q.eq('single_use', false)
+      const { data, error } = await q.order('name')
       if (error) throw error
       type Raw = Pick<SendTemplate, 'id' | 'name' | 'description' | 'kind' | 'ordered' | 'subject' | 'body' | 'offer_form_id'> & {
         offer_fields_not_needed: string[] | null
@@ -308,7 +321,7 @@ export function useRecordEnvelopes(source: SendSource | null) {
           ? q.eq('ats_candidate_id', source!.id).eq('ats_job_id', source!.jobId)
           : source!.type === 'ats_offer'
             ? q.eq('ats_candidate_id', source!.candidateId).eq('ats_job_id', source!.jobId)
-            : q.eq('source_type', 'member').eq('source_id', source!.id)
+            : q.eq('source_type', source!.type).eq('source_id', source!.id)
       const { data, error } = await q.order('created_at', { ascending: false }).limit(50)
       if (error) throw error
       return ((data ?? []) as unknown as EnvelopeRow[]).map((e) => ({

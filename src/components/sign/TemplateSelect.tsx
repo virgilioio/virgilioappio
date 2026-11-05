@@ -4,6 +4,7 @@ import { Check, ChevronsUpDown, LayoutTemplate, Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { coverage, sourceIcon, subline, useOfferFormTags, useOfferForms, type OfferFormTag, type PickTemplate } from '@/lib/sign/templates'
+import type { SendKind } from '@/lib/sign/send'
 
 /**
  * The template picker in Send for signature (2026-10-17): a field that opens a
@@ -102,7 +103,7 @@ export function TemplateSelect<T extends PickTemplate>({
   value: string | null
   onChange: (id: string) => void
   /** Who the agreement is for, for the "any" labels. */
-  kind?: 'candidate' | 'member'
+  kind?: SendKind
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -115,7 +116,7 @@ export function TemplateSelect<T extends PickTemplate>({
   const forms = useOfferForms()
   const formName = forms.data?.find((f) => f.id === offerFormId)?.name ?? 'this offer’s form'
   const formTags = useOfferFormTags(mode === 'offer' ? offerFormId : null)
-  const anyLabel = mode === 'offer' ? 'Any offer' : kind === 'member' ? 'Any member' : 'Any candidate'
+  const anyLabel = mode === 'offer' ? 'Any offer' : kind === 'member' ? 'Any member' : kind === 'standalone' ? 'General' : 'Any candidate'
 
   const status = (t: PickTemplate) => statusOf(t, offerFormId, mode, formTags.data, anyLabel)
 
@@ -130,7 +131,7 @@ export function TemplateSelect<T extends PickTemplate>({
             { key: 'any', label: 'Works with any offer', items: hit.filter((t) => !t.offer_form_id) },
             { key: 'other', label: 'Linked to other offer forms', items: hit.filter((t) => t.offer_form_id && t.offer_form_id !== offerFormId) },
           ]
-        : [{ key: 'any', label: kind === 'member' ? 'Works with any member' : 'Works with any candidate', items: hit }]
+        : [{ key: 'any', label: kind === 'member' ? 'Works with any member' : kind === 'standalone' ? 'General agreements' : 'Works with any candidate', items: hit }]
     return out.filter((g) => g.items.length)
   }, [pool, query, mode, formName, offerFormId, kind])
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups])

@@ -18,6 +18,7 @@ export const ENVELOPE_KIND: Record<SignKind, { label: string }> = {
   customer: { label: 'Customer' },
   candidate: { label: 'Candidate' },
   member: { label: 'Member' },
+  standalone: { label: 'General' },
 }
 
 export type EnvelopeFilter = 'all' | 'draft' | 'scheduled' | 'sent' | 'completed' | 'closed'

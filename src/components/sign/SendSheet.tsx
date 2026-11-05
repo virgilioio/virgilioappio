@@ -16,8 +16,9 @@ import { DateTimePickerVirgilio } from '@/components/ui/datetime-picker-virgilio
 import { cn } from '@/lib/utils'
 import { undoToast } from '@/lib/undoToast'
 import { shortDateTime } from '@/lib/sign/status'
-import { okEmail, tagLabel, useOfferForms } from '@/lib/sign/templates'
+import { KIND_LABEL, okEmail, tagLabel, useOfferForms } from '@/lib/sign/templates'
 import {
+  kindOf,
   offerSendRefusal,
   sendEnvelope,
   sendErrorMessage,
@@ -69,6 +70,8 @@ export function SendSheet({
   recordLabel,
   isAdmin,
   restore,
+  onEditOneOff,
+  onSent,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -77,6 +80,10 @@ export function SendSheet({
   isAdmin: boolean
   /** Reopen with what was entered before (after Undo). */
   restore?: SendDraft | null
+  /** A one-off envelope: "Edit document" goes back to its editor instead of the template sheet. */
+  onEditOneOff?: () => void
+  /** Called once the envelope is saved, before the sheet closes. */
+  onSent?: (envelopeId: string) => void
 }) {
   const qc = useQueryClient()
   const [d, setD] = useState<SendDraft>(blank)
@@ -89,7 +96,9 @@ export function SendSheet({
   const templates = useSendTemplates(open ? source : null)
   const preview = useSendPreview(open ? d.templateId : null, source)
   const tpl = templates.data?.find((t) => t.id === d.templateId) ?? null
-  const kind = source.type === 'member' ? 'member' : 'candidate'
+  const kind = kindOf(source)
+  const general = kind === 'standalone'
+  const oneOff = source.type === 'standalone' && !!source.templateId
   const isOffer = source.type === 'ats_offer'
   // The offer gate, before a template is even picked (the preview carries it too).
   const gate = useOfferGate(open && isOffer ? source.id : null)
@@ -203,6 +212,7 @@ export function SendSheet({
         subject: d.subject !== null && d.subject.trim() !== tpl?.subject ? d.subject.trim() : null,
         body: d.body !== null && d.body !== tpl?.body ? d.body : null,
       })
+      onSent?.(id)
       await qc.invalidateQueries({ queryKey: ['sign'] })
       setDirty(false)
       setShowPreview(false)
@@ -222,7 +232,7 @@ export function SendSheet({
                 toast.error('Too late to undo', { description: 'It has already gone out.' })
                 return
               }
-              window.dispatchEvent(new CustomEvent('gio-sign-reopen', { detail: { sourceId: source.id, draft: sent } }))
+              window.dispatchEvent(new CustomEvent('gio-sign-reopen', { detail: { sourceId: source.id, templateId: sent.templateId, draft: sent } }))
             } catch {
               toast.error('Couldn’t undo the send')
             }
@@ -246,8 +256,8 @@ export function SendSheet({
       open={open}
       onOpenChange={(o) => (o ? onOpenChange(true) : close())}
       width={660}
-      eyebrow={kind === 'member' ? 'Member agreement' : 'Send for signature'}
-      title={kind === 'member' ? 'Send agreement' : isOffer ? 'Send offer for signature' : 'Send an agreement'}
+      eyebrow={kind === 'member' ? 'Member agreement' : general ? 'General agreement' : 'Send for signature'}
+      title={kind === 'member' ? 'Send agreement' : general ? 'New envelope' : isOffer ? 'Send offer for signature' : 'Send an agreement'}
       subtitle={
         isOffer && offerForm ? (
           <>
@@ -296,16 +306,22 @@ export function SendSheet({
 
       {/* Template */}
       <FormSection
-        title="Template"
+        title={oneOff ? 'Document' : 'Template'}
         subtitle={
-          isOffer
+          oneOff
+            ? 'Sent once and never listed as a template. Edit it to change the documents, fields or who signs.'
+            : isOffer
             ? 'Templates linked to this offer’s form are listed first.'
-            : kind === 'member'
+            : kind === 'member' || general
             ? 'The documents, fields and who signs come from the template.'
             : 'Agreements that work with any candidate. They don’t need offer approval.'
         }
         action={
-          isAdmin && d.templateId ? (
+          oneOff && onEditOneOff ? (
+            <Button variant="ghost" size="sm" icon={SquarePen} onClick={onEditOneOff} disabled={busy}>
+              Edit document
+            </Button>
+          ) : isAdmin && d.templateId ? (
             <Button variant="ghost" size="sm" icon={SquarePen} onClick={() => setEditing(d.templateId)}>
               Edit template
             </Button>
@@ -327,7 +343,7 @@ export function SendSheet({
           </p>
         ) : !sendable.length && !groups.other_form.length ? (
           <p className="font-inter text-[12.5px] leading-relaxed text-text-secondary">
-            There are no {kind} templates yet.{' '}
+            There are no {KIND_LABEL[kind].toLowerCase()} templates yet.{' '}
             {isAdmin ? (
               <Link to="/sign/templates" className="font-medium text-virgilio-purple underline-offset-2 hover:underline">
                 Create one in Sign › Templates
@@ -350,7 +366,8 @@ export function SendSheet({
 
       <Collapsible open={!!tpl}>
         <CollapsibleContent>
-          {tpl && (
+          {/* A General agreement has no record: nothing comes from one. */}
+          {tpl && !general && (
             <FormSection
               title={isOffer ? 'From the offer' : 'From the record'}
               subtitle={
@@ -433,7 +450,7 @@ export function SendSheet({
                       />
                     </label>
                     <p className="font-inter text-[11.5px] text-text-tertiary">
-                      Tags like <TagText text="{{first_name}}" label={label} /> fill in when it’s sent. The documents don’t change.
+                      Tags like <TagText text={general ? '{{sender_first}}' : '{{first_name}}'} label={label} /> fill in when it’s sent. The documents don’t change.
                     </p>
                   </div>
                 </FormSection>

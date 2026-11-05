@@ -60,7 +60,7 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-inter text-[11px] font-semibold uppercase tracking-[0.08em] text-[#B5B9C4]">
-            {linked ? formName : d.kind === 'candidate' ? 'Any candidate' : d.kind === 'member' ? 'Team member' : 'Customer'} · {source}
+            {linked ? formName : d.kind === 'candidate' ? 'Any candidate' : d.kind === 'member' ? 'Team member' : d.kind === 'standalone' ? 'General · no record' : 'Customer'} · {source}
           </p>
           <h2 className="mt-1 line-clamp-2 font-poppins text-[22px] font-semibold leading-tight tracking-[-0.03em]">
             {d.name.trim() || 'Untitled template'}

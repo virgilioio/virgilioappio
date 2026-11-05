@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, MoreHorizontal, Building2, CalendarClock, IdCard, PenLine, RotateCcw, Search, ShieldCheck, UserRound, X } from 'lucide-react'
+import { ArrowRight, MoreHorizontal, Building2, CalendarClock, FileText, IdCard, PenLine, RotateCcw, Search, ShieldCheck, UserRound, X } from 'lucide-react'
 
 import { ListTabs } from '@/components/ui/list-tabs'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
@@ -28,7 +28,7 @@ import {
   type EnvelopeFilter,
 } from '@/lib/sign/status'
 
-const KIND_ICON: Record<SignKind, typeof Building2> = { customer: Building2, candidate: UserRound, member: IdCard }
+const KIND_ICON: Record<SignKind, typeof Building2> = { customer: Building2, candidate: UserRound, member: IdCard, standalone: FileText }
 const COLS = 8
 
 const TAB_EMPTY: Record<EnvelopeFilter, { title: string; body: string }> = {

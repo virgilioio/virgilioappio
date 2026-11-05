@@ -43,11 +43,14 @@ export function InfoStep({
   d,
   set,
   tenantId,
+  envelope = false,
   onWrite,
 }: {
   d: TplDraft
   set: (fn: (d: TplDraft) => TplDraft) => void
   tenantId: string
+  /** A one-off envelope: always General, so no type, app or description to pick. */
+  envelope?: boolean
   /** Opens the Document step, where the document is written; undefined while this step has a problem. */
   onWrite?: () => void
 }) {
@@ -118,53 +121,75 @@ export function InfoStep({
 
   return (
     <div className="max-w-[720px]">
-      <FormSection title="Basics" subtitle="The name and type people see when picking a template.">
+      <FormSection
+        title="Basics"
+        subtitle={envelope ? 'The name signers see in their email and on the signing page.' : 'The name and type people see when picking a template.'}
+      >
         <div className="flex flex-col gap-5">
-          <Field label="Template name" required htmlFor="tpl-name">
+          <Field label={envelope ? 'Envelope name' : 'Template name'} required htmlFor="tpl-name">
             <Input
               id="tpl-name"
               value={d.name}
               maxLength={120}
               autoFocus
-              placeholder="e.g. IC · Sales w/ Commission Agreement"
+              placeholder={envelope ? 'e.g. Office lease · Suite 4B' : 'e.g. IC · Sales w/ Commission Agreement'}
               onChange={(e) => {
                 const v = e.target.value
                 set((x) => ({ ...x, name: v }))
               }}
             />
           </Field>
-          <Field label="Type" required help="Decides which data fields this template can use. Offer forms are only for candidates.">
-            <Seg
+          {!envelope && (
+            <Field
               label="Type"
-              value={d.kind}
-              onChange={(k) => set((x) => withKind(x, k as SignKind))}
-              options={[
-                { value: 'customer', label: 'Customer', icon: Building2 },
-                { value: 'candidate', label: 'Candidate', icon: UserRound },
-                { value: 'member', label: 'Member', icon: IdCard },
-              ]}
-            />
-          </Field>
-          <Field
-            label="Used in"
-            required
-            help={
-              d.app === 'sales'
-                ? 'Only Sales reps see it, on a deal in Gio Sales. It never shows in the ATS.'
-                : 'Only shows in the ATS, on a candidate or for a member. Sales reps never see it.'
-            }
-          >
-            <Seg
-              label="Used in"
-              value={d.app}
-              onChange={(a) => set((x) => ({ ...x, app: a as SignApp, offer_form_id: a === 'ats' ? x.offer_form_id : null }))}
-              options={[
-                { value: 'ats', label: APP_LABEL.ats },
-                { value: 'sales', label: APP_LABEL.sales },
-              ]}
-            />
-          </Field>
+              required
+              help={
+                d.kind === 'standalone'
+                  ? 'Not tied to a candidate, member or deal. Admins send it from Sign › Envelopes and type in who signs.'
+                  : 'Decides which data fields this template can use. Offer forms are only for candidates.'
+              }
+            >
+              <Seg
+                label="Type"
+                value={d.kind}
+                onChange={(k) => set((x) => withKind(x, k as SignKind))}
+                options={[
+                  { value: 'customer', label: 'Customer', icon: Building2 },
+                  { value: 'candidate', label: 'Candidate', icon: UserRound },
+                  { value: 'member', label: 'Member', icon: IdCard },
+                  { value: 'standalone', label: 'General', icon: FileText },
+                ]}
+              />
+            </Field>
+          )}
+          {/* General agreements are sent from the ATS only (a one-off envelope has no such fields at all). */}
+          {!envelope && (
+          <Collapsible open={d.kind !== 'standalone'}>
+            <CollapsibleContent>
+              <Field
+                label="Used in"
+                required
+                help={
+                  d.app === 'sales'
+                    ? 'Only Sales reps see it, on a deal in Gio Sales. It never shows in the ATS.'
+                    : 'Only shows in the ATS, on a candidate or for a member. Sales reps never see it.'
+                }
+              >
+                <Seg
+                  label="Used in"
+                  value={d.app}
+                  onChange={(a) => set((x) => ({ ...x, app: a as SignApp, offer_form_id: a === 'ats' ? x.offer_form_id : null }))}
+                  options={[
+                    { value: 'ats', label: APP_LABEL.ats },
+                    { value: 'sales', label: APP_LABEL.sales },
+                  ]}
+                />
+              </Field>
+            </CollapsibleContent>
+          </Collapsible>
+          )}
           {/* Only candidate templates link to an offer form; the field opens and closes in place. */}
+          {!envelope && (
           <Collapsible open={showForm}>
             <CollapsibleContent>
               <Field label="Offer form" help="When an offer uses this form, this template is listed first, and its fields fill in from the offer.">
@@ -204,19 +229,22 @@ export function InfoStep({
               </Field>
             </CollapsibleContent>
           </Collapsible>
-          <Field label="Description" optional htmlFor="tpl-desc">
-            <Textarea
-              id="tpl-desc"
-              rows={2}
-              maxLength={500}
-              value={d.description}
-              placeholder="When to use it, e.g. Independent contractors in sales roles"
-              onChange={(e) => {
-                const v = e.target.value
-                set((x) => ({ ...x, description: v }))
-              }}
-            />
-          </Field>
+          )}
+          {!envelope && (
+            <Field label="Description" optional htmlFor="tpl-desc">
+              <Textarea
+                id="tpl-desc"
+                rows={2}
+                maxLength={500}
+                value={d.description}
+                placeholder="When to use it, e.g. Independent contractors in sales roles"
+                onChange={(e) => {
+                  const v = e.target.value
+                  set((x) => ({ ...x, description: v }))
+                }}
+              />
+            </Field>
+          )}
         </div>
       </FormSection>
 

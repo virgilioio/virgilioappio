@@ -3,10 +3,10 @@ import { CircleX, Copy, Lock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { okEmail } from '@/lib/sign/templates'
-import type { SendRole } from '@/lib/sign/send'
+import type { SendKind, SendRole } from '@/lib/sign/send'
 import { isLocked, lockedProblem, sourceOf, type People, type Source } from './people'
 
-function sourcePill(s: Source, isOffer: boolean, kind: 'candidate' | 'member') {
+function sourcePill(s: Source, isOffer: boolean, kind: SendKind) {
   switch (s) {
     case 'record':
       return isOffer ? 'From the offer' : kind === 'member' ? 'From the record' : 'From the candidate'
@@ -38,7 +38,7 @@ export function WhoSigns({
   roles: SendRole[]
   people: People
   isOffer: boolean
-  kind: 'candidate' | 'member'
+  kind: SendKind
   touched: Record<string, boolean>
   onTouch: (id: string) => void
   onChange: (id: string, p: { name: string; email: string }) => void

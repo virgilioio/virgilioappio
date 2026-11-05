@@ -97,6 +97,8 @@ export interface TplDraft {
 }
 
 export interface TemplateRow extends TplDraft {
+  /** A one-off envelope's template (2026-11-06): never listed, archived once it's sent. */
+  single_use?: boolean
   created_at: string
   updated_at: string
   archived_at: string | null
@@ -106,7 +108,7 @@ export interface TemplateRow extends TplDraft {
 /* Constants                                                                  */
 /* ------------------------------------------------------------------------- */
 
-export const KIND_LABEL: Record<SignKind, string> = { customer: 'Customer', candidate: 'Candidate', member: 'Member' }
+export const KIND_LABEL: Record<SignKind, string> = { customer: 'Customer', candidate: 'Candidate', member: 'Member', standalone: 'General' }
 export const APP_LABEL: Record<SignApp, string> = { ats: 'Gio ATS', sales: 'Gio Sales' }
 
 /** Role fills, in the order roles are added (from the Sign design). */
@@ -174,6 +176,8 @@ export const DATA_TAGS: Record<SignKind, [string, string][]> = {
     ['role', 'Role'],
     ['email', 'Member email'],
   ],
+  // A General agreement (2026-11-06) belongs to no record: only today's date and the sender.
+  standalone: [],
 }
 export const COMMON_TAGS: [string, string][] = [
   ['today', 'Today’s date'],
@@ -190,6 +194,10 @@ const EMAIL_ONLY_TAGS: Record<SignKind, [string, string][]> = {
   ],
   member: [
     ['first_name', 'First name'],
+    ['company', 'Your company'],
+    ['sender_first', 'Sender first name'],
+  ],
+  standalone: [
     ['company', 'Your company'],
     ['sender_first', 'Sender first name'],
   ],
@@ -336,12 +344,19 @@ export const ROLE_SOURCES: Record<SignKind, { value: FillFrom; label: string }[]
     { value: 'typed', label: 'From the deal, or typed in' },
     { value: 'fixed', label: 'Always the same person' },
   ],
+  // A General agreement has no record: every person is typed in, fixed, or the sender.
+  standalone: [
+    { value: 'typed', label: 'Typed in when sending' },
+    { value: 'fixed', label: 'Always the same person' },
+    { value: 'sender', label: 'Whoever sends it' },
+  ],
 }
 
 /** A role's source; roles saved before sources existed: the first open signer is the record's person, the rest are typed. */
 export function roleSource(d: Pick<TplDraft, 'kind' | 'roles'>, r: TplRole): FillFrom {
   if (r.fixed) return 'fixed'
   if (d.kind === 'customer') return 'typed'
+  if (d.kind === 'standalone') return r.fill_from === 'sender' ? 'sender' : 'typed'
   const firstOpen = d.roles.find((x) => x.role === 'signer' && !x.fixed)?.id
   return r.fill_from && r.fill_from !== 'fixed' ? r.fill_from : r.id === firstOpen ? 'record' : 'typed'
 }
@@ -354,6 +369,7 @@ export function roleSource(d: Pick<TplDraft, 'kind' | 'roles'>, r: TplRole): Fil
 export function fillFromFor(kind: SignKind, r: TplRole): FillFrom | null {
   if (r.fixed) return 'fixed'
   if (kind === 'customer') return null
+  if (kind === 'standalone') return r.fill_from === 'sender' ? 'sender' : 'typed'
   if (r.fill_from === 'hiring_manager' && kind !== 'candidate') return 'typed'
   return r.fill_from ?? null
 }
@@ -450,8 +466,12 @@ const DEFAULT_MESSAGE: Record<SignKind, { subject: string; body: string }> = {
     subject: 'Your member agreement',
     body: 'Hi {{name}},\n\nHere is your agreement as {{role}}. Review it and sign where marked.\n\nThanks,\n{{sender}}',
   },
+  standalone: {
+    subject: 'An agreement from {{company}} to sign',
+    body: 'Hi,\n\nHere is the agreement for you to review. Sign where marked, and reach out with any questions.\n\n{{sender_first}}',
+  },
 }
-const FIRST_ROLE: Record<SignKind, string> = { customer: 'Client signer', candidate: 'Candidate', member: 'Member' }
+const FIRST_ROLE: Record<SignKind, string> = { customer: 'Client signer', candidate: 'Candidate', member: 'Member', standalone: 'Signer' }
 
 export const uid = () => crypto.randomUUID()
 export const okEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
@@ -469,7 +489,7 @@ export function newDraft(kind: SignKind = 'candidate'): TplDraft {
     expiry_days: kind === 'candidate' ? 14 : 30,
     docs: [],
     written: [],
-    roles: [{ id: uid(), label: FIRST_ROLE[kind], role: 'signer', fixed: false, fill_from: kind === 'customer' ? null : 'record', name: '', email: '', color: ROLE_COLORS[0] }],
+    roles: [{ id: uid(), label: FIRST_ROLE[kind], role: 'signer', fixed: false, fill_from: kind === 'customer' ? null : kind === 'standalone' ? 'typed' : 'record', name: '', email: '', color: ROLE_COLORS[0] }],
     fields: [],
     uses: 0,
     offer_form_id: null,
@@ -488,7 +508,8 @@ export function withKind(d: TplDraft, kind: SignKind): TplDraft {
   return {
     ...d,
     kind,
-    app: kind === 'customer' ? 'sales' : d.app === 'sales' && d.kind === 'customer' ? 'ats' : d.app,
+    // Customer agreements go out from Gio Sales; General ones only from the ATS.
+    app: kind === 'customer' ? 'sales' : kind === 'standalone' || (d.app === 'sales' && d.kind === 'customer') ? 'ats' : d.app,
     ...(untouched ? DEFAULT_MESSAGE[kind] : null),
     roles: d.roles.map((r, i) => ({
       ...r,
@@ -750,6 +771,8 @@ export function useTemplates() {
       const { data, error } = await supabase
         .from('sign_templates')
         .select(TEMPLATE_SELECT)
+        // One-off envelopes' templates are never listed.
+        .eq('single_use', false)
         .order('updated_at', { ascending: false })
         .limit(500)
       if (error) throw error
