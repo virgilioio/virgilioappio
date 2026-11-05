@@ -226,7 +226,8 @@ function AppContent() {
             <Route path="/jobs/:jobId/pipeline" element={<PhoneSwitch phone={<PhoneJobGlance />}><JobDetail /></PhoneSwitch>} />
             <Route path="/jobs/:jobId/setup" element={<JobDetail />} />
             <Route path="/jobs/:jobId/review" element={<ApplicationReviewPage />} />
-            <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateLinkGuard><PhoneSwitch phone={<PhoneCandidateGlance />}><CandidateProfile /></PhoneSwitch></CandidateLinkGuard>} />
+            {/* Phones get the in-job profile too: it has its own phone layout (2026-11-04). */}
+            <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateLinkGuard><CandidateProfile /></CandidateLinkGuard>} />
             <Route path="/jobs/:jobId/suggested/:candidateId" element={<SuggestedCandidateProfile />} />
 
             <Route path="/candidates" element={<TalentPoolOnly what="Candidates"><PhoneSwitch phone={<PhoneCandidates />}><Candidates /></PhoneSwitch></TalentPoolOnly>} />

@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { MapPin, Monitor } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useScheduledBookings } from '@/hooks/useScheduledBookings'
+import { pipelineSectionOf, saveCandidateNavOrder } from '@/lib/candidateNavOrder'
 import { AgendaRow } from './PhoneAgenda'
 import { Initials, PhoneCard, PhoneEmpty, PhonePage, PhoneRow, PhoneSection, PhoneSkeletonRows, Pill } from './PhoneUI'
 
@@ -14,7 +15,7 @@ import { Initials, PhoneCard, PhoneEmpty, PhonePage, PhoneRow, PhoneSection, Pho
  * Moving people, editing the job and the board stay on the computer.
  */
 
-interface StageRow { id: string; position: number; custom_stage_name: string | null; stage: { stage_name: string | null } | null }
+interface StageRow { id: string; position: number; custom_stage_name: string | null; stage: { stage_name: string | null; stage_type: string | null } | null }
 interface PersonRow {
   id: string
   status: string | null
@@ -51,7 +52,7 @@ export default function PhoneJobGlance() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('job_hiring_stages')
-        .select('id, position, custom_stage_name, stage:job_stages(stage_name)')
+        .select('id, position, custom_stage_name, stage:job_stages(stage_name, stage_type)')
         .eq('job_id', jobId)
         .order('position', { ascending: true })
       if (error) throw error
@@ -84,6 +85,22 @@ export default function PhoneJobGlance() {
     }))
   }, [stages.data, people.data])
   const total = people.data?.length ?? 0
+
+  // Opening someone saves the group they're in (Application review, Recruiting or Offers)
+  // in the order this screen shows it, so the profile's ‹ › walk that list.
+  const navigate = useNavigate()
+  const stageTypeOf = (jhsId: string) => stages.data?.find((s) => s.id === jhsId)?.stage?.stage_type ?? undefined
+  const openPerson = (p: PersonRow) => {
+    const section = pipelineSectionOf(p, stageTypeOf)
+    if (section) {
+      const order = byStage
+        .flatMap((g) => g.people)
+        .filter((x) => pipelineSectionOf(x, stageTypeOf) === section)
+        .map((x) => x.candidate_id)
+      saveCandidateNavOrder(jobId, section, order)
+    }
+    navigate(`/jobs/${jobId}/candidates/${p.candidate_id}`, section ? { state: { navSection: section } } : undefined)
+  }
   const max = Math.max(1, ...byStage.map(s => s.people.length))
 
   if (job.isFetched && !job.data) {
@@ -161,7 +178,7 @@ export default function PhoneJobGlance() {
                     return (
                       <PhoneRow
                         key={p.id}
-                        to={`/jobs/${jobId}/candidates/${p.candidate_id}`}
+                        onClick={() => openPerson(p)}
                         leading={<Initials name={name} />}
                         title={name}
                         meta={[p.candidates?.current_job_title, p.candidates?.company_current].filter(Boolean).join(' · ') || undefined}

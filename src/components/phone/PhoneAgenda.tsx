@@ -64,7 +64,12 @@ export function AgendaRow({ b, next = false }: { b: ScheduledBooking; next?: boo
       </div>
       <span aria-hidden className={`h-9 w-[3px] shrink-0 rounded-full ${live || next ? 'bg-[#6F3FF5]' : 'bg-[#E7E8EE]'}`} />
       {b.candidate_id ? (
-        <Link to={`/candidates/${b.candidate_id}`} className="gio-pressable min-w-0 flex-1">{who}</Link>
+        <Link
+          to={b.job_id ? `/jobs/${b.job_id}/candidates/${b.candidate_id}` : `/candidates/${b.candidate_id}`}
+          className="gio-pressable min-w-0 flex-1"
+        >
+          {who}
+        </Link>
       ) : (
         <div className="min-w-0 flex-1">{who}</div>
       )}

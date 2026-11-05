@@ -1,3 +1,4 @@
+import { phoneQueueHref } from '@/lib/phoneLinks'
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ClipboardCheck, GitBranch, Inbox, Mail } from 'lucide-react'
@@ -23,6 +24,8 @@ export interface PhoneQueueItem {
   context: string
   urgency: 'overdue' | 'today' | 'normal'
   urgencyLabel: string
+  /** Where the row leads on a computer; a phone opens the in-job profile from it. */
+  href?: string
 }
 
 interface Props {
@@ -86,7 +89,7 @@ export function PhoneToday(p: Props) {
             return (
               <PhoneRow
                 key={q.id}
-                to={q.candidateId ? `/candidates/${q.candidateId}` : undefined}
+                to={q.candidateId ? phoneQueueHref(q.href, q.candidateId) : undefined}
                 leading={
                   <span className="relative inline-flex">
                     <Initials name={q.candidateName} />
