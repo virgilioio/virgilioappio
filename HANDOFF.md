@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-05 (ATS) — Intelligence by job and client — on the branch, waiting for Apply!
+
+- Allan asked to filter Intelligence and its widgets by job, client and more, to see insights for real searches. Agreed scope: everything (filter bar, new group-bys, Search view, Talent insights link); someone in several jobs counts once, except in Job and Client charts (once per job, with a note).
+- Migration `20261105200000_market_job_links.sql` (NOT applied; rename to the applied version): read-only `market_job_links(tenant)`. Dry run rolled back: admins and platform admins 1,651 links (69 jobs, 15 clients); members without a Recruiter or Sourcer seat and outsiders refused (42501); recruiters see every job their client access opens (0 rows outside `can_access_job_pipeline`); 63 of 69 jobs carry a pay range.
+- Known data gap: jobs saved without a salary period are read as monthly (as candidate salaries already are), so a yearly range typed without its period reads as monthly.
+- Screens and logic: see CLAUDE.md "Intelligence by job and client". Regenerate `types.ts` after applying (`MarketDataContext` calls the function untyped until then).
+
 ## Done 2026-11-05 (ATS) — Booking start times + phone taps open the in-job profile — on main
 
 - **Phone route:** on a phone, tapping a candidate in a job opened the standalone glance (`App.tsx` sent `/jobs/:job/candidates/:id` through `PhoneSwitch` → `PhoneCandidateGlance`), so the phone in-job profile shipped 2026-11-04 was never reached. The route is now `CandidateProfile` on every screen; `PhoneJobGlance` saves the section's order (`saveCandidateNavOrder`) and opens with `navSection`; Home's queue (`phoneQueueHref`, `src/lib/phoneLinks.ts`) and the agenda link to the in-job profile. My test harness had bypassed `PhoneSwitch`, which is how this was missed; the harness now copies the App routes.
