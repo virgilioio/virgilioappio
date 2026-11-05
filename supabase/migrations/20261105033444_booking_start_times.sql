@@ -16,15 +16,11 @@ alter table public.booking_configurations
 alter table public.booking_configurations
   alter column start_interval_minutes set default 30;
 alter table public.booking_configurations
-  drop constraint if exists booking_configurations_start_interval_check;
-alter table public.booking_configurations
   add constraint booking_configurations_start_interval_check
   check (start_interval_minutes is null or start_interval_minutes in (0, 15, 30, 60));
 
 alter table public.booking_event_types
   add column if not exists start_interval_minutes smallint;
-alter table public.booking_event_types
-  drop constraint if exists booking_event_types_start_interval_check;
 alter table public.booking_event_types
   add constraint booking_event_types_start_interval_check
   check (start_interval_minutes is null or start_interval_minutes in (0, 15, 30, 60));

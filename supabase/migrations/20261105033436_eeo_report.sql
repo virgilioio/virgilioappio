@@ -11,7 +11,7 @@
 --      Admins, workspace owners and platform admins only (can_view_eeo; GEE01).
 --   2. Nobody reads the table directly any more: the admin read rule now lets
 --      no rows through. Saving from the careers form (service role) and the
---      removal of answers with their candidate (on delete cascade) don't change.
+--      removal of answers with their candidate (the foreign key cascades) don't change.
 
 create or replace function public.eeo_report(
   p_tenant uuid,
