@@ -255,7 +255,7 @@ export function InfoStep({
               cardRef={(el) => (cards.current.written = el)}
               icon={PenLine}
               title="Write in Gio"
-              body="Draft the agreement here with headings, lists and offer fields inline."
+              body={`Draft the agreement here with headings, lists and ${d.kind === 'candidate' ? 'offer fields' : 'fields'} inline.`}
               bullets={['Text reflows around values of any length', 'Sections that only show when they apply']}
               checked={d.use_written}
               onToggle={() => toggle('written')}
@@ -264,7 +264,7 @@ export function InfoStep({
               cardRef={(el) => (cards.current.uploads = el)}
               icon={Upload}
               title="Upload a document"
-              body="Use an existing PDF and place offer fields on its pages."
+              body={`Use an existing PDF and place ${d.kind === 'candidate' ? 'offer fields' : 'fields'} on its pages.`}
               bullets={['Keeps your layout exactly as it is', 'Signer fields go wherever you drop them']}
               checked={d.use_uploads}
               onToggle={() => toggle('uploads')}
