@@ -12343,6 +12343,25 @@ export type Database = {
           req_id: string
         }[]
       }
+      market_job_links: {
+        Args: { p_tenant: string }
+        Returns: {
+          added_at: string
+          applied: boolean
+          budget_max_month_base: number
+          budget_min_month_base: number
+          candidate_id: string
+          client_id: string
+          client_name: string
+          job_id: string
+          job_status: string
+          job_title: string
+          rejection_reason: string
+          stage_name: string
+          stage_type: string
+          status: string
+        }[]
+      }
       market_past_companies: {
         Args: { p_tenant: string }
         Returns: {

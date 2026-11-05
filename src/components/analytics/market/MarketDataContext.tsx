@@ -88,9 +88,7 @@ export function MarketDataProvider({
     enabled: !!tenantId,
     staleTime: 5 * 60_000,
     queryFn: () => pages<JobLink>((from, to) =>
-      // `market_job_links` arrives in the generated types once the migration is applied.
-      (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => { range: (a: number, b: number) => PromiseLike<{ data: JobLink[] | null; error: unknown }> })
-        .call(supabase, 'market_job_links', { p_tenant: tenantId! }).range(from, to)),
+      supabase.rpc('market_job_links', { p_tenant: tenantId! }).range(from, to) as unknown as PromiseLike<{ data: JobLink[] | null; error: unknown }>),
   })
 
   const rows = useMemo(() => rowsQuery.data ?? [], [rowsQuery.data])
