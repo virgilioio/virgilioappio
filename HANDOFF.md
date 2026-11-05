@@ -112,18 +112,18 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-11-05 (ATS) — Booking start times + phone taps open the in-job profile — on the branch, waiting for Apply!
+## Done 2026-11-05 (ATS) — Booking start times + phone taps open the in-job profile — on main
 
 - **Phone route:** on a phone, tapping a candidate in a job opened the standalone glance (`App.tsx` sent `/jobs/:job/candidates/:id` through `PhoneSwitch` → `PhoneCandidateGlance`), so the phone in-job profile shipped 2026-11-04 was never reached. The route is now `CandidateProfile` on every screen; `PhoneJobGlance` saves the section's order (`saveCandidateNavOrder`) and opens with `navSection`; Home's queue (`phoneQueueHref`, `src/lib/phoneLinks.ts`) and the agenda link to the in-job profile. My test harness had bypassed `PhoneSwitch`, which is how this was missed; the harness now copies the App routes.
 - **Start times:** a booking link and each event type say when offered times may start: on the hour and half hour, on the hour only, every 15 minutes, or back to back (`start_interval_minutes` 30 · 60 · 15 · 0; null on a link is back to back, null on an event type is "same as the booking link"). Times on a grid count from midnight in the host's time zone, must fit before the day's end, and keep the buffer clear around existing events. Existing links keep back to back; new links start on the hour and half hour (column default 30). Settings: "Start times" in the link's Booking rules and in the event type's Meeting tab (`src/lib/bookingStartTimes.ts`).
-- Server: `supabase/functions/_shared/bookingSlots.ts` (slot generation and the free-slot filter, out of `get-booking-availability`; 7 tests) and `create-booking` accepting only times on the grid (`SLOT_NOT_ALIGNED`). Deploy both functions on Apply.
-- Migration `20261105150000_booking_start_times.sql` (NOT applied; rename to the applied version). Dry run rolled back: 49 links and 8 event types all stay null (back to back).
+- Server: `supabase/functions/_shared/bookingSlots.ts` (slot generation and the free-slot filter, out of `get-booking-availability`; 7 tests) and `create-booking` accepting only times on the grid (`SLOT_NOT_ALIGNED`). Deployed 2026-11-05: `get-booking-availability` v590, `create-booking` (see below).
+- Migration `20261105033444_booking_start_times.sql`, applied as written (the two `drop constraint if exists` lines were taken out first: the constraints didn't exist and the cloud connector refuses a `drop`). Live: default 30, both checks, 49 links and 8 event types still null (back to back). Types regenerated.
 
-## Done 2026-11-04 (ATS) — Self-identification report (totals only) — on the branch, waiting for Apply!
+## Done 2026-11-04 (ATS) — Self-identification report (totals only) — on main 2026-11-05
 
 - Allan found self-identification answers saved but shown nowhere (the per-person card lived only on the old candidate panel). After talking through the standard (keep it apart from hiring decisions; report in totals), he chose an admin-only report and no per-person view.
-- Migration `20261104210000_eeo_report.sql` (NOT applied; rename to the applied version): `eeo_report` and the table's admin read rule set to `using (false)`. Dry run rolled back: totals as expected (67 applications all time, 3 with answers), small groups hidden, direct reads 0, non-admin refused `GEE01`.
-- Screens: `SelfIdReport` at `/analytics/self-identification`, button in Analytics; the old `EeoResponseCard` and `useCandidateEeo` removed. Regenerate `types.ts` after applying (the hook calls the function untyped until then).
+- Migration `20261105033436_eeo_report.sql`, applied as written: `eeo_report` and the table's admin read rule set to `using (false)` (live: policy `false`, anon can't run it, authenticated can). Dry run rolled back: totals as expected (67 applications all time, 3 with answers), small groups hidden, direct reads 0, non-admin refused `GEE01`.
+- Screens: `SelfIdReport` at `/analytics/self-identification`, button in Analytics; the old `EeoResponseCard` and `useCandidateEeo` removed. Types regenerated; the hook calls `eeo_report` typed.
 - Test candidate "EEO Test (delete me)" (`1b66a67d-f338-4d0a-bf0a-41e6cabfc3f3`, Head of Marketing) is waiting for Allan to delete.
 - Known limit: one set of answers per candidate (a later application replaces the earlier answers).
 
