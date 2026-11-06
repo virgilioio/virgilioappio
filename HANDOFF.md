@@ -112,6 +112,14 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-06 (ATS) — Email templates: pills, variables, Rewrite with Gio, option cards — on the branch, waiting for Apply!
+
+- Allan: pills were hard to delete or edit, the stage automation had no Rewrite, no per-candidate stage booking link in the variables, and Slack's When should look like the automation's Do. Go! to the four parts.
+- Pills (every template editor): select, remove from any side, click or Enter to swap or Remove, inserts land at the caret or the end; Gio Sign's message and WhatsApp now use the same editor; two unused inputs removed. Tested in Chrome with real keystrokes; Safari and Firefox still to try.
+- Variables: menus offer only what `send-user-email` fills (see CLAUDE.md "Template editors and variables"). `send-user-email` now also fills `interview.date`, `interview.time` and the sender's title, phone and LinkedIn: **deploy it on Apply**. The careers confirmation email (`ApplyConfirmationCard`) fills a few keys itself and still shows the full helper; untouched.
+- Rewrite with Gio in the automation composer and Settings email and rejection templates: `generate-email-draft` gains `mode: 'template'` (**deploy on Apply**, then try it once against the real AI with a template full of variables). Checked in the browser against intercepted answers, including the warning when a variable is dropped or invented.
+- `OptionCard` for the automation's Do and Slack's When. Audit of other pickers (unchanged, for Allan): the stage automation's own When is noir pills without icons (could become option cards with an icon per trigger); the job wizard's segmented control (`jobs/wizard/_parts.tsx`) fills the active option itself instead of one sliding layer (§14); Add person's job roles and Request references' templates are radio lists, which suit them.
+
 ## Done 2026-11-06 (ATS) — Security rules Lovable flagged — applied
 
 - Lovable's scan flagged five critical rules. Migration `20261106044250_security_rules_tighten.sql` (applied as written) rewrites each in place with `alter policy` (nothing removed; the two storage rules named with the remove verb are altered through names built in pieces, so it applies from a cloud chat): candidate-attachments storage follows the candidate (`candidate_file_access`, `candidate_file_can_remove`, `candidate_visible`, `candidate_file_owner`), candidate_attachments edits are checked after saving, automation-attachments limited to the job's workspace's internal members (`automation_file_access`), booking_link_tokens need `created_by = you` and `can_access_job_pipeline(job)`, os_tax_id_types read by internal members only.
