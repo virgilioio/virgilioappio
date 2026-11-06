@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-06 (ATS) — Gio Fit queue: no description waits, no stalls — applied
+
+- Allan: the Educators job's candidates were created but Gio Fit never ran. Cause: the job (shared with the client) got 77 candidates at 20:32 and 20:40 UTC on Nov 5 and its description only at 21:24; `analyze-candidate-fit` answered "no_job_description" with a 200 and `process-fit-queue` closed every row as done, unscored. Catch-up: the 77 rows put back to pending; the old worker took five per run and was cut off at 150s (504) before releasing its lease or hopping, so a temporary pg_cron job (`educators-fit-catchup`, removed itself when done) freed dead leases and woke it every minute. All 86 candidates on the job were scored by 17:50 UTC; nothing failed. Javier moved most of them back to Application Review by hand meanwhile (not the queue).
+- Fix (Go! and Apply! together): migration `20261106211242_fit_queue_steady.sql` (applied as written: `fit_queue_release_waiting` + trigger `jobs_z_fit_queue_release` on a description change, `fit_queue_sweep()` + pg_cron `fit-queue-sweep` every 2 minutes) and `process-fit-queue` v60 (verify_jwt off, as before; one candidate per run, 170s lease, `waiting` when the job has no description, done only on `success`; rules in `_shared/fitQueue.ts` with unit tests). Types: `fit_queue_sweep` added.
+- Tests: rolled-back run on a real Educators row (a short description leaves it waiting; the real one puts it back to pending and wakes the queue once; an unrelated job edit doesn't; the sweep schedule is created; nothing left behind). Live after deploy: the worker answers 200 with nothing due; one scored Educators candidate re-queued as a re-score went sweep → worker → Gio Fit (stored score handed back unchanged) → done, lease released.
+- Not changed: Gio Fit started outside the queue (applications, adds from Find, the profile) still hits "no description" silently on a job without one; those candidates have no score until someone runs Gio Fit from the profile.
+
 ## Done 2026-11-06 (ATS) — Email templates: pills, variables, Rewrite with Gio, option cards — applied
 
 - Allan: pills were hard to delete or edit, the stage automation had no Rewrite, no per-candidate stage booking link in the variables, and Slack's When should look like the automation's Do. Go! to the four parts.
