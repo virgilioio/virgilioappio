@@ -45,10 +45,11 @@ export function RejectionEmailTemplateSheet({
   const isEditMode = !!templateId;
   const editingTemplate = templates.find(t => t.id === templateId);
 
+  // Variables go into the field you were last in (the subject or the body).
+  const [lastFocusedField, setLastFocusedField] = useState<'subject' | 'body'>('body');
   const handleInsertPlaceholder = (placeholder: string) => {
-    if (bodyRef.current) {
-      bodyRef.current.insertPlaceholder(placeholder);
-    }
+    if (lastFocusedField === 'subject') subjectRef.current?.insertPlaceholder(placeholder);
+    else bodyRef.current?.insertPlaceholder(placeholder);
   };
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export function RejectionEmailTemplateSheet({
                 id="subject"
                 value={formData.subject}
                 onChange={(value) => setFormData({ ...formData, subject: value })}
+                onFocus={() => setLastFocusedField('subject')}
                 placeholder="e.g., Update on your application for {{job.title}}"
               />
             </div>
@@ -126,6 +128,7 @@ export function RejectionEmailTemplateSheet({
                 ref={bodyRef}
                 value={formData.body}
                 onChange={(value) => setFormData({ ...formData, body: value })}
+                onFocus={() => setLastFocusedField('body')}
                 placeholder="Enter your rejection email content here. Use placeholders like {{candidate.first_name}} or {{job.title}}"
               />
             </div>

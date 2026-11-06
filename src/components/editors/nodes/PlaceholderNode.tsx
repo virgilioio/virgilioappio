@@ -17,8 +17,22 @@ import {
   $applyNodeReplacement,
   LexicalEditor,
 } from 'lexical';
-import { ReactNode } from 'react';
+import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection';
+import { useLexicalEditable } from '@lexical/react/useLexicalEditable';
+import { $getNodeByKey, COMMAND_PRIORITY_LOW, KEY_ENTER_COMMAND } from 'lexical';
+import { Check, Trash2 } from 'lucide-react';
 import { normalizePlaceholderKey } from '@/utils/templateUtils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { PillVariablesContext } from '../placeholderMenu';
 
 export type SerializedPlaceholderNode = Spread<
   {
@@ -27,16 +41,126 @@ export type SerializedPlaceholderNode = Spread<
   SerializedLexicalNode
 >;
 
-function PlaceholderComponent({ placeholderKey }: { placeholderKey: string }) {
-  return (
+/**
+ * A variable pill (2026-11-06): one unit. A click or the arrow keys select it (a
+ * ring), Backspace or Delete removes it, and a click or Enter on a selected pill
+ * opens a menu to swap it for another variable or remove it.
+ */
+function PlaceholderComponent({ placeholderKey, nodeKey }: { placeholderKey: string; nodeKey: NodeKey }) {
+  const [editor] = useLexicalComposerContext();
+  const editable = useLexicalEditable();
+  const [selected, setSelected, clearSelection] = useLexicalNodeSelection(nodeKey);
+  const variables = useContext(PillVariablesContext);
+  const [open, setOpen] = useState(false);
+
+  // Enter on a selected pill opens its menu.
+  useEffect(
+    () =>
+      editor.registerCommand(
+        KEY_ENTER_COMMAND,
+        (e: KeyboardEvent | null) => {
+          if (!selected || !editable) return false;
+          e?.preventDefault();
+          setOpen(true);
+          return true;
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
+    [editor, selected, editable],
+  );
+
+  const groups = useMemo(() => {
+    const out: { group: string; items: typeof variables }[] = [];
+    for (const v of variables) {
+      const g = v.group ?? '';
+      let bucket = out.find((x) => x.group === g);
+      if (!bucket) out.push((bucket = { group: g, items: [] }));
+      bucket.items.push(v);
+    }
+    return out;
+  }, [variables]);
+  const known = variables.some((v) => v.key === placeholderKey);
+  const label = variables.find((v) => v.key === placeholderKey)?.label;
+
+  const swap = (key: string) =>
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if (!$isPlaceholderNode(node)) return;
+      if (key !== node.getPlaceholderKey()) node.setPlaceholderKey(key);
+      node.selectNext(0, 0);
+    });
+  const remove = () =>
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if (!node) return;
+      node.selectPrevious();
+      node.remove();
+    });
+
+  const pill = (
     <span
       className="lexical-placeholder-badge"
       data-placeholder={placeholderKey}
+      data-selected={selected || undefined}
+      data-open={open || undefined}
       contentEditable={false}
       suppressContentEditableWarning
+      aria-label={label ? `Variable: ${label}` : `Variable ${placeholderKey}`}
+      onMouseDown={(e) => {
+        if (!editable) return;
+        // Select the pill itself, not a caret beside it.
+        e.preventDefault();
+        if (!e.shiftKey) clearSelection();
+        setSelected(true);
+      }}
     >
       {`{{${placeholderKey}}}`}
     </span>
+  );
+  if (!editable) return pill;
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+      <DropdownMenuTrigger asChild>{pill}</DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={6}
+        className="w-[260px] max-h-[min(340px,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto"
+        onCloseAutoFocus={(e) => {
+          // Back to the text, with the caret where the menu left it.
+          e.preventDefault();
+          editor.focus();
+        }}
+      >
+        {!known && (
+          <>
+            <DropdownMenuLabel>Not a variable this email fills in</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {groups.map((g, gi) => (
+          <div key={g.group || gi}>
+            {gi > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuLabel>{g.group ? g.group : 'Change to'}</DropdownMenuLabel>
+            {g.items.map((v) => (
+              <DropdownMenuItem key={v.key} onSelect={() => swap(v.key)}>
+                <span className="min-w-0 flex-1 truncate">{v.label}</span>
+                {v.key === placeholderKey && (
+                  <span className="gio-mrow-check" aria-hidden>
+                    <Check />
+                  </span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </div>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem data-danger onSelect={remove}>
+          <Trash2 />
+          <span className="min-w-0 flex-1 truncate">Remove</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -136,16 +260,17 @@ export class PlaceholderNode extends DecoratorNode<ReactNode> {
 
   // This is a decorator node - renders React component
   decorate(): ReactNode {
-    return <PlaceholderComponent placeholderKey={this.__placeholderKey} />;
+    return <PlaceholderComponent placeholderKey={this.__placeholderKey} nodeKey={this.__key} />;
   }
 
-  // Treat as atomic for selection (cursor moves around it, not into it)
+  // Inline and atomic: the caret moves around it, never into it. Not isolated, so the
+  // editor's own Backspace, Delete and arrow keys reach it (2026-11-06; isolated pills
+  // couldn't be removed from most caret positions).
   isInline(): boolean {
     return true;
   }
 
-  // Prevent cursor from entering
-  isIsolated(): boolean {
+  isKeyboardSelectable(): boolean {
     return true;
   }
 }

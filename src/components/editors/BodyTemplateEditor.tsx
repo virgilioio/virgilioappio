@@ -61,7 +61,9 @@ import { IconTip } from '@/components/ui/tooltip';
 import { BTN, FORMATTED_TEXT_STYLES, isMac } from '@/components/ui/formatted-text';
 import { lexicalTheme, LEXICAL_EDITOR_STYLES } from './lexicalTheme';
 import { PlaceholderNode, $createPlaceholderNode } from './nodes/PlaceholderNode';
-import { PlaceholderPlugin } from './plugins/PlaceholderPlugin';
+import { PlaceholderPlugin, insertPillInto } from './plugins/PlaceholderPlugin';
+import { DEFAULT_PILL_VARIABLES, PillVariablesContext, type PillVariable } from './placeholderMenu';
+import { CLEAR_HISTORY_COMMAND } from 'lexical';
 import { OnChangePlugin } from './plugins/OnChangePlugin';
 import { AutoLinkPlugin } from './plugins/AutoLinkPlugin';
 import { parseTemplateToNodes, loadHtmlIntoEditor } from './utils/placeholderLexicalUtils';
@@ -83,6 +85,8 @@ export interface BodyTemplateEditorProps {
   toolbarExtra?: React.ReactNode;
   /** Read by screen readers; the field's visible label. */
   ariaLabel?: string;
+  /** What a pill can be swapped for (its click menu); the general email list when left out. */
+  variables?: PillVariable[];
 }
 
 export type BodyEditorCommand = 'bold' | 'italic' | 'underline' | 'ul' | 'ol' | 'quote' | 'link';
@@ -339,6 +343,8 @@ function BodyEditorInner({
         });
       }
       lastValueRef.current = value;
+      // Opening a template isn't something to undo: ⌘Z right away would empty the box.
+      editor.update(() => {}, { onUpdate: () => editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined) });
     }
   }, [editor, value]);
 
@@ -440,18 +446,7 @@ export const BodyTemplateEditor = forwardRef<BodyTemplateEditorHandle, BodyTempl
     useImperativeHandle(ref, () => ({
       insertPlaceholder: (placeholder: string) => {
         const editor = editorRef.current;
-        if (!editor) return;
-
-        editor.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            selection.removeText();
-            const placeholderNode = $createPlaceholderNode(placeholder);
-            const spaceNode = $createTextNode(' ');
-            selection.insertNodes([placeholderNode, spaceNode]);
-            spaceNode.select(1, 1);
-          }
-        });
+        if (editor) insertPillInto(editor, placeholder);
       },
       insertHtml: (html: string) => {
         const editor = editorRef.current;
@@ -515,7 +510,9 @@ export const BodyTemplateEditor = forwardRef<BodyTemplateEditorHandle, BodyTempl
 
     return (
       <LexicalComposer initialConfig={initialConfig}>
-        <BodyEditorInner {...props} editorRef={editorRef} />
+        <PillVariablesContext.Provider value={props.variables ?? DEFAULT_PILL_VARIABLES}>
+          <BodyEditorInner {...props} editorRef={editorRef} />
+        </PillVariablesContext.Provider>
       </LexicalComposer>
     );
   }

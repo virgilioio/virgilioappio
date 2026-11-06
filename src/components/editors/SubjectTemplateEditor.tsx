@@ -29,7 +29,9 @@ import {
 import { cn } from '@/lib/utils';
 import { lexicalTheme, LEXICAL_EDITOR_STYLES } from './lexicalTheme';
 import { PlaceholderNode, $createPlaceholderNode } from './nodes/PlaceholderNode';
-import { PlaceholderPlugin } from './plugins/PlaceholderPlugin';
+import { PlaceholderPlugin, insertPillInto } from './plugins/PlaceholderPlugin';
+import { DEFAULT_PILL_VARIABLES, PillVariablesContext, type PillVariable } from './placeholderMenu';
+import { CLEAR_HISTORY_COMMAND } from 'lexical';
 import { SingleLinePlugin } from './plugins/SingleLinePlugin';
 import { OnChangePlugin } from './plugins/OnChangePlugin';
 import { parseTemplateToNodes } from './utils/placeholderLexicalUtils';
@@ -45,6 +47,8 @@ export interface SubjectTemplateEditorProps {
   onFocus?: () => void;
   onBlur?: () => void;
   id?: string;
+  /** What a pill can be swapped for (its click menu); the general email list when left out. */
+  variables?: PillVariable[];
 }
 
 export interface SubjectTemplateEditorHandle {
@@ -91,6 +95,8 @@ function SubjectEditorInner({
         root.append(paragraph);
       });
       lastValueRef.current = value;
+      // Opening a template isn't something to undo: ⌘Z right away would empty the box.
+      editor.update(() => {}, { onUpdate: () => editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined) });
     }
   }, [editor, value]);
 
@@ -182,30 +188,7 @@ export const SubjectTemplateEditor = forwardRef<SubjectTemplateEditorHandle, Sub
     useImperativeHandle(ref, () => ({
       insertPlaceholder: (placeholder: string) => {
         const editor = editorRef.current;
-        if (!editor) return;
-
-        editor.update(() => {
-          const selection = $getSelection();
-          
-          if ($isRangeSelection(selection)) {
-            selection.removeText();
-            const placeholderNode = $createPlaceholderNode(placeholder);
-            const spaceNode = $createTextNode(' ');
-            selection.insertNodes([placeholderNode, spaceNode]);
-            spaceNode.select(1, 1);
-          } else {
-            // No selection, append to end
-            const root = $getRoot();
-            const lastChild = root.getLastChild();
-            if (lastChild instanceof ParagraphNode) {
-              const placeholderNode = $createPlaceholderNode(placeholder);
-              const spaceNode = $createTextNode(' ');
-              lastChild.append(placeholderNode);
-              lastChild.append(spaceNode);
-              spaceNode.select(1, 1);
-            }
-          }
-        });
+        if (editor) insertPillInto(editor, placeholder);
       },
       focus: () => {
         editorRef.current?.focus();
@@ -228,7 +211,9 @@ export const SubjectTemplateEditor = forwardRef<SubjectTemplateEditorHandle, Sub
 
     return (
       <LexicalComposer initialConfig={initialConfig}>
-        <SubjectEditorInner {...props} editorRef={editorRef} />
+        <PillVariablesContext.Provider value={props.variables ?? DEFAULT_PILL_VARIABLES}>
+          <SubjectEditorInner {...props} editorRef={editorRef} />
+        </PillVariablesContext.Provider>
       </LexicalComposer>
     );
   }

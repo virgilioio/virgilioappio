@@ -145,7 +145,7 @@ export const LEXICAL_EDITOR_STYLES = `
     margin: 0 2px;
     max-width: 100%;
     user-select: none;
-    cursor: default;
+    cursor: pointer;
     border: 1px solid rgb(168 85 247 / 0.4);
     white-space: nowrap;
     overflow: hidden;
@@ -168,6 +168,13 @@ export const LEXICAL_EDITOR_STYLES = `
   .lexical-placeholder-badge:hover {
     background-color: rgb(168 85 247 / 0.25);
     border-color: rgb(168 85 247 / 0.6);
+  }
+
+  /* Selected (a click or the arrow keys) or its menu open: Backspace removes it, Enter opens the menu. */
+  .lexical-placeholder-badge[data-selected],
+  .lexical-placeholder-badge[data-open] {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #6F3FF5;
+    background-color: rgb(168 85 247 / 0.25);
   }
   
   /* Subject editor specific styling (single line) */
