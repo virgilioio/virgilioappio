@@ -310,6 +310,7 @@ export function AutomationBuilderSheet({ open, onOpenChange, jobId, jhsId, stage
                           templateId={i === 0 ? (config.template_id ?? null) : null}
                           onTemplateChange={(id) => patch({ template_id: id })}
                           jobId={jobId}
+                          jhsId={jhsId}
                           automationKey={automation?.id || jhsId}
                           heading={action === 'sequence' ? `Email ${i + 1} of ${emails.length}` : undefined}
                           compact={i > 0}

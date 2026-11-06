@@ -72,13 +72,14 @@ function PlaceholderComponent({ placeholderKey, nodeKey }: { placeholderKey: str
   const groups = useMemo(() => {
     const out: { group: string; items: typeof variables }[] = [];
     for (const v of variables) {
+      if (v.legacy && v.key !== placeholderKey) continue;
       const g = v.group ?? '';
       let bucket = out.find((x) => x.group === g);
       if (!bucket) out.push((bucket = { group: g, items: [] }));
       bucket.items.push(v);
     }
     return out;
-  }, [variables]);
+  }, [variables, placeholderKey]);
   const known = variables.some((v) => v.key === placeholderKey);
   const label = variables.find((v) => v.key === placeholderKey)?.label;
 

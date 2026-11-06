@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Braces, Paperclip, X, Eye, Search,
+  Braces, Paperclip, X, Eye, Search, CalendarClock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,12 +41,45 @@ interface Props {
   /** Hide From/CC/template — used for sequence steps after the first. */
   compact?: boolean;
   previewCandidateName?: string;
+  /** The stage this automation runs on: its interviewers' booking links fill {{stage.booking_link}}. */
+  jhsId?: string;
+}
+
+/**
+ * Whether anyone assigned to the stage has an active booking link (2026-11-06). Without one,
+ * {{stage.booking_link}} sends the sender's own booking link, and nothing at all when they have none.
+ */
+function useStageBookingLinks(jhsId: string | undefined) {
+  return useQuery({
+    queryKey: ['stage-booking-links', jhsId],
+    enabled: !!jhsId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: assignments } = await supabase
+        .from('stage_interviewer_assignments')
+        .select('member_id')
+        .eq('job_hiring_stage_id', jhsId!);
+      const memberIds = (assignments ?? []).map((a) => a.member_id).filter(Boolean) as string[];
+      if (!memberIds.length) return { interviewers: 0, withLink: 0 };
+      const { data: members } = await supabase.from('members').select('user_id').in('id', memberIds);
+      const userIds = (members ?? []).map((m) => m.user_id).filter(Boolean) as string[];
+      if (!userIds.length) return { interviewers: memberIds.length, withLink: 0 };
+      const { data: configs } = await supabase
+        .from('booking_configurations')
+        .select('user_id')
+        .in('user_id', userIds)
+        .eq('is_active', true);
+      return { interviewers: memberIds.length, withLink: new Set((configs ?? []).map((c) => c.user_id)).size };
+    },
+  });
 }
 
 export function AutomationEmailComposer({
   step, onChange, from, onFromChange, identities, cc, bcc, onCcChange, onBccChange,
-  templates, templateId, onTemplateChange, jobId, automationKey, heading, compact, previewCandidateName,
+  templates, templateId, onTemplateChange, jobId, automationKey, heading, compact, previewCandidateName, jhsId,
 }: Props) {
+  const stageLinks = useStageBookingLinks(jhsId);
+  const usesStageLink = /\{\{\s*(stage\.booking_link|scheduling\.link)\s*\}\}/.test(`${step.subject} ${step.body_html}`);
   const subjectRef = useRef<SubjectTemplateEditorHandle>(null);
   const bodyRef = useRef<BodyTemplateEditorHandle>(null);
   const lastFocused = useRef<'subject' | 'body'>('body');
@@ -60,7 +94,7 @@ export function AutomationEmailComposer({
 
   const filteredVars = useMemo(() => {
     const q = varQuery.trim().toLowerCase();
-    return COMPOSER_VARIABLES.filter((v) => !q || v.label.toLowerCase().includes(q) || v.key.includes(q));
+    return COMPOSER_VARIABLES.filter((v) => !v.legacy && (!q || v.label.toLowerCase().includes(q) || v.key.includes(q)));
   }, [varQuery]);
   const groups = useMemo(() => {
     const m = new Map<string, typeof filteredVars>();
@@ -126,12 +160,23 @@ export function AutomationEmailComposer({
     'job.location': 'Mexico City',
     'job.salary_range': 'MXN 80,000 – 110,000',
     'client.name': 'Acme',
+    'candidate.phone': '+52 55 1234 5678',
+    'candidate.location': 'Guadalajara, Jalisco, Mexico',
+    'organization.name': 'Virgilio',
     'stage.name': 'Screening',
     'recruiter.first_name': 'Sam',
     'sender.first_name': 'Sam',
     'sender.name': 'Sam Ortega',
-    'interview.datetime': 'Tue 14 Oct · 10:00',
-    'scheduling.link': 'https://app.gogio.io/book/…',
+    'sender.email': 'sam@virgilio.tech',
+    'sender.title': 'Senior Recruiter',
+    'sender.phone': '+52 55 8765 4321',
+    'sender.linkedin': 'https://www.linkedin.com/in/sam-ortega',
+    'interview.datetime': 'Tuesday, October 14, 10:00 AM CST',
+    'interview.date': 'Tuesday, October 14',
+    'interview.time': '10:00 AM CST',
+    'stage.booking_link': 'https://app.gogio.io/schedule/sam?t=a1b2c3d4',
+    'sender.booking_link': 'https://app.gogio.io/schedule/sam?t=e5f6g7h8',
+    'scheduling.link': 'https://app.gogio.io/schedule/sam?t=a1b2c3d4',
   };
 
   const variablePopover = (target: 'subject' | 'body', trigger: React.ReactNode) => (
@@ -235,6 +280,7 @@ export function AutomationEmailComposer({
         </div>
         <SubjectTemplateEditor
           ref={subjectRef}
+          variables={COMPOSER_VARIABLES}
           value={step.subject}
           onChange={(v) => onChange({ ...step, subject: v })}
           placeholder="Subject line"
@@ -258,6 +304,7 @@ export function AutomationEmailComposer({
         ) : (
           <BodyTemplateEditor
             ref={bodyRef}
+            variables={COMPOSER_VARIABLES}
             value={step.body_html}
             onChange={(v) => onChange({ ...step, body_html: v })}
             placeholder="Write your email…"
@@ -277,6 +324,18 @@ export function AutomationEmailComposer({
               </>
             }
           />
+        )}
+
+        {/* The stage link needs an interviewer with a booking link; say what goes out instead. */}
+        {usesStageLink && stageLinks.data && stageLinks.data.withLink === 0 && (
+          <p className="mt-2 flex items-start gap-1.5 font-inter text-[12px] leading-[1.45] text-[#7A4A06]">
+            <CalendarClock className="mt-[2px] h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span>
+              {stageLinks.data.interviewers === 0
+                ? 'Nobody is assigned to interview at this stage, so the booking link will be the sender’s own. Assign interviewers in the hiring plan to send theirs.'
+                : 'Nobody interviewing at this stage has a booking link yet, so the link will be the sender’s own until one of them sets theirs up.'}
+            </span>
+          </p>
         )}
 
         {/* Attachments */}

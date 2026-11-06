@@ -10,6 +10,8 @@ export interface PillVariable {
   key: string;
   label: string;
   group?: string;
+  /** Still filled in older emails, so a pill using it isn't flagged; only listed when it's the pill's own key. */
+  legacy?: boolean;
 }
 
 export const DEFAULT_PILL_VARIABLES: PillVariable[] = AVAILABLE_PLACEHOLDERS.map((p) => ({

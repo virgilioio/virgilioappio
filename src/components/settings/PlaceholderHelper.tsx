@@ -26,23 +26,22 @@ export function PlaceholderHelper({ onInsert, offerFormFields, showFormSelector 
   // Which offer form fields to show: the ones passed in, else the selected form's.
   const dynamicFields = offerFormFields || (selectedFormId ? selectedFormFields : [])
 
-  // Static placeholders for job and organization data
+  // Only what the email sender fills in (send-user-email, 2026-11-06); anything else would go out blank.
   const jobPlaceholders = [
     { key: '{{job.title}}', description: 'Job title' },
     { key: '{{job.department}}', description: 'Department' },
     { key: '{{job.location}}', description: 'Job location' },
-    { key: '{{job.level}}', description: 'Job level (junior, mid, senior, etc.)' },
-    { key: '{{job.salary_min}}', description: 'Minimum salary' },
-    { key: '{{job.salary_max}}', description: 'Maximum salary' },
-    { key: '{{job.currency}}', description: 'Salary currency' },
-    { key: '{{job.description}}', description: 'Job description' }
+    { key: '{{job.salary_range}}', description: 'Salary range' },
+    { key: '{{stage.name}}', description: 'Stage the candidate is in' },
+    { key: '{{interview.datetime}}', description: 'Next interview, date and time' },
+    { key: '{{interview.date}}', description: 'Next interview date' },
+    { key: '{{interview.time}}', description: 'Next interview time' }
   ]
 
   const organizationPlaceholders = [
     { key: '{{client.name}}', description: 'Client company the job is for (from the CRM)' },
     { key: '{{organization.name}}', description: 'Your workspace name' },
-    { key: '{{department.name}}', description: 'Department / Job folder name' },
-    { key: '{{organization.default_currency}}', description: 'Default currency' }
+    { key: '{{department.name}}', description: 'Department / Job folder name' }
   ]
 
   const senderPlaceholders = [
@@ -59,16 +58,13 @@ export function PlaceholderHelper({ onInsert, offerFormFields, showFormSelector 
   const candidatePlaceholders = [
     { key: '{{candidate.name}}', description: 'Candidate full name' },
     { key: '{{candidate.first_name}}', description: 'Candidate first name' },
-    { key: '{{candidate.location_city}}', description: 'Candidate city' },
-    { key: '{{candidate.location_state}}', description: 'Candidate state' },
-    { key: '{{candidate.location_country}}', description: 'Candidate country' },
-    { key: '{{candidate.salary_amount}}', description: 'Candidate salary expectation' },
-    { key: '{{candidate.salary_currency}}', description: 'Candidate salary currency' },
-    { key: '{{candidate.salary_period}}', description: 'Candidate salary period' }
+    { key: '{{candidate.email}}', description: 'Candidate email' },
+    { key: '{{candidate.phone}}', description: 'Candidate phone' },
+    { key: '{{candidate.location}}', description: 'Candidate city, state and country' }
   ]
 
   const stagePlaceholders = [
-    { key: '{{stage.booking_link}}', description: 'Assigned interviewer booking link (falls back to sender)' }
+    { key: '{{stage.booking_link}}', description: 'Booking link for this stage, personal to each candidate (an interviewer’s, else yours)' }
   ]
 
   // Build dynamic placeholders from offer form fields

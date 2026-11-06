@@ -217,22 +217,37 @@ export function recipeScreeningInvite(fromEmail: string) {
   }
 }
 
-// Variables surfaced in the composer's popover (grouped, searchable)
-export interface VariableDef { key: string; label: string; group: string }
+// Variables surfaced in the composer's popover (grouped, searchable). Only what the sender
+// (send-user-email) fills in (2026-11-06). `legacy` keys still work in older emails and can be
+// swapped from a pill's menu, but aren't offered for new ones.
+export interface VariableDef { key: string; label: string; group: string; legacy?: boolean }
 export const COMPOSER_VARIABLES: VariableDef[] = [
   { key: 'candidate.first_name', label: 'First name', group: 'Candidate' },
   { key: 'candidate.full_name', label: 'Full name', group: 'Candidate' },
   { key: 'candidate.email', label: 'Email', group: 'Candidate' },
+  { key: 'candidate.phone', label: 'Phone', group: 'Candidate' },
+  { key: 'candidate.location', label: 'Location', group: 'Candidate' },
   { key: 'job.title', label: 'Title', group: 'Job' },
   { key: 'job.department', label: 'Department', group: 'Job' },
   { key: 'job.location', label: 'Location', group: 'Job' },
   { key: 'job.salary_range', label: 'Salary range', group: 'Job' },
   { key: 'client.name', label: 'Client name', group: 'Job' },
-  { key: 'stage.name', label: 'Stage name', group: 'Stage & people' },
-  { key: 'recruiter.first_name', label: 'Recruiter first name', group: 'Stage & people' },
-  { key: 'sender.name', label: 'Sender full name', group: 'Stage & people' },
-  { key: 'interview.datetime', label: 'Interview date & time', group: 'Stage & people' },
-  { key: 'scheduling.link', label: 'Scheduling link', group: 'Stage & people' },
+  { key: 'organization.name', label: 'Your company', group: 'Job' },
+  { key: 'stage.name', label: 'Stage name', group: 'Stage & interview' },
+  { key: 'interview.datetime', label: 'Interview date & time', group: 'Stage & interview' },
+  { key: 'interview.date', label: 'Interview date', group: 'Stage & interview' },
+  { key: 'interview.time', label: 'Interview time', group: 'Stage & interview' },
+  { key: 'stage.booking_link', label: 'Booking link for this stage (per candidate)', group: 'Links' },
+  { key: 'sender.booking_link', label: 'Your booking link (per candidate)', group: 'Links' },
+  { key: 'sender.name', label: 'Your name', group: 'You' },
+  { key: 'sender.first_name', label: 'Your first name', group: 'You' },
+  { key: 'sender.email', label: 'Your email', group: 'You' },
+  { key: 'sender.title', label: 'Your job title', group: 'You' },
+  { key: 'sender.phone', label: 'Your phone', group: 'You' },
+  { key: 'sender.linkedin', label: 'Your LinkedIn', group: 'You' },
+  { key: 'scheduling.link', label: 'Scheduling link (the stage booking link)', group: 'Links', legacy: true },
+  { key: 'recruiter.first_name', label: 'Sender first name', group: 'You', legacy: true },
+  { key: 'candidate.name', label: 'Full name', group: 'Candidate', legacy: true },
 ]
 
 export const ATTACHMENT_TOTAL_LIMIT = 25 * 1024 * 1024

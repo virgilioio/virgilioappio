@@ -441,7 +441,7 @@ async function replacePlaceholders(
   user: any,
   bookingUrl: string | null,
   stageBookingUrl?: string | null,
-  context?: { clientName?: string | null; organizationName?: string | null; stageName?: string | null; interviewDatetime?: string | null; salaryRange?: string | null }
+  context?: { clientName?: string | null; organizationName?: string | null; stageName?: string | null; interviewDatetime?: string | null; interviewDate?: string | null; interviewTime?: string | null; salaryRange?: string | null }
 ): Promise<string> {
   // Step 1: Collapse any accidental double braces from legacy content
   let result = collapseDoubleBraces(text);
@@ -478,6 +478,8 @@ async function replacePlaceholders(
   data['organization.name'] = context?.organizationName || '';
   data['stage.name'] = context?.stageName || '';
   data['interview.datetime'] = context?.interviewDatetime || '';
+  data['interview.date'] = context?.interviewDate || '';
+  data['interview.time'] = context?.interviewTime || '';
   
   if (user) {
     const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
@@ -758,7 +760,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Get user profile for sender placeholders
     const { data: userProfile } = await supabase
       .from('profiles')
-      .select('first_name, last_name, email')
+      // Title, phone and LinkedIn too: {{sender.title}}, {{sender.phone}} and {{sender.linkedin}} (2026-11-06).
+      .select('first_name, last_name, email, title, phone, linkedin_url')
       .eq('user_id', user.id)
       .single();
 
@@ -913,6 +916,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Extra context: stage name, next interview, salary range (best effort)
     let stageName: string | null = null;
     let interviewDatetime: string | null = null;
+    let interviewDate: string | null = null;
+    let interviewTime: string | null = null;
     let salaryRange: string | null = null;
     try {
       if (request.jhs_id) {
@@ -926,9 +931,13 @@ const handler = async (req: Request): Promise<Response> => {
           .neq('status', 'cancelled').gte('scheduled_start', new Date().toISOString())
           .order('scheduled_start', { ascending: true }).limit(1).maybeSingle();
         if (booking?.scheduled_start) {
+          const at = new Date(booking.scheduled_start);
+          const timeZone = booking.candidate_timezone || 'UTC';
           interviewDatetime = new Intl.DateTimeFormat('en-US', {
-            timeZone: booking.candidate_timezone || 'UTC', weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
-          }).format(new Date(booking.scheduled_start));
+            timeZone, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+          }).format(at);
+          interviewDate = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'long', month: 'long', day: 'numeric' }).format(at);
+          interviewTime = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(at);
         }
       }
       if (request.job_id) {
@@ -941,7 +950,7 @@ const handler = async (req: Request): Promise<Response> => {
     } catch (ctxErr) {
       console.warn('Extra placeholder context failed:', ctxErr);
     }
-    const placeholderCtx = { clientName, organizationName: workspaceName, stageName, interviewDatetime, salaryRange };
+    const placeholderCtx = { clientName, organizationName: workspaceName, stageName, interviewDatetime, interviewDate, interviewTime, salaryRange };
 
     // Replace placeholders in subject and body
     const processedSubject = await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl, placeholderCtx);
@@ -956,7 +965,8 @@ const handler = async (req: Request): Promise<Response> => {
     const originalContent = `${request.subject || ''} ${request.body_text || ''} ${request.body_html || ''}`;
     const bookingLinkWasUsed = 
       /\{\{\s*stage\.booking_link\s*\}\}/i.test(originalContent) ||
-      /\{\{\s*sender\.booking_link\s*\}\}/i.test(originalContent);
+      /\{\{\s*sender\.booking_link\s*\}\}/i.test(originalContent) ||
+      /\{\{\s*scheduling\.link\s*\}\}/i.test(originalContent);
     
     // Update booking_link_sent_at if booking link was used and we have association context
     if (bookingLinkWasUsed && request.association_id) {
