@@ -188,6 +188,17 @@ export const LEXICAL_EDITOR_STYLES = `
     display: inline;
     margin: 0;
   }
+
+  /* Several lines of plain text (Gio Sign's message): wraps, keeps its line breaks. */
+  .lexical-plain-multiline {
+    white-space: pre-wrap;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 240px;
+  }
+  .lexical-plain-multiline .lexical-paragraph {
+    display: block;
+  }
   
   /* Empty placeholder text — positioning is owned by each editor's Tailwind classes */
   .lexical-editor-placeholder {

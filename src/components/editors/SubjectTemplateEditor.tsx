@@ -19,6 +19,7 @@ import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { 
   $getRoot, 
   $createParagraphNode, 
+  $createLineBreakNode,
   $createTextNode,
   LexicalEditor,
   $getSelection,
@@ -49,6 +50,27 @@ export interface SubjectTemplateEditorProps {
   id?: string;
   /** What a pill can be swapped for (its click menu); the general email list when left out. */
   variables?: PillVariable[];
+  /**
+   * Several lines of plain text (2026-11-06): Enter adds a line break and the value keeps
+   * its "\n"s, for plain-text emails such as Gio Sign's message.
+   */
+  multiline?: boolean;
+  /** With `multiline`: the box's height before it grows. */
+  minHeight?: string;
+  ariaLabel?: string;
+}
+
+/** The value as one paragraph: text, pills, and a line break per "\n" when multiline. */
+function $loadPlain(value: string, multiline: boolean) {
+  const root = $getRoot();
+  root.clear();
+  const paragraph = $createParagraphNode();
+  const lines = multiline ? value.split('\n') : [value];
+  lines.forEach((line, i) => {
+    parseTemplateToNodes(line).forEach((node) => paragraph.append(node));
+    if (i < lines.length - 1) paragraph.append($createLineBreakNode());
+  });
+  root.append(paragraph);
 }
 
 export interface SubjectTemplateEditorHandle {
@@ -68,6 +90,9 @@ function SubjectEditorInner({
   onFocus,
   onBlur,
   id,
+  multiline = false,
+  minHeight = '96px',
+  ariaLabel,
   editorRef,
 }: SubjectTemplateEditorProps & { editorRef: React.MutableRefObject<LexicalEditor | null> }) {
   const [editor] = useLexicalComposerContext();
@@ -86,35 +111,21 @@ function SubjectEditorInner({
     isInitializedRef.current = true;
 
     if (value) {
-      editor.update(() => {
-        const root = $getRoot();
-        root.clear();
-        const paragraph = $createParagraphNode();
-        const nodes = parseTemplateToNodes(value);
-        nodes.forEach(node => paragraph.append(node));
-        root.append(paragraph);
-      });
+      editor.update(() => $loadPlain(value, multiline));
       lastValueRef.current = value;
       // Opening a template isn't something to undo: ⌘Z right away would empty the box.
       editor.update(() => {}, { onUpdate: () => editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined) });
     }
-  }, [editor, value]);
+  }, [editor, value, multiline]);
 
   // Handle external value changes (but not while focused)
   useEffect(() => {
     if (isFocused) return;
     if (value === lastValueRef.current) return;
 
-    editor.update(() => {
-      const root = $getRoot();
-      root.clear();
-      const paragraph = $createParagraphNode();
-      const nodes = parseTemplateToNodes(value);
-      nodes.forEach(node => paragraph.append(node));
-      root.append(paragraph);
-    });
+    editor.update(() => $loadPlain(value, multiline));
     lastValueRef.current = value;
-  }, [editor, value, isFocused]);
+  }, [editor, value, isFocused, multiline]);
 
   const handleChange = useCallback((newValue: string) => {
     lastValueRef.current = newValue;
@@ -137,16 +148,20 @@ function SubjectEditorInner({
         contentEditable={
           <ContentEditable
             id={id}
+            // The field look (Input's: same border, focus ring and hover), never moving on hover (§12).
             className={cn(
-              "lexical-subject-editor",
-              "flex items-center min-h-[var(--input-height)] w-full rounded-brand border bg-surface-primary px-3 py-2 text-sm ring-offset-background transition-all duration-200 ease-out shadow-[var(--shadow-xs)]",
-              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:border-accent hover:shadow-[var(--shadow-button)] hover:-translate-y-0.5",
+              multiline ? "lexical-subject-editor lexical-plain-multiline" : "lexical-subject-editor",
+              "flex w-full rounded-lg border bg-surface-primary px-3 py-2 text-sm ring-offset-background gio-field shadow-[var(--shadow-xs)]",
+              multiline ? "items-start" : "items-center min-h-[var(--input-height)]",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-transparent focus-visible:border-[var(--input-border-focus)] focus-visible:shadow-input hover:shadow-[var(--shadow-button)]",
               "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-secondary",
-              error && "border-destructive ring-destructive focus:ring-destructive shadow-[0_0_0_1px_hsl(var(--destructive))]",
-              success && "border-success ring-success focus:ring-success shadow-[0_0_0_1px_hsl(var(--success))]",
-              !error && !success && "border-border hover:border-accent/60",
+              error && "border-destructive shadow-[0_0_0_1px_hsl(var(--destructive))]",
+              success && "border-success shadow-[0_0_0_1px_hsl(var(--success))]",
+              !error && !success && "border-virgilio-border hover:border-virgilio-purple/50",
               className
             )}
+            style={multiline ? { minHeight } : undefined}
+            aria-label={ariaLabel}
             onFocus={handleFocus}
             onBlur={handleBlur}
             disabled={disabled}
@@ -154,14 +169,14 @@ function SubjectEditorInner({
           />
         }
         placeholder={
-          <div className="lexical-editor-placeholder absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+          <div className={cn("lexical-editor-placeholder absolute left-3 pointer-events-none", multiline ? "top-2" : "top-1/2 -translate-y-1/2")}>
             {placeholder}
           </div>
         }
         ErrorBoundary={LexicalErrorBoundary}
       />
-      <PlaceholderPlugin singleLine />
-      <SingleLinePlugin />
+      <PlaceholderPlugin singleLine={!multiline} />
+      {!multiline && <SingleLinePlugin />}
       <OnChangePlugin onChange={handleChange} singleLine />
       <HistoryPlugin />
     </div>

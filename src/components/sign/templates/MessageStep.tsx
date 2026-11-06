@@ -1,8 +1,7 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 
 import { FormSection } from '@/components/references/FormSection'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { SubjectTemplateEditor, type SubjectTemplateEditorHandle } from '@/components/editors/SubjectTemplateEditor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { emailTagsFor, tagLabel, type TplDraft } from '@/lib/sign/templates'
 import { Field, TagText } from './parts'
@@ -17,25 +16,15 @@ const EXPIRY = ['7', '14', '30', '60']
 
 export function MessageStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) => TplDraft) => void }) {
   const last = useRef<'subject' | 'body'>('body')
-  const sRef = useRef<HTMLInputElement>(null)
-  const bRef = useRef<HTMLTextAreaElement>(null)
+  const sRef = useRef<SubjectTemplateEditorHandle>(null)
+  const bRef = useRef<SubjectTemplateEditorHandle>(null)
   const tags = emailTagsFor(d.kind)
   const first = d.roles.find((r) => r.role === 'signer')
+  // The tags as pills (2026-11-06): one unit each, swapped or removed from their own menu.
+  const variables = useMemo(() => emailTagsFor(d.kind).map(([key, label]) => ({ key, label })), [d.kind])
 
-  // Insert {{tag}} where the cursor was in the last field you were in.
-  const insert = (k: string) => {
-    const t = `{{${k}}}`
-    const which = last.current
-    const el = which === 'subject' ? sRef.current : bRef.current
-    const v = d[which]
-    const at = el?.selectionStart ?? v.length
-    const end = el?.selectionEnd ?? at
-    set((x) => ({ ...x, [which]: v.slice(0, at) + t + v.slice(end) }))
-    requestAnimationFrame(() => {
-      el?.focus()
-      el?.setSelectionRange(at + t.length, at + t.length)
-    })
-  }
+  // Insert a tag where the cursor was in the last field you were in.
+  const insert = (k: string) => (last.current === 'subject' ? sRef : bRef).current?.insertPlaceholder(k)
 
   return (
     <div className="grid max-w-[1000px] grid-cols-[minmax(0,1fr)_minmax(0,420px)] items-start gap-6">
@@ -43,30 +32,26 @@ export function MessageStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) =
         <FormSection title="Message" subtitle="The email each person gets with their signing link. Data tags fill in when it’s sent.">
           <div className="flex flex-col gap-4">
             <Field label="Subject" required htmlFor="tpl-subject">
-              <Input
+              <SubjectTemplateEditor
                 id="tpl-subject"
                 ref={sRef}
                 value={d.subject}
-                maxLength={200}
+                variables={variables}
                 onFocus={() => (last.current = 'subject')}
-                onChange={(e) => {
-                  const v = e.target.value
-                  set((x) => ({ ...x, subject: v }))
-                }}
+                onChange={(v) => v !== d.subject && set((x) => ({ ...x, subject: v.slice(0, 200) }))}
               />
             </Field>
             <Field label="Message" required htmlFor="tpl-body">
-              <Textarea
+              <SubjectTemplateEditor
                 id="tpl-body"
                 ref={bRef}
-                rows={6}
-                maxLength={5000}
+                multiline
+                minHeight="140px"
+                ariaLabel="Message"
                 value={d.body}
+                variables={variables}
                 onFocus={() => (last.current = 'body')}
-                onChange={(e) => {
-                  const v = e.target.value
-                  set((x) => ({ ...x, body: v }))
-                }}
+                onChange={(v) => v !== d.body && set((x) => ({ ...x, body: v.slice(0, 5000) }))}
               />
             </Field>
             <div>

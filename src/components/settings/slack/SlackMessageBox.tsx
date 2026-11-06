@@ -31,7 +31,8 @@ function detailQuery(text: string, caret: number): { start: number; query: strin
 }
 
 /** The draft split into text and the parts to tint (tags and details). */
-function tintParts(value: string, picked: SlackTag[], details: SlackDetail[]) {
+/** Where each detail ({job}) and Slack tag (@Name) sits in the message, in order. */
+function tagRanges(value: string, picked: SlackTag[], details: SlackDetail[]) {
   const ranges: [number, number][] = []
   for (const p of slackTagsIn(value, picked)) {
     const escaped = p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -41,9 +42,13 @@ function tintParts(value: string, picked: SlackTag[], details: SlackDetail[]) {
     if (details.includes(m[1] as SlackDetail)) ranges.push([m.index ?? 0, (m.index ?? 0) + m[0].length])
   }
   ranges.sort((a, b) => a[0] - b[0])
+  return ranges
+}
+
+function tintParts(value: string, picked: SlackTag[], details: SlackDetail[]) {
   const parts: { text: string; tag: boolean }[] = []
   let at = 0
-  for (const [s, e] of ranges) {
+  for (const [s, e] of tagRanges(value, picked, details)) {
     if (s < at) continue
     if (s > at) parts.push({ text: value.slice(at, s), tag: false })
     parts.push({ text: value.slice(s, e), tag: true })
@@ -180,7 +185,24 @@ export function SlackMessageBox({
     return () => window.removeEventListener('keydown', onKey, true)
   }, [showPanel, open?.start])
 
+  // A detail or Slack tag is one unit (2026-11-06): Backspace right after it, or Delete right
+  // before it, removes all of it; inside one, either key removes the whole tag.
+  const removeTag = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget
+    if (el.selectionStart !== el.selectionEnd) return false
+    const caret = el.selectionStart
+    const back = e.key === 'Backspace'
+    const hit = tagRanges(value, picked, details).find(([s, t]) => (back ? caret > s && caret <= t : caret >= s && caret < t))
+    if (!hit) return false
+    e.preventDefault()
+    const [s, t] = hit
+    onChange(value.slice(0, s) + value.slice(t))
+    pendingCaret.current = s
+    return true
+  }
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.key === 'Backspace' || e.key === 'Delete') && !e.altKey && !e.metaKey && !e.ctrlKey && removeTag(e)) return
     if (showPanel && rows.length > 0) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault()
@@ -219,6 +241,13 @@ export function SlackMessageBox({
           requestAnimationFrame(sync)
         }}
         onSelect={sync}
+        onMouseUp={(e) => {
+          // A click inside a tag selects all of it, so typing replaces it whole.
+          const el = e.currentTarget
+          if (el.selectionStart !== el.selectionEnd) return
+          const hit = tagRanges(value, picked, details).find(([s, t]) => el.selectionStart > s && el.selectionStart < t)
+          if (hit) el.setSelectionRange(hit[0], hit[1])
+        }}
         onKeyDown={onKeyDown}
         onScroll={follow}
         onBlur={() => setOpen(null)}
