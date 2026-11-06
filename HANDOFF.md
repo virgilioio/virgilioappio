@@ -112,13 +112,14 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-11-06 (ATS) — Email templates: pills, variables, Rewrite with Gio, option cards — on the branch, waiting for Apply!
+## Done 2026-11-06 (ATS) — Email templates: pills, variables, Rewrite with Gio, option cards — applied
 
 - Allan: pills were hard to delete or edit, the stage automation had no Rewrite, no per-candidate stage booking link in the variables, and Slack's When should look like the automation's Do. Go! to the four parts.
 - Pills (every template editor): select, remove from any side, click or Enter to swap or Remove, inserts land at the caret or the end; Gio Sign's message and WhatsApp now use the same editor; two unused inputs removed. Tested in Chrome with real keystrokes; Safari and Firefox still to try.
 - Variables: menus offer only what `send-user-email` fills (see CLAUDE.md "Template editors and variables"). `send-user-email` now also fills `interview.date`, `interview.time` and the sender's title, phone and LinkedIn: **deploy it on Apply**. The careers confirmation email (`ApplyConfirmationCard`) fills a few keys itself and still shows the full helper; untouched.
 - Rewrite with Gio in the automation composer and Settings email and rejection templates: `generate-email-draft` gains `mode: 'template'` (**deploy on Apply**, then try it once against the real AI with a template full of variables). Checked in the browser against intercepted answers, including the warning when a variable is dropped or invented.
 - `OptionCard` for the automation's Do and Slack's When. Audit of other pickers (unchanged, for Allan): the stage automation's own When is noir pills without icons (could become option cards with an icon per trigger); the job wizard's segmented control (`jobs/wizard/_parts.tsx`) fills the active option itself instead of one sliding layer (§14); Add person's job roles and Request references' templates are radio lists, which suit them.
+- Applied: `send-user-email` v636 and `generate-email-draft` v335 deployed (verify_jwt kept on), compared with the repo: `generate-email-draft` byte for byte; `send-user-email` identical except line 452, where the live copy has a real non-breaking space instead of the `\u00A0` escape (same regex; the next deploy of it fixes that). The real-AI Rewrite check needs a signed-in click (the function needs a user's session): Allan to try Rewrite on a template full of variables.
 
 ## Done 2026-11-06 (ATS) — Security rules Lovable flagged — applied
 
