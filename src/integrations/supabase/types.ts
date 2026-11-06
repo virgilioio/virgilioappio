@@ -11949,6 +11949,7 @@ export type Database = {
         Returns: string
       }
       fit_queue_acquire_lease: { Args: { _seconds: number }; Returns: boolean }
+      fit_queue_sweep: { Args: never; Returns: undefined }
       fit_queue_wake: { Args: never; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
       geo_cities_search: {
