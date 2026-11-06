@@ -18,6 +18,8 @@ import {
 import { PlaceholderHelper } from '../PlaceholderHelper';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
 import { Loader2 } from 'lucide-react';
+import { AIDraftPopover, RewriteButton } from '@/components/candidates/AIDraftPopover';
+import { COMPOSER_VARIABLES } from '@/lib/automations';
 
 interface EmailTemplateSheetProps {
   open: boolean;
@@ -121,6 +123,7 @@ export function EmailTemplateSheet({
                 onChange={(value) => setFormData({ ...formData, subject: value })}
                 placeholder="e.g., Interview Invitation for {{job.title}}"
                 onFocus={() => setLastFocusedField('subject')}
+                variables={COMPOSER_VARIABLES}
               />
             </div>
 
@@ -132,6 +135,19 @@ export function EmailTemplateSheet({
                 onChange={(value) => setFormData({ ...formData, body: value })}
                 placeholder="Enter your email template content here. Use placeholders like {{job.title}} or {{candidate.name}}"
                 onFocus={() => setLastFocusedField('body')}
+                variables={COMPOSER_VARIABLES}
+                toolbarExtra={
+                  <>
+                    <div className="flex-1" />
+                    <AIDraftPopover
+                      template={{ purpose: 'template', subject: formData.subject, variables: COMPOSER_VARIABLES }}
+                      currentBody={formData.body}
+                      onInsert={(subject, body) => setFormData((f) => ({ ...f, subject: subject || f.subject, body }))}
+                    >
+                      <RewriteButton empty={!formData.body.replace(/<[^>]*>/g, '').trim()} />
+                    </AIDraftPopover>
+                  </>
+                }
               />
             </div>
 

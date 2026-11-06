@@ -16,9 +16,29 @@ import {
   Feather,
   SpellCheck,
   Maximize2,
+  AlertTriangle,
+  HeartHandshake,
+  MessageSquare,
+  Bookmark,
 } from 'lucide-react';
-import { useAIDraftEmail } from '@/hooks/useAIDraftEmail';
+import { useAIDraftEmail, useAITemplateRewrite } from '@/hooks/useAIDraftEmail';
+import { pillsToText, tagDiff } from '@/lib/templateTags';
 import { toast } from 'sonner';
+
+/**
+ * Template mode (2026-11-06): drafting or rewriting a template with no candidate (a stage
+ * automation, a Settings email or rejection template). Gio sees the job and stage when
+ * there is one, keeps every variable, and the panel says so before anything changes when
+ * a variable was left out or one this email doesn't fill in was added.
+ */
+export interface AIDraftTemplateContext {
+  purpose: 'automation' | 'template' | 'rejection';
+  subject: string;
+  jobId?: string | null;
+  stageName?: string | null;
+  /** The variables this email fills in; anything else Gio adds is flagged. */
+  variables?: Array<{ key: string; label: string; legacy?: boolean }>;
+}
 
 interface AIDraftPopoverProps {
   candidateId?: string;
@@ -28,6 +48,7 @@ interface AIDraftPopoverProps {
   currentBody?: string;
   onInsert: (subject: string, body: string) => void;
   children: React.ReactNode;
+  template?: AIDraftTemplateContext;
 }
 
 type ChipDef = { label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement> & { size?: number | string }>; prompt: string };
@@ -38,6 +59,12 @@ const DRAFT_CHIPS: ChipDef[] = [
   { label: 'Schedule interview', icon: Calendar, prompt: 'Write an email to invite the candidate to schedule their next interview round.' },
   { label: 'Request availability', icon: Clock, prompt: 'Write an email asking the candidate for their availability for upcoming interviews.' },
   { label: 'Share good news', icon: PartyPopper, prompt: 'Write a positive email letting the candidate know we\'d like to move them forward to the next stage.' },
+];
+
+const REJECTION_DRAFT_CHIPS: ChipDef[] = [
+  { label: 'Kind and brief', icon: HeartHandshake, prompt: 'Write a kind, brief rejection email that thanks the candidate for their time and interest in the role.' },
+  { label: 'After interviews', icon: MessageSquare, prompt: 'Write a rejection email for a candidate who interviewed with us: thank them for the conversations and close warmly.' },
+  { label: 'Keep in touch', icon: Bookmark, prompt: 'Write a rejection email that keeps the door open: say we would like to keep their profile for future roles.' },
 ];
 
 const REWRITE_CHIPS: ChipDef[] = [
@@ -68,6 +95,7 @@ export function AIDraftPopover({
   senderName,
   currentBody,
   children,
+  template,
 }: AIDraftPopoverProps) {
   const [open, setOpen] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
@@ -76,11 +104,20 @@ export function AIDraftPopover({
   const panelRef = useRef<HTMLDivElement>(null);
 
   const draftMutation = useAIDraftEmail();
-  const isGenerating = draftMutation.isPending;
+  const templateMutation = useAITemplateRewrite();
+  const isGenerating = draftMutation.isPending || templateMutation.isPending;
+  /** A template rewrite whose variables changed, waiting for "Use it anyway". */
+  const [pending, setPending] = useState<{
+    subject: string;
+    body: string;
+    dropped: string[];
+    invented: string[];
+    retry: () => void;
+  } | null>(null);
 
   const plainBody = stripHtml(currentBody || '');
   const isRewrite = plainBody.length > 0;
-  const chips = isRewrite ? REWRITE_CHIPS : DRAFT_CHIPS;
+  const chips = isRewrite ? REWRITE_CHIPS : template?.purpose === 'rejection' ? REJECTION_DRAFT_CHIPS : DRAFT_CHIPS;
 
   // Close on outside click / Esc
   useEffect(() => {
@@ -104,10 +141,48 @@ export function AIDraftPopover({
     if (!open) {
       setCustomPrompt('');
       setActiveChip(null);
+      setPending(null);
     }
   }, [open]);
 
+  const runTemplate = async (basePrompt: string, chipLabel: string | null) => {
+    if (!template) return;
+    try {
+      setActiveChip(chipLabel);
+      setPending(null);
+      const result = await templateMutation.mutateAsync({
+        instruction: basePrompt,
+        subject: template.subject,
+        bodyHtml: isRewrite ? pillsToText(currentBody || '') : '',
+        jobId: template.jobId,
+        stageName: template.stageName,
+        purpose: template.purpose,
+        senderName: senderName || undefined,
+        variables: template.variables?.filter((v) => !v.legacy).map(({ key, label }) => ({ key, label })),
+      });
+      setActiveChip(null);
+      const { dropped, invented } = tagDiff(
+        `${template.subject} ${currentBody || ''}`,
+        `${result.subject} ${result.body}`,
+        template.variables ? template.variables.map((v) => v.key) : null,
+      );
+      // Drafting from nothing has no variables to keep.
+      const lost = isRewrite ? dropped : [];
+      if (lost.length || invented.length) {
+        setPending({ ...result, dropped: lost, invented, retry: () => runTemplate(basePrompt, chipLabel) });
+        return;
+      }
+      onInsert(result.subject, result.body);
+      setOpen(false);
+    } catch (error) {
+      toast.error("Couldn't get a draft from Gio. Try again.");
+      console.error('AI template error:', error);
+      setActiveChip(null);
+    }
+  };
+
   const runGenerate = async (basePrompt: string, chipLabel: string | null) => {
+    if (template) return runTemplate(basePrompt, chipLabel);
     if (!candidateId || !jobId) {
       toast.error('Missing candidate or job context');
       return;
@@ -143,7 +218,9 @@ export function AIDraftPopover({
   const handleCustom = () => {
     if (!customPrompt.trim() || isGenerating) return;
     const base = isRewrite
-      ? `Rewrite the following email based on this instruction: ${customPrompt.trim()}`
+      ? template
+        ? `Rewrite the template based on this instruction: ${customPrompt.trim()}`
+        : `Rewrite the following email based on this instruction: ${customPrompt.trim()}`
       : customPrompt.trim();
     runGenerate(base, null);
   };
@@ -247,6 +324,47 @@ export function AIDraftPopover({
 
           {/* Body */}
           <div style={{ padding: '14px 16px 16px' }}>
+            {pending && (
+              <div
+                role="alert"
+                className="font-inter"
+                style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, background: '#FEF7E6', border: '1px solid #F5DFA8', fontSize: 12, lineHeight: 1.45, color: '#5C3A04' }}
+              >
+                <div className="flex items-start" style={{ gap: 8 }}>
+                  <AlertTriangle className="shrink-0" style={{ height: 14, width: 14, marginTop: 1, color: '#B7791F' }} aria-hidden />
+                  <div className="min-w-0">
+                    {pending.dropped.length > 0 && (
+                      <div>Gio left out {pending.dropped.map((k) => `{{${k}}}`).join(', ')}.</div>
+                    )}
+                    {pending.invented.length > 0 && (
+                      <div>Gio added {pending.invented.map((k) => `{{${k}}}`).join(', ')}, which this email doesn't fill in, so it would send blank.</div>
+                    )}
+                    <div style={{ color: '#7A5A1E' }}>Your template hasn't changed.</div>
+                  </div>
+                </div>
+                <div className="flex justify-end" style={{ gap: 6, marginTop: 8 }}>
+                  <button
+                    type="button"
+                    className="gio-pressable font-inter"
+                    disabled={isGenerating}
+                    onClick={() => { onInsert(pending.subject, pending.body); setOpen(false); }}
+                    style={{ height: 28, padding: '0 10px', borderRadius: 7, border: '1px solid #E7D3A0', background: '#fff', color: '#5C3A04', fontSize: 12, fontWeight: 500 }}
+                  >
+                    Use it anyway
+                  </button>
+                  <button
+                    type="button"
+                    className="gio-pressable font-inter inline-flex items-center"
+                    disabled={isGenerating}
+                    onClick={() => pending.retry()}
+                    style={{ height: 28, padding: '0 10px', borderRadius: 7, border: 0, background: '#6F3FF5', color: '#fff', fontSize: 12, fontWeight: 500, gap: 6 }}
+                  >
+                    {isGenerating && <Loader2 style={{ height: 12, width: 12 }} className="animate-spin" />}
+                    Try again
+                  </button>
+                </div>
+              </div>
+            )}
             <div
               className="font-inter"
               style={{
@@ -397,12 +515,31 @@ export function AIDraftPopover({
               style={{ marginTop: 10, gap: 5, fontSize: 10.5, color: '#8B8F9E' }}
             >
               <Info style={{ height: 11, width: 11 }} strokeWidth={2} />
-              Gio uses this candidate's profile &amp; stage as context.
+              {template
+                ? template.jobId
+                  ? 'Gio uses the job and stage as context and keeps your variables.'
+                  : 'Gio keeps your variables exactly as they are.'
+                : <>Gio uses this candidate's profile &amp; stage as context.</>}
             </div>
           </div>
         </div>,
         document.body,
       )}
     </div>
+  );
+}
+
+/** The lilac Gio button that opens the panel: "Draft" on an empty email, "Rewrite" after. */
+export function RewriteButton({ empty = false }: { empty?: boolean }) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      className="gio-pressable inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md whitespace-nowrap shrink-0 font-poppins"
+      style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 12, fontWeight: 500 }}
+    >
+      <Sparkles className="h-3 w-3" aria-hidden />
+      {empty ? 'Draft with Gio' : 'Rewrite'}
+    </button>
   );
 }

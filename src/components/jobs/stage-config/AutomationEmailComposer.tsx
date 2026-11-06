@@ -6,6 +6,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
+import { AIDraftPopover, RewriteButton } from '@/components/candidates/AIDraftPopover';
 import type { SubjectTemplateEditorHandle, BodyTemplateEditorHandle } from '@/components/editors';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -43,6 +44,8 @@ interface Props {
   previewCandidateName?: string;
   /** The stage this automation runs on: its interviewers' booking links fill {{stage.booking_link}}. */
   jhsId?: string;
+  /** The stage this email goes out at, for Rewrite with Gio. */
+  stageName?: string;
 }
 
 /**
@@ -76,7 +79,7 @@ function useStageBookingLinks(jhsId: string | undefined) {
 
 export function AutomationEmailComposer({
   step, onChange, from, onFromChange, identities, cc, bcc, onCcChange, onBccChange,
-  templates, templateId, onTemplateChange, jobId, automationKey, heading, compact, previewCandidateName, jhsId,
+  templates, templateId, onTemplateChange, jobId, automationKey, heading, compact, previewCandidateName, jhsId, stageName,
 }: Props) {
   const stageLinks = useStageBookingLinks(jhsId);
   const usesStageLink = /\{\{\s*(stage\.booking_link|scheduling\.link)\s*\}\}/.test(`${step.subject} ${step.body_html}`);
@@ -320,6 +323,14 @@ export function AutomationEmailComposer({
                   </button>
                 ))}
                 <div className="flex-1" />
+                <AIDraftPopover
+                  template={{ purpose: 'automation', subject: step.subject, jobId, stageName, variables: COMPOSER_VARIABLES }}
+                  senderName={identities.find((i) => i.email_address === from)?.display_name || undefined}
+                  currentBody={step.body_html}
+                  onInsert={(subject, body) => onChange({ ...step, subject: subject || step.subject, body_html: body })}
+                >
+                  <RewriteButton empty={!step.body_html?.replace(/<[^>]*>/g, '').trim()} />
+                </AIDraftPopover>
                 {previewToggle}
               </>
             }

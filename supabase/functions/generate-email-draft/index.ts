@@ -17,6 +17,131 @@ interface DraftRequest {
   sender_name?: string;
 }
 
+/**
+ * Template mode (2026-11-06): drafts or rewrites an email template (a stage automation,
+ * a Settings email or rejection template) with no candidate. Every {{variable}} is kept
+ * exactly; the browser checks again and warns before anything changes.
+ */
+interface TemplateRequest {
+  mode: 'template';
+  instruction: string;
+  subject?: string;
+  body_html?: string;
+  job_id?: string | null;
+  stage_name?: string | null;
+  purpose?: 'automation' | 'template' | 'rejection';
+  sender_name?: string;
+  /** The variables this email fills in: key and what it reads as. */
+  variables?: Array<{ key: string; label: string }>;
+}
+
+const ALLOWED_TAGS = new Set(['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'a']);
+
+/** Only simple formatting comes back: no scripts, styles or attributes but a link's address. */
+function cleanHtml(html: string): string {
+  return html
+    .replace(/<(script|style|iframe|object)[\s\S]*?<\/\1>/gi, '')
+    .replace(/<\/?([a-z0-9]+)([^>]*)>/gi, (tag, name: string, attrs: string) => {
+      const n = name.toLowerCase();
+      if (!ALLOWED_TAGS.has(n)) return '';
+      if (tag.startsWith('</')) return `</${n}>`;
+      if (n === 'a') {
+        const href = /href\s*=\s*("([^"]*)"|'([^']*)')/i.exec(attrs);
+        const url = href ? (href[2] ?? href[3] ?? '') : '';
+        const safe = /^(https?:|mailto:|\{\{)/i.test(url.trim());
+        return safe ? `<a href="${url.replace(/"/g, '&quot;')}">` : '<a>';
+      }
+      return n === 'br' ? '<br>' : `<${n}>`;
+    })
+    .trim();
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+async function rewriteTemplate(req: Request, supabase: any, input: TemplateRequest): Promise<Response> {
+  const instruction = String(input.instruction ?? '').trim().slice(0, 1000);
+  if (!instruction) return json({ error: "Missing instruction" }, 400);
+  const subject = String(input.subject ?? '').slice(0, 300);
+  const body = String(input.body_html ?? '').slice(0, 20000);
+  const variables = (Array.isArray(input.variables) ? input.variables : [])
+    .filter((v) => v && typeof v.key === 'string' && /^[a-z0-9_.]{1,60}$/i.test(v.key))
+    .slice(0, 80)
+    .map((v) => ({ key: v.key, label: String(v.label ?? '').slice(0, 80) }));
+
+  const context: string[] = [];
+  if (input.job_id) {
+    const access = await checkRecordAccess(req, supabase, { jobId: input.job_id }, { requireRefs: true });
+    if (!access.ok) return accessDenied(access, corsHeaders);
+    const { data: job } = await supabase
+      .from("jobs")
+      .select("title, location, description")
+      .eq("id", input.job_id)
+      .maybeSingle();
+    if (job) {
+      context.push(`## The job\n**Title**: ${job.title}${job.location ? `\n**Location**: ${job.location}` : ""}${job.description ? `\n**About it**: ${String(job.description).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").slice(0, 600)}` : ""}`);
+    }
+  }
+  if (input.stage_name) context.push(`## The stage\nThis email goes out automatically when a candidate reaches the "${String(input.stage_name).slice(0, 80)}" stage.`);
+  const purpose = input.purpose === 'rejection'
+    ? 'a rejection email template, sent to candidates who are not moving forward'
+    : input.purpose === 'automation'
+      ? 'an automated email template sent to every candidate who reaches a stage'
+      : 'a reusable email template sent to candidates';
+  if (variables.length) {
+    context.push(`## Variables this email can use\nEach is filled in per candidate when the email is sent.\n${variables.map((v) => `- {{${v.key}}}: ${v.label}`).join("\n")}`);
+  }
+
+  const drafting = !body.replace(/<[^>]*>/g, '').trim();
+  const systemPrompt = `You are a professional recruiter writing ${purpose}. The email is a template: the same text goes to many candidates, and the parts that change are variables written as {{key}}.
+
+Rules for variables:
+- Keep every variable already in the subject or body exactly as written, braces included, character for character. Never translate, rename, reformat or remove one.
+- Never replace a variable with a real or invented value, and never write placeholders of your own such as [Name] or <first name>.
+- Only use a variable from the list you are given. Add one only when the instruction asks for it or when drafting from nothing.
+
+Write warm, plain, concise emails (2-4 short paragraphs), with a clear next step. No emoji.`;
+
+  const userPrompt = `${context.join("\n\n")}
+
+---
+
+## Current subject
+${subject || "(empty)"}
+
+## Current body (HTML)
+${drafting ? "(empty: write it from nothing)" : body}
+
+---
+
+## Your task
+${instruction}
+
+${input.sender_name ? `Sign off as ${String(input.sender_name).slice(0, 80)}, or with {{sender.name}} if it is in the list.` : "Sign off with {{sender.name}} if it is in the list."}
+
+Respond with a JSON object with "subject" (plain text) and "body_html" (simple HTML: <p>, <br>, <strong>, <em>, <u>, <ul>, <ol>, <li>, <a href>; nothing else).`;
+
+  const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") });
+  const completion = await openai.chat.completions.create({
+    model: AI_MODELS.reasoning,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    response_format: { type: "json_object" },
+    reasoning_effort: "low",
+    max_completion_tokens: 4000,
+  });
+  const content = completion.choices[0]?.message?.content;
+  if (!content) throw new Error("No response from AI");
+  const result = JSON.parse(content);
+  const outSubject = String(result.subject ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  const outBody = cleanHtml(String(result.body_html ?? result.body ?? ''));
+  if (!outBody) throw new Error("Empty answer");
+  return json({ subject: outSubject, body_html: outBody });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -51,7 +176,11 @@ serve(async (req) => {
       });
     }
 
-    const { candidate_id, job_id, prompt, email_type, sender_name } = await req.json() as DraftRequest;
+    const payload = await req.json();
+    if (payload?.mode === 'template') {
+      return await rewriteTemplate(req, supabase, payload as TemplateRequest);
+    }
+    const { candidate_id, job_id, prompt, email_type, sender_name } = payload as DraftRequest;
 
     if (!candidate_id || !job_id || !prompt) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {

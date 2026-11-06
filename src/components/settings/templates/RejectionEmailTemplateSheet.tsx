@@ -18,6 +18,8 @@ import {
 import { PlaceholderHelper } from '../PlaceholderHelper';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
 import { Loader2 } from 'lucide-react';
+import { AIDraftPopover, RewriteButton } from '@/components/candidates/AIDraftPopover';
+import { COMPOSER_VARIABLES } from '@/lib/automations';
 
 interface RejectionEmailTemplateSheetProps {
   open: boolean;
@@ -118,6 +120,7 @@ export function RejectionEmailTemplateSheet({
                 value={formData.subject}
                 onChange={(value) => setFormData({ ...formData, subject: value })}
                 onFocus={() => setLastFocusedField('subject')}
+                variables={COMPOSER_VARIABLES}
                 placeholder="e.g., Update on your application for {{job.title}}"
               />
             </div>
@@ -130,6 +133,19 @@ export function RejectionEmailTemplateSheet({
                 onChange={(value) => setFormData({ ...formData, body: value })}
                 onFocus={() => setLastFocusedField('body')}
                 placeholder="Enter your rejection email content here. Use placeholders like {{candidate.first_name}} or {{job.title}}"
+                variables={COMPOSER_VARIABLES}
+                toolbarExtra={
+                  <>
+                    <div className="flex-1" />
+                    <AIDraftPopover
+                      template={{ purpose: 'rejection', subject: formData.subject, variables: COMPOSER_VARIABLES }}
+                      currentBody={formData.body}
+                      onInsert={(subject, body) => setFormData((f) => ({ ...f, subject: subject || f.subject, body }))}
+                    >
+                      <RewriteButton empty={!formData.body.replace(/<[^>]*>/g, '').trim()} />
+                    </AIDraftPopover>
+                  </>
+                }
               />
             </div>
 
