@@ -33,7 +33,9 @@ import {
   type SlackEvent,
   type SlackFilters,
   type SlackTag,
+  SLACK_GROUP_TONE,
 } from '@/lib/slack'
+import { OptionCard } from '@/components/ui/option-card'
 import { cn } from '@/lib/utils'
 import { title as automationTitle } from './SlackAutomationList'
 import { SlackDestinationsField } from './SlackDestinationsField'
@@ -327,37 +329,26 @@ export function SlackAutomationSheet({
       ) : (
       <>
       <FormSection title="When" subtitle={isAdmin ? undefined : 'Offer events are for admins.'} bare>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {GROUPS.map((g) => {
             const list = events.filter((e) => e.group === g)
             if (!list.length) return null
             return (
               <div key={g}>
-                <p className="mb-1.5 font-inter text-[11.5px] font-medium text-text-tertiary">{g}</p>
-                <div role="radiogroup" aria-label={g} className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                  {list.map((e) => {
-                    const on = e.key === event
-                    const Icon = e.icon
-                    return (
-                      <button
-                        key={e.key}
-                        type="button"
-                        role="radio"
-                        aria-checked={on}
-                        onClick={() => changeEvent(e.key)}
-                        className={cn(
-                          'gio-pressable flex min-h-[44px] items-center gap-2.5 rounded-[10px] border bg-white px-3 text-left transition-colors duration-hover',
-                          on ? 'border-[#6F3FF5] shadow-[0_0_0_1px_#6F3FF5]' : 'border-[#E7E8EE] hover:border-[#C9C7BF]',
-                        )}
-                      >
-                        <span aria-hidden className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-lg', on ? 'bg-[#EDE4FF] text-[#6F3FF5]' : 'bg-[#F1F0EC] text-[#5A6072]')}>
-                          <Icon className="h-3.5 w-3.5" strokeWidth={2} />
-                        </span>
-                        <span className="min-w-0 flex-1 truncate font-inter text-[13px] text-text-primary">{e.label}</span>
-                        {on && <Check className="h-4 w-4 shrink-0 text-[#6F3FF5]" aria-hidden />}
-                      </button>
-                    )
-                  })}
+                <p className="font-poppins mb-1.5" style={{ fontSize: 12, fontWeight: 600, color: '#5A6072' }}>{g}</p>
+                <div role="radiogroup" aria-label={g} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {list.map((e) => (
+                    <OptionCard
+                      key={e.key}
+                      radio
+                      icon={e.icon}
+                      tone={SLACK_GROUP_TONE[e.group]}
+                      label={e.label}
+                      description={e.hint}
+                      selected={e.key === event}
+                      onSelect={() => changeEvent(e.key)}
+                    />
+                  ))}
                 </div>
               </div>
             )

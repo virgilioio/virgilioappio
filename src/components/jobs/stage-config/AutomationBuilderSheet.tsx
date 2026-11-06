@@ -21,6 +21,7 @@ import {
 } from '@/lib/automations';
 import type { StageAutomation, AutomationInput } from '@/hooks/useStageAutomations';
 import { AutomationEmailComposer } from './AutomationEmailComposer';
+import { OptionCard } from '@/components/ui/option-card';
 
 interface Props {
   open: boolean;
@@ -245,31 +246,18 @@ export function AutomationBuilderSheet({ open, onOpenChange, jobId, jhsId, stage
                   <div key={fam}>
                     <div className="font-poppins mb-1.5" style={{ fontSize: 12, fontWeight: 600, color: '#5A6072' }}>{FAMILY_LABEL[fam]}</div>
                     <div className="grid grid-cols-3 gap-2">
-                      {ACTIONS.filter((a) => a.family === fam).map((a) => {
-                        const selected = action === a.key;
-                        const Icon = a.icon;
-                        return (
-                          <button
-                            key={a.key}
-                            type="button"
-                            disabled={a.soon}
-                            aria-pressed={selected}
-                            onClick={() => chooseAction(a.key)}
-                            className={cn('text-left rounded-xl p-3 flex items-start gap-3 transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed', !a.soon && 'hover:bg-[#FAFAF7]')}
-                            style={{ border: selected ? '2px solid #6F3FF5' : '1px solid #E8E6E0', padding: selected ? 11 : 12 }}
-                          >
-                            <span className="h-8 w-8 rounded-lg shrink-0 inline-flex items-center justify-center" style={{ background: a.bg, color: a.fg }}>
-                              <Icon className="h-4 w-4" />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block font-poppins truncate" style={{ fontSize: 12.5, fontWeight: 600, color: '#0d0d09' }}>
-                                {a.label}{a.soon && <span className="ml-1.5 font-inter" style={{ fontSize: 10, color: '#8B8F9E', fontWeight: 500 }}>Soon</span>}
-                              </span>
-                              <span className="block font-inter" style={{ fontSize: 11.5, color: '#8B8F9E', lineHeight: 1.35 }}>{a.description}</span>
-                            </span>
-                          </button>
-                        );
-                      })}
+                      {ACTIONS.filter((a) => a.family === fam).map((a) => (
+                        <OptionCard
+                          key={a.key}
+                          icon={a.icon}
+                          tone={a}
+                          label={a.label}
+                          description={a.description}
+                          soon={a.soon}
+                          selected={action === a.key}
+                          onSelect={() => chooseAction(a.key)}
+                        />
+                      ))}
                     </div>
                   </div>
                 ))}

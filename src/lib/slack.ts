@@ -6,6 +6,7 @@
  * Function writes and sends; screens only read and save through the slack_*
  * functions (who may do what is the database's call).
  */
+import { OPTION_TONES, type OptionTone } from '@/lib/optionTones'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Briefcase, Cake, CalendarClock, CalendarX2, CheckCircle2, ClipboardCheck, ClipboardList, FileCheck2, FileSignature,
@@ -39,6 +40,8 @@ export interface SlackEventDef {
   label: string
   /** "When …" */
   when: string
+  /** One line under the label in the builder's When cards. */
+  hint: string
   icon: LucideIcon
   /** Admins only (a channel can hold anyone). */
   offer?: boolean
@@ -72,78 +75,87 @@ const OFFER_LINKS: SlackDetail[] = ['profile_link', 'offer_link', ...JOB_LINKS]
 const TEAM: SlackRole[] = ['recruiter', 'sourcer', 'hiring_manager']
 
 export const SLACK_EVENTS: SlackEventDef[] = [
-  { key: 'candidate.applied', group: 'Candidates', label: 'Someone applies', when: 'When someone applies', icon: Inbox,
+  { key: 'candidate.applied', group: 'Candidates', label: 'Someone applies', hint: 'A new application comes in for a job.', when: 'When someone applies', icon: Inbox,
     details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...CANDIDATE_LINKS], roles: TEAM,
     message: '{candidate} applied to {job}.' },
-  { key: 'candidate.stage_changed', group: 'Candidates', label: 'A candidate moves stage', when: 'When a candidate moves stage', icon: MoveRight,
+  { key: 'candidate.stage_changed', group: 'Candidates', label: 'A candidate moves stage', hint: 'Any move on the board, forward or back.', when: 'When a candidate moves stage', icon: MoveRight,
     details: [...CANDIDATE, 'previous_stage', ...CANDIDATE_LINKS], roles: TEAM, stages: true,
     message: '{who} moved {candidate} to {stage} on {job}.' },
-  { key: 'candidate.hired', group: 'Candidates', label: 'A candidate is hired', when: 'When a candidate is hired', icon: PartyPopper,
+  { key: 'candidate.hired', group: 'Candidates', label: 'A candidate is hired', hint: 'Someone is marked hired on an opening.', when: 'When a candidate is hired', icon: PartyPopper,
     details: [...CANDIDATE, 'opening', ...CANDIDATE_LINKS], roles: TEAM,
     message: '{who} just hired {candidate} for {client} ({job}).' },
-  { key: 'candidate.rejected', group: 'Candidates', label: 'A candidate is rejected', when: 'When a candidate is rejected', icon: UserX,
+  { key: 'candidate.rejected', group: 'Candidates', label: 'A candidate is rejected', hint: 'Rejected from a job, with the reason.', when: 'When a candidate is rejected', icon: UserX,
     details: [...CANDIDATE, 'reason', ...CANDIDATE_LINKS], roles: TEAM, stages: true,
     message: '{candidate} was rejected from {job}: {reason}.' },
-  { key: 'interview.scheduled', group: 'Interviews', label: 'An interview is scheduled', when: 'When an interview is scheduled', icon: CalendarClock,
+  { key: 'interview.scheduled', group: 'Interviews', label: 'An interview is scheduled', hint: 'An interview is booked with a candidate.', when: 'When an interview is scheduled', icon: CalendarClock,
     details: [...CANDIDATE, 'interviewer', 'interview_time', ...SCORECARD_LINKS], roles: [...TEAM, 'interviewer'], stages: true,
     message: '{who} scheduled {candidate} with {interviewer} for {interview_time} ({job}).' },
-  { key: 'interview.cancelled', group: 'Interviews', label: 'An interview is cancelled', when: 'When an interview is cancelled', icon: CalendarX2,
+  { key: 'interview.cancelled', group: 'Interviews', label: 'An interview is cancelled', hint: 'A booked interview is called off.', when: 'When an interview is cancelled', icon: CalendarX2,
     details: [...CANDIDATE, 'interviewer', 'interview_time', ...SCORECARD_LINKS], roles: [...TEAM, 'interviewer'], stages: true,
     message: 'The interview with {candidate} on {interview_time} was cancelled ({job}).' },
-  { key: 'scorecard.submitted', group: 'Interviews', label: 'A scorecard is submitted', when: 'When a scorecard is submitted', icon: ClipboardCheck,
+  { key: 'scorecard.submitted', group: 'Interviews', label: 'A scorecard is submitted', hint: 'An interviewer sends in their feedback.', when: 'When a scorecard is submitted', icon: ClipboardCheck,
     details: [...CANDIDATE, 'rating', ...SCORECARD_LINKS], roles: TEAM, stages: true,
     message: '{who} submitted a scorecard for {candidate}: {rating}.' },
-  { key: 'scorecard.due', group: 'Interviews', label: 'A scorecard is due', when: 'When a scorecard is due', icon: ClipboardList,
+  { key: 'scorecard.due', group: 'Interviews', label: 'A scorecard is due', hint: 'Reminds the interviewer until it’s in.', when: 'When a scorecard is due', icon: ClipboardList,
     details: ['candidate', 'job', 'client', 'department', 'stage', 'interviewer', 'interview_time', ...SCORECARD_LINKS],
     roles: ['interviewer'], stages: true, dmOnly: 'interviewer',
     repeats: { options: [1, 2, 3], initial: 1, once: true, from: 'From when the interview ends, until their scorecard is in.' },
     message: 'Hi {interviewer}! 👋 Your scorecard for {candidate} ({job}, {stage}) is due. A few minutes now keeps the process moving. {scorecard_link}' },
-  { key: 'offer.approval_requested', group: 'Offers', label: 'An offer needs approval', when: 'When an offer is sent for approval', icon: FileCheck2, offer: true,
+  { key: 'offer.approval_requested', group: 'Offers', label: 'An offer needs approval', hint: 'An offer goes to its approvers.', when: 'When an offer is sent for approval', icon: FileCheck2, offer: true,
     details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE, 'approver', 'approval_step', ...OFFER_LINKS],
     roles: [...TEAM, 'approver'],
     message: "{who} sent {candidate}'s offer for {job} for approval. Next to approve: {approver}." },
-  { key: 'offer.approval_waiting', group: 'Offers', label: 'An offer is still waiting for approval', when: 'When an offer is still waiting for approval', icon: Hourglass, offer: true,
+  { key: 'offer.approval_waiting', group: 'Offers', label: 'An offer is still waiting for approval', hint: 'Reminds the approver whose turn it is.', when: 'When an offer is still waiting for approval', icon: Hourglass, offer: true,
     details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE, 'approver', 'approval_step', 'waiting', ...OFFER_LINKS],
     roles: ['approver'], dmOnly: 'approver',
     repeats: { options: [1, 2, 3], initial: 1, from: 'From when their turn began, until they decide.' },
     message: 'Hi {approver}! 👋 The offer for {candidate} ({job}) is still waiting for your approval. It can’t go out until you decide. {offer_link}' },
-  { key: 'offer.approved', group: 'Offers', label: 'An offer is approved', when: 'When an offer is approved', icon: CheckCircle2, offer: true,
+  { key: 'offer.approved', group: 'Offers', label: 'An offer is approved', hint: 'Every approver has said yes.', when: 'When an offer is approved', icon: CheckCircle2, offer: true,
     details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...OFFER_LINKS], roles: TEAM,
     message: "{candidate}'s offer for {job} is approved." },
-  { key: 'offer.sent', group: 'Offers', label: 'An offer is sent to sign', when: 'When an offer is sent to sign', icon: Send, offer: true,
+  { key: 'offer.sent', group: 'Offers', label: 'An offer is sent to sign', hint: 'The offer goes out for signature.', when: 'When an offer is sent to sign', icon: Send, offer: true,
     details: ['who', 'candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...OFFER_LINKS], roles: TEAM,
     message: '{who} sent {candidate} their offer for {job}.' },
-  { key: 'offer.signed', group: 'Offers', label: 'An offer is signed', when: 'When an offer is signed', icon: FileSignature, offer: true,
+  { key: 'offer.signed', group: 'Offers', label: 'An offer is signed', hint: 'The candidate signs their offer.', when: 'When an offer is signed', icon: FileSignature, offer: true,
     details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...OFFER_LINKS], roles: TEAM,
     message: '{candidate} signed their offer for {job}.' },
-  { key: 'offer.declined', group: 'Offers', label: 'An offer is declined', when: 'When an offer is declined', icon: FileX2, offer: true,
+  { key: 'offer.declined', group: 'Offers', label: 'An offer is declined', hint: 'The candidate declines their offer.', when: 'When an offer is declined', icon: FileX2, offer: true,
     details: ['candidate', 'job', 'client', 'department', ...JOB_PEOPLE, ...OFFER_LINKS], roles: TEAM,
     message: '{candidate} declined their offer for {job}.' },
-  { key: 'job.opened', group: 'Jobs', label: 'A job opens', when: 'When a job opens', icon: Briefcase,
+  { key: 'job.opened', group: 'Jobs', label: 'A job opens', hint: 'A job’s status turns Open.', when: 'When a job opens', icon: Briefcase,
     details: ['who', 'job', 'client', 'department', ...JOB_PEOPLE, ...JOB_LINKS], roles: TEAM,
     message: '{who} opened {job} for {client}.' },
-  { key: 'job.closed', group: 'Jobs', label: 'A job closes', when: 'When a job closes', icon: XCircle,
+  { key: 'job.closed', group: 'Jobs', label: 'A job closes', hint: 'A job’s status turns Closed.', when: 'When a job closes', icon: XCircle,
     details: ['who', 'job', 'client', 'department', ...JOB_PEOPLE, ...JOB_LINKS], roles: TEAM,
     message: '{job} for {client} is closed.' },
-  { key: 'member.joined', group: 'People', label: 'Someone joins Gio ATS', when: 'When someone joins Gio ATS', icon: UserPlus, people: true,
+  { key: 'member.joined', group: 'People', label: 'Someone joins Gio ATS', hint: 'A new teammate joins the workspace.', when: 'When someone joins Gio ATS', icon: UserPlus, people: true,
     details: ['member', 'my_profile_link'], roles: ['member'],
     message: 'Welcome to Gio, {member}! 👋🎉 We’re so happy you’re here. Start with your profile: it only takes a few minutes ✨' },
-  { key: 'member.profile_incomplete', group: 'People', label: 'A profile is still incomplete', when: 'When a profile is still incomplete', icon: ListTodo,
+  { key: 'member.profile_incomplete', group: 'People', label: 'A profile is still incomplete', hint: 'Reminds them until their profile is done.', when: 'When a profile is still incomplete', icon: ListTodo,
     people: true, dmOnly: 'member',
     repeats: { options: [3, 5, 7, 14], initial: 7, from: 'From the day they join, until their profile is complete.' },
     details: ['member', 'missing', 'progress', 'my_profile_link'], roles: ['member'],
     message: 'Hey {member}! 👋 Your Gio profile is {progress}. Still to add: {missing}. It only takes a few minutes, and it helps the whole team ✨' },
   // 2026-10-30: on the day, about 9:00 Mexico City; never the year or their age.
-  { key: 'member.birthday', group: 'People', label: 'It’s someone’s birthday', when: 'When it’s someone’s birthday', icon: Cake, people: true,
+  { key: 'member.birthday', group: 'People', label: 'It’s someone’s birthday', hint: 'On the day, never their age.', when: 'When it’s someone’s birthday', icon: Cake, people: true,
     details: ['member'], roles: ['member'],
     timing: 'On their birthday, at about 9:00 AM Mexico City time, once a year. Never their age or birth year.',
     message: 'Happy birthday, {member}! 🎂🎉 Wishing you a great day from the whole team.' },
   // 2026-10-28: the moment Gio notices someone's Gmail or Calendar needs reconnecting.
-  { key: 'member.google_broken', group: 'People', label: 'Someone’s Google stops working', when: 'When someone’s Google stops working', icon: MailWarning,
+  { key: 'member.google_broken', group: 'People', label: 'Someone’s Google stops working', hint: 'Gmail or Calendar needs reconnecting.', when: 'When someone’s Google stops working', icon: MailWarning,
     people: true, dmOnly: 'member',
     details: ['member', 'my_profile_link'], roles: ['member'],
     message: 'Hi {member}! 👋 Your Google Workspace stopped working in Gio, so emails to candidates and your calendar are on hold. Reconnecting takes a minute.' },
 ]
+
+/** Each group's tint on the When cards (the option-card tones). */
+export const SLACK_GROUP_TONE: Record<SlackEventDef['group'], OptionTone> = {
+  Candidates: OPTION_TONES.purple,
+  Interviews: OPTION_TONES.sky,
+  Offers: OPTION_TONES.green,
+  Jobs: OPTION_TONES.amber,
+  People: OPTION_TONES.pink,
+}
 
 export const SLACK_EVENT = Object.fromEntries(SLACK_EVENTS.map((e) => [e.key, e])) as Record<SlackEvent, SlackEventDef>
 

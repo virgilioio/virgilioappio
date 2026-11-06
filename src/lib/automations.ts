@@ -3,6 +3,7 @@
  * WHEN {trigger} · DO {action} · {timing} · guardrails.
  * The list renders the sentence; the builder writes it in that order.
  */
+import { OPTION_TONES } from '@/lib/optionTones'
 import {
   Mail, Layers, MessageSquare, CalendarClock, FileText,
   Bell, CheckSquare, ClipboardCheck, UserPlus,
@@ -76,12 +77,12 @@ export interface ActionDef {
 }
 
 // Tile palette per family / sub-family (spec)
-const CANDIDATE = { bg: '#EFE9FE', fg: '#6F3FF5' }
-const CANDIDATE_ALT = { bg: '#E3F4FD', fg: '#0EA5E9' }
-const TEAM = { bg: '#FBF0DF', fg: '#E0891A' }
-const MOVE = { bg: '#E4F5EA', fg: '#12B886' }
-const REJECT = { bg: '#FDECEC', fg: '#FA5252' }
-const NEUTRAL = { bg: '#F1F0EC', fg: '#5A6072' }
+const CANDIDATE = OPTION_TONES.purple
+const CANDIDATE_ALT = OPTION_TONES.sky
+const TEAM = OPTION_TONES.amber
+const MOVE = OPTION_TONES.green
+const REJECT = OPTION_TONES.red
+const NEUTRAL = OPTION_TONES.neutral
 
 export const ACTIONS: ActionDef[] = [
   { key: 'email', family: 'candidate', label: 'Send an email', description: 'One message from your connected mailbox.', icon: Mail, ...CANDIDATE },
