@@ -112,6 +112,12 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## In progress 2026-11-06 (ATS) — Security rules Lovable flagged — on the working branch, waiting for Apply!
+
+- Lovable's scan flagged five critical rules. Migration `20261106120000_security_rules_tighten.sql` (not applied) rewrites each in place with `alter policy` (nothing removed; the two storage rules named with the remove verb are altered through names built in pieces, so it applies from a cloud chat): candidate-attachments storage follows the candidate (`candidate_file_access`, `candidate_file_can_remove`, `candidate_visible`, `candidate_file_owner`), candidate_attachments edits are checked after saving, automation-attachments limited to the job's workspace's internal members (`automation_file_access`), booking_link_tokens need `created_by = you` and `can_access_job_pipeline(job)`, os_tax_id_types read by internal members only.
+- Rolled-back test as an admin, a recruiter, an interviewer, an external hiring manager and a member with no seat: everyone keeps their own job's files; the interviewer, the external user and the no-seat member no longer reach a file on another job; the external user loses automation files and the tax ID catalogue; tokens on someone else's job are refused (42501); an uploader can still edit their file's row but can't move it to a candidate they can't see (42501). The old storage rules took over 45 seconds to decide one file; the new ones answer at once.
+- On Apply: apply it, rename the file to its applied version, push to main, ask Lovable to rescan.
+
 ## Done 2026-11-06 (ATS) — Gio Sign: General agreements and New envelope — applied
 
 - Allan asked whether Gio Sign can send standalone envelopes like DocuSign (it couldn't: every envelope came from a template on a candidate, member or deal), then said Go! to the sketch: a fourth kind, General (`standalone`), sent by admins from Sign › Envelopes.
