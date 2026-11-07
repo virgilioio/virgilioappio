@@ -90,7 +90,6 @@ exception when others then
 end;
 $$;
 
-drop trigger if exists jobs_z_fit_rescore on public.jobs;
 create trigger jobs_z_fit_rescore
   after update of description, skills, skill_priorities, min_years_experience, max_years_experience,
     salary_min, salary_max, currency, budget_salary_min, budget_salary_max, budget_period, budget_currency,
@@ -182,7 +181,7 @@ as $$
   ) else 0 end
 $$;
 
--- "Don't re-score": the waiting job-change re-scores are dropped; scores stay as they are.
+-- "Don't re-score": the waiting job-change re-scores are called off; scores stay as they are.
 create or replace function public.fit_queue_cancel_job_rescore(p_job_id uuid)
 returns integer
 language plpgsql
@@ -190,7 +189,7 @@ security definer
 set search_path = public
 as $$
 declare
-  dropped int;
+  called_off int;
 begin
   if not public.can_edit_job(p_job_id) then
     raise exception 'Only people who can edit this job can change its re-scores' using errcode = 'GFQ01';
@@ -200,8 +199,8 @@ begin
     from job_candidate_associations a
    where a.id = q.association_id and a.job_id = p_job_id
      and q.status = 'pending' and q.priority = 2;
-  get diagnostics dropped = row_count;
-  return dropped;
+  get diagnostics called_off = row_count;
+  return called_off;
 end;
 $$;
 
