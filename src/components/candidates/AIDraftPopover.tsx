@@ -119,7 +119,8 @@ export function AIDraftPopover({
   const isRewrite = plainBody.length > 0;
   const chips = isRewrite ? REWRITE_CHIPS : template?.purpose === 'rejection' ? REJECTION_DRAFT_CHIPS : DRAFT_CHIPS;
 
-  // Close on outside click / Esc
+  // Close on outside click / Esc. Esc closes only the panel: caught on the way down
+  // (window, capture) so the sheet or dialog under it never sees it.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -128,12 +129,17 @@ export function AIDraftPopover({
       if (panelRef.current?.contains(target)) return;
       setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+    };
     document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
     return () => {
       document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('keydown', onKey, true);
     };
   }, [open]);
 
@@ -225,18 +231,26 @@ export function AIDraftPopover({
     runGenerate(base, null);
   };
 
-  // Track trigger rect to position portal panel
+  // Track trigger rect to position portal panel. Inside a sheet or dialog the panel
+  // lives in it (outside it, the open sheet blocks every click); a transformed host is
+  // what "fixed" is measured from, so its corner comes off.
   const triggerRef = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; host: HTMLElement } | null>(null);
   useLayoutEffect(() => {
     if (!open) return;
     const update = () => {
       const el = triggerRef.current;
       if (!el) return;
+      const host = (el.closest('[role="dialog"]') as HTMLElement | null) ?? document.body;
       const r = el.getBoundingClientRect();
       const width = 400;
       const left = Math.max(8, Math.min(window.innerWidth - width - 8, r.right - width));
-      setCoords({ top: r.bottom + 8, left });
+      // Measured from a transformed host, the panel also scrolls with it when it scrolls.
+      const hr = host !== document.body && getComputedStyle(host).transform !== 'none' ? host.getBoundingClientRect() : null;
+      const shift = hr
+        ? { left: hr.left - host.scrollLeft, top: hr.top - host.scrollTop }
+        : { left: 0, top: 0 };
+      setCoords({ top: r.bottom + 8 - shift.top, left: left - shift.left, host });
     };
     update();
     window.addEventListener('resize', update);
@@ -523,7 +537,7 @@ export function AIDraftPopover({
             </div>
           </div>
         </div>,
-        document.body,
+        coords.host,
       )}
     </div>
   );
