@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-07 (ATS) — Rewrite with Gio panel stays open in sheets — on the branch, waiting for Apply!
+
+- Allan: in the template editors and the stage automation editor, clicking anywhere in the Rewrite panel closed it.
+- Cause: `AIDraftPopover` portalled its panel to `body`; an open sheet (Radix modal) makes everything outside it ignore clicks, so the click landed behind the panel and its outside-click check closed it.
+- Fix: the panel now goes into the sheet or dialog it opened from (`closest('[role="dialog"]')`, else `body`), positioned like the @mention menu (a transformed host's corner and scroll taken off); Esc closes only the panel (caught on `window` in capture, so the sheet never sees it). `FormSheet` and `MinimizableOfferComposer` hid their built-in × with `[&>button:last-child]`, which a portalled panel breaks; now `[&>button:last-of-type]`.
+- Checked in the browser (template sheet and a scrolling sheet with the automation composer): click and type in the box, click the header, Esc (panel closes, the sheet stays, no discard prompt), a click elsewhere closes it, the panel stays under Rewrite while the sheet scrolls, one × on the sheet. Types clean, no new lint. No database change.
+
 ## Done 2026-11-07 (ATS) — Variables inside the template editors — on main
 
 - Allan: Settings › Templates had the variables as a card on the right; put them in the editor, as in the stage automation composer.
