@@ -7,3 +7,7 @@ export type { BodyTemplateEditorProps, BodyTemplateEditorHandle, BodyEditorComma
 
 // Re-export utilities for external use
 export { parseTemplateToNodes, editorStateToTemplateString } from './utils/placeholderLexicalUtils';
+
+// The in-editor variable picker and Preview (shared by every email template editor)
+export { VariableMenu } from './VariableMenu';
+export { TemplatePreview, PreviewToggle } from './TemplatePreview';

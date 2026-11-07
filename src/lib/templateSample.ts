@@ -1,0 +1,32 @@
+/** Sample values for an email template's Preview (TemplatePreview), one per variable any email fills. */
+export function templateSample(candidateName = 'Alex Rivera'): Record<string, string> {
+  return {
+    'candidate.first_name': candidateName.split(' ')[0],
+    'candidate.full_name': candidateName,
+    'candidate.name': candidateName,
+    'candidate.email': 'alex@example.com',
+    'candidate.phone': '+52 55 1234 5678',
+    'candidate.location': 'Guadalajara, Jalisco, Mexico',
+    'job.title': 'Senior Product Designer',
+    'job.department': 'Design',
+    'department.name': 'Design',
+    'job.location': 'Mexico City',
+    'job.salary_range': 'MXN 80,000 – 110,000',
+    'client.name': 'Acme',
+    'organization.name': 'Virgilio',
+    'stage.name': 'Screening',
+    'recruiter.first_name': 'Sam',
+    'sender.first_name': 'Sam',
+    'sender.name': 'Sam Ortega',
+    'sender.email': 'sam@virgilio.tech',
+    'sender.title': 'Senior Recruiter',
+    'sender.phone': '+52 55 8765 4321',
+    'sender.linkedin': 'https://www.linkedin.com/in/sam-ortega',
+    'interview.datetime': 'Tuesday, October 14, 10:00 AM CST',
+    'interview.date': 'Tuesday, October 14',
+    'interview.time': '10:00 AM CST',
+    'stage.booking_link': 'https://app.gogio.io/schedule/sam?t=a1b2c3d4',
+    'sender.booking_link': 'https://app.gogio.io/schedule/sam?t=e5f6g7h8',
+    'scheduling.link': 'https://app.gogio.io/schedule/sam?t=a1b2c3d4',
+  };
+}

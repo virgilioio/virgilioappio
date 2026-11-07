@@ -1,23 +1,17 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Braces, Paperclip, X, Eye, Search, CalendarClock,
-} from 'lucide-react';
+import { Paperclip, X, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
+import { SubjectTemplateEditor, BodyTemplateEditor, VariableMenu, TemplatePreview, PreviewToggle } from '@/components/editors';
 import { AIDraftPopover, RewriteButton } from '@/components/candidates/AIDraftPopover';
 import type { SubjectTemplateEditorHandle, BodyTemplateEditorHandle } from '@/components/editors';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { menuPanel, menuItem, menuGroupLabel } from '@/lib/menu-classes';
-import { cn } from '@/lib/utils';
 import {
   COMPOSER_VARIABLES, ATTACHMENT_TOTAL_LIMIT, formatBytes,
   type AutomationEmailStep, type AttachmentRef,
 } from '@/lib/automations';
 import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
-import { renderTemplate as previewTemplate } from "@/utils/templateUtils";
 
 const LABEL: React.CSSProperties = { fontSize: 11, color: '#8B8F9E', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 };
 
@@ -85,33 +79,12 @@ export function AutomationEmailComposer({
   const usesStageLink = /\{\{\s*(stage\.booking_link|scheduling\.link)\s*\}\}/.test(`${step.subject} ${step.body_html}`);
   const subjectRef = useRef<SubjectTemplateEditorHandle>(null);
   const bodyRef = useRef<BodyTemplateEditorHandle>(null);
-  const lastFocused = useRef<'subject' | 'body'>('body');
-  const [varOpen, setVarOpen] = useState<null | 'subject' | 'body'>(null);
-  const [varQuery, setVarQuery] = useState('');
   const [showCc, setShowCc] = useState(cc.length > 0 || bcc.length > 0);
   const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const totalBytes = step.attachments.reduce((n, a) => n + (a.size || 0), 0);
-
-  const filteredVars = useMemo(() => {
-    const q = varQuery.trim().toLowerCase();
-    return COMPOSER_VARIABLES.filter((v) => !v.legacy && (!q || v.label.toLowerCase().includes(q) || v.key.includes(q)));
-  }, [varQuery]);
-  const groups = useMemo(() => {
-    const m = new Map<string, typeof filteredVars>();
-    for (const v of filteredVars) m.set(v.group, [...(m.get(v.group) || []), v]);
-    return Array.from(m.entries());
-  }, [filteredVars]);
-
-  const insertVariable = (key: string) => {
-    const target = varOpen || lastFocused.current;
-    if (target === 'subject') subjectRef.current?.insertPlaceholder(key);
-    else bodyRef.current?.insertPlaceholder(key);
-    setVarOpen(null);
-    setVarQuery('');
-  };
 
 
   const applyTemplate = (id: string) => {
@@ -152,79 +125,6 @@ export function AutomationEmailComposer({
     onChange({ ...step, attachments: step.attachments.filter((a) => a.file_id !== ref.file_id) });
     await supabase.storage.from('automation-attachments').remove([ref.file_id]).catch(() => null);
   };
-
-  const sample = {
-    'candidate.first_name': (previewCandidateName || 'Alex Rivera').split(' ')[0],
-    'candidate.full_name': previewCandidateName || 'Alex Rivera',
-    'candidate.name': previewCandidateName || 'Alex Rivera',
-    'candidate.email': 'alex@example.com',
-    'job.title': 'Senior Product Designer',
-    'job.department': 'Design',
-    'job.location': 'Mexico City',
-    'job.salary_range': 'MXN 80,000 – 110,000',
-    'client.name': 'Acme',
-    'candidate.phone': '+52 55 1234 5678',
-    'candidate.location': 'Guadalajara, Jalisco, Mexico',
-    'organization.name': 'Virgilio',
-    'stage.name': 'Screening',
-    'recruiter.first_name': 'Sam',
-    'sender.first_name': 'Sam',
-    'sender.name': 'Sam Ortega',
-    'sender.email': 'sam@virgilio.tech',
-    'sender.title': 'Senior Recruiter',
-    'sender.phone': '+52 55 8765 4321',
-    'sender.linkedin': 'https://www.linkedin.com/in/sam-ortega',
-    'interview.datetime': 'Tuesday, October 14, 10:00 AM CST',
-    'interview.date': 'Tuesday, October 14',
-    'interview.time': '10:00 AM CST',
-    'stage.booking_link': 'https://app.gogio.io/schedule/sam?t=a1b2c3d4',
-    'sender.booking_link': 'https://app.gogio.io/schedule/sam?t=e5f6g7h8',
-    'scheduling.link': 'https://app.gogio.io/schedule/sam?t=a1b2c3d4',
-  };
-
-  const variablePopover = (target: 'subject' | 'body', trigger: React.ReactNode) => (
-    <Popover modal open={varOpen === target} onOpenChange={(o) => { setVarOpen(o ? target : null); if (!o) setVarQuery(''); }}>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align="start" sideOffset={6} className={cn(menuPanel, 'w-[280px] p-0 z-[1300]')}>
-        <div className="flex items-center gap-2 px-3 h-9" style={{ borderBottom: '1px solid #F1F0EC' }}>
-          <Search className="h-3.5 w-3.5" style={{ color: '#8B8F9E' }} />
-          <input
-            autoFocus
-            value={varQuery}
-            onChange={(e) => setVarQuery(e.target.value)}
-            placeholder="Search variables"
-            className="flex-1 bg-transparent outline-none font-inter"
-            style={{ fontSize: 12.5 }}
-          />
-        </div>
-        <div className="p-1 max-h-[280px] overflow-y-auto overscroll-contain" onWheel={(e) => e.stopPropagation()}>
-          {groups.length === 0 && <div className="px-3 py-2 font-inter" style={{ fontSize: 12.5, color: '#8B8F9E' }}>No matches</div>}
-          {groups.map(([group, vars]) => (
-            <div key={group}>
-              <div className={menuGroupLabel}>{group}</div>
-              {vars.map((v) => (
-                <button key={v.key} type="button" className={cn(menuItem, 'w-full justify-between')} onClick={() => insertVariable(v.key)}>
-                  <span>{v.label}</span>
-                  <span className="font-mono" style={{ fontSize: 10.5, color: '#8B8F9E' }}>{`{{${v.key}}}`}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-
-  const previewToggle = (
-    <button
-      type="button"
-      onClick={() => setPreview((p) => !p)}
-      className={cn('h-7 px-2 rounded-md inline-flex items-center gap-1.5 font-inter hover:bg-[#F1F0EC]', preview && 'bg-[#EDE4FF]')}
-      style={{ fontSize: 12, color: '#5A6072' }}
-    >
-      <Eye className="h-3.5 w-3.5" /> {preview ? 'Edit' : 'Preview'}
-    </button>
-  );
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E8E6E0', background: '#fff' }}>
@@ -275,11 +175,7 @@ export function AutomationEmailComposer({
       <div className="px-4 pt-3">
         <div className="flex items-center justify-between mb-1">
           <div style={LABEL} className="font-inter">Subject</div>
-          {variablePopover('subject', (
-            <button type="button" onMouseDown={(e) => e.preventDefault()} className="h-6 px-1.5 rounded-md inline-flex items-center gap-1 font-inter hover:bg-[#F1F0EC]" style={{ fontSize: 11.5, color: '#6F3FF5' }}>
-              <Braces className="h-3 w-3" /> Variable
-            </button>
-          ))}
+          <VariableMenu variant="subject" variables={COMPOSER_VARIABLES} onInsert={(k) => subjectRef.current?.insertPlaceholder(k)} />
         </div>
         <SubjectTemplateEditor
           ref={subjectRef}
@@ -287,7 +183,6 @@ export function AutomationEmailComposer({
           value={step.subject}
           onChange={(v) => onChange({ ...step, subject: v })}
           placeholder="Subject line"
-          onFocus={() => { lastFocused.current = 'subject'; }}
         />
       </div>
 
@@ -295,14 +190,8 @@ export function AutomationEmailComposer({
       <div className="px-4 pb-3 pt-2">
         {preview ? (
           <>
-            <div className="flex items-center justify-end mb-1.5">{previewToggle}</div>
-            <div className="rounded-lg p-4 font-inter" style={{ border: '1px solid #E8E6E0', background: '#FAFAF7', fontSize: 13, color: '#0d0d09', minHeight: 200 }}>
-              <div className="font-poppins mb-3" style={{ fontSize: 13.5, fontWeight: 600 }}>
-                {previewTemplate(step.subject, sample as any) || <span style={{ color: '#8B8F9E' }}>No subject</span>}
-              </div>
-              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: previewTemplate(step.body_html, sample as any) }} />
-              <div className="mt-3 font-inter" style={{ fontSize: 11, color: '#8B8F9E' }}>Preview uses sample values. Real sends use each candidate's data.</div>
-            </div>
+            <div className="flex items-center justify-end mb-1.5"><PreviewToggle preview={preview} onToggle={() => setPreview((p) => !p)} /></div>
+            <TemplatePreview subject={step.subject} body={step.body_html} candidateName={previewCandidateName} />
           </>
         ) : (
           <BodyTemplateEditor
@@ -314,14 +203,9 @@ export function AutomationEmailComposer({
             ariaLabel="Email body"
             minHeight="200px"
             maxHeight="420px"
-            onFocus={() => { lastFocused.current = 'body'; }}
             toolbarExtra={
               <>
-                {variablePopover('body', (
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} className="h-7 px-2 rounded-md inline-flex items-center gap-1.5 font-inter hover:bg-[#F1F0EC]" style={{ fontSize: 12, color: '#6F3FF5' }}>
-                    <Braces className="h-3.5 w-3.5" /> Insert variable
-                  </button>
-                ))}
+                <VariableMenu variant="toolbar" variables={COMPOSER_VARIABLES} onInsert={(k) => bodyRef.current?.insertPlaceholder(k)} />
                 <div className="flex-1" />
                 <AIDraftPopover
                   template={{ purpose: 'automation', subject: step.subject, jobId, stageName, variables: COMPOSER_VARIABLES }}
@@ -331,7 +215,7 @@ export function AutomationEmailComposer({
                 >
                   <RewriteButton empty={!step.body_html?.replace(/<[^>]*>/g, '').trim()} />
                 </AIDraftPopover>
-                {previewToggle}
+                <PreviewToggle preview={preview} onToggle={() => setPreview((p) => !p)} />
               </>
             }
           />
