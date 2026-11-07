@@ -107,11 +107,7 @@ export function useEmailTemplates(context: EmailTemplatesContext = 'organization
       await fetchTemplates();
     } catch (error: any) {
       console.error('Error creating email template:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create email template',
-        variant: 'destructive',
-      });
+      // The sheet says what went wrong in its footer, never the server's message.
       throw error;
     }
   };
@@ -137,11 +133,7 @@ export function useEmailTemplates(context: EmailTemplatesContext = 'organization
       await fetchTemplates();
     } catch (error: any) {
       console.error('Error updating email template:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update email template',
-        variant: 'destructive',
-      });
+      // The sheet says what went wrong in its footer, never the server's message.
       throw error;
     }
   };

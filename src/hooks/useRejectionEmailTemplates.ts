@@ -97,11 +97,7 @@ export function useRejectionEmailTemplates(context: RejectionEmailTemplatesConte
       await fetchTemplates();
     } catch (error: any) {
       console.error('Error creating rejection email template:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create rejection email template',
-        variant: 'destructive',
-      });
+      // The sheet says what went wrong in its footer, never the server's message.
       throw error;
     }
   };
@@ -128,11 +124,7 @@ export function useRejectionEmailTemplates(context: RejectionEmailTemplatesConte
       await fetchTemplates();
     } catch (error: any) {
       console.error('Error updating rejection email template:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update rejection email template',
-        variant: 'destructive',
-      });
+      // The sheet says what went wrong in its footer, never the server's message.
       throw error;
     }
   };
