@@ -1,5 +1,6 @@
 import type { DimensionId } from '../model/types'
 import { EMPTY_JOB_INDEX, isJobDimension, jobDimensionValues, jobOrderFor, linkMatches, type JobIndex, type JobScope } from './jobLinks'
+import { sourceLabel } from '@/lib/candidateLabels'
 
 /**
  * Intelligence (Find Phase 4, 2026-10-12): the market view of the whole
@@ -76,29 +77,6 @@ export function companyLabel(name: string | null | undefined): string | null {
     return cleaned.split(/\s+/).map(w => (w.length <= 3 && w === w.toUpperCase() ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())).join(' ')
   }
   return cleaned
-}
-
-const SOURCE_LABEL: Record<string, string> = {
-  apollo: 'Apollo',
-  linkedin_extension: 'LinkedIn extension',
-  public_posting: 'Careers page',
-  'direct application': 'Careers page',
-  'virgilio career page': 'Careers page',
-  direct: 'Added by hand',
-  csv_import: 'Import',
-  job_import: 'Import',
-  import: 'Import',
-  pdl: 'People Data Labs',
-  coresignal: 'CoreSignal',
-  talent: 'Talent.com',
-  'talent.com': 'Talent.com',
-  'occ mundial': 'OCC',
-  'occ.com.mx': 'OCC',
-}
-
-function sourceLabel(source: string | null): string | null {
-  if (!source) return null
-  return SOURCE_LABEL[source.trim().toLowerCase()] ?? source.trim()
 }
 
 function monthLabel(iso: string): string {
