@@ -3066,6 +3066,7 @@ export type Database = {
           id: string
           last_error: string | null
           next_attempt_at: string
+          priority: number
           reason: string
           status: string
           updated_at: string
@@ -3077,6 +3078,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           next_attempt_at?: string
+          priority?: number
           reason?: string
           status?: string
           updated_at?: string
@@ -3088,6 +3090,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           next_attempt_at?: string
+          priority?: number
           reason?: string
           status?: string
           updated_at?: string
@@ -11950,6 +11953,10 @@ export type Database = {
       }
       fit_queue_acquire_lease: { Args: { _seconds: number }; Returns: boolean }
       fit_queue_sweep: { Args: never; Returns: undefined }
+      fit_queue_rescore: { Args: { p_association_ids: string[] }; Returns: number }
+      fit_queue_job_rescore_pending: { Args: { p_job_id: string }; Returns: number }
+      fit_queue_cancel_job_rescore: { Args: { p_job_id: string }; Returns: number }
+      fit_job_text: { Args: { t: string }; Returns: string }
       fit_queue_wake: { Args: never; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
       geo_cities_search: {
