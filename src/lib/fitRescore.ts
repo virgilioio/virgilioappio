@@ -1,6 +1,7 @@
 import { toast } from 'sonner'
 import { supabase } from '@/integrations/supabase/client'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { announceFitQueueChange } from '@/lib/fitQueueStatus'
 
 /**
  * Gio Fit re-scores (2026-11-07). The database queues them (fit_analysis_queue,
@@ -33,6 +34,7 @@ export async function rescoreCandidates(associationIds: string[]): Promise<numbe
     return 0
   }
   const n = Number(data) || 0
+  announceFitQueueChange()
   if (n === 0) toast('Nobody to re-score', { description: 'Rejected and withdrawn candidates aren’t re-scored.' })
   else toast(`Re-scoring ${n} candidate${n === 1 ? '' : 's'}`, {
     description: `${minutes(n)[0].toUpperCase()}${minutes(n).slice(1)}. Their scores update as each one finishes.`,
@@ -49,6 +51,7 @@ export async function noticeJobRescore(jobId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('fit_queue_job_rescore_pending', { p_job_id: jobId })
   const n = Number(data) || 0
   if (error || n === 0) return false
+  announceFitQueueChange()
   toast(`Gio will re-score ${n} candidate${n === 1 ? '' : 's'}`, {
     id: `fit-rescore-${jobId}`,
     description: 'Against the new job details, starting in 10 minutes. Their current scores stay until then.',
@@ -57,6 +60,7 @@ export async function noticeJobRescore(jobId: string): Promise<boolean> {
       label: 'Don’t re-score',
       onClick: async () => {
         const { error: cancelError } = await supabase.rpc('fit_queue_cancel_job_rescore', { p_job_id: jobId })
+        announceFitQueueChange()
         if (cancelError) toast.error('Couldn’t call off the re-score. Try again.')
         else toast('Scores stay as they are', { description: 'Re-score anyone by hand from the selection bar’s ⋯ menu.' })
       },

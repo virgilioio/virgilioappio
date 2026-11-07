@@ -77,6 +77,7 @@ import { inChunks } from '@/lib/fetchAllRows'
 import { DeleteJobDialog } from '@/components/jobs/DeleteJobDialog'
 import { archiveJob, closeJob } from '@/components/jobs/jobStatusActions'
 import { useScrollMemory } from '@/lib/scrollMemory'
+import { FitQueueProvider } from '@/lib/fitQueueStatus'
 
 
 export default function JobDetail() {
@@ -1148,7 +1149,9 @@ export default function JobDetail() {
 
 
   return (
-
+    // Gio Fit's queue for this job: the Match column, list and board show re-scores
+    // in progress, and a finished one refreshes the pipeline (src/lib/fitQueueStatus.tsx).
+    <FitQueueProvider jobId={id} onScored={() => setPipelineRefresh((v) => v + 1)}>
     <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem-var(--gio-strip))] flex flex-col bg-virgilio-cream overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+72px)] sm:pb-0">
       <div className="layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Mobile Header */}
@@ -1671,5 +1674,6 @@ export default function JobDetail() {
         />
       </div>
     </div>
+    </FitQueueProvider>
   )
 }
