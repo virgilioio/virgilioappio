@@ -112,6 +112,14 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-07 (ATS) — Gio Fit re-scores: on job changes and in bulk — on the branch, waiting for Apply!
+
+- Allan: a JD change should re-score everyone on the job; and a bulk "re-score" in the selection bar's ⋯.
+- Migration `…_fit_rescore.sql` (not applied yet): `fit_analysis_queue.priority` (0 asked for, 1 new candidates/scorecards, 2 job changes); `jobs_z_fit_rescore` → `fit_queue_on_job_change` (description by `fit_job_text`, skills, tiers, years, salary range, budget, locations; active candidates with a Gio Fit; 10 minutes out, pushed back by each change; only with `auto_score` on); `fit_queue_on_scorecard` puts a scorecard ahead of a waiting job-change re-score; RPCs `fit_queue_rescore(ids)` (`can_edit_job`, `GFQ01`; max 500 `GFQ02`; skips rejected and withdrawn; first scores for the unscored), `fit_queue_job_rescore_pending(job)`, `fit_queue_cancel_job_rescore(job)`. `process-fit-queue` takes `priority`, then `next_attempt_at` (deploy after the migration: it reads the new column).
+- Screens: the save toast with Don't re-score (`noticeJobRescore`, `src/lib/fitRescore.ts`; from `useJobs().updateJob` in place of "Job updated", and the posting sheet's salary sync); ⋯ Re-score Gio Fit in `jobBulkMenu` (`rescoreCandidates`, asks first above 25).
+- Checked: rolled-back run on Head of Marketing (30 active scored): title and formatting-only edits queue nobody; a real change queues all 30, 10 minutes out, no rejected ones; a second change keeps them once; bulk queues the active one at priority 0 now and skips a rejected one; Don't re-score drops the 29 job-change rows and keeps the bulk one; scoring off queues nobody; an outsider gets GFQ01 and a pending count of 0; nothing left behind. Browser with fake data: the ⋯ row, the confirm at 40, the toasts, Don't re-score, the refusal. Types clean, no new lint.
+- On Apply: apply the migration as written (rename to its version), types already carry `priority` and the RPCs, deploy `process-fit-queue` (verify_jwt off, as before).
+
 ## Done 2026-11-07 (ATS) — Application review: the rejection email preview shows the real email — on main
 
 - Allan: the Preview in Rejection settings showed `{{…}}` keys; show the candidate's and job's real details.
