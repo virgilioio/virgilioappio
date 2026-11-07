@@ -1,4 +1,4 @@
-import { ArrowRight, Briefcase, Copy, Download, Mail, Tag, UserX } from 'lucide-react'
+import { ArrowRight, Briefcase, Copy, Download, Mail, RefreshCw, Tag, UserX } from 'lucide-react'
 import { downloadCsv } from '@/lib/csv'
 import type { SelectionAction } from '@/components/shared/SelectionBar'
 import { AddToJobPopover } from '@/components/candidates/bulk/AddToJobPopover'
@@ -9,6 +9,7 @@ import { copyToClipboardSilent } from '@/utils/clipboard'
 import { toast } from '@/hooks/use-toast'
 import type { PipelineAssociation } from '@/hooks/usePipelineActions'
 import { stageColor } from './pipelineVisuals'
+import { rescoreCandidates } from '@/lib/fitRescore'
 
 export type JobStageMap = Record<string, { type: string; name: string; position: number }>
 
@@ -32,8 +33,8 @@ export interface JobBulkMenuOptions {
 
 /**
  * The ⋯ rows of a job's selection bar, shared by the Recruiting board and the
- * flat sections: Email, Move to stage ›, Add to another job, Add tag, Copy email
- * addresses, Export as CSV, then Reject last (§19). Rows are offered only when the
+ * flat sections: Email, Move to stage ›, Add to another job, Add tag, Re-score
+ * Gio Fit, Copy email addresses, Export as CSV, then Reject last (§19). Rows are offered only when the
  * caller passes their handler.
  */
 export function jobBulkMenu(o: JobBulkMenuOptions): SelectionAction[] {
@@ -99,6 +100,14 @@ export function jobBulkMenu(o: JobBulkMenuOptions): SelectionAction[] {
         trigger={anchor}
       />
     ),
+  })
+  // Gio Fit against the job as it is now (first scores for anyone without one).
+  rows.push({
+    id: 'rescore',
+    label: 'Re-score Gio Fit',
+    icon: RefreshCw,
+    slot: 'overflow',
+    onClick: () => void rescoreCandidates(selected.map((a) => a.id)),
   })
   rows.push({
     id: 'copy-emails',
