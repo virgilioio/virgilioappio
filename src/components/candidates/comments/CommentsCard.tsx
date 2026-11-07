@@ -215,7 +215,7 @@ export function CommentsCard({ candidateId, jobId, organizationId, className }: 
   )
 }
 
-function CommentRow({
+export function CommentRow({
   c,
   me,
   jobId,
