@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-07 (ATS) — Word résumés no longer "Converting to PDF"; review starts with the oldest applicant — on the branch, waiting for Apply!
+
+- Allan: a .docx résumé sat at "Converting to PDF" forever; Start review should open on the oldest applicant.
+- Cause: every upload that wasn't a PDF went through `trigger_document_conversion` → `convert-document-to-pdf`, a placeholder that never converted anything (it would have stored a blank one-page PDF) and, calling with the public key, never updated the row either. 67 files sat at "processing"; no file was ever converted. Word résumés were always shown by the Word viewer (mammoth); only the label was wrong.
+- Fix: migration `…_document_conversion_retire.sql` (written, rolled-back test: a new Word file and a PDF both arrive done, no call to the function, nothing left at processing) makes the trigger mark files done without calling anything and settles the 67 stuck rows; `CandidateResumeViewer` drops the conversion label, its Retry and the never-available "PDF" download (Download keeps an `IconTip`); `convert-document-to-pdf` becomes a stub that answers 410 and touches nothing (deploy on Apply).
+- Order: the review queue was already oldest first (by when people joined the job; across the 112 waiting in 8 jobs, application dates give the same order). It now sorts by `applied_at`, else `created_at`, and the header's Applied date is the real application date.
+
 ## Done 2026-11-07 (ATS) — Application review sheet, rebuilt on the profile's parts — on main
 
 - Allan: the review sheet covered the rail, split Application answers and "AI Insights" into tabs, the rejection controls scrolled once the email was on, and the notes box was hard to see. Go! to the plan (consistency with the newer components, Motion & Feel, comments with tagging above Rejection settings, keyboard shortcuts).
