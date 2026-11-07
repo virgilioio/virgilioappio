@@ -117,7 +117,7 @@ const col = (
 const nameCol = col('candidate', 'Candidate', (r) => (
   <PSName name={r.name} role={r.role} company={r.company} favorite={r.favorite} />
 ))
-const matchCol = col('match', 'Match', (r) => <PSMatch score={r.score} />, 'right')
+const matchCol = col('match', 'Match', (r) => <PSMatch score={r.score} associationId={r.associationId} />, 'right')
 const ownerCol = (label: string) =>
   col('owner', label, (r) => <PSOwner name={r.ownerName} avatarUrl={r.ownerAvatar} />)
 

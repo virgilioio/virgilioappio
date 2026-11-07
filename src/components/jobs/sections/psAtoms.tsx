@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Clock, Heart, Sparkles } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { GioFitScore } from '@/components/jobs/GioFitScore'
 
 /**
  * Cell atoms shared by every flat pipeline section (Application review, Job
@@ -85,27 +86,11 @@ export function PSName({
   )
 }
 
-export function PSMatch({ score }: { score?: number | null }) {
-  if (typeof score !== 'number') {
-    return (
-      <div style={{ textAlign: 'right', fontFamily: inter, fontSize: 12, color: PS_TERTIARY }}>—</div>
-    )
-  }
-  const color = psScore(score)
+/** The Match column: the Gio Fit score, with the re-score spinner while queued (GioFitScore). */
+export function PSMatch({ score, associationId }: { score?: number | null; associationId?: string | null }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-      <Sparkles size={11} strokeWidth={2.25} color={color} />
-      <span
-        style={{
-          fontFamily: poppins,
-          fontWeight: 600,
-          fontSize: 13.5,
-          letterSpacing: '-0.02em',
-          color,
-        }}
-      >
-        {Math.round(score)}
-      </span>
+    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <GioFitScore variant="cell" associationId={associationId} score={score} color={psScore(score)} emptyColor={PS_TERTIARY} />
     </div>
   )
 }

@@ -22,6 +22,7 @@ import type { CandidateStatusInfo } from '@/hooks/usePipelineCandidateStatuses'
 import { cn } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { IconTip } from '@/components/ui/tooltip'
+import { GioFitScore } from './GioFitScore'
 
 export type PipelineListRow = {
   id: string
@@ -366,12 +367,7 @@ export function PipelineListView({
                             className="flex flex-wrap items-center"
                             style={{ marginTop: 6, gap: '4px 10px', fontFamily: 'Inter, sans-serif', fontSize: 12 }}
                           >
-                            <span className="inline-flex items-center tabular-nums" style={{ gap: 3, color: scoreColor(row.score) }}>
-                              <Sparkles size={11} strokeWidth={2.25} />
-                              <span style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600 }}>
-                                {typeof row.score === 'number' ? row.score : '—'}
-                              </span>
-                            </span>
+                            <GioFitScore variant="inline" associationId={row.id} score={row.score} color={scoreColor(row.score)} />
                             <span className="inline-flex items-center tabular-nums" style={{ gap: 3 }}>
                               {stale && <Clock size={11} strokeWidth={2.2} color={PIPELINE_RED} />}
                               <span style={{ color: stale ? PIPELINE_RED : undefined, fontWeight: stale ? 600 : undefined }}>
@@ -390,21 +386,8 @@ export function PipelineListView({
                       <>
 
                       {/* 3 · match */}
-                      <div
-                        className="flex items-center justify-end"
-                        style={{ gap: 4, color: scoreColor(row.score) }}
-                      >
-                        <Sparkles size={11} strokeWidth={2.25} />
-                        <span
-                          style={{
-                            fontFamily: 'Poppins, sans-serif',
-                            fontSize: 13.5,
-                            fontWeight: 600,
-                            letterSpacing: '-0.02em',
-                          }}
-                        >
-                          {typeof row.score === 'number' ? row.score : '—'}
-                        </span>
+                      <div className="flex items-center justify-end">
+                        <GioFitScore variant="cell" associationId={row.id} score={row.score} color={scoreColor(row.score)} />
                       </div>
 
                       {/* 4 · time in stage */}

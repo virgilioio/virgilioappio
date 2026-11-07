@@ -7,6 +7,7 @@ import { scoreColor, scoreTint, isStale, PIPELINE_RED, PIPELINE_TERTIARY } from 
 import { resolveCandidateHeadline } from '@/lib/candidateHeadline'
 import PipelineStatusBadge from './PipelineStatusBadge'
 import type { CandidateStatusInfo } from '@/hooks/usePipelineCandidateStatuses'
+import { GioFitScore } from './GioFitScore'
 
 
 
@@ -33,14 +34,14 @@ interface CandidateCardProps {
   jobId?: string
   whatsappTemplateSentAt?: string | null
   isFavorite?: boolean
-  /** AI fit score for THIS job (lives on the association, not the candidate). */
+  /** Gio Fit score for THIS job (lives on the association, not the candidate). */
   aiFitScore?: number | null
   /** The single engine-assigned status — rendered as-is, never recomputed. */
   status?: CandidateStatusInfo | null
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
-  const { candidateId, candidateName, onClick, daysInStage = 0 } = props
+  const { candidateId, associationId, candidateName, onClick, daysInStage = 0 } = props
 
 
   // Lightweight candidate meta (current role / company) for the card body.
@@ -186,23 +187,7 @@ export default function CandidateCard(props: CandidateCardProps) {
           className="flex items-center justify-between"
           style={{ marginTop: 9, paddingTop: 8, borderTop: '1px solid #F1F0EC' }}
         >
-          <span
-            className="inline-flex items-center"
-            style={{
-              gap: 4,
-              padding: score === null ? 0 : '2px 6px',
-              borderRadius: 999,
-              background: score === null ? 'transparent' : scoreTint(score),
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 10.5,
-              fontWeight: 600,
-              color: scoreColor(score),
-            }}
-            title={score === null ? 'No AI fit score yet' : `AI fit score ${score}`}
-          >
-            <Sparkles size={10} strokeWidth={2.25} />
-            {score === null ? '—' : score}
-          </span>
+          <GioFitScore variant="chip" associationId={associationId} score={score} color={scoreColor(score)} tint={scoreTint(score)} />
           <span className="inline-flex items-center" style={{ gap: 8 }}>
             <span
               className="inline-flex items-center"

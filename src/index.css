@@ -2432,3 +2432,8 @@ html.gio-strip-anim.gio-strip-closing .gio-strip-follow { transition-duration: v
   font-size: 0.92em;
   line-height: 1.45;
 }
+
+/* A Gio Fit score that just came in flashes once (GioFitScore, 2026-11-08); not with reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .gio-fit-flash::after { animation: none; }
+}
