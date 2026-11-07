@@ -112,7 +112,7 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-11-07 (ATS) — Application review: the rejection email preview shows the real email — on the branch, waiting for Apply!
+## Done 2026-11-07 (ATS) — Application review: the rejection email preview shows the real email — on main
 
 - Allan: the Preview in Rejection settings showed `{{…}}` keys; show the candidate's and job's real details.
 - Found on the way: the send filled the variables in the browser with its own short list, so `{{candidate.full_name}}`, `{{job.salary_range}}` and `{{stage.name}}` went out blank and `{{department.name}}` read the client's name; a job without a client made the whole lookup fail (an inner join), leaving every job variable blank.
