@@ -112,6 +112,12 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-07 (ATS) — Variables inside the template editors — on the branch, waiting for Apply!
+
+- Allan: Settings › Templates had the variables as a card on the right; put them in the editor, as in the stage automation composer.
+- Built: the automation composer's variable menu and Preview became shared parts (`VariableMenu`, `TemplatePreview`, `PreviewToggle` in `src/components/editors/`; the composer looks and works the same). Email and rejection templates share one sheet, `TemplateEditorSheet` (880px `FormSheet`, one column: name, then Subject with { } Variable and the body with Insert variable · Rewrite · Preview; sticky footer with Cancel and Save (`loading`), "Discard unsaved changes?" on closing with changes, "Couldn’t save it. Try again." in the footer instead of the hooks' raw-error toasts). The careers "When someone applies" email uses the same menu with only the seven variables `public-submit-application` fills (`CONFIRMATION_VARIABLES`); its old list offered ~25, the rest would have gone out as `{{…}}` text (the two live confirmation emails use only filled ones). Its "no mailbox" line now points to My profile. `PlaceholderHelper` (the side card) is gone; nothing else used it.
+- Checked in the browser with fake data (1440 and 390): inserting into the subject and body at the caret, search, no legacy keys, Preview with sample values, unchanged close closes, changed close asks, Keep editing, Save (spinner, closes, saved values), failed save stays open with the footer line, empty save names the missing field and shakes the name; confirmation menu lists the seven, its Preview leaves an unfilled key blank; the automation composer still inserts and previews. Types and lint clean. No database change.
+
 ## Done 2026-11-07 (ATS) — Word résumés no longer "Converting to PDF"; review starts with the oldest applicant — applied
 
 - Allan: a .docx résumé sat at "Converting to PDF" forever; Start review should open on the oldest applicant.
