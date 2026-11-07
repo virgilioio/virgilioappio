@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RotateCcw, ExternalLink, Download, FileText } from 'lucide-react'
 import { toast } from 'sonner'
+import { IconTip } from '@/components/ui/tooltip'
 import { PDFResumeViewer } from './PDFResumeViewer'
 import { DOCXResumeViewer } from './DOCXResumeViewer'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -32,7 +33,6 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('resume')
   const [isLoading, setIsLoading] = useState(true)
-  const [isRetrying, setIsRetrying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [iframeError, setIframeError] = useState(false)
 
@@ -46,7 +46,6 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
   const fileType = resumeAttachment?.file_type || undefined
   const convertedPdfUrl = resumeAttachment?.converted_pdf_url || null
   const conversionStatus = resumeAttachment?.conversion_status || 'pending'
-  const conversionError = resumeAttachment?.conversion_error || null
 
   // File type detection
   const isPdf = useMemo(() => {
@@ -65,7 +64,7 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
     return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => lower.endsWith(ext))
   }, [fileType, effectiveUrl])
 
-  const needsConversion = useMemo(() => {
+  const isWord = useMemo(() => {
     if (fileType?.includes('wordprocessingml')) return true
     const lower = (effectiveUrl || '').toLowerCase()
     return ['.docx', '.doc'].some(ext => lower.endsWith(ext))
@@ -176,33 +175,6 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
     return () => { isMounted = false }
   }, [effectiveUrl, resumeAttachment?.file_name, convertedPdfUrl, conversionStatus, isPdf])
 
-  // Retry conversion function
-  const retryConversion = async () => {
-    if (!resumeAttachment?.id) return
-    
-    setIsRetrying(true)
-    try {
-      const { error } = await supabase.functions.invoke('convert-document-to-pdf', {
-        body: {
-          attachment_id: resumeAttachment.id,
-          file_url: resumeAttachment.file_url,
-          file_type: resumeAttachment.file_type
-        }
-      })
-      
-      if (error) {
-        console.error('Error retrying conversion:', error)
-      } else {
-        // Refetch attachments after a short delay
-        setTimeout(() => refetch(), 2000)
-      }
-    } catch (error) {
-      console.error('Error retrying conversion:', error)
-    } finally {
-      setIsRetrying(false)
-    }
-  }
-
   if (!effectiveUrl) {
     return (
       <EmptyState
@@ -278,32 +250,6 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
     }
   }
 
-  const downloadConverted = async () => {
-    if (!convertedPdfUrl) return
-    try {
-      const response = await fetch(convertedPdfUrl)
-      if (!response.ok) throw new Error('Download failed')
-      const blob = await response.blob()
-      const blobUrl = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = blobUrl
-      link.download = fileName.replace(/\.[^/.]+$/, '') + '.pdf'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(blobUrl)
-      toast.success('PDF downloaded successfully')
-    } catch {
-      const link = document.createElement('a')
-      link.href = convertedPdfUrl
-      link.download = fileName.replace(/\.[^/.]+$/, '') + '.pdf'
-      link.target = '_blank'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
-  }
-
   return (
     <div className={className}>
       {/* Toolbar strip */}
@@ -313,28 +259,7 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
           <span className="truncate max-w-[220px]">{fileName}</span>
         </span>
 
-        {needsConversion && conversionStatus !== 'completed' && (
-          <span className={pillClass}>
-            {conversionStatus === 'processing' && (
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#6F3FF5] border-t-transparent" />
-            )}
-            <span className="text-[#5A6072]">
-              {conversionStatus === 'processing'
-                ? 'Converting to PDF'
-                : conversionStatus === 'failed'
-                  ? 'Conversion failed'
-                  : 'Conversion pending'}
-            </span>
-          </span>
-        )}
-
         <div className="ml-auto flex items-center gap-2">
-          {conversionStatus === 'failed' && (
-            <button type="button" className={pillClass} onClick={retryConversion} disabled={isRetrying}>
-              <RotateCcw className={`h-[11px] w-[11px] ${isRetrying ? 'animate-spin' : ''}`} strokeWidth={2} />
-              Retry
-            </button>
-          )}
           {error && (
             <button
               type="button"
@@ -358,30 +283,20 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
             <ExternalLink className="h-[11px] w-[11px]" strokeWidth={2} />
             <span className="whitespace-nowrap">Open in new tab</span>
           </button>
-          {convertedPdfUrl && conversionStatus === 'completed' && needsConversion && (
-            <button type="button" className={pillClass} onClick={downloadConverted}>
-              <Download className="h-[11px] w-[11px]" strokeWidth={2} />
-              PDF
+          <IconTip label="Download">
+            <button
+              type="button"
+              className={iconPillClass}
+              onClick={downloadOriginal}
+              disabled={!signedUrl}
+              aria-label="Download resume"
+            >
+              <Download className="h-[13px] w-[13px]" strokeWidth={2} />
             </button>
-          )}
-          <button
-            type="button"
-            className={iconPillClass}
-            onClick={downloadOriginal}
-            disabled={!signedUrl}
-            aria-label="Download resume"
-            title="Download"
-          >
-            <Download className="h-[13px] w-[13px]" strokeWidth={2} />
-          </button>
+          </IconTip>
         </div>
       </div>
 
-      {conversionError && (
-        <div className="border-b border-[#F1F0EC] bg-[#FAFAF7] px-3.5 py-2 font-inter text-[11px] text-destructive">
-          {conversionError}
-        </div>
-      )}
       {error && (
         <div className="border-b border-[#F1F0EC] bg-[#FAFAF7] px-3.5 py-2 font-inter text-[11.5px] text-destructive">
           {error}
@@ -401,7 +316,7 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
               style={{ maxHeight: `${height}vh` }}
               loading="lazy"
             />
-          ) : needsConversion && signedUrl ? (
+          ) : isWord && signedUrl ? (
             <DOCXResumeViewer url={signedUrl} height={height} />
           ) : (
             <div className="p-6 text-center" style={{ height: `${height}vh` }}>
