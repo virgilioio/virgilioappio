@@ -50,6 +50,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { brandingDetails, readBranding } from '@/lib/postingMedia'
 import { finishSlug, typedSlug } from '@/lib/postingUrl'
 import { shakeFirstInvalid } from '@/lib/motion'
+import { noticeJobRescore } from '@/lib/fitRescore'
 
 interface PostingSheetProps {
   jobId: string
@@ -434,6 +435,8 @@ export function PostingSheet({
           } as any)
           .eq('id', jobId)
         if (jobErr) console.error('Error syncing job compensation:', jobErr)
+        // A new salary range re-scores the job's candidates; say so.
+        else void noticeJobRescore(jobId).catch(() => false)
       }
       if (localId) {
         const saved = await updatePosting(localId, {

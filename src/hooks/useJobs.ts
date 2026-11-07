@@ -12,6 +12,14 @@ import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { logActivity } from '@/lib/activityLogger'
 import { useUserJobRoles } from './useUserJobRoles'
 import type { JobPriority } from '@/lib/job-priority'
+import { noticeJobRescore } from '@/lib/fitRescore'
+
+/** What Gio Fit reads on a job; a change re-scores its candidates (jobs_z_fit_rescore). */
+const FIT_FIELDS = new Set([
+  'description', 'skills', 'skill_priorities', 'min_years_experience', 'max_years_experience',
+  'salary_min', 'salary_max', 'currency', 'budget_salary_min', 'budget_salary_max', 'budget_period',
+  'budget_currency', 'location', 'additional_locations',
+])
 
 export type JobWorkMode = 'remote' | 'hybrid' | 'onsite'
 export type JobEmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship' | 'temporary'
@@ -340,12 +348,18 @@ export function useJobs() {
 
       if (updateError) throw updateError
 
+      // A change to what Gio Fit reads queues the job's candidates for a re-score;
+      // say so (with "Don't re-score") instead of the plain "updated" toast.
+      const rescoreNoticed = Object.keys(jobData).some((k) => FIT_FIELDS.has(k))
+        ? await noticeJobRescore(id).catch(() => false)
+        : false
+
       if (opts?.silent) {
         queryClient.invalidateQueries({ queryKey: ['jobs'] })
         return updatedJob
       }
 
-      toast({ title: 'Success', description: 'Job updated successfully' })
+      if (!rescoreNoticed) toast({ title: 'Success', description: 'Job updated successfully' })
 
       await logActivity({
         activityType: 'job_updated',
