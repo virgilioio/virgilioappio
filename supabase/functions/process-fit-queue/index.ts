@@ -12,7 +12,8 @@
 //
 // Candidates on a job without a description wait (status 'waiting') instead of
 // being closed unscored; jobs_z_fit_queue_release puts them back when one is
-// written.
+// written. A change to what Gio Fit reads on a job queues its candidates as
+// re-scores (jobs_z_fit_rescore, priority 2); a bulk re-score is priority 0.
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -52,7 +53,9 @@ Deno.serve(async (req) => {
   try {
     const { data: items } = await sb.from("fit_analysis_queue").select("id, association_id, attempts, reason")
       .eq("status", "pending").lte("next_attempt_at", now())
-      .order("created_at").limit(1);
+      // Re-scores someone asked for, then new candidates and scorecards, then
+      // re-scores after a job change (priority 0, 1, 2); oldest due first.
+      .order("priority").order("next_attempt_at").limit(1);
 
     for (const item of items ?? []) {
       const { data: a } = await sb.from("job_candidate_associations")
