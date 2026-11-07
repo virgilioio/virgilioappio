@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-07 (ATS) — Application review sheet, rebuilt on the profile's parts — on the branch, waiting for Apply!
+
+- Allan: the review sheet covered the rail, split Application answers and "AI Insights" into tabs, the rejection controls scrolled once the email was on, and the notes box was hard to see. Go! to the plan (consistency with the newer components, Motion & Feel, comments with tagging above Rejection settings, keyboard shortcuts).
+- Built: see CLAUDE.md "Application review". Fixed on the way: the notes box was saved with the rejection settings in the browser, so one candidate's note carried over and was saved as every later rejection's note (the dashboard's /jobs/:id/review page too: the hook now clears the note per candidate and never saves it); a failed queue load read as "No applications to review" (now Retry); Gio Fit showed a lone spinner while scoring (now a skeleton of the card).
+- Checked in the browser with intercepted data: 1440×900 (no scroll in the decision column even with the email on and Later), 1280×800 and 1024×768 (only the settings scroll, the buttons stay), Gio Fit scoring, empty, failed load, reduced motion; a tagged draft kept per candidate (fresh on the next, back on ‹), R posting the comment and saving it as the rejection note, the Undo toast saying the comment stays. Lint clean, unit tests pass. No database change.
+- Not touched: the dashboard's standalone /jobs/:id/review page keeps its own layout; a .docx résumé stuck on "Converting to PDF" (seen in Allan's screenshot) is separate.
+
 ## Done 2026-11-06 (ATS) — Gio Fit queue: no description waits, no stalls — applied
 
 - Allan: the Educators job's candidates were created but Gio Fit never ran. Cause: the job (shared with the client) got 77 candidates at 20:32 and 20:40 UTC on Nov 5 and its description only at 21:24; `analyze-candidate-fit` answered "no_job_description" with a 200 and `process-fit-queue` closed every row as done, unscored. Catch-up: the 77 rows put back to pending; the old worker took five per run and was cut off at 150s (504) before releasing its lease or hopping, so a temporary pg_cron job (`educators-fit-catchup`, removed itself when done) freed dead leases and woke it every minute. All 86 candidates on the job were scored by 17:50 UTC; nothing failed. Javier moved most of them back to Application Review by hand meanwhile (not the queue).
