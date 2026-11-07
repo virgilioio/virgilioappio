@@ -1,12 +1,16 @@
 import { useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import { ArrowUpRight, RefreshCw, ShieldCheck, Sparkles, CheckCircle2, BarChart3 } from 'lucide-react'
+import { ArrowUpRight, RefreshCw, ShieldCheck, Sparkles, CheckCircle2, BarChart3, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { IconTip, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useCandidateFitInsights, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { cn } from '@/lib/utils'
-import { getScoreBand, splitExecutiveSummary } from './dossier/dossierData'
+import { supabase } from '@/integrations/supabase/client'
+import { formatSalaryExpectation } from '@/lib/candidateHelpers'
+import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import { asString, computeExperienceStats, getScoreBand, splitExecutiveSummary } from './dossier/dossierData'
 import './loading/gioFitLoading.css'
 import { FIT_DIMENSION_COLORS, MUST_HAVE_STYLE, fitCardClass, fitSectionHeadingClass } from './fitParts'
 
@@ -18,6 +22,98 @@ import { FIT_DIMENSION_COLORS, MUST_HAVE_STYLE, fitCardClass, fitSectionHeadingC
  */
 /** First letter up: "high confidence" → "High confidence". */
 const sentence = (text: string) => (text ? text.charAt(0).toUpperCase() + text.slice(1) : text)
+
+/**
+ * What the dossier's Summary reads (2026-11-07): the candidate's work history,
+ * their own summary and salary. The salary a careers form asks for is copied onto
+ * the candidate when they apply; when the candidate has none, this job's salary
+ * answer stands in. One request per candidate, cached.
+ */
+function useReviewFacts(candidateId: string, jobId: string) {
+  return useQuery({
+    queryKey: ['review-candidate-facts', candidateId, jobId],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const [experience, candidate] = await Promise.all([
+        supabase.from('candidate_work_experience').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+        supabase.from('candidates').select('profile_summary, salary_amount, salary_currency, salary_period').eq('id', candidateId).maybeSingle(),
+      ])
+      if (experience.error) throw experience.error
+      if (candidate.error) throw candidate.error
+      let salary = formatSalaryExpectation(candidate.data as Parameters<typeof formatSalaryExpectation>[0])
+      if (!salary) {
+        const { data: answer } = await supabase
+          .from('candidate_application_responses')
+          .select('field_name, field_value, posting_id')
+          .eq('candidate_id', candidateId)
+          .eq('job_id', jobId)
+          .eq('field_type', 'salary')
+          .limit(1)
+          .maybeSingle()
+        if (answer?.field_value && Number(answer.field_value)) {
+          let config: { currency?: string; period?: string } | null = null
+          if (answer.posting_id) {
+            const { data: field } = await supabase
+              .from('job_posting_application_fields')
+              .select('field_config')
+              .eq('posting_id', answer.posting_id)
+              .eq('field_name', answer.field_name)
+              .maybeSingle()
+            config = (field?.field_config as { currency?: string; period?: string } | null) ?? null
+          }
+          salary = formatSalaryExpectation({ salary_amount: answer.field_value, salary_currency: config?.currency ?? null, salary_period: config?.period ?? null })
+        }
+      }
+      return {
+        experience: (experience.data ?? []) as unknown as CandidateWorkExperience[],
+        summary: asString(candidate.data?.profile_summary),
+        salary,
+      }
+    },
+  })
+}
+
+/** The dossier's Summary, condensed: the paragraph, then its numbers two to a row. */
+function ReviewSummary({ candidateId, jobId, gioSummary }: { candidateId: string; jobId: string; gioSummary: string | null }) {
+  const facts = useReviewFacts(candidateId, jobId)
+  if (facts.isLoading) {
+    return (
+      <div className="mt-4" aria-busy>
+        <Skeleton className="h-3 w-20" />
+        <div className="mt-2 space-y-1.5"><Skeleton className="h-3.5 w-full" /><Skeleton className="h-3.5 w-full" /><Skeleton className="h-3.5 w-2/3" /></div>
+        <div className="mt-3 grid grid-cols-2 gap-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[58px] rounded-lg" />)}</div>
+      </div>
+    )
+  }
+  if (facts.isError) {
+    return (
+      <p className="mt-4 font-inter text-[12px] text-fit-muted">
+        Couldn’t load the experience summary.{' '}
+        <button type="button" className="font-medium text-virgilio-purple hover:underline" onClick={() => void facts.refetch()}>Retry</button>
+      </p>
+    )
+  }
+  const summary = gioSummary || facts.data?.summary || null
+  const stats = computeExperienceStats(facts.data?.experience ?? [], facts.data?.salary)
+  if (!summary && stats.length === 0) return null
+  return (
+    <div className="mt-4">
+      <p className={fitSectionHeadingClass}><UserRound className="h-3 w-3" /> Summary</p>
+      {summary && <p className="mt-2 line-clamp-4 whitespace-pre-line text-[12.5px] leading-[1.55] text-fit-ink">{summary}</p>}
+      {stats.length > 0 && (
+        <dl className="mt-3 grid grid-cols-2 gap-2">
+          {stats.map((stat) => (
+            <div key={stat.label} className="min-w-0 rounded-lg border border-fit-row-border bg-fit-paper px-3 py-2">
+              <dd className="truncate font-poppins text-[17px] font-semibold leading-tight tabular-nums text-fit-ink">{stat.value}</dd>
+              <dt className="mt-0.5 truncate text-[11.5px] font-medium text-fit-ink">{stat.label}</dt>
+              {stat.footnote && <p className="truncate text-[10.5px] text-fit-subtle">{stat.footnote}</p>}
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  )
+}
 
 const PRIORITY_RANK: Record<ValidationPoint['priority'], number> = { high: 0, medium: 1, low: 2 }
 
@@ -100,6 +196,8 @@ export function GioFitReviewCard({ candidateId, jobId }: { candidateId: string; 
           </p>
         </div>
       </div>
+
+      <ReviewSummary candidateId={candidateId} jobId={jobId} gioSummary={asString(analysis.profile_summary)} />
 
       {split ? (
         <div className="mt-3 grid gap-2">
