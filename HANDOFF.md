@@ -112,6 +112,14 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-08 (ATS) — Re-scores show in the job's lists and board — on the branch, waiting for Apply!
+
+- Allan: a visual cue when a profile is being re-scored, in the Match column, the Recruiting list view and the board card's score chip (whose tooltip should say Gio Fit score).
+- Migration `…_fit_queue_status.sql` (not applied yet): `fit_queue_job_status(job)` (association, due_at, due) for people who can see the job's pipeline (`can_access_job_pipeline`); the queue stays closed otherwise. Rolled-back test: Allan sees the job's queued rows, an outsider none (it also showed 9 real ones in line from a bulk re-score run on Head of Marketing at 22:44, so the feature is in use).
+- Screens: `GioFitScore` (`src/components/jobs/GioFitScore.tsx`) in `PSMatch`, `PipelineListView` (column and phone line) and `CandidateCard`; `FitQueueProvider` / `useFitQueueEntry` / `announceFitQueueChange` (`src/lib/fitQueueStatus.tsx`) mounted in `JobDetail` (a finished score bumps `pipelineRefresh`); `fitRescore.ts` announces after a bulk re-score, a save that queued re-scores and Don't re-score. "AI fit score" is gone from the card.
+- Checked in the browser with fake data: queued (spinner at 600ms, score at half), waiting out a job change ("Re-scoring in about 6 minutes…"), idle, unscored queued and idle, in all four places; a candidate leaving the queue refreshes, blends to the new score and flashes once; reduced motion: still ring, no flash. Types clean, no new lint.
+- On Apply: apply the migration (rename to its version); no functions to deploy.
+
 ## Done 2026-11-07 (ATS) — Gio Fit re-scores: on job changes and in bulk — applied
 
 - Allan: a JD change should re-score everyone on the job; and a bulk "re-score" in the selection bar's ⋯.
