@@ -112,7 +112,7 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-11-07 (ATS) — Rewrite with Gio panel stays open in sheets — on the branch, waiting for Apply!
+## Done 2026-11-07 (ATS) — Rewrite with Gio panel stays open in sheets — on main
 
 - Allan: in the template editors and the stage automation editor, clicking anywhere in the Rewrite panel closed it.
 - Cause: `AIDraftPopover` portalled its panel to `body`; an open sheet (Radix modal) makes everything outside it ignore clicks, so the click landed behind the panel and its outside-click check closed it.
