@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { resolveScheduleDate } from '@/components/candidates/ScheduleDelaySelector'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -52,6 +52,8 @@ export function useApplicationReview(jobId: string) {
   const [queue, setQueue] = useState<ReviewCandidate[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
+  /** The queue couldn't load: never read as "nothing to review" (§16). */
+  const [loadError, setLoadError] = useState(false)
   const [isActioning, setIsActioning] = useState(false)
   const [firstStageId, setFirstStageId] = useState<string | null>(null)
   const [firstStageName, setFirstStageName] = useState<string | null>(null)
@@ -72,7 +74,8 @@ export function useApplicationReview(jobId: string) {
   const [rejectionConfig, setRejectionConfig] = useState<RejectionConfig>(() => {
     try {
       const stored = localStorage.getItem('app-review-rejection-config')
-      if (stored) return JSON.parse(stored)
+      // A note belongs to one candidate: it's never kept with the settings (2026-11-07).
+      if (stored) { const { rejectionNotes: _drop, ...rest } = JSON.parse(stored); return rest }
     } catch {}
     return { sendEmail: false }
   })
@@ -83,16 +86,23 @@ export function useApplicationReview(jobId: string) {
   const totalInQueue = queue.length
   const currentPosition = currentIndex + 1
 
+  // The page's note box is for the candidate on screen: a new candidate starts empty.
+  useEffect(() => {
+    setRejectionConfig((c) => (c.rejectionNotes ? { ...c, rejectionNotes: undefined } : c))
+  }, [currentCandidate?.associationId])
+
   const persistRejectionConfig = useCallback((config: RejectionConfig) => {
     setRejectionConfig(config)
     try {
-      localStorage.setItem('app-review-rejection-config', JSON.stringify(config))
+      const { rejectionNotes: _drop, ...keep } = config
+      localStorage.setItem('app-review-rejection-config', JSON.stringify(keep))
     } catch {}
   }, [])
 
   const loadQueue = useCallback(async () => {
     if (!jobId || !user) return
     setIsLoading(true)
+    setLoadError(false)
     setStats({ rejected: 0, passed: 0, advanced: 0 })
     setAdvancedList([])
     setPassedList([])
@@ -186,7 +196,7 @@ export function useApplicationReview(jobId: string) {
       }
     } catch (error) {
       console.error('Failed to load application review queue:', error)
-      toast({ title: 'Error', description: 'Failed to load review queue.', variant: 'destructive' })
+      setLoadError(true)
     } finally {
       setIsLoading(false)
     }
@@ -202,7 +212,8 @@ export function useApplicationReview(jobId: string) {
     }
   }, [queue.length])
 
-  const handleReject = useCallback(async () => {
+  /** `notes`: the comment box's text for this candidate, kept as the rejection note. */
+  const handleReject = useCallback(async (notes?: string) => {
     if (!currentCandidate || isActioning) return
     setIsActioning(true)
 
@@ -320,7 +331,7 @@ export function useApplicationReview(jobId: string) {
         const result = await rejectCandidate.mutateAsync({
           associationId: candidateToReject.associationId,
           rejectionReasonId: rejectionConfig.rejectionReasonId,
-          rejectionNotes: rejectionConfig.rejectionNotes,
+          rejectionNotes: notes?.trim() || undefined,
           sendEmail: shouldSendEmail,
           emailData,
           scheduleFor,
@@ -453,6 +464,7 @@ export function useApplicationReview(jobId: string) {
     totalInQueue,
     isComplete,
     isLoading,
+    loadError,
     isActioning,
     firstStageId,
     firstStageName,

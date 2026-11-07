@@ -245,7 +245,7 @@ export default function ApplicationReviewPage() {
       if (inField) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const k = e.key.toLowerCase()
-      if (k === 'r') { e.preventDefault(); review.handleReject() }
+      if (k === 'r') { e.preventDefault(); review.handleReject(review.rejectionConfig.rejectionNotes) }
       else if (k === 'p') { e.preventDefault(); review.handlePass() }
       else if (k === 'a') { e.preventDefault(); review.handleAdvance() }
       else if (k === 'u') { e.preventDefault(); review.handleUndo() }
@@ -748,7 +748,7 @@ function DecisionRail({
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => review.handleReject()}
+            onClick={() => review.handleReject(review.rejectionConfig.rejectionNotes)}
             disabled={review.isActioning}
             className="h-11 rounded-[10px] bg-white border font-poppins text-[13px] font-semibold inline-flex items-center justify-center gap-2 transition-colors hover:bg-[#FFF6F6] disabled:opacity-60"
             style={{ color: '#FA5252', borderColor: '#FBD0D0' }}
