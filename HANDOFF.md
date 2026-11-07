@@ -112,7 +112,7 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-11-07 (ATS) — Application review sheet, rebuilt on the profile's parts — on the branch, waiting for Apply!
+## Done 2026-11-07 (ATS) — Application review sheet, rebuilt on the profile's parts — on main
 
 - Allan: the review sheet covered the rail, split Application answers and "AI Insights" into tabs, the rejection controls scrolled once the email was on, and the notes box was hard to see. Go! to the plan (consistency with the newer components, Motion & Feel, comments with tagging above Rejection settings, keyboard shortcuts).
 - Built: see CLAUDE.md "Application review". Fixed on the way: the notes box was saved with the rejection settings in the browser, so one candidate's note carried over and was saved as every later rejection's note (the dashboard's /jobs/:id/review page too: the hook now clears the note per candidate and never saves it); a failed queue load read as "No applications to review" (now Retry); Gio Fit showed a lone spinner while scoring (now a skeleton of the card).
