@@ -6,7 +6,7 @@ import { useRejectCandidate } from '@/hooks/useRejectCandidate'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
-import { renderTemplate, buildPlaceholderData } from '@/utils/templateUtils'
+import { fetchReviewEmailContext, reviewEmailValues, fillReviewEmail } from '@/lib/reviewEmail'
 
 export interface ReviewCandidate {
   candidateId: string
@@ -58,6 +58,8 @@ export function useApplicationReview(jobId: string) {
   const [firstStageId, setFirstStageId] = useState<string | null>(null)
   const [firstStageName, setFirstStageName] = useState<string | null>(null)
   const [applicationReviewStageId, setApplicationReviewStageId] = useState<string | null>(null)
+  /** The Application review stage's name, for {{stage.name}} in the rejection email. */
+  const [reviewStageName, setReviewStageName] = useState('Application Review')
   const [stats, setStats] = useState<ReviewSessionStats>({ rejected: 0, passed: 0, advanced: 0 })
   const [advancedList, setAdvancedList] = useState<ReviewCandidate[]>([])
   const [passedList, setPassedList] = useState<ReviewCandidate[]>([])
@@ -114,7 +116,7 @@ export function useApplicationReview(jobId: string) {
       // Find the application_review hiring stage for this job
       const { data: arStages, error: arError } = await supabase
         .from('job_hiring_stages')
-        .select('id, stage:job_stages!inner(stage_type)')
+        .select('id, custom_stage_name, stage:job_stages!inner(stage_type, stage_name)')
         .eq('job_id', jobId)
         .eq('job_stages.stage_type', 'application_review' as any)
 
@@ -128,6 +130,8 @@ export function useApplicationReview(jobId: string) {
         return
       }
       setApplicationReviewStageId(arStageId)
+      const arStage = arStages?.[0] as { custom_stage_name?: string | null; stage?: { stage_name?: string | null } | null } | undefined
+      setReviewStageName(arStage?.custom_stage_name || arStage?.stage?.stage_name || 'Application Review')
 
 
       // Get all associations in the application_review stage
@@ -231,74 +235,29 @@ export function useApplicationReview(jobId: string) {
           toast({ title: 'No email', description: `${currentCandidate.candidateName} has no email address. Rejecting without email.` })
           shouldSendEmail = false
         } else {
-          // Fetch template, mail identity, sender profile, and job data in parallel
-          const [templateResult, identityResult, senderResult, jobResult] = await Promise.all([
+          // The template, and the same values the preview shows (src/lib/reviewEmail.ts).
+          const [templateResult, ctx] = await Promise.all([
             supabase
               .from('rejection_email_templates')
               .select('subject, body')
               .eq('id', rejectionConfig.rejectionEmailTemplateId)
               .single(),
-            supabase
-              .from('user_mail_identities')
-              .select('email_address')
-              .eq('user_id', user?.id ?? '')
-              .eq('is_active', true)
-              .limit(1)
-              .single(),
-            supabase
-              .from('profiles')
-              .select('first_name, last_name, email, title, phone, linkedin_url')
-              .eq('user_id', user?.id ?? '')
-              .single(),
-            supabase
-              .from('jobs')
-              .select('title, department, location, tenant:tenants!inner(name), organization:organizations!inner(name)')
-              .eq('id', jobId)
-              .single(),
+            fetchReviewEmailContext(queryClient, jobId, user?.id ?? '').catch(() => null),
           ])
 
-          if (templateResult.error || !templateResult.data) {
+          if (templateResult.error || !templateResult.data || !ctx) {
             toast({ title: 'Template error', description: 'Could not load rejection email template. Rejecting without email.', variant: 'destructive' })
             shouldSendEmail = false
-          } else if (identityResult.error || !identityResult.data) {
+          } else if (!ctx.fromEmail) {
             toast({ title: 'No mail identity', description: 'No active mail identity found. Rejecting without email.', variant: 'destructive' })
             shouldSendEmail = false
           } else {
-            const senderProfile = senderResult.data as any
-            const jobData = jobResult.data as any
-
-            const placeholderData = buildPlaceholderData({
-              candidate: {
-                candidate_name: currentCandidate.candidateName,
-                email: currentCandidate.email || undefined,
-                phone: currentCandidate.phone || undefined,
-                location_city: currentCandidate.locationCity || undefined,
-                location_state: currentCandidate.locationState || undefined,
-                location_country: currentCandidate.locationCountry || undefined,
-              },
-              job: {
-                title: jobData?.title || '',
-                department: jobData?.department || '',
-                location: jobData?.location || '',
-              },
-              sender: {
-                first_name: senderProfile?.first_name,
-                last_name: senderProfile?.last_name,
-                email: senderProfile?.email || identityResult.data.email_address,
-                title: senderProfile?.title,
-                phone: senderProfile?.phone,
-                linkedin_url: senderProfile?.linkedin_url,
-              },
-              organizationName: jobData?.tenant?.name,
-              departmentName: jobData?.organization?.name,
-              clientName: jobData?.organization?.name,
-            })
-
+            const values = reviewEmailValues(ctx, currentCandidate, reviewStageName)
             emailData = {
-              fromEmail: identityResult.data.email_address,
+              fromEmail: ctx.fromEmail,
               toEmails: [currentCandidate.email],
-              subject: renderTemplate(templateResult.data.subject, placeholderData),
-              bodyHtml: renderTemplate(templateResult.data.body, placeholderData),
+              subject: fillReviewEmail(templateResult.data.subject, values),
+              bodyHtml: fillReviewEmail(templateResult.data.body, values),
               candidateId: currentCandidate.candidateId,
               jobId: jobId,
             }
@@ -369,7 +328,7 @@ export function useApplicationReview(jobId: string) {
     } finally {
       setIsActioning(false)
     }
-  }, [currentCandidate, isActioning, rejectionConfig, rejectCandidate, user, jobId])
+  }, [currentCandidate, isActioning, rejectionConfig, rejectCandidate, user, jobId, queryClient, reviewStageName])
 
   const handlePass = useCallback(() => {
     if (!currentCandidate) return
@@ -472,6 +431,7 @@ export function useApplicationReview(jobId: string) {
     isActioning,
     firstStageId,
     firstStageName,
+    reviewStageName,
     stats,
     advancedList,
     passedList,
