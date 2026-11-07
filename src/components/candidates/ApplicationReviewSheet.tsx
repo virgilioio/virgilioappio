@@ -35,6 +35,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { draftHasTag, encodeMentions, type MentionPerson } from '@/lib/mentions'
 import { sourceLabel, seniorityLabel } from '@/lib/candidateLabels'
+import { useReviewEmailContext, reviewEmailValues, previewReviewEmail } from '@/lib/reviewEmail'
 import { undoToast } from '@/lib/undoToast'
 import { toast } from '@/hooks/use-toast'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
@@ -258,7 +259,7 @@ export function ApplicationReviewSheet({ open, onOpenChange, jobId, jobTitle, on
                 isPosting={isAdding && !acting}
                 onPost={() => void postDraft(current, draft)}
               />
-              <RejectionSettings config={review.rejectionConfig} onChange={review.persistRejectionConfig} />
+              <RejectionSettings config={review.rejectionConfig} onChange={review.persistRejectionConfig} jobId={jobId} candidate={current} stageName={review.reviewStageName} />
             </div>
             <ReviewActions
               acting={acting}
@@ -443,7 +444,70 @@ function ReviewComments({
 
 /* ── Rejection settings: the Reject dialog's fields, compact ──────────────── */
 
-function RejectionSettings({ config, onChange }: { config: RejectionConfig; onChange: (c: RejectionConfig) => void }) {
+/**
+ * The rejection email as this candidate gets it (2026-11-07): the same values the send
+ * uses (src/lib/reviewEmail.ts); a variable with nothing to fill shows as an amber chip
+ * with its name, listed under the email.
+ */
+function EmailPreview({
+  subject, body, jobId, candidate, stageName,
+}: { subject: string; body: string; jobId: string; candidate: ReviewCandidate | null; stageName: string }) {
+  const { user } = useAuth()
+  const ctx = useReviewEmailContext(jobId, user?.id)
+  const filled = useMemo(() => {
+    if (!ctx.data || !candidate) return null
+    const values = reviewEmailValues(ctx.data, candidate, stageName)
+    const sub = previewReviewEmail(subject, values, false)
+    const bod = previewReviewEmail(body, values, true)
+    return { subject: sub.out, body: bod.out, empty: [...new Set([...sub.empty, ...bod.empty])] }
+  }, [ctx.data, candidate, stageName, subject, body])
+
+  return (
+    <div className="max-h-[420px] overflow-y-auto p-4">
+      <p className="font-inter text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#8B8F9E]">Subject</p>
+      {filled ? (
+        <p className="mt-1 font-inter text-[13px] text-[#1F2230]">
+          {filled.subject.split('\u0000').map((part, i) => (i % 2 ? <span key={i} className="gio-var-empty">{part}</span> : part))}
+        </p>
+      ) : ctx.isError ? (
+        <p className="mt-1 font-inter text-[13px] text-[#1F2230]">{subject}</p>
+      ) : (
+        <Skeleton className="mt-1.5 h-4 w-4/5" />
+      )}
+      <div className="mt-3 border-t border-[#F1F0EC] pt-3">
+        {filled ? (
+          <SafeHtml content={filled.body} className="prose-sm font-inter text-[12.5px] leading-relaxed text-[#1F2230]" />
+        ) : ctx.isError ? (
+          <SafeHtml content={body} className="prose-sm font-inter text-[12.5px] leading-relaxed text-[#1F2230]" />
+        ) : (
+          <div className="space-y-2">
+            <Skeleton className="h-3.5 w-1/3" />
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-11/12" />
+            <Skeleton className="h-3.5 w-4/5" />
+          </div>
+        )}
+      </div>
+      <p className="mt-3 font-inter text-[11px] leading-[1.45] text-[#8B8F9E]">
+        {ctx.isError
+          ? 'Couldn’t load the job’s details, so the variables show as written. They’re filled in when it’s sent.'
+          : filled && filled.empty.length
+            ? <>Empty for this candidate: {filled.empty.join(', ')}. {filled.empty.length === 1 ? 'It goes' : 'They go'} out blank.</>
+            : `As ${candidate?.candidateName?.split(' ')[0] || 'this candidate'} will get it.`}
+      </p>
+    </div>
+  )
+}
+
+function RejectionSettings({
+  config, onChange, jobId, candidate, stageName,
+}: {
+  config: RejectionConfig
+  onChange: (c: RejectionConfig) => void
+  jobId: string
+  candidate: ReviewCandidate | null
+  stageName: string
+}) {
   const { templates, isLoading: templatesLoading } = useRejectionEmailTemplates('organization')
   const template = templates.find((t) => t.id === config.rejectionEmailTemplateId)
 
@@ -481,16 +545,7 @@ function RejectionSettings({ config, onChange }: { config: RejectionConfig; onCh
                     </PopoverTrigger>
                   </IconTip>
                   <PopoverContent side="left" align="start" className="w-[380px] max-w-[calc(100vw-32px)] p-0">
-                    {template && (
-                      <div className="max-h-[420px] overflow-y-auto p-4">
-                        <p className="font-inter text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#8B8F9E]">Subject</p>
-                        <p className="mt-1 font-inter text-[13px] text-[#1F2230]">{template.subject}</p>
-                        <div className="mt-3 border-t border-[#F1F0EC] pt-3">
-                          <SafeHtml content={template.body} className="prose-sm font-inter text-[12.5px] leading-relaxed text-[#1F2230]" />
-                        </div>
-                        <p className="mt-3 font-inter text-[11px] text-[#8B8F9E]">Variables are filled in for each candidate when it’s sent.</p>
-                      </div>
-                    )}
+                    {template && <EmailPreview subject={template.subject} body={template.body} jobId={jobId} candidate={candidate} stageName={stageName} />}
                   </PopoverContent>
                 </Popover>
               </div>
