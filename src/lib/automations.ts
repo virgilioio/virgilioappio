@@ -251,6 +251,18 @@ export const COMPOSER_VARIABLES: VariableDef[] = [
   { key: 'candidate.name', label: 'Full name', group: 'Candidate', legacy: true },
 ]
 
+// The careers page's confirmation email ("When someone applies", 2026-11-07) is sent by
+// public-submit-application, which fills only these. Keep in step with it.
+export const CONFIRMATION_VARIABLES: VariableDef[] = [
+  { key: 'candidate.first_name', label: 'First name', group: 'Candidate' },
+  { key: 'candidate.name', label: 'Full name', group: 'Candidate' },
+  { key: 'candidate.email', label: 'Email', group: 'Candidate' },
+  { key: 'job.title', label: 'Title', group: 'Job' },
+  { key: 'department.name', label: 'Department', group: 'Job' },
+  { key: 'client.name', label: 'Client name', group: 'Job' },
+  { key: 'organization.name', label: 'Your company', group: 'Job' },
+]
+
 export const ATTACHMENT_TOTAL_LIMIT = 25 * 1024 * 1024
 
 export function formatBytes(n: number) {

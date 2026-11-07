@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PlaceholderHelper } from '@/components/settings/PlaceholderHelper'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
@@ -10,9 +9,13 @@ import { toast } from 'sonner'
 import {
   SubjectTemplateEditor,
   BodyTemplateEditor,
+  VariableMenu,
+  TemplatePreview,
+  PreviewToggle,
   type SubjectTemplateEditorHandle,
   type BodyTemplateEditorHandle,
 } from '@/components/editors'
+import { CONFIRMATION_VARIABLES } from '@/lib/automations'
 import { SpecCard } from '../shared/SpecCard'
 
 const DEFAULT_SUBJECT = 'Thank you for applying to {{job.title}} at {{organization.name}}'
@@ -33,9 +36,8 @@ export function ApplyConfirmationCard() {
   const [subject, setSubject] = useState(DEFAULT_SUBJECT)
   const [body, setBody] = useState(DEFAULT_BODY)
   const [fromEmail, setFromEmail] = useState('')
-  const [lastFocused, setLastFocused] = useState<'subject' | 'body'>('body')
   const [dirty, setDirty] = useState(false)
-  const [showInserter, setShowInserter] = useState(false)
+  const [preview, setPreview] = useState(false)
 
   const subjectRef = useRef<SubjectTemplateEditorHandle>(null)
   const bodyRef = useRef<BodyTemplateEditorHandle>(null)
@@ -85,10 +87,6 @@ export function ApplyConfirmationCard() {
   }
 
   const markDirty = useCallback(() => setDirty(true), [])
-  const handleInsert = (placeholder: string) => {
-    if (lastFocused === 'subject') subjectRef.current?.insertPlaceholder(placeholder)
-    else bodyRef.current?.insertPlaceholder(placeholder)
-  }
 
   return (
     <SpecCard
@@ -111,7 +109,7 @@ export function ApplyConfirmationCard() {
                 <Skeleton className="h-9 w-full" />
               ) : identities.length === 0 ? (
                 <div className="font-inter text-[#6B7080]" style={{ fontSize: 12 }}>
-                  No mailbox connected. Connect a Gmail account in Settings › Email & calendar.
+                  No mailbox connected. Connect Google on My profile first.
                 </div>
               ) : (
                 <Select value={fromEmail} onValueChange={(v) => { setFromEmail(v); markDirty() }}>
@@ -128,31 +126,44 @@ export function ApplyConfirmationCard() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-inter text-[#5A6072]" style={{ fontSize: 11.5, fontWeight: 600 }}>Subject</label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="confirmation-subject" className="font-inter text-[#5A6072]" style={{ fontSize: 11.5, fontWeight: 600 }}>Subject</label>
+                <VariableMenu variant="subject" variables={CONFIRMATION_VARIABLES} onInsert={(k) => subjectRef.current?.insertPlaceholder(k)} />
+              </div>
               <SubjectTemplateEditor
                 ref={subjectRef}
+                id="confirmation-subject"
+                variables={CONFIRMATION_VARIABLES}
                 value={subject}
                 onChange={(v) => { setSubject(v); markDirty() }}
                 placeholder="Enter email subject…"
-                onFocus={() => setLastFocused('subject')}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <label className="font-inter text-[#5A6072]" style={{ fontSize: 11.5, fontWeight: 600 }}>Body</label>
-                <button type="button" onClick={() => setShowInserter((s) => !s)} className="font-inter text-[#5B21B6] hover:underline" style={{ fontSize: 11 }}>
-                  {showInserter ? 'Hide placeholders' : 'Insert placeholder'}
-                </button>
-              </div>
-              <BodyTemplateEditor
-                ref={bodyRef}
-                value={body}
-                onChange={(v) => { setBody(v); markDirty() }}
-                onFocus={() => setLastFocused('body')}
-              />
-              {showInserter && (
-                <div className="mt-2"><PlaceholderHelper onInsert={handleInsert} /></div>
+              <label className="font-inter text-[#5A6072]" style={{ fontSize: 11.5, fontWeight: 600 }}>Body</label>
+              {preview ? (
+                <>
+                  <div className="flex items-center justify-end">
+                    <PreviewToggle preview onToggle={() => setPreview(false)} />
+                  </div>
+                  <TemplatePreview subject={subject} body={body} keys={CONFIRMATION_VARIABLES.map((v) => v.key)} minHeight={140} />
+                </>
+              ) : (
+                <BodyTemplateEditor
+                  ref={bodyRef}
+                  variables={CONFIRMATION_VARIABLES}
+                  value={body}
+                  onChange={(v) => { setBody(v); markDirty() }}
+                  ariaLabel="Confirmation email body"
+                  toolbarExtra={
+                    <>
+                      <VariableMenu variant="toolbar" variables={CONFIRMATION_VARIABLES} onInsert={(k) => bodyRef.current?.insertPlaceholder(k)} />
+                      <div className="flex-1" />
+                      <PreviewToggle preview={false} onToggle={() => setPreview(true)} />
+                    </>
+                  }
+                />
               )}
             </div>
           </div>
