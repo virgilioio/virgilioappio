@@ -63,7 +63,7 @@ export function FormSheet({
             const local = document.activeElement instanceof Element && document.activeElement.closest('[data-escape-local]')
             if (local) ev.preventDefault()
           }}
-          className="p-0 gap-0 border-0 sm:max-w-none flex flex-col [&>button:last-child]:hidden"
+          className="p-0 gap-0 border-0 sm:max-w-none flex flex-col [&>button:last-of-type]:hidden"
           style={{
             width,
             maxWidth: '100vw',

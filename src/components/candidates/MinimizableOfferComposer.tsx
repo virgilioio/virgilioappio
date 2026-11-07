@@ -71,7 +71,7 @@ export function MinimizableOfferComposer({ isOpen, onOpenChange, candidateId, ca
   return (
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) handleClose() }}>
       <SheetPortal><SheetOverlay className="bg-primary/20" /></SheetPortal>
-      <SheetContent side="right" showOverlay={false} className="flex h-full w-full flex-col gap-0 overflow-hidden rounded-l-xl border-0 bg-card p-0 shadow-2xl sm:max-w-[820px] [&>button:last-child]:hidden">
+      <SheetContent side="right" showOverlay={false} className="flex h-full w-full flex-col gap-0 overflow-hidden rounded-l-xl border-0 bg-card p-0 shadow-2xl sm:max-w-[820px] [&>button:last-of-type]:hidden">
         <header className="flex shrink-0 items-start gap-3 border-b border-dup-hairline px-6 pb-3.5 pt-4">
           <div className="min-w-0 flex-1">
             <p className="mb-1.5 font-inter text-[10.5px] font-semibold uppercase tracking-[0.08em] text-virgilio-purple">Offer · 3-step builder</p>
