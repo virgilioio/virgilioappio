@@ -11955,6 +11955,10 @@ export type Database = {
       fit_queue_sweep: { Args: never; Returns: undefined }
       fit_queue_rescore: { Args: { p_association_ids: string[] }; Returns: number }
       fit_queue_job_rescore_pending: { Args: { p_job_id: string }; Returns: number }
+      fit_queue_job_status: {
+        Args: { p_job_id: string }
+        Returns: { association_id: string; due: boolean; due_at: string }[]
+      }
       fit_queue_cancel_job_rescore: { Args: { p_job_id: string }; Returns: number }
       fit_job_text: { Args: { t: string }; Returns: string }
       fit_queue_wake: { Args: never; Returns: undefined }
