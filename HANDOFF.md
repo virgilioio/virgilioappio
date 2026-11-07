@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-07 (ATS) — Application review: the rejection email preview shows the real email — on the branch, waiting for Apply!
+
+- Allan: the Preview in Rejection settings showed `{{…}}` keys; show the candidate's and job's real details.
+- Found on the way: the send filled the variables in the browser with its own short list, so `{{candidate.full_name}}`, `{{job.salary_range}}` and `{{stage.name}}` went out blank and `{{department.name}}` read the client's name; a job without a client made the whole lookup fail (an inner join), leaving every job variable blank.
+- Built: `src/lib/reviewEmail.ts` (`useReviewEmailContext` / `fetchReviewEmailContext`: the job with its client, workspace and salary range, your profile and mailbox, one query per job; `reviewEmailValues`: every key as `send-user-email` fills it; `previewReviewEmail`: values in, empty ones as `.gio-var-empty` chips with their names). The Preview (`EmailPreview` in `ApplicationReviewSheet`) and `handleReject` (Now and Later) use the same values; the stage is the job's own Application review stage name. Booking links and interview times stay unfilled from here (flagged in the preview).
+- Checked: unit tests (`src/lib/__tests__/reviewEmail.test.ts`); in the browser with fake data a full job (Carbyne, USD 150,000 – 180,000) and one with no client or salary (flagged, "They go out blank"), the preview following ‹ › to the next candidate, and the scheduled email Reject saved matching the preview word for word. Types clean, no new lint. No database change.
+
 ## Done 2026-11-07 (ATS) — Rewrite with Gio panel stays open in sheets — on main
 
 - Allan: in the template editors and the stage automation editor, clicking anywhere in the Rewrite panel closed it.
