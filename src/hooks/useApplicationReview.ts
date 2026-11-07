@@ -136,6 +136,7 @@ export function useApplicationReview(jobId: string) {
         .select(`
           id,
           created_at,
+          applied_at,
           candidates!inner(
             id,
             candidate_name,
@@ -171,7 +172,8 @@ export function useApplicationReview(jobId: string) {
           locationCountry: c.location_country,
           locationState: c.location_state,
           source: c.source,
-          appliedAt: a.created_at,
+          // When they applied; people sourced or added by hand: when they joined the job.
+          appliedAt: a.applied_at || a.created_at,
           linkedinUrl: c.linkedin_url,
           profileSummary: c.profile_summary,
           skills: c.skills,
@@ -180,6 +182,8 @@ export function useApplicationReview(jobId: string) {
         }
       })
 
+      // Oldest first (2026-11-07): whoever has waited longest is decided on first.
+      reviewCandidates.sort((x, y) => new Date(x.appliedAt).getTime() - new Date(y.appliedAt).getTime())
       setQueue(reviewCandidates)
 
       // Load the first NON-application_review pipeline stage for this job
