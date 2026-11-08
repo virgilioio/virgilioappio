@@ -8509,6 +8509,9 @@ export type Database = {
         Row: {
           association_id: string | null
           body_html: string
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           candidate_id: string | null
           created_at: string | null
           created_by: string | null
@@ -8531,6 +8534,9 @@ export type Database = {
         Insert: {
           association_id?: string | null
           body_html: string
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           candidate_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -8553,6 +8559,9 @@ export type Database = {
         Update: {
           association_id?: string | null
           body_html?: string
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           candidate_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -11962,6 +11971,9 @@ export type Database = {
       fit_queue_cancel_job_rescore: { Args: { p_job_id: string }; Returns: number }
       fit_job_text: { Args: { t: string }; Returns: string }
       fit_queue_wake: { Args: never; Returns: undefined }
+      scheduled_email_cancel: { Args: { p_id: string }; Returns: undefined }
+      scheduled_email_uncancel: { Args: { p_id: string }; Returns: string }
+      scheduled_email_can_act: { Args: { p_job_id: string; p_tenant_id: string }; Returns: boolean }
       generate_invite_token: { Args: never; Returns: string }
       geo_cities_search: {
         Args: {
@@ -13617,6 +13629,7 @@ export type Database = {
         | "interview_cancelled"
         | "interview_rescheduled"
         | "candidate_email_automated"
+        | "candidate_email_scheduled"
         | "automation_triggered"
         | "automation_skipped"
         | "sequence_enrolled"
@@ -14037,6 +14050,7 @@ export const Constants = {
         "interview_cancelled",
         "interview_rescheduled",
         "candidate_email_automated",
+        "candidate_email_scheduled",
         "automation_triggered",
         "automation_skipped",
         "sequence_enrolled",
