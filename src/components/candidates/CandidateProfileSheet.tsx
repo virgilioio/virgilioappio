@@ -137,7 +137,8 @@ import { checkScorecardGate } from '@/utils/scorecardGate'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { ChangeHireCreditDialog } from './ChangeHireCreditDialog'
 import { hireChangeMessage, hireCreditKey, useCanChangeHire, useHireCredit, usePeopleNames } from '@/lib/hireCredit'
-import { Undo2, UserCog } from 'lucide-react'
+import { Undo2, UserCog, MailX } from 'lucide-react'
+import { useRejectionEmail, rejectionEmailKey, rejectionEmailView, rejectionEmailSentence, rejectionEmailNotified, cancelScheduledEmail, uncancelScheduledEmail, scheduledEmailError, refreshScheduledEmailViews, scheduledWhen, type RejectionEmail } from '@/lib/scheduledEmails'
 import { confirmDeleteResume, confirmReplaceResume } from '@/lib/removeOldResumes'
 import { useResumeRefresh } from '@/hooks/useResumeRefresh'
 import { ResumeStatusLine } from '@/components/candidates/profile/ResumeStatus'
@@ -1136,9 +1137,9 @@ const stageHasAutomation = useMemo(() => {
     setEmailComposerOpen(false)
   }
 
-  const handleSetStatus = async (s: 'active' | 'rejected') => {
+  const handleSetStatus = async (s: 'active' | 'rejected', opts?: { quiet?: boolean }) => {
     if (!associationId) return
-    await updateAssociationStatus(associationId, s)
+    await updateAssociationStatus(associationId, s, opts)
     setAssociationStatus(s)
     if (s === 'active') setHiredDetails(null)
     onStageChanged?.()
@@ -1433,9 +1434,54 @@ const stageHasAutomation = useMemo(() => {
     onStageChanged?.();
   };
   
+  // The rejection email waiting to go out, if any (2026-11-08): the banner shows it and
+  // can cancel it; reactivating cancels it in the database.
+  const rejectionEmail = useRejectionEmail(associationStatus === 'rejected' ? associationId : null, rejectionDetails?.rejectedAt)
+  const [cancellingEmail, setCancellingEmail] = useState(false)
+  const handleCancelRejectionEmail = async () => {
+    const row = rejectionEmail.data
+    if (!row || row.status !== 'pending' || !associationId || cancellingEmail) return
+    const key = rejectionEmailKey(associationId, rejectionDetails?.rejectedAt ?? null)
+    const when = scheduledWhen(row.scheduledFor)
+    setCancellingEmail(true)
+    // Optimistic: the banner says cancelled at once, and goes back if the save fails.
+    summaryQueryClient.setQueryData<RejectionEmail | null>(key, { ...row, status: 'cancelled', cancelReason: 'cancelled' })
+    const error = await cancelScheduledEmail(row.id)
+    setCancellingEmail(false)
+    if (error) {
+      summaryQueryClient.setQueryData<RejectionEmail | null>(key, row)
+      refreshScheduledEmailViews(summaryQueryClient, associationId)
+      sonnerToast.error(`Couldn\u2019t cancel the email. ${scheduledEmailError(error, 'Try again.')}`, {
+        action: error.code ? undefined : { label: 'Retry', onClick: () => void handleCancelRejectionEmail() },
+      })
+      return
+    }
+    refreshScheduledEmailViews(summaryQueryClient, associationId)
+    undoToast('Rejection email cancelled', async () => {
+      const undoError = await uncancelScheduledEmail(row.id)
+      refreshScheduledEmailViews(summaryQueryClient, associationId)
+      if (undoError) sonnerToast.error(`Couldn\u2019t bring the email back. ${scheduledEmailError(undoError, 'Try again.')}`)
+      else sonnerToast(`Rejection email goes out ${when}`)
+    }, `It won\u2019t go out ${when}.`)
+  }
+
+  const rejectionEmailState = rejectionEmailView(rejectionEmail.data, {
+    sentAt: rejectionDetails?.rejectionEmailSentAt ?? null,
+    scheduledFor: rejectionDetails?.rejectionEmailScheduledFor ?? null,
+  })
+  const rejectionEmailLine = rejectionEmailSentence(rejectionEmailState)
+
   const handleReactivate = () => {
     checkOfferAndProceed(async () => {
-      handleSetStatus('active')
+      const waiting = rejectionEmail.data?.status === 'pending' ? rejectionEmail.data : null
+      await handleSetStatus('active', { quiet: !!waiting })
+      if (waiting) {
+        const first = (candidate?.first_name || candidate?.candidate_name || '').trim().split(/\s+/)[0] || 'The candidate'
+        sonnerToast(`${first} is back in consideration`, {
+          description: `The rejection email scheduled for ${scheduledWhen(waiting.scheduledFor)} won\u2019t be sent.`,
+        })
+        refreshScheduledEmailViews(summaryQueryClient, associationId)
+      }
       setRejectionDetails(null)
       setOfferDetails(null)
       setHiredDetails(null)
@@ -1866,11 +1912,18 @@ const stageHasAutomation = useMemo(() => {
                         eyebrow="Rejected"
                         meta={rejectionDetails.rejectedAt ? `${formatMovedHere(rejectionDetails.rejectedAt)} ago${rejectionDetails.rejectedByName ? ` by ${rejectionDetails.rejectedByName}` : ''}` : undefined}
                         title={<><strong className="font-semibold">{candidate?.first_name || 'Candidate'}</strong> is no longer in consideration</>}
-                        sub={<><strong className="font-semibold">Reason:</strong> {rejectionDetails.rejectionReason?.name || 'Not specified'}{rejectionDetails.rejectionEmailSentAt ? `. Rejection email sent.` : ''}</>}
+                        sub={<><strong className="font-semibold">Reason:</strong> {rejectionDetails.rejectionReason?.name || 'Not specified'}.{rejectionEmailLine ? ` ${rejectionEmailLine}` : ''}</>}
                         actions={
-                          <Button variant="secondary" size="md" icon={RotateCcw} onClick={handleReactivate}>
-                            Reactivate
-                          </Button>
+                          <>
+                            {rejectionEmailState.kind === 'scheduled' && rejectionEmailState.canCancel && (
+                              <Button variant="secondary" size="md" icon={MailX} onClick={handleCancelRejectionEmail} disabled={cancellingEmail}>
+                                Cancel email
+                              </Button>
+                            )}
+                            <Button variant="secondary" size="md" icon={RotateCcw} onClick={handleReactivate}>
+                              Reactivate
+                            </Button>
+                          </>
                         }
                       />
                     ) : null}
@@ -2140,6 +2193,7 @@ const stageHasAutomation = useMemo(() => {
                         rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
                         notifiedCandidate={!!rejectionDetails.rejectionEmailSentAt}
                         notifyChannel={rejectionDetails.rejectionEmailSentAt ? 'Email' : null}
+                        notifiedText={rejectionEmailNotified(rejectionEmailState)}
                       />
                     )}
 

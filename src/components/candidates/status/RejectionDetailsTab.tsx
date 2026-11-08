@@ -40,6 +40,8 @@ interface RejectionDetailsTabProps {
   stageName?: string | null;
   notifiedCandidate?: boolean;
   notifyChannel?: string | null;
+  /** Overrides "Notified candidate" (a scheduled, cancelled or failed rejection email). */
+  notifiedText?: string | null;
   rejectionReason: { id: string; name: string; category: string } | null;
   secondaryReasons?: Array<{ id: string; name: string }>;
   rejectionNotes: string | null;
@@ -92,6 +94,7 @@ export function RejectionDetailsTab({
   stageName,
   notifiedCandidate,
   notifyChannel,
+  notifiedText,
   rejectionReason,
   secondaryReasons = [],
   rejectionNotes,
@@ -111,7 +114,7 @@ export function RejectionDetailsTab({
           <MetaRow label="Stage" value={stageName} />
           <MetaRow
             label="Notified candidate"
-            value={notifiedCandidate ? `Yes${notifyChannel ? ` · ${notifyChannel}` : ''}` : 'No'}
+            value={notifiedText || (notifiedCandidate ? `Yes${notifyChannel ? ` · ${notifyChannel}` : ''}` : 'No')}
           />
         </div>
 

@@ -309,7 +309,7 @@ export function usePipelineActions() {
     return created.id
   }, [moveAssociationToStage])
 
-  const updateAssociationStatus = useCallback(async (associationId: string, status: 'active' | 'rejected' | 'hired' | 'offer') => {
+  const updateAssociationStatus = useCallback(async (associationId: string, status: 'active' | 'rejected' | 'hired' | 'offer', opts?: { quiet?: boolean }) => {
     console.log('[usePipelineActions.updateAssociationStatus] updating', { associationId, status })
     const { data, error } = await supabase
       .from('job_candidate_associations')
@@ -333,7 +333,8 @@ export function usePipelineActions() {
       throw new Error('No rows updated when changing status')
     }
 
-    toast({ title: 'Status updated', description: `Candidate marked as ${status}.` })
+    // A caller with its own, more specific message says it instead.
+    if (!opts?.quiet) toast({ title: 'Status updated', description: `Candidate marked as ${status}.` })
   }, [])
 
   return {
