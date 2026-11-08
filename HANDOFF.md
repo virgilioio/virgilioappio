@@ -112,6 +112,16 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-08 (ATS) — Scheduled emails in the feed; cancel from the rejection banner — DB applied, screens on the branch, waiting for Apply!
+
+- Allan: scheduled emails, rejection emails included, show in the Activity feed; the rejection banner shows the scheduled email with a way to cancel it; unrejecting cancels it.
+- Applied (Apply! 2026-11-08): `20261108232822_scheduled_email_activity_type` (the activity type, on its own) and `20261108232857_scheduled_email_feed_cancel` (cancel columns, the one feed line per scheduled email and its trigger, `scheduled_email_cancel` / `_uncancel` / `_can_act`, `jca_z_restore_email` records reason and who; the 16 emails waiting for Nov 9 got their line). Rolled-back test first: cancel, cancel twice (GSE02), undo, restore, undo after restore (GSE02), undo when no longer rejected (GSE04), sent and failed lines, outsider (GSE01). `send-scheduled-emails` v410: claims before sending, skips restored candidates.
+- Screens: the rejection banner (reason line names the email; Cancel email beside Reactivate with Undo in the toast; failures say "Couldn't cancel the email" in our words), Rejection details' Notified candidate, Reactivate's "back in consideration" toast naming the email that won't go out (the generic "Status updated" stays quiet then), and the feed line (clock while waiting; cancelled says by whom or that the candidate was restored; couldn't be sent in red; folds away once sent). `src/lib/scheduledEmails.ts`, `CandidateProfileSheet`, `RejectionDetailsTab`, `ActivityFeedItem`, `activityRegistry`, `useActivityFeed`, `usePipelineActions` (`quiet`); types hand-added for the new columns, functions and activity type.
+- Checked in the browser with fake data on the real profile sheet at 1440 and 390: waiting (Cancel email), cancel (banner changes before the server answers), Undo (back with its time), sent, cancelled, failed, the feed line, Reactivate's message. Unit tests for the wording and feed states; types and lint clean.
+- Known limit: the scheduled email's row is read under its table's rule (people with workspace-wide access); anyone else sees the time on the banner but no Cancel email.
+- Still open: 43 scheduled rejection emails failed between Jan 13 and Aug 21, 2026 ("Edge Function returned a non-2xx status code"); none since. Not looked into.
+- On Apply!: push to main (the database part is already live).
+
 ## Done 2026-11-08 (ATS) — Find: "Gio is searching" loader — on main
 
 - Allan's spec, with both recommendations taken: after the resolve it waits for View results; Stop goes back to the prompt with the text kept, and the started search stays in Recent.
