@@ -89,9 +89,13 @@ interface MarketSalaryData {
 }
 
 interface AIJobAssistantProps {
-  onProjectCreated?: (projectId: string) => void
-  onGeneratingChange?: (isGenerating: boolean) => void
+  /** Return false to stay put (Find's Stop): the prompt is kept. */
+  onProjectCreated?: (projectId: string) => void | boolean
+  /** The prompt comes with the start of a search (Find's searching loader shows it). */
+  onGeneratingChange?: (isGenerating: boolean, prompt?: string) => void
   variant?: 'default' | 'find'
+  /** The prompt to start with (Find's Stop and Search again bring it back). */
+  initialPrompt?: string
 }
 
 // Fallback: detect and fix Spanish job titles when prompt was in English
@@ -158,8 +162,8 @@ function sanitizeJobSpec(spec: any, promptText: string): any {
   return sanitized
 }
 
-export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant = 'default' }: AIJobAssistantProps = {}) {
-  const [prompt, setPrompt] = useState('')
+export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant = 'default', initialPrompt }: AIJobAssistantProps = {}) {
+  const [prompt, setPrompt] = useState(initialPrompt ?? '')
   const [isGenerating, setIsGenerating] = useState(false)
   const [jobSpec, setJobSpec] = useState<JobSpec | null>(null)
   const [candidateMatching, setCandidateMatching] = useState<CandidateMatching | null>(null)
@@ -339,7 +343,7 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
 
 
     setIsGenerating(true)
-    onGeneratingChange?.(true)
+    onGeneratingChange?.(true, prompt)
     try {
       // Step 1: Generate job spec
       const { data, error } = await supabase.functions.invoke('generate-job-spec', {
@@ -441,18 +445,19 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
 
       console.log('✅ Sourcing project created:', project.id)
 
-      toast({
-        title: 'Finding Candidates',
-        description: `Searching for "${title}" matches...`,
-      })
-
-      // Navigate directly to project view
-      if (onProjectCreated) {
-        onProjectCreated(project.id)
+      // Find shows its own searching loader; elsewhere a toast says it started.
+      if (variant !== 'find') {
+        toast({
+          title: 'Finding Candidates',
+          description: `Searching for "${title}" matches...`,
+        })
       }
 
+      // Navigate directly to project view (Find's Stop answers false: stay, keep the prompt)
+      const go = onProjectCreated ? onProjectCreated(project.id) : undefined
+
       // Reset state
-      setPrompt('')
+      if (go !== false) setPrompt('')
       
     } catch (error: any) {
       console.error('Error generating job spec:', error)

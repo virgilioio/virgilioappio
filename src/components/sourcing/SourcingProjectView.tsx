@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { CandidatesTab } from './CandidatesTab'
@@ -34,6 +34,8 @@ interface SourcingProjectViewProps {
   /** Moves focus to the search criteria (Find's filter panel). */
   onEditSearch?: () => void
   onExposeActions?: (actions: SourcingProjectActions | null) => void
+  /** Find's searching loader: where this search's request is (first load and re-runs only). */
+  onSearchState?: (s: { status: 'searching' | 'done' | 'error'; count: number; strong: number; query: string }) => void
 }
 
 
@@ -46,7 +48,8 @@ export function SourcingProjectView({
   onProjectLoaded,
   onUpdateSearchCriteria: exposeUpdateSearchCriteria,
   onEditSearch,
-  onExposeActions
+  onExposeActions,
+  onSearchState
 }: SourcingProjectViewProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -72,6 +75,24 @@ export function SourcingProjectView({
   const [activeTab, setActiveTab] = useState('candidates')
 
   const { createAssociationAndMove } = usePipelineActions()
+
+  // Find's loader follows the search itself: its first load and re-runs (Refresh, an
+  // edited search), never a quiet refetch after someone is added.
+  const onSearchStateRef = useRef(onSearchState)
+  onSearchStateRef.current = onSearchState
+  useEffect(() => {
+    const report = onSearchStateRef.current
+    if (!report) return
+    const query = project?.description || project?.name || ''
+    if (candidatesError && !isRefreshing) {
+      report({ status: 'error', count: 0, strong: 0, query })
+    } else if (isRefreshing || !matchingResult) {
+      report({ status: 'searching', count: 0, strong: 0, query })
+    } else if (!candidatesLoading) {
+      const strong = (candidates as { match_tier?: string }[]).filter((c) => c.match_tier === 'excellent' || c.match_tier === 'good').length
+      report({ status: 'done', count: candidates.length, strong, query })
+    }
+  }, [candidatesLoading, isRefreshing, matchingResult, candidatesError, candidates, project?.description, project?.name])
 
   useEffect(() => {
     if (project && onProjectLoaded) {

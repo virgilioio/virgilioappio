@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { FindFilterPanel } from '@/components/sourcing/FindFilterPanel'
 import { SourcingProjectView, SourcingProjectActions as SourcingProjectActionsType } from '@/components/sourcing/SourcingProjectView'
 import { FindEmptyState } from '@/components/sourcing/FindEmptyState'
+import { FindSearching } from '@/components/sourcing/FindSearching'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { RoleGate } from '@/components/auth/RoleGate'
@@ -75,6 +76,93 @@ export default function Find() {
   }, [editableCriteria])
 
   const mode = projectId ? 'project' : 'new'
+
+  // ── Gio searching (FindSearching, 2026-11-08) ──
+  // One session per search: it starts when a prompt is sent (Gio writes the search)
+  // or when a search's results start loading, carries on into the new search's first
+  // load, and shows only past 600ms, so a quick answer goes straight to the results.
+  type SearchSession = { key: number; query: string; state: 'searching' | 'done' | 'error'; shown: boolean; count: number; strong: number }
+  const [session, setSession] = useState<SearchSession | null>(null)
+  const sessionRef = useRef<SearchSession | null>(null)
+  sessionRef.current = session
+  const [stoppedPrompt, setStoppedPrompt] = useState(false)
+  const stoppedRef = useRef(false)
+  const createdRef = useRef(false)
+  const writingRef = useRef(false)
+  const [promptBack, setPromptBack] = useState<string | undefined>(undefined)
+
+  const startSession = useCallback((query: string) => {
+    const s = sessionRef.current
+    if (s && s.state === 'searching') {
+      if (query && !s.query) setSession({ ...s, query })
+      return
+    }
+    const key = Date.now()
+    setSession({ key, query, state: 'searching', shown: false, count: 0, strong: 0 })
+    window.setTimeout(() => {
+      setSession((x) => (x && x.key === key && x.state === 'searching' ? { ...x, shown: true } : x))
+    }, 600)
+  }, [])
+
+  const finishSession = useCallback((r: { error: boolean; count: number; strong: number }) => {
+    setSession((s) => {
+      if (!s || s.state !== 'searching') return s
+      // Answered before it showed: straight to the results.
+      if (!s.shown) return null
+      // No results reads like a failed search: no badge, then the page's own state.
+      return { ...s, state: r.error || r.count === 0 ? 'error' : 'done', count: r.count, strong: r.strong }
+    })
+  }, [])
+
+  const handleGeneratingChange = useCallback((v: boolean, prompt?: string) => {
+    setIsGenerating(v)
+    if (v) {
+      // The chat's "create from conversation" opens its own sheet; only a sent prompt searches.
+      if (prompt === undefined) return
+      writingRef.current = true
+      stoppedRef.current = false
+      createdRef.current = false
+      setStoppedPrompt(false)
+      startSession(prompt)
+    } else if (writingRef.current) {
+      writingRef.current = false
+      if (!createdRef.current && !stoppedRef.current) finishSession({ error: true, count: 0, strong: 0 })
+    }
+  }, [startSession, finishSession])
+
+  const handleProjectCreated = useCallback((newProjectId: string) => {
+    // Stopped while Gio wrote the search: stay on the prompt; the search is in Recent.
+    if (stoppedRef.current) return false
+    createdRef.current = true
+    navigate(`/find/${newProjectId}`)
+    return true
+  }, [navigate])
+
+  const handleSearchState = useCallback((st: { status: 'searching' | 'done' | 'error'; count: number; strong: number; query: string }) => {
+    if (st.status === 'searching') startSession(st.query)
+    else finishSession({ error: st.status === 'error', count: st.count, strong: st.strong })
+  }, [startSession, finishSession])
+
+  // Opening another search (Recent, the sidebar) starts its own session; a new
+  // search's own id arriving (none → id) carries the session on.
+  const lastProjectId = useRef(projectId)
+  useEffect(() => {
+    const before = lastProjectId.current
+    lastProjectId.current = projectId
+    if (before && before !== projectId) setSession(null)
+  }, [projectId])
+
+  const stopSearching = () => {
+    const query = sessionRef.current?.query
+    setSession(null)
+    if (mode === 'new') {
+      stoppedRef.current = true
+      setStoppedPrompt(true)
+    } else {
+      setPromptBack(query || undefined)
+      navigate('/find')
+    }
+  }
   
   const { data: sourcingProjects, isLoading: isLoadingProjects } = useSourcingProjects()
   
@@ -242,14 +330,15 @@ export default function Find() {
                   />
                 )}
 
-                <div className="flex-1 min-h-0 overflow-hidden">
+                <div className="relative flex-1 min-h-0 overflow-hidden">
                   {mode === 'new' && (
                     <FindEmptyState
-                      isGenerating={isGenerating}
-                      onGeneratingChange={setIsGenerating}
-                      onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
+                      isGenerating={isGenerating && !stoppedPrompt}
+                      onGeneratingChange={handleGeneratingChange}
+                      onProjectCreated={handleProjectCreated}
                       recentProjects={sourcingProjects?.slice(0, 4) ?? []}
                       onSelectProject={(id) => navigate(`/find/${id}`)}
+                      initialPrompt={promptBack}
                     />
                   )}
 
@@ -264,7 +353,32 @@ export default function Find() {
                       onUpdateSearchCriteria={handleExposeUpdateSearchCriteria}
                       onExposeActions={handleExposeActions}
                       onEditSearch={handleEditSearch}
+                      onSearchState={handleSearchState}
                     />
+                  )}
+
+                  {/* Gio searching: over the results area, one instance for the whole search. */}
+                  {session?.shown && (
+                    <div className="gio-find-in absolute inset-0 z-10 flex justify-center overflow-y-auto bg-card px-5 py-10 sm:items-center">
+                      <FindSearching
+                        key={session.key}
+                        state={session.state}
+                        query={session.query}
+                        count={session.strong > 0 ? session.strong : session.count}
+                        foundText={session.strong > 0 ? undefined : `Found ${session.count} ${session.count === 1 ? 'match' : 'matches'}`}
+                        onStop={stopSearching}
+                        onViewResults={() => setSession(null)}
+                        onSearchAgain={() => {
+                          setPromptBack(session.query || undefined)
+                          setSession(null)
+                          navigate('/find')
+                        }}
+                        onResolved={() => {
+                          // A failed or empty search hands over to the page's own state.
+                          if (sessionRef.current?.state === 'error') setSession(null)
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               </Card>

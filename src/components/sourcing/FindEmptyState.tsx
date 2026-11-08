@@ -1,6 +1,5 @@
 import { Info, Bookmark, Link as LinkIcon } from 'lucide-react'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
-import { GioThinkingHeader } from '@/components/sourcing/GioThinkingHeader'
 import { Badge } from '@/components/ui/badge'
 import { SoftFind } from '@/components/ui/EmptyIllustrations'
 import { cn } from '@/lib/utils'
@@ -8,8 +7,11 @@ import type { SourcingProject } from '@/types/sourcing'
 
 interface FindEmptyStateProps {
   isGenerating: boolean
-  onGeneratingChange: (v: boolean) => void
-  onProjectCreated: (projectId: string) => void
+  onGeneratingChange: (v: boolean, prompt?: string) => void
+  /** False: stay here and keep the prompt (Find's Stop). */
+  onProjectCreated: (projectId: string) => void | boolean
+  /** The prompt to start with (back from Stop or Search again). */
+  initialPrompt?: string
   recentProjects: SourcingProject[]
   onSelectProject: (id: string) => void
 }
@@ -20,6 +22,7 @@ export function FindEmptyState({
   onProjectCreated,
   recentProjects,
   onSelectProject,
+  initialPrompt,
 }: FindEmptyStateProps) {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
@@ -31,18 +34,13 @@ export function FindEmptyState({
               <SoftFind />
             </div>
 
-            {isGenerating ? (
-              <GioThinkingHeader />
-            ) : (
-              <>
-                <h2 className="font-poppins font-semibold text-text-primary text-[26px] sm:text-[30px] leading-tight tracking-[-0.04em]">
-                  Who are you looking for<span className="text-virgilio-purple">?</span>
-                </h2>
-                <p className="text-body-md text-text-secondary max-w-[520px] mx-auto">
-                  Describe the role in your own words. Gio turns it into a search and pulls preview profiles you can browse for free — collect the ones you want.
-                </p>
-              </>
-            )}
+            {/* While Gio searches, FindSearching covers this view (src/pages/Find.tsx). */}
+            <h2 className="font-poppins font-semibold text-text-primary text-[26px] sm:text-[30px] leading-tight tracking-[-0.04em]">
+              Who are you looking for<span className="text-virgilio-purple">?</span>
+            </h2>
+            <p className="text-body-md text-text-secondary max-w-[520px] mx-auto">
+              Describe the role in your own words. Gio turns it into a search and pulls preview profiles you can browse for free — collect the ones you want.
+            </p>
           </div>
 
           {/* Prompt composer */}
@@ -51,6 +49,7 @@ export function FindEmptyState({
               variant="find"
               onProjectCreated={onProjectCreated}
               onGeneratingChange={onGeneratingChange}
+              initialPrompt={initialPrompt}
             />
           </div>
 
