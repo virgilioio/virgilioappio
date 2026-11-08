@@ -229,21 +229,17 @@ export const SoftBuilding = () => (
 )
 
 // 14 · Find — AI search hero
+// Flat fills only (2026-11-08): Find's searching loader (FindSearching) resolves into
+// exactly this frame, so the two must stay identical.
 export const SoftFind = () => (
   <SSvg>
-    <defs>
-      <radialGradient id="gioOrb" cx="40%" cy="34%" r="72%">
-        <stop offset="0" stopColor="#9B7BF5" />
-        <stop offset="1" stopColor="#6A39E8" />
-      </radialGradient>
-    </defs>
     <Blob fill="#F0E9FF" />
-    <ellipse cx="95" cy="72" rx="56" ry="34" stroke="#C4B0F5" strokeWidth="2.4" strokeDasharray="0.5 8" fill="none" transform="rotate(-12 95 72)" />
+    <ellipse cx="95" cy="72" rx="56" ry="34" stroke="#C4B0F5" strokeWidth="2.4" strokeDasharray="0.5 8" strokeLinecap="round" fill="none" transform="rotate(-12 95 72)" />
     <circle cx="42" cy="56" r="5.5" fill="#9BD9E6" />
     <circle cx="146" cy="58" r="6.5" fill="#BBE3A9" />
     <circle cx="140" cy="100" r="4.5" fill="#D7C5FB" />
-    <circle cx="95" cy="70" r="28" fill="url(#gioOrb)" />
-    <Spark x={95} y={70} s={14} c="#fff" />
+    <circle cx="95" cy="70" r="28" fill="#6F3FF5" />
+    <path d="M95 56 Q99.76 65.24 109 70 Q99.76 74.76 95 84 Q90.24 74.76 81 70 Q90.24 65.24 95 56 Z" fill="#fff" />
     <circle cx="116" cy="89" r="7.5" fill="#fff" />
     <circle cx="116" cy="89" r="5" fill="#46B86A" />
   </SSvg>
