@@ -2437,3 +2437,21 @@ html.gio-strip-anim.gio-strip-closing .gio-strip-follow { transition-duration: v
 @media (prefers-reduced-motion: reduce) {
   .gio-fit-flash::after { animation: none; }
 }
+
+/* Find's searching loader (FindSearching, 2026-11-08). The sweep is the one gradient in it. */
+.gio-find-sweep {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgba(139, 111, 232, .16) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: gio-find-sweep 1.8s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+@keyframes gio-find-sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.gio-find-dot { animation: gio-find-dot 1.2s ease-in-out infinite; opacity: .25; }
+@keyframes gio-find-dot { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.gio-find-bloom { display: inline-block; animation: gio-find-bloom .45s cubic-bezier(.2, .9, .3, 1) both; }
+@keyframes gio-find-bloom { from { opacity: 0; transform: scale(.94); filter: blur(2px); } }
+.gio-find-in { animation: gio-fade-only var(--dur-dialog-in) var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) {
+  .gio-find-sweep, .gio-find-dot, .gio-find-bloom { animation: none; }
+  .gio-find-dot { opacity: .6; }
+}
