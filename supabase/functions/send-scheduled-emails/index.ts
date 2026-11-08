@@ -70,6 +70,39 @@ serve(async (req) => {
 
     for (const email of emails) {
       try {
+        // A rejection email whose candidate is back in consideration never goes out
+        // (restoring cancels it in the database; this catches anything in between).
+        if (email.email_type === 'rejection' && email.association_id) {
+          const { data: assoc } = await supabase
+            .from('job_candidate_associations')
+            .select('status')
+            .eq('id', email.association_id)
+            .maybeSingle();
+          if (assoc && String(assoc.status ?? '').toLowerCase() !== 'rejected') {
+            await supabase
+              .from('scheduled_emails')
+              .update({ status: 'cancelled', cancel_reason: 'restored', cancelled_at: new Date().toISOString() })
+              .eq('id', email.id)
+              .eq('status', 'pending');
+            console.log(`[send-scheduled-emails] Skipped ${email.id}: the candidate isn't rejected any more`);
+            continue;
+          }
+        }
+
+        // Claim it before sending: an email cancelled a moment ago is no longer pending
+        // and is skipped, and two runs never send the same one.
+        const { data: claimed, error: claimError } = await supabase
+          .from('scheduled_emails')
+          .update({ status: 'sent', sent_at: new Date().toISOString() })
+          .eq('id', email.id)
+          .eq('status', 'pending')
+          .select('id');
+        if (claimError) throw claimError;
+        if (!claimed?.length) {
+          console.log(`[send-scheduled-emails] Skipped ${email.id}: no longer waiting`);
+          continue;
+        }
+
         console.log(`[send-scheduled-emails] Processing email ${email.id} to ${email.to_emails.join(', ')}`);
 
         // Call the send-user-email function with contextual booking link data
@@ -91,14 +124,7 @@ serve(async (req) => {
           throw sendError;
         }
 
-        // Mark as sent
-        await supabase
-          .from('scheduled_emails')
-          .update({
-            status: 'sent',
-            sent_at: new Date().toISOString(),
-          })
-          .eq('id', email.id);
+        // Already marked sent when it was claimed.
 
         // Update the association if this is a rejection email
         if (email.email_type === 'rejection' && email.association_id) {
@@ -121,6 +147,7 @@ serve(async (req) => {
           .from('scheduled_emails')
           .update({
             status: 'failed',
+            sent_at: null,
             error_message: error instanceof Error ? error.message : 'Unknown error',
           })
           .eq('id', email.id);
