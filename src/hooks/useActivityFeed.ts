@@ -120,7 +120,11 @@ export function useActivityFeed(candidateId?: string, jobId?: string) {
 
       if (error) throw error;
 
-      const activities = (data || []) as Activity[];
+      // A scheduled email that went out reads as the "Email sent" entry it became,
+      // so its "scheduled" line folds away (one entry per email, 2026-11-08).
+      const activities = ((data || []) as Activity[]).filter(
+        a => !(a.activity_type === 'candidate_email_scheduled' && a.metadata?.state === 'sent'),
+      );
 
       const withAutomation = activities.map(a => ({
         ...a,

@@ -8,6 +8,8 @@
  */
 import {
   ArrowRight,
+  MailX,
+  MailWarning,
   ClipboardCheck,
   Send,
   Inbox,
@@ -90,6 +92,8 @@ export const ACTIVITY_TYPES: Record<string, ActivityMeta> = {
   // Emails (written by a person)
   candidate_email_sent: { category: 'emails', icon: Send, tone: 'neutral' },
   candidate_email_received: { category: 'emails', icon: Inbox, tone: 'blue' },
+  // A scheduled email (2026-11-08): one line that follows it, see activityMetaFor.
+  candidate_email_scheduled: { category: 'emails', icon: Clock, tone: 'blue' },
 
   // Automations — including automated emails
   candidate_email_automated: { category: 'automations', icon: Zap, tone: 'yellow' },
@@ -161,6 +165,11 @@ export function activityMetaFor(event: { activity_type: string; metadata?: Recor
   if (isSlackActivity(event)) {
     const failed = (event.metadata?.slack as { status?: string } | undefined)?.status === 'failed'
     return { category: 'slack', icon: SlackLogo, tone: failed ? 'red' : 'neutral' }
+  }
+  if (event.activity_type === 'candidate_email_scheduled') {
+    const state = event.metadata?.state
+    if (state === 'cancelled') return { category: 'emails', icon: MailX, tone: 'neutral' }
+    if (state === 'failed') return { category: 'emails', icon: MailWarning, tone: 'red' }
   }
   return activityMeta(event.activity_type)
 }

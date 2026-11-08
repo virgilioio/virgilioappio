@@ -2,6 +2,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Paperclip, Zap } from 'lucide-react';
 import { Activity } from '@/hooks/useActivityFeed';
 import { activityMetaFor, ACTIVITY_TONES, isAutomated, isSlackActivity } from '@/lib/activityRegistry';
+import { scheduledWhen } from '@/lib/scheduledEmails';
 import { SLACK_EVENT, TRIGGER_LABEL, type SlackEvent, type SlackTrigger } from '@/lib/slack';
 import { ActivityEmailCard } from './ActivityEmailCard';
 
@@ -93,6 +94,20 @@ export function ActivityFeedItem({ activity, isLast, onEmailAction }: ActivityFe
     if (md.job_title) detailLines.push(md.job_title);
   } else if (email) {
     // The card carries the participants; nothing to repeat here.
+  } else if (activity.activity_type === 'candidate_email_scheduled') {
+    // A scheduled email (2026-11-08): when it goes out, or why it won't, then the subject.
+    const at = typeof md.scheduled_for === 'string' ? scheduledWhen(md.scheduled_for) : null;
+    if (md.state === 'cancelled') {
+      const why = md.cancel_reason === 'restored'
+        ? `Cancelled when ${md.candidate_name || 'the candidate'} was restored`
+        : `Cancelled${md.cancelled_by_name ? ` by ${md.cancelled_by_name}` : ''}`;
+      detailLines.push(at ? `${why}. It was to go out ${at}.` : `${why}.`);
+    } else if (md.state === 'failed') {
+      detailLines.push(at ? `It was to go out ${at}.` : null);
+    } else if (at) {
+      detailLines.push(`Goes out ${at}`);
+    }
+    if (md.subject || activity.description) detailLines.push(`Subject: ${md.subject || activity.description}`);
   } else if (activity.activity_type === 'interview_rescheduled') {
     if (md.previous_time || md.new_time) {
       detailLines.push([md.previous_time, md.new_time].filter(Boolean).join(' → '));
