@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-08 (ATS) — Find: "Gio is searching" loader — on the branch, waiting for Apply!
+
+- Allan's spec, with both recommendations taken: after the resolve it waits for View results; Stop goes back to the prompt with the text kept, and the started search stays in Recent.
+- `FindSearching` (`src/components/sourcing/FindSearching.tsx`) over Find's results area, one session per search in `Find.tsx` (prompt → Gio writes the search → first load, or a refresh / edited search); answers under 600ms skip it; an error or zero results resolves without the badge and hands back to the page. `SoftFind` is flat now (no gradient, round orbit dots), which also changes the Find hero, the job's Sourcing tab, Suggested states and the dashboard's Recent sourcing. `GioThinkingHeader` is gone. CSS: `.gio-find-sweep`, `.gio-find-dot`, `.gio-find-bloom`, `.gio-find-in` in `src/index.css`.
+- Checked in the browser with fake data: four beats sampled every frame (never two full-size tiles at once; labels switch 1050ms apart at 62%), resolve mid-beat, the last frame against `SoftFind` (0 differing pixels), error (no badge), two loaders at once, no rAF after both resolve or while the tab is hidden, reduced motion (still frame, labels only, no CSS animations). Fixed on the way: a frame time earlier than the clock's start made the first beat -1. Types clean, no new lint. No database change.
+- On Apply!: push to main only.
+
 ## Done 2026-11-08 (ATS) — Re-scores show in the job's lists and board — on main
 
 - Allan: a visual cue when a profile is being re-scored, in the Match column, the Recruiting list view and the board card's score chip (whose tooltip should say Gio Fit score).
