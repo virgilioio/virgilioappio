@@ -112,6 +112,14 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-10 (ATS) — Word résumés show in the scorecard — on the branch, waiting for Apply!
+
+- Allan: a .docx résumé (Fabiana Castro) didn't render beside the scorecard.
+- Cause: `ScorecardSheet` loaded the résumé itself and always handed it to `PDFResumeViewer`, which only draws PDFs. Word files are never converted (see 2026-11-07), so every Word résumé failed there; the profile's Resume tab was fine because it uses `CandidateResumeViewer`.
+- Fix: the scorecard's Resume tab is now `CandidateResumeViewer` (PDF, Word through mammoth, images, Open in new tab, Download; the shared `['candidate-attachments', id]` files), the candidate from the props or the application. Its own loader is gone, along with a `.maybeSingle()` that found nothing when a candidate had two résumé rows.
+- Checked in the browser with fake data on the real `ScorecardSheet` at 1440: a Word file (drawn), a PDF (drawn) and no résumé ("No resume yet"). Types and lint clean. No database change.
+- On Apply!: push to main.
+
 ## Done 2026-11-08 (ATS) — Scheduled emails in the feed; cancel from the rejection banner — on main
 
 - Allan: scheduled emails, rejection emails included, show in the Activity feed; the rejection banner shows the scheduled email with a way to cancel it; unrejecting cancels it.
