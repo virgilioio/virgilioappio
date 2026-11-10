@@ -83,7 +83,7 @@ import { ScorecardValidationPoints } from "./ScorecardValidationPoints";
 import { GioPointsInbox } from "./scorecard/GioPointsInbox";
 import { AddedFromGioBlock } from "./scorecard/AddedFromGioBlock";
 import { useGioAddedQuestions } from "@/hooks/useGioAddedQuestions";
-import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
+import { CandidateResumeViewer } from "@/components/candidates/CandidateResumeViewer";
 import { CandidateSheetSection } from "./form/CandidateSheetSection";
 import { OverallRatingPills } from "./scorecard/OverallRatingPills";
 import { ScoreFivePills } from "./scorecard/ScoreFivePills";
@@ -286,8 +286,7 @@ export function ScorecardSheet({
       setIsDeleting(false);
     }
   };
-  const [resumeUrl, setResumeUrl] = useState<string | null>(null);
-  const [loadingResume, setLoadingResume] = useState(true);
+  const [resumeCandidateId, setResumeCandidateId] = useState<string | null>(candidateId ?? null);
   const [hasDraft, setHasDraft] = useState(false);
   const draftTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
@@ -497,65 +496,23 @@ export function ScorecardSheet({
     };
   }, [open, existing, isReadOnly, rating, overview, responses, draftKey]);
 
-  // Load resume when sheet opens
+  // The résumé beside the scorecard is the profile's own viewer (2026-11-10): PDFs,
+  // Word files and images, from the candidate's shared files query. A Word résumé was
+  // handed to the PDF viewer here and never drew. The candidate comes from the props,
+  // else from the application.
   useEffect(() => {
-    if (!open || !associationId) {
-      setResumeUrl(null);
-      setLoadingResume(true);
-      return;
-    }
-
-    const loadResume = async () => {
-      setLoadingResume(true);
-      try {
-        // Get candidate_id from association
-        const { data: association } = await supabase
-          .from('job_candidate_associations')
-          .select('candidate_id')
-          .eq('id', associationId)
-          .single();
-
-        if (!association) {
-          setLoadingResume(false);
-          return;
-        }
-
-        // Get primary resume attachment
-        const { data: resumeAttachment } = await supabase
-          .from('candidate_attachments')
-          .select('file_url, converted_pdf_url, conversion_status')
-          .eq('candidate_id', association.candidate_id)
-          .eq('is_resume', true)
-          .maybeSingle();
-
-        if (!resumeAttachment) {
-          setLoadingResume(false);
-          return;
-        }
-
-        // Prefer converted PDF if available
-        const fileUrl = resumeAttachment.conversion_status === 'completed' && resumeAttachment.converted_pdf_url
-          ? resumeAttachment.converted_pdf_url
-          : resumeAttachment.file_url;
-
-        if (fileUrl) {
-          const { data } = await supabase.storage
-            .from('candidate-attachments')
-            .createSignedUrl(fileUrl, 3600);
-
-          if (data?.signedUrl) {
-            setResumeUrl(data.signedUrl);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading resume:', error);
-      } finally {
-        setLoadingResume(false);
-      }
-    };
-
-    loadResume();
-  }, [open, associationId]);
+    if (!open) return;
+    if (candidateId) { setResumeCandidateId(candidateId); return; }
+    if (!associationId) { setResumeCandidateId(null); return; }
+    let live = true;
+    void supabase
+      .from('job_candidate_associations')
+      .select('candidate_id')
+      .eq('id', associationId)
+      .maybeSingle()
+      .then(({ data }) => { if (live) setResumeCandidateId(data?.candidate_id ?? null); });
+    return () => { live = false; };
+  }, [open, associationId, candidateId]);
 
   useEffect(() => {
     if (open && stageInstanceId) {
@@ -1402,12 +1359,10 @@ export function ScorecardSheet({
                   </div>
                   
                   <TabsContent value="resume" className="flex-1 overflow-hidden m-0 p-4">
-                    {loadingResume ? (
-                      <div className="flex items-center justify-center h-full">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    {resumeCandidateId ? (
+                      <div className="h-full overflow-y-auto rounded-[12px]">
+                        <CandidateResumeViewer key={resumeCandidateId} candidateId={resumeCandidateId} height={65} />
                       </div>
-                    ) : resumeUrl ? (
-                      <PDFResumeViewer url={resumeUrl} height={65} />
                     ) : (
                       <div className="p-6">
                         <EmptyState
