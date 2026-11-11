@@ -3,10 +3,12 @@ import { IconSwap } from '@/components/ui/icon-swap'
 import { ChevronDown, ChevronUp, Copy, Check, ArrowDown, CheckCircle2 } from 'lucide-react';
 import { copyToClipboard } from '@/utils/clipboard';
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown';
+import { RATING_META } from '@/lib/scorecardRatings';
+import type { ScoreRating } from '@/hooks/useScorecards';
 
 interface Props {
-  /** Verdict label from Gio (e.g. "Strong Yes", "Yes", "No", "Definitely No"). */
-  verdictLabel: string;
+  /** Gio's suggested rating, on the scorecard's own five-point scale. */
+  rating: ScoreRating;
   /** Raw analysis content (JSON string or markdown). */
   analysis: string;
   /** Whether the currently-selected rating already matches Gio's suggestion. */
@@ -18,12 +20,6 @@ interface Props {
   disabled?: boolean;
 }
 
-const VERDICT_COLORS: Record<string, { bg: string; fg: string }> = {
-  'Strong Yes': { bg: '#6F3FF5', fg: '#FFFFFF' },
-  Yes: { bg: '#C8B9F0', fg: '#3B2A6B' },
-  No: { bg: '#E7ABA4', fg: '#7A2E27' },
-  'Definitely No': { bg: '#C9554C', fg: '#FFFFFF' },
-};
 
 function parseStructured(text: string): { summary?: string; strengths?: string[] } {
   const trimmed = (text || '').trim();
@@ -46,7 +42,7 @@ function parseStructured(text: string): { summary?: string; strengths?: string[]
 }
 
 export function AiSuggestedRatingCard({
-  verdictLabel,
+  rating,
   analysis,
   applied,
   onApply,
@@ -56,7 +52,8 @@ export function AiSuggestedRatingCard({
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const verdict = VERDICT_COLORS[verdictLabel] ?? VERDICT_COLORS.Yes;
+  const meta = RATING_META[rating];
+  const verdict = { bg: meta.bg, fg: meta.text };
   const { summary, strengths } = parseStructured(analysis);
   const hasStructured = !!(summary || (strengths && strengths.length > 0));
 
@@ -113,7 +110,7 @@ export function AiSuggestedRatingCard({
                 letterSpacing: '-0.005em',
               }}
             >
-              {verdictLabel}
+              {meta.label}
             </span>
             <span
               className="font-inter"

@@ -5,6 +5,7 @@ import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { cleanInboundText } from '../_shared/interviewNotes.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature',
@@ -13,7 +14,8 @@ const corsHeaders = {
 // Extract ingest code from email address
 function extractIngestCode(email: string): string | null {
   // Format: int_{code}@ingest.gogio.io
-  const match = email.match(/^int_([a-zA-Z0-9]{8})@ingest\.gogio\.io$/i);
+  // Also inside "Name <int_…@ingest.gogio.io>", however the address is written.
+  const match = String(email || '').match(/(?:^|[<\s"'])int_([a-zA-Z0-9]{8})@ingest\.gogio\.io(?=$|[>\s"'])/i);
   return match ? match[1] : null;
 }
 
@@ -149,6 +151,44 @@ async function fetchAttachmentBytesFromResend(
     console.error('[Transcript Webhook] Resend attachment fetch error:', err);
     return { bytes: null };
   }
+}
+
+/**
+ * The email as our own Resend account holds it (2026-11-11). Deliveries reach this
+ * function without a signature, so this is what proves one is real: a made-up
+ * payload names an email that isn't in our account. Retries while Resend is still
+ * storing a message it has just received.
+ */
+async function fetchInboundFromResend(
+  emailId: string,
+  resendApiKey: string,
+): Promise<{ email: any | null; status: 'found' | 'missing' | 'error' }> {
+  const delays = [0, 800, 2000, 4000];
+  let last: 'missing' | 'error' = 'missing';
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) await new Promise((r) => setTimeout(r, delays[attempt]));
+    try {
+      const res = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(emailId)}`, {
+        headers: { Authorization: `Bearer ${resendApiKey}` },
+      });
+      if (res.ok) return { email: await res.json(), status: 'found' };
+      console.error(`[Transcript Webhook] Resend lookup ${res.status} (attempt ${attempt + 1}/${delays.length})`);
+      await res.text().catch(() => '');
+      if (res.status !== 404) { last = 'error'; if (res.status < 500) break; }
+      else last = 'missing';
+    } catch (err) {
+      console.error(`[Transcript Webhook] Resend lookup error (attempt ${attempt + 1}):`, err);
+      last = 'error';
+    }
+  }
+  return { email: null, status: last };
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 }
 
 // Extract transcript content from email
@@ -429,6 +469,37 @@ serve(async (req) => {
     }
 
 
+    // The delivery carries no signature, so confirm it with Resend before trusting a word
+    // of it, and read the email from there rather than from the payload.
+    if (!inboundMessageId) {
+      console.warn('[Transcript Webhook] Delivery without an email id - cannot confirm it, ignoring');
+      return json({ status: 'ignored', reason: 'unverifiable' });
+    }
+    const lookup = await fetchInboundFromResend(inboundMessageId, resendApiKey);
+    if (!lookup.email) {
+      // Not in our account (yet): a retry from the sender is welcome; a made-up one never resolves.
+      console.warn('[Transcript Webhook] Email not found in Resend:', inboundMessageId, lookup.status);
+      return json({ status: 'unconfirmed', reason: lookup.status }, 503);
+    }
+    const confirmed = lookup.email;
+    const confirmedRecipients = { to: confirmed.to ?? [], cc: confirmed.cc ?? [] };
+    const confirmedCode = findIngestCodeInRecipients(confirmedRecipients).code;
+    if (!confirmedCode || confirmedCode.toLowerCase() !== ingestCode.toLowerCase()) {
+      console.warn('[Transcript Webhook] Resend copy was not sent to this ingest address:', inboundMessageId);
+      return json({ status: 'ignored', reason: 'recipient_mismatch' });
+    }
+    const verifiedEmail = {
+      ...emailData,
+      from: confirmed.from ?? emailData.from,
+      to: confirmed.to ?? emailData.to,
+      cc: confirmed.cc ?? emailData.cc,
+      subject: confirmed.subject ?? emailData.subject,
+      text: confirmed.text ?? null,
+      html: confirmed.html ?? null,
+      attachments: confirmed.attachments ?? emailData.attachments,
+      email_id: inboundMessageId,
+    };
+
     // Attempt to infer pipeline context when the booking was created without it
     if (booking.candidate_id && !booking.job_hiring_stage_id) {
       const { data: activeAssociations } = await supabase
@@ -474,55 +545,32 @@ serve(async (req) => {
     const hasPipelineContext = Boolean(booking.candidate_id && booking.job_hiring_stage_id);
 
 
-    // Extract transcript content
-    let { content, metadata } = await extractTranscriptContent(emailData, { resendApiKey, openaiApiKey });
+    // Extract transcript content from the confirmed copy
+    let { content, metadata } = await extractTranscriptContent(verifiedEmail, { resendApiKey, openaiApiKey });
 
-    // If no content from webhook payload, fetch from Resend receiving API
-    if ((!content || content.trim().length < 100) && emailData.email_id && resendApiKey) {
-      console.log('[Transcript Webhook] No content in payload, fetching from Resend receiving API, email_id:', emailData.email_id);
-      const delays = [0, 500, 1500];
-      for (let attempt = 0; attempt < delays.length; attempt++) {
-        if (delays[attempt] > 0) await new Promise(r => setTimeout(r, delays[attempt]));
-        try {
-          const res = await fetch(`https://api.resend.com/emails/receiving/${emailData.email_id}`, {
-            headers: { Authorization: `Bearer ${resendApiKey}` },
-          });
-          if (res.ok) {
-            const fullEmail = await res.json();
-            console.log(`[Transcript Webhook] Resend fetch OK (attempt ${attempt + 1}): text=${fullEmail.text?.length || 0} html=${fullEmail.html?.length || 0}`);
-            const enriched = await extractTranscriptContent({
-              ...emailData,
-              text: fullEmail.text || emailData.text,
-              html: fullEmail.html || emailData.html,
-              attachments: fullEmail.attachments || emailData.attachments,
-              email_id: emailData.email_id || fullEmail.id,
-            }, { resendApiKey, openaiApiKey });
-            content = enriched.content;
-            metadata = { ...enriched.metadata, resend_fetch: true, resend_attempt: attempt + 1 };
-            break;
-          }
-          const errText = await res.text();
-          console.error(`[Transcript Webhook] Resend API ${res.status} (attempt ${attempt + 1}/${delays.length}): ${errText}`);
-          if (res.status !== 404) break;
-        } catch (err) {
-          console.error(`[Transcript Webhook] Resend fetch error (attempt ${attempt + 1}):`, err);
-        }
-      }
-    }
+    // Keep only what was said about the interview: a note-taker's recap email is mostly
+    // links and advertising (2026-11-11). The source kind tells the notes whether this
+    // is a word-for-word transcript or the note-taker's summary.
+    const rawLength = content?.length || 0;
+    const cleaned = cleanInboundText(content || '', String(verifiedEmail.from || ''));
+    content = cleaned.text;
+    metadata = {
+      ...metadata,
+      source_kind: cleaned.kind,
+      provider: cleaned.provider,
+      fireflies_id: cleaned.firefliesId,
+      raw_length: rawLength,
+      verified_with_resend: true,
+    };
 
-    if (!content || content.trim().length < 100) {
-      console.warn('[Transcript Webhook] Transcript content too short:', {
-        received_length: content?.length || 0,
-        from: emailData.from,
-        subject: emailData.subject,
+    if (!content || content.trim().length < 20) {
+      // Answer normally: an error here only makes the sender deliver it again.
+      console.warn('[Transcript Webhook] Nothing usable in the email:', {
+        raw_length: rawLength,
+        from: verifiedEmail.from,
+        subject: verifiedEmail.subject,
       });
-      return new Response(JSON.stringify({ 
-        error: 'Transcript content too short',
-        received_length: content?.length || 0 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ status: 'ignored', reason: 'no_content', received_length: rawLength });
     }
 
     console.log('[Transcript Webhook] Extracted transcript, length:', content.length, 'source:', metadata.content_source);
