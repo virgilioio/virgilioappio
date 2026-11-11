@@ -160,6 +160,11 @@ export function EmailComposer({
   // Phone: closing a changed draft asks first, in the footer (§13).
   const [confirmClose, setConfirmClose] = useState(false);
   const phoneBarRef = useRef<HTMLDivElement>(null);
+  // Phone: the formatting pill floats above the keyboard while you write in the message
+  // (its slot is a portal target), and its × puts it away until you tap back in.
+  const [fmtSlot, setFmtSlot] = useState<HTMLDivElement | null>(null);
+  const [writing, setWriting] = useState(false);
+  const [fmtHidden, setFmtHidden] = useState(false);
 
   const activeIdentities = identities.filter((id) => id.is_active);
 
@@ -497,7 +502,26 @@ export function EmailComposer({
         ref={formRef}
         onSubmit={handleSubmit(onSubmit)}
         onKeyDown={handleFormKeyDown}
-        className="gio-composer-form flex flex-col flex-1 min-h-0"
+        className="gio-composer-form relative flex flex-col flex-1 min-h-0"
+        onFocusCapture={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.closest('.gne-ed')) {
+            // Coming into the message from elsewhere brings the pill back.
+            if (!writing) setFmtHidden(false);
+            setWriting(true);
+          } else if (!t.closest('.gio-fmt-dock')) setWriting(false);
+        }}
+        onPointerDownCapture={(e) => {
+          // A tap back into the message brings a put-away pill back.
+          if (fmtHidden && (e.target as HTMLElement).closest('.gne-ed')) setFmtHidden(false);
+        }}
+        onBlurCapture={() => {
+          // Let focus land first: a tap on the pill keeps you writing.
+          window.setTimeout(() => {
+            const a = document.activeElement as HTMLElement | null;
+            setWriting(!!a && !!(a.closest('.gne-ed') || a.closest('.gio-fmt-dock')));
+          }, 0);
+        }}
       >
         {/* Top bar */}
         <div
@@ -622,7 +646,10 @@ export function EmailComposer({
           />
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5" style={{ padding: '2px 12px 12px' }}>
+        <div
+          className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5"
+          style={{ padding: `2px 12px ${writing && !fmtHidden ? 76 : 12}px` }}
+        >
           {/* Fields */}
           <div className="shrink-0 bg-white" style={{ borderRadius: 14, border: '1px solid #E7E8EE' }}>
             <PhoneRow
@@ -734,6 +761,7 @@ export function EmailComposer({
             <BodyTemplateEditor
               ref={bodyEditorRef}
               phone
+              toolbarSlot={fmtSlot}
               value={bodyHtml}
               onChange={(content) => {
                 setBodyHtml(content);
@@ -828,6 +856,24 @@ export function EmailComposer({
             />
           </div>
         )}
+
+        {/* The formatting pill, floating above the keyboard while you write */}
+        <div
+          className="gio-fmt-dock"
+          data-show={writing && !fmtHidden && !confirmClose}
+          {...(writing && !fmtHidden && !confirmClose ? {} : { inert: '' as unknown as boolean })}
+        >
+          <div ref={setFmtSlot} className="gio-fmt-pill" />
+          <button
+            type="button"
+            aria-label="Hide formatting"
+            className="gio-fmt-close gio-pressable"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setFmtHidden(true)}
+          >
+            <X className="h-5 w-5" strokeWidth={1.75} />
+          </button>
+        </div>
 
         {confirmClose && (
           <div

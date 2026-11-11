@@ -2463,7 +2463,8 @@ html.gio-strip-anim.gio-strip-closing .gio-strip-follow { transition-duration: v
   top: var(--gio-vv-top, 0px);
   left: max(0px, calc((100vw - 640px) / 2));
   right: max(0px, calc((100vw - 640px) / 2));
-  height: calc(100dvh - var(--gio-kb, 0px) - var(--gio-vv-top, 0px));
+  /* The visible area's height while the keyboard is up (measured), else the screen. */
+  height: var(--gio-vv-h, 100dvh);
   padding-top: env(safe-area-inset-top, 0px);
   animation: gio-composer-rise var(--dur-drawer-in) var(--ease-drawer) backwards;
 }
@@ -2477,26 +2478,66 @@ html.gio-strip-anim.gio-strip-closing .gio-strip-follow { transition-duration: v
 .gne.gne-phone:focus-within { box-shadow: none; border-color: transparent; }
 .gne.gne-phone .gne-ed,
 .gne.gne-phone .gne-ph { font-size: 16px; }
-.gne.gne-phone .gne-tb {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
+.gne.gne-phone .gne-tb { display: none; }
+/* Its formatting strip floats above the keyboard as a pill, like Gmail's (2026-11-11):
+ * shown while you write, with a round × that puts it away until you tap back in. */
+.gio-fmt-dock {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity var(--dur-hover) var(--ease-out), transform var(--dur-hover) var(--ease-out);
+}
+.gio-fmt-dock[data-show='true'] { opacity: 1; transform: none; pointer-events: auto; }
+.gio-fmt-pill {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 999px;
+  box-shadow: var(--shadow-pop);
+}
+.gio-fmt-pill .gne-tb {
+  display: flex;
+  width: 100%;
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
-  border-bottom: 0;
-  border-top: 1px solid #F1F0EC;
-  border-radius: 0 0 14px 14px;
-  padding: 6px 8px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur-hover) ease;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 8px;
 }
-.gne.gne-phone .gne-tb::-webkit-scrollbar { display: none; }
-.gne.gne-phone:focus-within .gne-tb { opacity: 1; pointer-events: auto; }
-.gne.gne-phone .gne-btn { width: 40px; height: 40px; flex: none; }
-.gne.gne-phone .gne-pop { top: auto; bottom: 56px; left: 8px; right: 8px; }
-.gne.gne-phone .gne-pop input { flex: 1; width: auto; min-width: 0; font-size: 16px; }
+.gio-fmt-pill .gne-tb::-webkit-scrollbar { display: none; }
+.gio-fmt-pill .gne-btn { width: 40px; height: 40px; flex: none; border-radius: 999px; color: #1F2230; }
+.gio-fmt-pill .gne-div { flex: none; }
+.gio-fmt-pill .gne-pop { top: auto; bottom: calc(100% + 8px); left: 0; right: 0; }
+.gio-fmt-pill .gne-pop input { flex: 1; width: auto; min-width: 0; font-size: 16px; }
+.gio-fmt-close {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-pop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1F2230;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-fmt-dock { transform: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   .gio-composer-phone { animation: gio-fade-only var(--dur-dialog-in) ease backwards; }
 }

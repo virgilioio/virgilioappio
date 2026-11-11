@@ -16,6 +16,7 @@
  * - No innerHTML hacks
  */
 import React, { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
@@ -92,6 +93,8 @@ export interface BodyTemplateEditorProps {
    * toolbar at the bottom, kept just above the keyboard and shown while you write.
    */
   phone?: boolean;
+  /** Phone: where the formatting strip is drawn (the composer's floating pill). */
+  toolbarSlot?: HTMLElement | null;
 }
 
 export type BodyEditorCommand = 'bold' | 'italic' | 'underline' | 'ul' | 'ol' | 'quote' | 'link';
@@ -316,6 +319,7 @@ function BodyEditorInner({
   toolbarExtra,
   ariaLabel,
   phone,
+  toolbarSlot,
   editorRef,
 }: BodyTemplateEditorProps & { editorRef: React.MutableRefObject<LexicalEditor | null> }) {
   const [editor] = useLexicalComposerContext();
@@ -422,7 +426,7 @@ function BodyEditorInner({
         <LinkPlugin />
         <AutoLinkPlugin />
       </div>
-      {!hideToolbar && phone && <FormatToolbar extra={toolbarExtra} disabled={disabled} />}
+      {!hideToolbar && phone && toolbarSlot && createPortal(<FormatToolbar extra={toolbarExtra} disabled={disabled} />, toolbarSlot)}
       {!hideToolbar && !disabled && !phone && (
         <div className="gne-hint" aria-hidden="true">
           <span><span className="gne-kbd">*</span>bullets</span>
