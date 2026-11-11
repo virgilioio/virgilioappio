@@ -87,6 +87,11 @@ export interface BodyTemplateEditorProps {
   ariaLabel?: string;
   /** What a pill can be swapped for (its click menu); the general email list when left out. */
   variables?: PillVariable[];
+  /**
+   * The phone composer's box (2026-11-11): no frame of its own, 16px text, and the
+   * toolbar at the bottom, kept just above the keyboard and shown while you write.
+   */
+  phone?: boolean;
 }
 
 export type BodyEditorCommand = 'bold' | 'italic' | 'underline' | 'ul' | 'ol' | 'quote' | 'link';
@@ -310,6 +315,7 @@ function BodyEditorInner({
   hideToolbar,
   toolbarExtra,
   ariaLabel,
+  phone,
   editorRef,
 }: BodyTemplateEditorProps & { editorRef: React.MutableRefObject<LexicalEditor | null> }) {
   const [editor] = useLexicalComposerContext();
@@ -386,9 +392,9 @@ function BodyEditorInner({
   }, []);
 
   return (
-    <div className={cn('gne', className)} data-disabled={disabled}>
+    <div className={cn('gne', phone && 'gne-phone', className)} data-disabled={disabled}>
       <style>{FORMATTED_TEXT_STYLES}</style>
-      {!hideToolbar && <FormatToolbar extra={toolbarExtra} disabled={disabled} />}
+      {!hideToolbar && !phone && <FormatToolbar extra={toolbarExtra} disabled={disabled} />}
       <div className="relative overflow-y-auto" style={{ minHeight, maxHeight }}>
         <RichTextPlugin
           contentEditable={
@@ -416,7 +422,8 @@ function BodyEditorInner({
         <LinkPlugin />
         <AutoLinkPlugin />
       </div>
-      {!hideToolbar && !disabled && (
+      {!hideToolbar && phone && <FormatToolbar extra={toolbarExtra} disabled={disabled} />}
+      {!hideToolbar && !disabled && !phone && (
         <div className="gne-hint" aria-hidden="true">
           <span><span className="gne-kbd">*</span>bullets</span>
           <span><span className="gne-kbd">1.</span>numbered</span>
