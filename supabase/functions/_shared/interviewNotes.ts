@@ -23,13 +23,21 @@ export function firefliesIdFrom(text: string): string | null {
   return text.match(FIREFLIES_ID)?.[1] ?? null
 }
 
+// Combining grapheme joiner, zero-width spaces and joiners, soft hyphen, word joiner and
+// BOM: what email preheaders pad with. Built from code points so the source stays
+// plain ASCII (the function deploy tool rewrites escape sequences).
+const PREHEADER_FILLER = new RegExp(
+  '[' + String.fromCharCode(0x034f, 0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0x00ad, 0x2060, 0xfeff) + ']+',
+  'g',
+)
+
 /** Links, image references, invisible preheader filler and access tokens out. */
 export function stripEmailNoise(text: string): string {
   return text
     .replace(/\[https?:\/\/[^\]]*\]/g, '')
     .replace(/https?:\/\/\S+/g, '')
     // Preheader padding (combining grapheme joiner, zero-width and soft-hyphen runs)
-    .replace(/[͏​-‏­⁠﻿]+/g, '')
+    .replace(PREHEADER_FILLER, '')
     // Signed tokens some recaps carry (JWTs, "…_token:…")
     .replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '')
     .replace(/\b\w*token:\S+/gi, '')
