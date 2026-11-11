@@ -112,13 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-11-11 (ATS) — Phone composer: fits above the keyboard; formatting as a floating pill — on the branch, waiting for Apply!
+## Done 2026-11-11 (ATS) — Phone composer: fits above the keyboard; formatting as a floating pill — on main
 
 - Allan, testing on his iPhone: with the keyboard up the composer stopped short and the profile showed through under Safari's ^ v ✓ bar; the formatting strip sat glued to the card's bottom. Go! to the plan.
 - Cause: the frame's height was the screen's (100dvh) minus the keyboard (window height minus the visible area), and on his iPhone those disagree by ~65px. Now `installKeyboardSafe` also sets `--gio-vv-h` (the visible area's height) while the keyboard is up and the frame uses it with `--gio-vv-top`.
 - Formatting: a floating white pill above the keyboard (B, I, U, S, lists, link, @ Variables, scrolling sideways) with a round × beside it, like Gmail's; it shows only while you write in the message, × puts it away until you tap back in, leaving for Subject or To hides it. The editor's toolbar is portalled into the pill (`BodyTemplateEditor toolbarSlot`). Websites can't put buttons into the iOS keyboard; iOS's own selection menu (Format › B/I/U) works with our editor.
 - Checked in the browser with fake data at 390×844 and 375×667 with the keyboard simulated: the frame ends exactly at the visible area (544 and 367), and follows a 40px scroll; the pill sits 10px above it; Bold from the pill keeps you writing; ×, tap back in, Subject, keyboard down. Types and lint clean. To confirm on a real iPhone after Apply.
-- On Apply!: push to main.
+- Applied: pushed to main (no database change).
 
 ## Done 2026-11-11 (ATS) — The email composer on phones — on main
 
