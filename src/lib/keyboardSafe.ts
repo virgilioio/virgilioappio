@@ -20,6 +20,11 @@ export function installKeyboardSafe(): () => void {
       const open = covered > 80
       root.setProperty('--gio-kb', `${open ? Math.round(covered) : 0}px`)
       root.setProperty('--gio-vv-top', `${open ? Math.round(viewport.offsetTop) : 0}px`)
+      // The visible area's own height while the keyboard is up (2026-11-11): iOS's
+      // window height and 100dvh can disagree by tens of pixels, so subtracting the
+      // keyboard from them left a gap above it; the composer takes this height instead.
+      if (open) root.setProperty('--gio-vv-h', `${Math.round(viewport.height)}px`)
+      else root.removeProperty('--gio-vv-h')
     })
   }
   viewport.addEventListener('resize', measure)
@@ -29,5 +34,6 @@ export function installKeyboardSafe(): () => void {
     cancelAnimationFrame(frame)
     viewport.removeEventListener('resize', measure)
     viewport.removeEventListener('scroll', measure)
+    root.removeProperty('--gio-vv-h')
   }
 }
