@@ -1,4 +1,5 @@
 import { installAutoTitle } from '@/lib/autoTitle'
+import { installKeyboardSafe } from '@/lib/keyboardSafe'
 import { PhoneSwitch, DesktopOnly } from '@/components/phone/PhoneSwitch'
 import { OfflineBanner } from '@/components/layout/OfflineBanner'
 import { CandidateLinkGuard } from '@/components/candidates/CandidateLinkGuard'
@@ -143,6 +144,7 @@ function InboxRouteGuard({ children }: { children: React.ReactNode }) {
 function AppContent() {
   // §10/§14: truncated text shows its full value in a tooltip while it's cut.
   useEffect(() => installAutoTitle(), [])
+  useEffect(() => installKeyboardSafe(), [])
 
 
 
