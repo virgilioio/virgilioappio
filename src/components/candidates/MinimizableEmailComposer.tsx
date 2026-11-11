@@ -3,6 +3,7 @@ import { X, Minus, Maximize2, Mail, Sparkles } from 'lucide-react';
 import { EmailComposer } from '@/components/candidates/EmailComposer';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import type { EmailDraft } from '@/lib/emailOutbox';
 
 interface MinimizableEmailComposerProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ interface MinimizableEmailComposerProps {
   bulk?: { candidateIds: string[]; jobId: string };
   /** Optional job title shown as sub-line in bulk mode header. */
   bulkJobTitle?: string;
+  /** Undo Send: the draft to reopen (EmailOutboxHost). */
+  initialDraft?: EmailDraft;
 }
 
 export function MinimizableEmailComposer({
@@ -42,12 +45,15 @@ export function MinimizableEmailComposer({
   defaultCc,
   bulk,
   bulkJobTitle,
+  initialDraft,
 }: MinimizableEmailComposerProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [templateApplied, setTemplateApplied] = useState(false);
   const isPhone = useIsMobile();
 
   if (!isOpen) return null;
+
+  const draftContext = { candidateName, mode, bulkJobTitle };
 
   const handleSuccess = () => {
     onSuccess?.();
@@ -91,6 +97,8 @@ export function MinimizableEmailComposer({
           defaultCc={defaultCc}
           onTemplateAppliedChange={setTemplateApplied}
           bulk={bulk}
+          initialDraft={initialDraft}
+          draftContext={draftContext}
         />
       </div>
     );
@@ -268,6 +276,8 @@ export function MinimizableEmailComposer({
             defaultCc={defaultCc}
             onTemplateAppliedChange={setTemplateApplied}
             bulk={bulk}
+            initialDraft={initialDraft}
+            draftContext={draftContext}
           />
         </div>
       </div>

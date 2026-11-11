@@ -4,6 +4,7 @@ import { PhoneSwitch, DesktopOnly } from '@/components/phone/PhoneSwitch'
 import { OfflineBanner } from '@/components/layout/OfflineBanner'
 import { CandidateLinkGuard } from '@/components/candidates/CandidateLinkGuard'
 import { ConfirmDialogHost } from '@/components/ui/confirm-dialog'
+import { EmailOutboxHost } from '@/components/candidates/EmailOutboxHost'
 import { CloseJobRejectHost } from '@/components/jobs/CloseJobRejectHost'
 import {
   BrowserRouter as Router,
@@ -270,6 +271,7 @@ function AppContent() {
       </Suspense>
       <Sonner />
       <ConfirmDialogHost />
+      <EmailOutboxHost />
       <CloseJobRejectHost />
       <OfflineBanner />
       <AppUpdateNotification />

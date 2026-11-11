@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -23,6 +23,25 @@ export interface SendEmailRequest {
   association_id?: string; // job_candidate_association_id for contextual booking links
 }
 
+/**
+ * What every sent email refreshes: the candidate's email logs and Activity feed, and any
+ * screen listening for `gio:email-sent` (the Inbox brings the new message in).
+ */
+export function afterEmailSent(
+  queryClient: QueryClient,
+  request: Pick<SendEmailRequest, 'candidate_id' | 'job_id'>,
+) {
+  if (request.candidate_id) {
+    queryClient.invalidateQueries({ queryKey: ['email-logs', request.candidate_id] });
+    queryClient.invalidateQueries({ queryKey: ['activity-feed', request.candidate_id] });
+    if (request.job_id) {
+      queryClient.invalidateQueries({ queryKey: ['activity-feed', request.candidate_id, request.job_id] });
+    }
+  }
+  queryClient.invalidateQueries({ queryKey: ['email-logs'] });
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('gio:email-sent', { detail: request }));
+}
+
 export function useSendEmail() {
   const queryClient = useQueryClient();
 
@@ -38,30 +57,9 @@ export function useSendEmail() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       toast.success('Email sent successfully');
-      
-      // Invalidate email logs for this candidate
-      if (variables.candidate_id) {
-        queryClient.invalidateQueries({ 
-          queryKey: ['email-logs', variables.candidate_id] 
-        });
-        
-        // Invalidate activity feed for this candidate
-        queryClient.invalidateQueries({ 
-          queryKey: ['activity-feed', variables.candidate_id] 
-        });
-        
-        // Also invalidate with job_id if provided
-        if (variables.job_id) {
-          queryClient.invalidateQueries({ 
-            queryKey: ['activity-feed', variables.candidate_id, variables.job_id] 
-          });
-        }
-      }
-      
-      // Invalidate all email logs
-      queryClient.invalidateQueries({ queryKey: ['email-logs'] });
+      afterEmailSent(queryClient, variables);
     },
     onError: (error: Error) => {
       toast.error(`Failed to send email: ${error.message}`);

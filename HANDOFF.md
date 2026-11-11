@@ -112,6 +112,14 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-11 (ATS) — Undo Send in the email-sent toast — on branch, waiting for Apply!
+
+- Allan: "When sending emails, we should also have the Undo in the success toast". Go! to the plan (hold the email while its toast shows; Undo reopens the draft).
+- Built: see CLAUDE.md "Undo Send". `src/lib/emailOutbox.ts` (hold, toast, send once, watchdog, leave-tab guard, reopen), `EmailOutboxHost` in App.tsx, `EmailComposer initialDraft` / `draftContext`, `sendBulkEmails` out of the bulk hook, `afterEmailSent` + `gio:email-sent` (the Inbox's refresh after a send now waits for the real send). Fixed on the way: From is filled when the mailboxes arrive after the composer opened, and a failed send no longer shows the server's raw message.
+- Checked in the browser with fake data (sends intercepted): desktop new email (toast, Undo → the same draft back, nothing sent; Send again → one send exactly when the toast closed, with the same To, subject and body), a failed send (Couldn't send … · Open draft reopens it), phone reply (toast above the page, Undo reopens the full-screen composer), bulk to 3 (one send each after the toast). Unit tests for the outbox (8), whole suite 311 passing; types clean.
+- Not checked live: a real Gmail send after the hold; bulk "Schedule send" through Undo (its toast copy is in place).
+- No database or Edge Function change.
+
 ## Done 2026-11-11 (ATS) — Phone composer: fits above the keyboard; formatting as a floating pill — on main
 
 - Allan, testing on his iPhone: with the keyboard up the composer stopped short and the profile showed through under Safari's ^ v ✓ bar; the formatting strip sat glued to the card's bottom. Go! to the plan.

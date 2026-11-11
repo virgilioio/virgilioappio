@@ -56,6 +56,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { motionToken, prefersReducedMotion } from '@/lib/motion';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { sendBulkEmails } from '@/hooks/useBulkSendEmail';
+import { afterEmailSent } from '@/hooks/useSendEmail';
+import { queueEmail, sentMessage, type EmailDraft, type OutboxAttachment } from '@/lib/emailOutbox';
 
 const emailSchema = z.object({
   from_email: z.string().email('Invalid email address'),
@@ -89,19 +94,13 @@ interface EmailComposerProps {
   /** The full-screen phone layout (2026-11-11); `onClose` is its × and Discard. */
   phone?: boolean;
   onClose?: () => void;
+  /** Undo Send (2026-11-11): the draft as it was when Send was pressed, reopened. */
+  initialDraft?: EmailDraft;
+  /** Who and what it's about, for the "Email sent to …" toast and a reopened draft. */
+  draftContext?: { candidateName?: string; mode?: 'compose' | 'reply' | 'forward'; bulkJobTitle?: string };
 }
 
-interface Attachment {
-  file: File;
-  name: string;
-  size: number;
-}
-
-interface Attachment {
-  file: File;
-  name: string;
-  size: number;
-}
+type Attachment = OutboxAttachment;
 
 function initialsFor(name?: string | null, fallback = '?') {
   if (!name) return fallback;
@@ -126,31 +125,35 @@ export function EmailComposer({
   bulk,
   phone = false,
   onClose,
+  initialDraft,
+  draftContext,
 }: EmailComposerProps) {
   const isBulk = !!bulk;
   const { identities, isLoading: loadingIdentities } = useMailIdentities();
   const { templates, isLoading: loadingTemplates } = useEmailTemplates('organization');
   const sendEmail = useSendEmail();
   const bulkSend = useBulkSendEmail();
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [attachments, setAttachments] = useState<Attachment[]>(initialDraft?.attachments ?? []);
   const [bodyHtml, setBodyHtml] = useState(defaultBody || '');
   const [subjectHtml, setSubjectHtml] = useState(defaultSubject || '');
   const [showCC, setShowCC] = useState(!!defaultCc);
-  const [showBCC, setShowBCC] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [showBCC, setShowBCC] = useState(!!initialDraft?.bcc.length);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(initialDraft?.templateId ?? null);
   const splitAddrs = (s?: string) =>
     (s || '').split(/[,;\s]+/).map((v) => v.trim()).filter(Boolean);
   const [toChips, setToChips] = useState<string[]>(splitAddrs(defaultTo));
   const [ccChips, setCcChips] = useState<string[]>(splitAddrs(defaultCc));
-  const [bccChips, setBccChips] = useState<string[]>([]);
+  const [bccChips, setBccChips] = useState<string[]>(initialDraft?.bcc ?? []);
 
   // ── Bulk mode state ────────────────────────────────────────
   const [bulkAssociationIds, setBulkAssociationIds] = useState<string[]>([]);
   const [bulkRecipientNames, setBulkRecipientNames] = useState<string[]>([]);
   const [bulkSkippedNames, setBulkSkippedNames] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
-  const [showScheduler, setShowScheduler] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(initialDraft?.scheduledAt ?? null);
+  const [showScheduler, setShowScheduler] = useState(!!initialDraft?.scheduledAt);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -226,15 +229,19 @@ export function EmailComposer({
     ),
     defaultValues: {
       to: isBulk ? 'bulk' : (defaultTo || ''),
-      from_email: activeIdentities[0]?.email_address || '',
+      from_email: initialDraft?.fromEmail || activeIdentities[0]?.email_address || '',
       subject: defaultSubject || '',
       cc: defaultCc || '',
-      bcc: '',
+      bcc: (initialDraft?.bcc ?? []).join(', '),
       body_html: defaultBody || '',
     },
   });
 
   const fromEmail = watch('from_email');
+  // Mailboxes that arrive after the form was made still fill From.
+  useEffect(() => {
+    if (!fromEmail && activeIdentities[0]?.email_address) setValue('from_email', activeIdentities[0].email_address);
+  }, [fromEmail, activeIdentities, setValue]);
   const fromIdentity = activeIdentities.find((i) => i.email_address === fromEmail) || activeIdentities[0];
 
   // Keep RHF fields in sync with chip state
@@ -322,63 +329,99 @@ export function EmailComposer({
     const subjectWithPlaceholders = convertHtmlToPlaceholders(subjectHtml);
     const bodyHtmlWithPlaceholders = convertHtmlToPlaceholders(bodyHtml);
 
+    // Undo Send (2026-11-11): nothing goes out yet. The composer closes, the toast offers
+    // Undo, and the outbox sends once the toast is gone; Undo reopens this very draft.
+    const draft: EmailDraft = {
+      candidateId,
+      jobId,
+      jhsId,
+      associationId,
+      inReplyToMessageId,
+      candidateName: draftContext?.candidateName,
+      mode: draftContext?.mode,
+      bulk,
+      bulkJobTitle: draftContext?.bulkJobTitle,
+      fromEmail: data.from_email,
+      to: isBulk ? [] : parseEmailList(data.to),
+      cc: data.cc ? parseEmailList(data.cc) : [],
+      bcc: data.bcc ? parseEmailList(data.bcc) : [],
+      subjectHtml,
+      bodyHtml,
+      attachments,
+      templateId: selectedTemplateId,
+      scheduledAt: isBulk ? scheduledAt : null,
+    };
+
     if (isBulk) {
       if (bulkAssociationIds.length === 0) {
         toast.error('No recipients with a valid email address.');
         return;
       }
-      await bulkSend.sendBulkEmailAsync({
+      const n = bulkAssociationIds.length;
+      const people = `${n} candidate${n === 1 ? '' : 's'}`;
+      const when = scheduledAt;
+      const input = {
         associationIds: bulkAssociationIds,
-        emailData: {
-          fromEmail: data.from_email,
-          subject: subjectWithPlaceholders,
-          bodyHtml: bodyHtmlWithPlaceholders,
+        emailData: { fromEmail: data.from_email, subject: subjectWithPlaceholders, bodyHtml: bodyHtmlWithPlaceholders },
+        scheduleFor: when || undefined,
+      };
+      const userId = user?.id;
+      queueEmail({
+        message: when
+          ? `${n} email${n === 1 ? '' : 's'} scheduled for ${format(when, "EEE, MMM d 'at' h:mm a")}`
+          : `Email${n === 1 ? '' : 's'} sent to ${people}`,
+        draft,
+        failMessage: when ? `Couldn't schedule the emails to ${people}` : `Couldn't send the emails to ${people}`,
+        send: async () => {
+          const r = await sendBulkEmails(input, userId);
+          queryClient.invalidateQueries({ queryKey: ['email-logs'] });
+          queryClient.invalidateQueries({ queryKey: ['activity-feed'] });
+          if (r.succeeded === 0) return { failed: true };
+          if (r.failed > 0)
+            return { partial: `${r.succeeded} ${when ? 'scheduled' : 'sent'} · ${r.failed} couldn't be ${when ? 'scheduled' : 'sent'}` };
         },
-        scheduleFor: scheduledAt || undefined,
       });
       onSuccess?.();
       return;
     }
 
-    const attachmentPromises = attachments.map(async (att) => ({
-      filename: att.name,
-      content: await fileToBase64(att.file),
-      content_type: att.file.type || 'application/octet-stream',
-    }));
-    const processedAttachments = await Promise.all(attachmentPromises);
-    const bodyTextWithPlaceholders = bodyHtmlWithPlaceholders.replace(/<[^>]*>/g, '');
-
-    const request: SendEmailRequest = {
+    const to = parseEmailList(data.to);
+    const files = attachments;
+    const base: SendEmailRequest = {
       from_email: data.from_email,
-      to: parseEmailList(data.to),
+      to,
       cc: data.cc ? parseEmailList(data.cc) : undefined,
       bcc: data.bcc ? parseEmailList(data.bcc) : undefined,
       subject: subjectWithPlaceholders,
       body_html: bodyHtmlWithPlaceholders,
-      body_text: bodyTextWithPlaceholders,
-      attachments: processedAttachments.length > 0 ? processedAttachments : undefined,
+      body_text: bodyHtmlWithPlaceholders.replace(/<[^>]*>/g, ''),
       candidate_id: candidateId,
       job_id: jobId,
       jhs_id: jhsId,
       association_id: associationId,
       in_reply_to_message_id: inReplyToMessageId,
     };
-
-    await sendEmail.mutateAsync(request);
-
-    setBodyHtml('');
-    setSubjectHtml('');
-    setAttachments([]);
-    setShowCC(false);
-    setShowBCC(false);
-    setSelectedTemplateId(null);
-    setValue('subject', '');
-    setCcChips([]);
-    setBccChips([]);
-    if (!defaultTo) setToChips([]);
-
-
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const message = sentMessage({ to, candidateName: draftContext?.candidateName, mode: draftContext?.mode });
+    const who = to.length > 1 ? `${to.length} people` : draftContext?.candidateName?.trim() || to[0];
+    queueEmail({
+      message,
+      draft,
+      failMessage: `Couldn't send the email to ${who}`,
+      send: async () => {
+        const processed = await Promise.all(
+          files.map(async (att) => ({
+            filename: att.name,
+            content: await fileToBase64(att.file),
+            content_type: att.file.type || 'application/octet-stream',
+          })),
+        );
+        const { error } = await supabase.functions.invoke('send-user-email', {
+          body: { ...base, attachments: processed.length > 0 ? processed : undefined },
+        });
+        if (error) return { failed: true };
+        afterEmailSent(queryClient, base);
+      },
+    });
     onSuccess?.();
   };
 
@@ -452,7 +495,8 @@ export function EmailComposer({
     const changed =
       plain(bodyHtml) !== plain(defaultBody || '') ||
       subjectHtml.trim() !== (defaultSubject || '').trim() ||
-      attachments.length > 0;
+      attachments.length > 0 ||
+      !!initialDraft; // a draft brought back by Undo is work in progress
     const close = () => onClose?.();
     const requestClose = () => (changed ? setConfirmClose(true) : close());
     const sending = sendEmail.isPending || bulkSend.isPending;

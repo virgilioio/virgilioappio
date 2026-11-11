@@ -106,6 +106,20 @@ export default function InboxPage() {
   const conversation = useInboxConversation(threadId)
   const mark = useInboxMark()
   const refresh = useRefreshInbox()
+  // A send waits out its Undo toast first (src/lib/emailOutbox.ts); once it has really
+  // gone, Realtime brings it in and this is the safety net.
+  React.useEffect(() => {
+    let t: number | undefined
+    const onSent = () => {
+      window.clearTimeout(t)
+      t = window.setTimeout(refresh, 1500)
+    }
+    window.addEventListener('gio:email-sent', onSent)
+    return () => {
+      window.removeEventListener('gio:email-sent', onSent)
+      window.clearTimeout(t)
+    }
+  }, [refresh])
   const mailboxes = useMyMailboxes()
   const mine = React.useMemo(
     () => [user?.email ?? '', ...(mailboxes.data ?? []).map(m => m.email_address ?? '')].filter(Boolean),
@@ -451,11 +465,7 @@ export default function InboxPage() {
           defaultBody={composer.body}
           mode={composer.mode}
           inReplyToMessageId={composer.replyToId}
-          onSuccess={() => {
-            setComposer(null)
-            // The send writes the message; Realtime brings it in, this is the safety net.
-            setTimeout(refresh, 1500)
-          }}
+          onSuccess={() => setComposer(null)}
         />
       )}
     </div>
