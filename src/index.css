@@ -2455,3 +2455,48 @@ html.gio-strip-anim.gio-strip-closing .gio-strip-follow { transition-duration: v
   .gio-find-sweep, .gio-find-dot, .gio-find-bloom { animation: none; }
   .gio-find-dot { opacity: .6; }
 }
+
+/* The phone composer (2026-11-11): a full-screen page above the on-screen keyboard
+ * (--gio-kb / --gio-vv-top from src/lib/keyboardSafe.ts), in a 640px column on a tablet.
+ * It rises from the bottom like a sheet; with reduced motion it fades. */
+.gio-composer-phone {
+  top: var(--gio-vv-top, 0px);
+  left: max(0px, calc((100vw - 640px) / 2));
+  right: max(0px, calc((100vw - 640px) / 2));
+  height: calc(100dvh - var(--gio-kb, 0px) - var(--gio-vv-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  animation: gio-composer-rise var(--dur-drawer-in) var(--ease-drawer) backwards;
+}
+@keyframes gio-composer-rise {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+/* Its message box: no frame of its own (the card is the frame), 16px text, and the
+ * formatting strip kept at the bottom of the visible area, shown while you write. */
+.gne.gne-phone { border: 0; border-radius: 14px; background: transparent; box-shadow: none; display: flex; flex-direction: column; }
+.gne.gne-phone:focus-within { box-shadow: none; border-color: transparent; }
+.gne.gne-phone .gne-ed,
+.gne.gne-phone .gne-ph { font-size: 16px; }
+.gne.gne-phone .gne-tb {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 0;
+  border-top: 1px solid #F1F0EC;
+  border-radius: 0 0 14px 14px;
+  padding: 6px 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-hover) ease;
+}
+.gne.gne-phone .gne-tb::-webkit-scrollbar { display: none; }
+.gne.gne-phone:focus-within .gne-tb { opacity: 1; pointer-events: auto; }
+.gne.gne-phone .gne-btn { width: 40px; height: 40px; flex: none; }
+.gne.gne-phone .gne-pop { top: auto; bottom: 56px; left: 8px; right: 8px; }
+.gne.gne-phone .gne-pop input { flex: 1; width: auto; min-width: 0; font-size: 16px; }
+@media (prefers-reduced-motion: reduce) {
+  .gio-composer-phone { animation: gio-fade-only var(--dur-dialog-in) ease backwards; }
+}

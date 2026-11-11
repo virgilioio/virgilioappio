@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Minus, Maximize2, Mail, Sparkles } from 'lucide-react';
 import { EmailComposer } from '@/components/candidates/EmailComposer';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MinimizableEmailComposerProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export function MinimizableEmailComposer({
 }: MinimizableEmailComposerProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [templateApplied, setTemplateApplied] = useState(false);
+  const isPhone = useIsMobile();
 
   if (!isOpen) return null;
 
@@ -61,6 +63,38 @@ export function MinimizableEmailComposer({
     : 'New email';
 
   const subLine = bulk ? (bulkJobTitle || '') : (defaultSubject || (candidateName ? `To ${candidateName}` : ''));
+
+  // --- Phone (2026-11-11): the composer is a full-screen page (no minimize) ---
+  if (isPhone) {
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="gio-composer-phone fixed z-[70] flex flex-col bg-virgilio-cream"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <EmailComposer
+          candidateId={candidateId}
+          jobId={jobId}
+          defaultTo={defaultTo}
+          onSuccess={handleSuccess}
+          embedded
+          docked
+          phone
+          onClose={() => onOpenChange(false)}
+          jhsId={jhsId}
+          associationId={associationId}
+          inReplyToMessageId={inReplyToMessageId}
+          defaultSubject={defaultSubject}
+          defaultBody={defaultBody}
+          defaultCc={defaultCc}
+          onTemplateAppliedChange={setTemplateApplied}
+          bulk={bulk}
+        />
+      </div>
+    );
+  }
 
   // --- Minimized state: compact dark strip ---
   if (isMinimized) {
