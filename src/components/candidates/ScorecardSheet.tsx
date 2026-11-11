@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { triggerFitAnalysis } from "@/utils/triggerFitAnalysis";
 import type { InterviewQuestion, SelectOption, SalaryConfig, ScorecardVisibility } from "@/hooks/useScorecardsConfiguration";
-import { RATING_VALUES } from "@/lib/scorecardRatings";
+import { RATING_VALUES, coerceRating, ratingLabel } from "@/lib/scorecardRatings";
 import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
 import gioAvatar from "@/assets/gio-avatar.png";
@@ -307,6 +307,10 @@ export function ScorecardSheet({
 
   const isReadOnly = useMemo(() => !editMode, [editMode]);
   const aiSuggestedRating = existing?.ai_suggested_rating;
+  // Gio saves its suggestion as a rating value ("lean_yes"); older drafts kept a label
+  // ("Strong Yes") or the old four-point scale ("no", "definitely_no").
+  const suggestedRating: ScoreRating | null =
+    coerceRating(aiSuggestedRating) ?? (aiSuggestedRating ? aiRatingToScoreRating[aiSuggestedRating] ?? null : null);
 
   // Draft storage key - unique per candidate+stage
   const draftKey = `scorecard-draft-${associationId}-${stageInstanceId}`;
@@ -882,14 +886,14 @@ export function ScorecardSheet({
   };
 
   const handleAcceptAiSuggestion = () => {
-    if (aiSuggestedRating && aiRatingToScoreRating[aiSuggestedRating]) {
-      setRating(aiRatingToScoreRating[aiSuggestedRating]);
+    if (suggestedRating) {
+      setRating(suggestedRating);
       if (aiAnalysis) {
         setOverview(markdownToHtml(normalizeAiAnalysis(aiAnalysis)));
       }
       toast({
         title: "AI suggestion applied",
-        description: `Rating set to "${aiSuggestedRating}"`,
+        description: `Rating set to "${ratingLabel(suggestedRating)}"`,
       });
     }
   };
@@ -1407,12 +1411,12 @@ export function ScorecardSheet({
                   />
                 )}
                 {/* AI Suggested Rating — structured lilac card */}
-                {isAiDraft && aiSuggestedRating && aiAnalysis && (
+                {isAiDraft && suggestedRating && aiAnalysis && (
                   <AiSuggestedRatingCard
-                    verdictLabel={aiSuggestedRating}
+                    rating={suggestedRating}
                     analysis={aiAnalysis}
                     normalizedMarkdown={normalizeAiAnalysis(aiAnalysis)}
-                    applied={aiRatingToScoreRating[aiSuggestedRating] === rating}
+                    applied={suggestedRating === rating}
                     onApply={handleAcceptAiSuggestion}
                     disabled={isReadOnly}
                   />

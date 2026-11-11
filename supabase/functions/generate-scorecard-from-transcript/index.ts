@@ -7,6 +7,7 @@ import { formatEmailList } from "../_shared/emailTemplate.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { SUGGESTED_RATINGS, cleanInboundText, scorecardLink, tooLittleToDraft, toSuggestedRating, type SourceKind } from '../_shared/interviewNotes.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -146,30 +147,35 @@ INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}
     // Build enhanced questions context with IDs, types, and options for tool calling
     const questionsContext = buildQuestionsContext(scorecardQuestions);
 
-    // Truncate transcript if too long (keep first 15000 chars)
-    const transcriptContent = booking.transcript_raw.length > 15000 
-      ? booking.transcript_raw.substring(0, 15000) + '\n\n[Transcript truncated for processing...]'
-      : booking.transcript_raw;
+    // What arrived is cleaned when it's received (process-transcript-webhook); older rows
+    // still hold the whole recap email, so clean them the same way here.
+    const meta = (booking.transcript_metadata || {}) as Record<string, any>;
+    let sourceKind: SourceKind = meta.source_kind === 'summary' || meta.source_kind === 'transcript' ? meta.source_kind : 'transcript';
+    let sourceText: string = booking.transcript_raw;
+    if (!meta.source_kind) {
+      const cleaned = cleanInboundText(booking.transcript_raw, String(meta.from || ''));
+      sourceText = cleaned.text;
+      sourceKind = cleaned.kind;
+    }
+
+    // A full interview runs to tens of thousands of characters; the model reads it whole.
+    const MAX_SOURCE = 120000;
+    const transcriptContent = sourceText.length > MAX_SOURCE
+      ? sourceText.substring(0, MAX_SOURCE) + '\n\n[Transcript truncated for processing...]'
+      : sourceText;
 
     // === EMPTY CONVERSATION GUARD ===
-    // Strip filler patterns: timestamps, speaker labels, system messages, join/leave notifications
-    const substantiveText = transcriptContent
-      .replace(/\d{1,2}:\d{2}(:\d{2})?\s*(AM|PM|am|pm)?\s*/g, '') // timestamps
-      .replace(/\[\d{1,2}:\d{2}(:\d{2})?\]/g, '') // bracketed timestamps
-      .replace(/Speaker\s*\d+\s*:/gi, '') // "Speaker 1:"
-      .replace(/(Host|Guest|Participant|Interviewer|Interviewee)\s*\d*\s*:/gi, '') // role labels
-      .replace(/^.*\b(joined|left|entered|exited|started recording|stopped recording|recording started|recording stopped|meeting started|meeting ended|call started|call ended|waiting for others|has joined the meeting|has left the meeting)\b.*$/gim, '') // system messages
-      .replace(/\b(um+|uh+|hmm+|okay|ok|yeah|yes|no|hi|hello|hey|bye|goodbye|thanks|thank you)\b/gi, '') // filler words
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    const substantiveWordCount = substantiveText.split(/\s+/).filter(w => w.length > 1).length;
-    console.log('[generate-scorecard] Substantive word count:', substantiveWordCount);
+    // Counts real content only: no recap header lines, timestamps, speaker labels,
+    // join/leave notices or fillers (src: _shared/interviewNotes.ts).
+    const nothingSaid = tooLittleToDraft(transcriptContent, sourceKind);
+    console.log('[generate-scorecard] Source kind:', sourceKind, 'length:', transcriptContent.length, 'nothing said:', nothingSaid);
 
-    if (substantiveWordCount < 50) {
+    if (nothingSaid) {
       console.log('[generate-scorecard] Empty/near-empty conversation detected, skipping AI analysis');
       
-      const emptyMessage = 'No substantive conversation took place during this call. The interview may need to be rescheduled.';
+      const emptyMessage = sourceKind === 'summary'
+        ? "The note-taker's summary of this call has nothing about the interview in it, so Gio has no notes to draft. Open the recording to check, or write your notes yourself."
+        : 'No substantive conversation took place during this call. The interview may need to be rescheduled.';
       
       // Still create/update the AI draft scorecard but with empty-conversation message
       if (booking.job_candidate_association_id && booking.job_hiring_stage?.id && interviewer?.user_id) {
@@ -237,9 +243,13 @@ INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}
 CRITICAL — EMPTY OR NEAR-EMPTY TRANSCRIPTS:
 If the transcript contains only greetings, silence markers, or system messages with no substantive interview discussion, respond with:
 - general_overview: "No substantive interview discussion took place during this call."
-- suggested_rating: "yes" (neutral default)
+- suggested_rating: "not_enough"
 - question_responses: all set to "[No discussion took place during this interview]"
 Do NOT use the candidate's resume, profile, or job description to fabricate interview notes. Your analysis must be based solely on what was actually said during the interview.
+
+${sourceKind === 'summary' ? `SOURCE: What you have is the note-taker's short written summary of the call, NOT a word-for-word transcript. Write only what the summary states. Do not invent quotes, examples, numbers or details, and do not fill gaps from the candidate's resume or the job description. Start the general_overview with one line saying the notes come from the note-taker's summary, not the full transcript. Instead of NOTABLE QUOTES, write "No transcript, so no quotes." Keep the notes as short as the summary allows.
+
+` : ''}LANGUAGE: Write the general_overview, its section headings and every answer in the language the interview was held in (the language of the source below), whatever the language of these instructions, the job or the resume.
 
 Guidelines:
 - Be objective and evidence-based - cite specific examples from the transcript
@@ -247,7 +257,7 @@ Guidelines:
 - Highlight both strengths and areas for development
 - Use professional language appropriate for HR documentation
 - Structure notes clearly with headers and bullet points
-- Suggest an overall rating based on the evidence (strong_yes, yes, no, definitely_no)
+- Suggest an overall rating on the scorecard's five-point scale, from what was said measured against this job's requirements: strong_yes, yes, lean_yes, lean_no or strong_no. Never default to yes. If the source says too little about the job's requirements to judge, use not_enough
 - CRITICAL: If a scorecard question topic was NOT discussed during the interview, explicitly state that rather than inferring or fabricating an answer. Honesty about information gaps is far more valuable than completeness. Never guess or extrapolate answers for topics not covered in the transcript.
 
 Your general_overview should follow this format:
@@ -255,7 +265,7 @@ Your general_overview should follow this format:
 2. KEY STRENGTHS (3-5 bullet points with examples)
 3. AREAS FOR DEVELOPMENT (2-3 bullet points)
 4. NOTABLE QUOTES (2-3 direct quotes that stood out)
-5. RECOMMENDED RATING with justification
+5. RECOMMENDED RATING (Strong yes, Yes, Lean yes, Lean no, Strong no, or Not enough to recommend) with justification
 
 ${questionsContext}`;
 
@@ -299,7 +309,7 @@ ${questionsContext}`;
 
     // Parse response — tool call or plain text
     let generatedNotes: string;
-    let suggestedRating = 'yes';
+    let suggestedRating: string | null = null;
     let questionResponses: Array<{ question_id: string; answer_text?: string; answer_options?: string[] }> = [];
 
     const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
@@ -316,7 +326,7 @@ ${questionsContext}`;
         } else {
           generatedNotes = rawOverview;
         }
-        suggestedRating = parsed.suggested_rating || 'yes';
+        suggestedRating = toSuggestedRating(parsed.suggested_rating);
         questionResponses = parsed.question_responses || [];
         console.log('[generate-scorecard] Tool call parsed successfully, questions:', questionResponses.length);
       } catch (parseErr) {
@@ -335,16 +345,8 @@ ${questionsContext}`;
 
     // Extract suggested rating from prose if not set by tool call
     if (!toolCall) {
-      const ratingMatch = generatedNotes.match(/RECOMMENDED RATING:\s*(Strong Yes|Yes|No|Definitely No)/i);
-      if (ratingMatch) {
-        const ratingMap: Record<string, string> = {
-          'strong yes': 'strong_yes',
-          'yes': 'yes',
-          'no': 'no',
-          'definitely no': 'definitely_no',
-        };
-        suggestedRating = ratingMap[ratingMatch[1].toLowerCase()] || 'yes';
-      }
+      const ratingMatch = generatedNotes.match(/RECOMMENDED RATING[^:\n]*:\s*\**\s*(Strong Yes|Lean Yes|Lean No|Strong No|Definitely No|Yes|No)\b/i);
+      suggestedRating = ratingMatch ? toSuggestedRating(ratingMatch[1]) : null;
     }
 
     console.log('[generate-scorecard] AI notes generated, length:', generatedNotes.length);
@@ -476,9 +478,8 @@ ${questionsContext}`;
     }
 
     if (interviewer?.email && notificationClaimed) {
-      const scorecardUrl = scorecardId && booking.job_id && booking.candidate_id
-        ? `${frontendUrl}/jobs/${booking.job_id}?candidate=${booking.candidate_id}&open=scorecard`
-        : `${frontendUrl}/jobs/${booking.job_id}?candidate=${booking.candidate_id}`;
+      // The in-job profile with your own scorecard open (?open=scorecard was never read).
+      const scorecardUrl = scorecardLink(frontendUrl, booking.job_id, booking.candidate_id);
 
       try {
 
@@ -641,8 +642,8 @@ function buildToolDefinition(questions: any[]) {
           },
           suggested_rating: {
             type: 'string',
-            enum: ['strong_yes', 'yes', 'no', 'definitely_no'],
-            description: 'Overall interview rating based on evidence',
+            enum: [...SUGGESTED_RATINGS, 'not_enough'],
+            description: "Overall rating on the scorecard's five-point scale, judged against this job's requirements; not_enough when the source doesn't cover enough of them",
           },
           question_responses: {
             type: 'array',
