@@ -112,6 +112,14 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-11 (ATS) — The email composer on phones — on the branch, waiting for Apply!
+
+- Allan: the composer on a phone was the desktop panel squeezed (11px labels, 12.5px fields that make iOS zoom, a two-line toolbar, "⌘↵ to send"); make it phone-native like Gmail's without losing our look. Go! to the plan.
+- Built: see CLAUDE.md "Email composer on phones". `EmailComposer` has a `phone` layout beside its docked one (all the sending, templates, Rewrite, booking link, bulk and scheduling logic shared); `MinimizableEmailComposer` uses it below 640px; `BodyTemplateEditor phone`; `installKeyboardSafe` ported from Gio Sales. Fixed on the way: on a phone the waiting and "Connect your email account" states had no way out (now the round ×), and that state's Connect button pointed at the retired `/settings?tab=email` (now My profile's Google card).
+- Not on phones: Save as template (it never did anything) and the "⌘↵ to send" hint.
+- Checked in the browser with fake data (iPhone, touch): 390×844, 375×667 and 320×568; new, reply with the quoted message, bulk, a 70-character address, no mailbox; 16px in every field; no sideways scroll; the strip shows while writing and sits right above a 300px keyboard; ⋯ menu, a template, Cc/Bcc, the discard prompt (Keep editing, Discard), swipe-down (30px springs back, 120px closes); reduced motion fades; the desktop panel unchanged at 1440. Types and lint clean, unit tests pass. No database change.
+- On Apply!: push to main.
+
 ## Done 2026-11-10 (ATS) — Word résumés show in the scorecard — on the branch, waiting for Apply!
 
 - Allan: a .docx résumé (Fabiana Castro) didn't render beside the scorecard.
