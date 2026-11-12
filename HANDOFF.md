@@ -125,7 +125,7 @@ Hard limits:
 - Dry run (one transaction, rolled back with RAISE): RLS on, in realtime, cascade FK; the service role writes a row; a wrong source, language, status, a non-array `sentences`, an unknown booking and an array `ai_recommendation` are refused; `updated_at` moves; the booking's interviewer reads the row but can't update or insert it; an external member who can't see the booking sees neither. The connector accepted `on delete cascade` from a cloud chat. Afterwards nothing was left (no table, no column).
 - Applied 2026-11-12 as written: `20261112032615_interview_transcripts` (file renamed to match). Types regenerated (they also picked up functions applied earlier without a regeneration: `candidate_visible`, `candidate_file_*`, `automation_file_access`, `fit_job_text` and others); types clean.
 
-## Done 2026-11-11 (ATS) — Undo Send in the email-sent toast — on branch, waiting for Apply!
+## Done 2026-11-11 (ATS) — Undo Send in the email-sent toast — on main (2026-11-12, with step 2's push)
 
 - Allan: "When sending emails, we should also have the Undo in the success toast". Go! to the plan (hold the email while its toast shows; Undo reopens the draft).
 - Built: see CLAUDE.md "Undo Send". `src/lib/emailOutbox.ts` (hold, toast, send once, watchdog, leave-tab guard, reopen), `EmailOutboxHost` in App.tsx, `EmailComposer initialDraft` / `draftContext`, `sendBulkEmails` out of the bulk hook, `afterEmailSent` + `gio:email-sent` (the Inbox's refresh after a send now waits for the real send). Fixed on the way: From is filled when the mailboxes arrive after the composer opened, and a failed send no longer shows the server's raw message.
