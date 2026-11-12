@@ -122,7 +122,8 @@ Hard limits:
 ## Done 2026-11-12 (ATS) — Interview notes: shorter quotes — on main
 
 - Go! after the Nov 11 run, where quotes ran to whole paragraphs. The prompt and the tool now ask for one sentence of exact words, about 25 at most, with the evidence line saying the rest; `shortQuote` (`_shared/interviewNotesFormat.ts`) keeps any longer quote to its first 30 words and "...", in the requirements (`ai_recommendation`) and in the written notes. Tests: 157 shared (2 new); the Deno harness shows a 60-word quote cut at 30.
-- Applied 2026-11-12: `generate-scorecard-from-transcript` v438 and `polish-scorecard-notes` v454, both compared with git. The five Nov 11 interviews were redone (see the run below).
+- Applied 2026-11-12: `generate-scorecard-from-transcript` v438 and `polish-scorecard-notes` v454, both compared with git. The five Nov 11 interviews were redone.
+- Re-run 2026-11-12 04:51 UTC (`find: true`): all five redrafted from the stored transcripts in under a minute, no second email. 40 quotes, 15 to 26 words on average per draft, none over 30; 9 came back longer from the model and were cut at 30 with "...". Ratings: four Lean yes, one Lean no (the one without a rating before now has one), all at medium confidence.
 
 ## Done 2026-11-12 (ATS) — Interview notes, step 4: one note structure, a recommendation against the job — on main
 
