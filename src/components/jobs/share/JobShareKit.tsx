@@ -59,6 +59,17 @@ type PostKind = 'linkedin' | 'whatsapp'
 
 const CopySwap = makeSwapIcon(Copy, Check)
 
+// Typed lists, so Seg infers its value type: JSX type arguments (<Seg<T>>) break
+// Lovable's dev tagger, which writes its attributes between the name and the <T>.
+const VOICE_OPTIONS: { value: ShareVoice; label: string }[] = [
+  { value: 'team', label: 'You' },
+  { value: 'client', label: "The client's team" },
+]
+const KIND_OPTIONS: { value: PostKind; label: string }[] = [
+  { value: 'linkedin', label: 'LinkedIn post' },
+  { value: 'whatsapp', label: 'WhatsApp message' },
+]
+
 function useCopied(): [string | null, (key: string, text: string) => Promise<void>] {
   const [copied, setCopied] = useState<string | null>(null)
   useEffect(() => {
@@ -138,14 +149,11 @@ export function JobShareKit({
       subtitle={<span className="block truncate">{post.title} · {company}</span>}
     >
       <FormSection title="Who's posting" subtitle={voice === 'team' ? 'Links say the application came from your post.' : "For the client's team to post on their own channels."} bare>
-        <Seg<ShareVoice>
+        <Seg
           label="Who's posting"
           value={voice}
-          onChange={setVoice}
-          options={[
-            { value: 'team', label: 'You' },
-            { value: 'client', label: "The client's team" },
-          ]}
+          onChange={(v) => setVoice(v)}
+          options={VOICE_OPTIONS}
         />
       </FormSection>
 
@@ -162,14 +170,11 @@ export function JobShareKit({
       >
         {current ? (
           <div className="space-y-3">
-            <Seg<PostKind>
+            <Seg
               label="Which post"
               value={kind}
-              onChange={setKind}
-              options={[
-                { value: 'linkedin', label: 'LinkedIn post' },
-                { value: 'whatsapp', label: 'WhatsApp message' },
-              ]}
+              onChange={(v) => setKind(v)}
+              options={KIND_OPTIONS}
             />
             <Textarea
               aria-label={kind === 'linkedin' ? 'LinkedIn post' : 'WhatsApp message'}
