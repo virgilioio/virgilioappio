@@ -10,6 +10,7 @@ import {
   renderNotes,
   salaryVerdict,
   settleRecommendation,
+  shortQuote,
   type JobForNotes,
   type ModelNotes,
 } from '../interviewNotesFormat'
@@ -194,5 +195,25 @@ describe('helpers', () => {
     expect(languageCode('Spanish')).toBeNull()
     expect(notesTool(true).function.parameters.required).toContain('question_responses')
     expect(notesTool(false).function.parameters.required).not.toContain('question_responses')
+  })
+})
+
+describe('shortQuote', () => {
+  it('keeps short quotes as said and cuts long ones at 30 words', () => {
+    expect(shortQuote('We doubled pipeline in a year.')).toBe('We doubled pipeline in a year.')
+    const long = Array.from({ length: 50 }, (_, i) => `w${i}`).join(' ')
+    const cut = shortQuote(long)!
+    expect(cut.endsWith('w29...')).toBe(true)
+    expect(cut.split(' ')).toHaveLength(30)
+    expect(shortQuote('  ')).toBeNull()
+  })
+  it('applies to requirement quotes and to the written notes', () => {
+    const long = Array.from({ length: 45 }, (_, i) => `word${i}`).join(' ')
+    const criteria = jobCriteria({ skills: ['HubSpot'], skill_priorities: { HubSpot: 'must' } })
+    const rec = settleRecommendation({ rating: 'yes', confidence: 'high', reason: 'ok' }, [{ id: 'c1', verdict: 'met', evidence: 'used it', quote: long, at: '1:00' }], criteria, { full: true, sourceKind: 'transcript', language: 'en' })
+    expect(rec.criteria[0].quote!.endsWith('word29...')).toBe(true)
+    const md = renderNotes({ strengths: [{ point: 'Tools', evidence: 'used it', quote: long, at: '1:00' }] }, rec, { full: true })
+    expect(md).toContain('word29..." (1:00)')
+    expect(md).not.toContain('word30')
   })
 })

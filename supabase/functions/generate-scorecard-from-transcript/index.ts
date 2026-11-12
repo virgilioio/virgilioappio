@@ -289,7 +289,7 @@ async function draft(supabaseUrl: string, supabaseServiceKey: string, booking_id
     const band = payBand(job);
 
     const sourceNote = source.full
-      ? `SOURCE: The full transcript of the call. Each line is one turn: "[m:ss] Speaker name: what they said", the time counted from the start of the call. ${interviewerName ? `${interviewerName} is the interviewer` : 'The interviewer works for the hiring team'}${candidateName ? `; ${candidateName} is the candidate` : ''}. The note-taker names speakers from the calendar, so someone may appear under another name or as "Speaker"; work out who is who from what they say. Quote exactly, and give the time of every quote (the "at" fields, m:ss).`
+      ? `SOURCE: The full transcript of the call. Each line is one turn: "[m:ss] Speaker name: what they said", the time counted from the start of the call. ${interviewerName ? `${interviewerName} is the interviewer` : 'The interviewer works for the hiring team'}${candidateName ? `; ${candidateName} is the candidate` : ''}. The note-taker names speakers from the calendar, so someone may appear under another name or as "Speaker"; work out who is who from what they say. Quote exactly, one short sentence each (about 25 words at most), and give the time of every quote (the "at" fields, m:ss).`
       : sourceKind === 'summary'
         ? `SOURCE: The note-taker's short written summary of the call, NOT a word-for-word transcript. Write only what it states: no quotes, no times, nothing filled in from the resume or the job description. Keep the notes as short as the summary allows, judge only the requirements it actually mentions, and list the rest in not_covered.`
         : `SOURCE: The interview as the note-taker sent it. Quote only words that appear in it.`;

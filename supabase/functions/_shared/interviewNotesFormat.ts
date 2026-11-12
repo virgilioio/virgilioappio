@@ -288,6 +288,15 @@ export interface Recommendation {
   generated_at: string
 }
 
+/** Quotes stay short (2026-11-12): past 30 words, the first 30 and "...". */
+export const QUOTE_MAX_WORDS = 30
+export function shortQuote(q: unknown): string | null {
+  const t = String(q ?? '').trim()
+  if (!t) return null
+  const words = t.split(/\s+/)
+  return words.length > QUOTE_MAX_WORDS ? `${words.slice(0, QUOTE_MAX_WORDS).join(' ').replace(/[,;:.]+$/, '')}...` : t
+}
+
 /** "12:05" or "1:02:05" to seconds; null for anything else. */
 export function parseClock(v: unknown): number | null {
   const m = String(v ?? '').trim().match(/^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})$/)
@@ -327,7 +336,7 @@ export function settleRecommendation(
     const m = given.get(c.id)
     let verdict: Verdict = VERDICTS.includes(m?.verdict as Verdict) ? (m!.verdict as Verdict) : 'not_discussed'
     if (c.kind === 'salary' && ctx.salaryVerdict) verdict = ctx.salaryVerdict
-    const quote = ctx.full ? String(m?.quote ?? '').trim() || null : null
+    const quote = ctx.full ? shortQuote(m?.quote) : null
     return {
       ...c,
       verdict,
@@ -362,7 +371,7 @@ const point = {
   properties: {
     point: { type: 'string', description: 'The strength or concern in a few words' },
     evidence: { type: 'string', description: 'What was said that shows it, in one sentence' },
-    quote: { type: 'string', description: 'Exact words from the transcript (empty when the source is a summary)' },
+    quote: { type: 'string', description: 'One sentence of exact words from the transcript, at most about 25 words (empty when the source is a summary)' },
     at: { type: 'string', description: 'When it was said, m:ss or h:mm:ss (empty without a transcript)' },
   },
   required: ['point', 'evidence'],
@@ -411,7 +420,7 @@ export function notesTool(withQuestions: boolean) {
           id: { type: 'string' },
           verdict: { type: 'string', enum: VERDICTS },
           evidence: { type: 'string' },
-          quote: { type: 'string' },
+          quote: { type: 'string', description: 'One sentence of exact words, at most about 25 words' },
           at: { type: 'string' },
         },
         required: ['id', 'verdict'],
@@ -471,6 +480,7 @@ export function notesTool(withQuestions: boolean) {
 export const NOTES_RULES = `HOW TO WRITE THE NOTES
 - Base every line on what was said in the interview (or written in the interviewer's notes). The resume, profile and job description are context only: never use them as evidence.
 - Strengths and concerns each carry their evidence. Never invent a concern to balance the notes, and never pad a short call.
+- A quote is the one sentence that shows it, in the speaker's exact words, at most about 25 words; the evidence line says the rest.
 - Motivation & logistics: why they are looking, notice period, where they are based, the work arrangement they want, and pay, only as stated.
 - Not covered: job requirements and scorecard questions that did not come up, so the next interviewer can ask.
 - Judge every job requirement by its id: met, partly, not_met, or not_discussed when it did not come up. Do not guess.
@@ -524,7 +534,7 @@ function labelsOf(notes: ModelNotes): Record<LabelKey, string> {
 
 const withQuote = (evidence: string, quote: string | null | undefined, at: number | null, full: boolean) => {
   const parts = [clean(evidence)]
-  const q = full ? clean(quote) : ''
+  const q = full ? clean(shortQuote(quote)) : ''
   if (q) parts.push(`"${q.replace(/^"|"$/g, '')}"${at != null ? ` (${clock(at)})` : ''}`)
   else if (at != null && full) parts.push(`(${clock(at)})`)
   return parts.filter(Boolean).join(' ')
