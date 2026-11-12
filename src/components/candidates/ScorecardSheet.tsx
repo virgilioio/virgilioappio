@@ -94,6 +94,10 @@ import { InterviewNotesStatusLine, TranscriptPanel } from "./scorecard/Interview
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { shakeFirstInvalid } from "@/lib/motion";
+import { useQuery } from "@tanstack/react-query";
+import { smartPrefill, type CandidateSmartFields } from "@/lib/smartPrefill";
+import { useCurrencyOverrides, useCurrencyRates, useLiveConvertToBase } from "@/hooks/useCurrencyRates";
+import { useBaseCurrency } from "@/hooks/useBaseCurrency";
 import {
   fetchInterviewDraft,
   notesStatusKey,
@@ -397,6 +401,91 @@ export function ScorecardSheet({
     else setTranscriptFocus(null);
   }, [open, initialTab]);
 
+  // Smart questions start from what the candidate already told us (2026-11-12):
+  // salary, phone, LinkedIn and location with no saved answer are filled from the
+  // profile (which the careers application fills), salary in the question's own
+  // currency and period. Saving copies them back as before.
+  const [prefilled, setPrefilled] = useState<Record<string, string>>({});
+  const prefillDone = useRef(false);
+  const toBase = useLiveConvertToBase();
+  const { data: rateData } = useCurrencyRates();
+  const overrides = useCurrencyOverrides();
+  const { baseCurrency } = useBaseCurrency();
+  const smartFields = useQuery({
+    queryKey: ['scorecard-smart-fields', resumeCandidateId, jobId ?? null],
+    enabled: open && !!resumeCandidateId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const [cand, apps] = await Promise.all([
+        supabase
+          .from('candidates')
+          .select('salary_amount, salary_currency, salary_period, phone, linkedin_url, location_city, location_state, location_country')
+          .eq('id', resumeCandidateId!)
+          .maybeSingle(),
+        jobId
+          ? supabase
+              .from('candidate_application_responses')
+              .select('field_type')
+              .eq('candidate_id', resumeCandidateId!)
+              .eq('job_id', jobId)
+              .in('field_type', ['salary', 'phone', 'linkedin', 'location'])
+          : Promise.resolve({ data: [] as { field_type: string }[] }),
+      ]);
+      return {
+        candidate: (cand.data ?? null) as CandidateSmartFields | null,
+        fromApplication: new Set(((apps as { data: { field_type: string }[] | null }).data ?? []).map((r) => r.field_type)),
+      };
+    },
+  });
+  useEffect(() => {
+    if (!open) {
+      prefillDone.current = false;
+      setPrefilled({});
+    }
+  }, [open]);
+  useEffect(() => {
+    if (!open || prefillDone.current || !editMode || loadingQuestions || !smartFields.data) return;
+    prefillDone.current = true;
+    const base = baseCurrency.toUpperCase();
+    const rateOf = (ccy: string) =>
+      (overrides.data ?? []).find((o) => o.quote_currency.toUpperCase() === ccy)?.rate ??
+      (rateData?.rates ?? []).find((r) => r.quote_currency.toUpperCase() === ccy)?.rate ??
+      null;
+    const convert = (amount: number, from: string, to: string) => {
+      const inBase = toBase(amount, from);
+      if (inBase == null) return null;
+      if (to === base) return inBase;
+      const r = rateOf(to);
+      return r ? inBase * Number(r) : null;
+    };
+    const current = responses;
+    const fills = smartPrefill(
+      questions,
+      (id) => !!(current[id]?.answerText ?? '').trim() || !!current[id]?.answerOptions?.length,
+      smartFields.data.candidate,
+      convert,
+    );
+    if (!Object.keys(fills).length) return;
+    setPrefilled(fills);
+    setResponses((prev) => {
+      const next = { ...prev };
+      for (const [id, value] of Object.entries(fills)) {
+        if (!(next[id]?.answerText ?? '').trim()) next[id] = { ...next[id], questionId: id, answerText: value };
+      }
+      return next;
+    });
+  }, [open, editMode, loadingQuestions, smartFields.data, questions, responses, rateData, overrides.data, baseCurrency, toBase]);
+  const smartSourceFor = (answerType: string) => {
+    const kind = answerType === 'salary_expectations' ? 'salary' : answerType;
+    return smartFields.data?.fromApplication.has(kind) ? 'From the application' : "From the candidate's profile";
+  };
+  /** "From the application · change it if it's different now", while the filled value is untouched. */
+  const prefillNote = (question: InterviewQuestion) =>
+    editMode && prefilled[question.id] != null && (responses[question.id]?.answerText ?? '') === prefilled[question.id] ? (
+      <p className="font-inter text-[12px] text-[#6B7080]">{smartSourceFor(question.answer_type)} · change it if it's different now</p>
+    ) : null;
+  const untouchedPrefill = (id: string) => prefilled[id] != null && (responses[id]?.answerText ?? '') === prefilled[id];
+
 
   // Track current values in refs for reliable close-time saving
   const overviewRef = useRef(overview);
@@ -473,7 +562,7 @@ export function ScorecardSheet({
   const handleCancelClick = useCallback(() => {
     // Check if there are unsaved changes
     const hasChanges = overview.trim() !== '' || 
-      Object.keys(responses).length > 0 || 
+      Object.keys(responses).some((id) => !untouchedPrefill(id)) || 
       rating !== savedRating ||
       overview !== (existing?.general_overview || '');
     
@@ -484,7 +573,7 @@ export function ScorecardSheet({
       clearDraft();
       onOpenChange(false);
     }
-  }, [overview, responses, rating, savedRating, existing, clearDraft, onOpenChange]);
+  }, [overview, responses, rating, savedRating, existing, clearDraft, onOpenChange, untouchedPrefill]);
 
   // Handle confirmed cancel - discard changes and close
   const handleConfirmCancel = useCallback(() => {
@@ -1242,6 +1331,7 @@ export function ScorecardSheet({
                 {formatPeriod(question.salary_config?.period || 'annually')}
               </Badge>
             </div>
+            {prefillNote(question)}
           </div>
         );
 
@@ -1332,6 +1422,7 @@ export function ScorecardSheet({
                 placeholder={placeholder}
               />
             )}
+            {prefillNote(question)}
           </div>
         );
       }
