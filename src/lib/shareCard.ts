@@ -8,15 +8,8 @@
  * show once previews have a host.
  */
 
-/**
- * Virgilio's logo as the app shows it: the one uploaded in Virgilio's careers settings
- * (`careers_page_settings.logo_url` of the `virgilio` careers page, a public PNG in
- * `careers-logos`). Storage answers any site (`Access-Control-Allow-Origin: *`), so with
- * `crossOrigin` the canvas stays savable. Its address is fixed here because members of
- * other workspaces can't read Virgilio's careers settings; a new upload needs this updated.
- */
-export const VIRGILIO_LOGO =
-  'https://etrxjxstjfcozdjumfsj.supabase.co/storage/v1/object/public/careers-logos/5ba7b145-f251-4b18-8900-724cb06028ab/1776884137302.png'
+/** Virgilio's wordmark (Allan, 2026-11-12): black on transparent, same origin so the PNG stays savable. */
+export const VIRGILIO_LOGO = '/brand/virgilio-logo.png'
 export const CARD_CTA = 'Apply at Virgilio'
 
 export const CARD_W = 1200
