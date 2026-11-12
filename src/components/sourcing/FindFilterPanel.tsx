@@ -734,7 +734,7 @@ export function FindFilterPanel({
             <span className="font-inter" style={{ fontSize: 11.5, lineHeight: 1.45, color: '#5A6072' }}>
               <span style={{ color: '#1F2230', fontWeight: 500 }}>Require must-haves on Apollo</span>
               <br />
-              Off: Apollo searches by title, place and seniority. On: fewer, narrower results.
+              Off: Apollo searches by title, place and seniority. On: fewer, narrower results. Must-haves with "or" are checked once you add someone.
             </span>
           </label>
         </GroupSection>
