@@ -2,27 +2,32 @@
  * The share kit's job image (job exposure, Phase 1, 2026-11-12): 1200 × 630, the size
  * LinkedIn, X, Facebook and WhatsApp show in full. Drawn in the browser on a canvas in
  * the ATS's own look (Opaline White, noir title with the purple period, Inter facts, a
- * noir "Apply" pill), so it needs no image service. Downloaded as a PNG to attach to a
- * post; the same picture is what a link preview will show once previews have a host.
+ * noir "Apply at Virgilio" pill), so it needs no image service. Virgilio's logo heads it
+ * (Allan, 2026-11-12: the image is a chance to show our brand), never the client's.
+ * Downloaded as a PNG to attach to a post; the same picture is what a link preview will
+ * show once previews have a host.
  */
+
+/** Virgilio's full-colour logo (transparent PNG, same origin, so the canvas stays savable). */
+export const VIRGILIO_LOGO = '/brand/virgilio-logo.png'
+export const CARD_CTA = 'Apply at Virgilio'
 
 export const CARD_W = 1200
 export const CARD_H = 630
 
 export interface ShareCardData {
   title: string
-  company: string
   /** Place, work mode, type, pay: shown in this order on one line. */
   facts: string[]
-  /** The words in the pill ("Apply at app.gogio.io"). */
+  /** The words in the pill ("Apply at Virgilio"). */
   cta: string
-  logo?: HTMLImageElement | null
+  /** Virgilio's logo; "Virgilio" in type when it hasn't loaded. */
+  brand?: HTMLImageElement | null
 }
 
 const PAD = 80
 const NOIR = '#0D0D09'
 const PURPLE = '#6F3FF5'
-const MUTED = '#5A6072'
 const BODY = '#3A3D48'
 const CREAM = '#FFFCF9'
 
@@ -97,20 +102,18 @@ export function drawShareCard(ctx: CanvasRenderingContext2D, data: ShareCardData
   const width = CARD_W - PAD * 2 - 24
   let y = PAD
 
-  // Company: logo (when it loads) and name.
-  ctx.textBaseline = 'middle'
-  let x = PAD
-  if (data.logo && data.logo.naturalWidth > 0) {
-    const h = 56
-    const w = Math.min(160, (data.logo.naturalWidth / data.logo.naturalHeight) * h)
-    ctx.drawImage(data.logo, x, y, w, h)
-    x += w + 18
+  // Virgilio's logo, or its name when the logo hasn't loaded.
+  const brandH = 56
+  if (data.brand && data.brand.naturalWidth > 0) {
+    const w = (data.brand.naturalWidth / data.brand.naturalHeight) * brandH
+    ctx.drawImage(data.brand, PAD, y, w, brandH)
+  } else {
+    ctx.textBaseline = 'middle'
+    ctx.font = '600 40px Poppins, system-ui, sans-serif'
+    ctx.fillStyle = NOIR
+    ctx.fillText('Virgilio', PAD, y + brandH / 2)
   }
-  ctx.font = '500 28px Inter, system-ui, sans-serif'
-  ctx.fillStyle = MUTED
-  const company = wrapLines((s) => ctx.measureText(s).width, data.company, PAD + width - x, 1).lines[0] ?? ''
-  ctx.fillText(company, x, y + 28)
-  y += 56 + 48
+  y += brandH + 48
 
   // Title: the largest size that fits in three lines, with the purple period.
   ctx.textBaseline = 'alphabetic'

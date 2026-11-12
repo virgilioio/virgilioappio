@@ -1108,9 +1108,8 @@ export default function JobDetail() {
       title: activePosting.title || job.title,
       url: buildPostingUrl({ postingSlug: activePosting.slug, organizationId: job.organization_id ?? null, companySlug }),
       facts: [facts.location, facts.workMode, facts.employmentType, facts.pay].filter((f): f is string => !!f),
-      logoUrl: careersSettings?.logo_url ?? null,
     }
-  }, [job, activePosting, companySlug, careersSettings?.logo_url])
+  }, [job, activePosting, companySlug])
   if (error) {
     return (
       <div className="min-h-screen bg-virgilio-cream">

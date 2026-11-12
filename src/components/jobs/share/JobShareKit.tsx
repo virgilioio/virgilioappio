@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Download, ExternalLink, Facebook, Link2, Linkedin, Mail, MessageCircle, Sparkles, Twitter, type LucideIcon } from 'lucide-react'
 import { FormSheet } from '@/components/references/FormSheet'
 import { FormSection } from '@/components/references/FormSection'
@@ -25,7 +25,7 @@ import {
   type SharePosts,
   type ShareVoice,
 } from '@/lib/jobShare'
-import { CARD_H, CARD_W, drawShareCard, loadCardFonts, loadCardImage } from '@/lib/shareCard'
+import { CARD_CTA, CARD_H, CARD_W, VIRGILIO_LOGO, drawShareCard, loadCardFonts, loadCardImage } from '@/lib/shareCard'
 
 /**
  * The share kit (job exposure, Phase 1; Allan, Go! 2026-11-12), from the job's Share
@@ -44,7 +44,6 @@ export interface ShareKitPost {
   url: string
   /** Place, work mode, type and pay as the job post shows them. */
   facts: string[]
-  logoUrl?: string | null
 }
 
 const ICONS: Record<ShareChannel, LucideIcon> = {
@@ -271,48 +270,33 @@ export function JobShareKit({
 function ShareImage({ post, company }: { post: ShareKitPost; company: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ready, setReady] = useState(false)
-  const [withLogo, setWithLogo] = useState(true)
-  const host = useMemo(() => {
-    try {
-      return new URL(post.url).host
-    } catch {
-      return 'app.gogio.io'
-    }
-  }, [post.url])
 
   useEffect(() => {
     let cancelled = false
     const run = async () => {
       setReady(false)
       await loadCardFonts()
-      const logo = withLogo ? await loadCardImage(post.logoUrl) : null
+      const brand = await loadCardImage(VIRGILIO_LOGO)
       const ctx = canvasRef.current?.getContext('2d')
       if (cancelled || !ctx) return
-      drawShareCard(ctx, { title: post.title, company, facts: post.facts, cta: `Apply at ${host}`, logo })
+      drawShareCard(ctx, { title: post.title, facts: post.facts, cta: CARD_CTA, brand })
       setReady(true)
     }
     void run()
     return () => {
       cancelled = true
     }
-  }, [post.title, post.facts, post.logoUrl, company, host, withLogo])
+  }, [post.title, post.facts])
 
   const download = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    try {
-      canvas.toBlob((blob) => {
-        if (!blob) return
-        const a = document.createElement('a')
-        a.href = URL.createObjectURL(blob)
-        a.download = `${post.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'job'}.png`
-        a.click()
-        window.setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-      }, 'image/png')
-    } catch {
-      // A logo from a site that doesn't allow it makes the picture unsavable: draw it without.
-      setWithLogo(false)
-    }
+    canvasRef.current?.toBlob((blob) => {
+      if (!blob) return
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `${post.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'job'}.png`
+      a.click()
+      window.setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+    }, 'image/png')
   }
 
   return (
