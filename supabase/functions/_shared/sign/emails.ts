@@ -255,6 +255,37 @@ export function senderSignedEmail(i: {
   };
 }
 
+/** Tell the sender someone opened the document (Allan, 2026-11-12: like DocuSign's "viewed"). */
+export function senderViewedEmail(i: {
+  brand: string;
+  senderEmail: string;
+  title: string;
+  viewerName: string;
+  people: PersonRow[];
+  recordUrl: string | null;
+}): Mail {
+  const signers = i.people.filter((p) => p.role !== "cc");
+  const done = signers.filter((p) => p.status === "signed" || p.status === "approved").length;
+  const progress = `${done} of ${signers.length} signed so far.`;
+  return {
+    from: fromSign(),
+    to: i.senderEmail,
+    subject: `${i.viewerName} opened ${i.title}`,
+    html: layout({
+      preheader: progress,
+      kind: "Gio Sign",
+      eyebrow: esc(i.title),
+      title: `${esc(i.viewerName)} opened it`,
+      lead: `${esc(i.viewerName)} just opened the agreement. ${progress} We&rsquo;ll email you when they sign.`,
+      card: peopleSteps(i.people, i.senderEmail),
+      cta: i.recordUrl ? { label: openLabel(i.recordUrl), url: i.recordUrl } : undefined,
+      foot: "You&rsquo;re getting this because you sent this envelope.",
+      brand: i.brand,
+    }),
+    text: `${i.viewerName} opened ${i.title}. ${progress}${i.recordUrl ? `\n\n${i.recordUrl}` : ""}`,
+  };
+}
+
 export function senderDeclinedEmail(i: {
   brand: string;
   senderEmail: string;

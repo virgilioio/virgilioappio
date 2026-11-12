@@ -13,7 +13,7 @@ export const SIGN_PREF_EVENTS: { event: SignPrefEvent; label: string; descriptio
   { event: 'signed', label: 'Someone signs', description: 'Each signer or approver finishes, and when it’s your turn.', email: true, defaults: { by_email: true, in_app: true } },
   { event: 'completed', label: 'Everyone has signed', description: 'The last person signs and the envelope is complete.', email: true, defaults: { by_email: true, in_app: true } },
   { event: 'declined', label: 'Someone declines', description: 'A signer declines, with their reason.', email: true, defaults: { by_email: true, in_app: true } },
-  { event: 'viewed', label: 'Someone opens it', description: 'The first time each person opens it after their code. In-app only.', email: false, defaults: { by_email: false, in_app: true } },
+  { event: 'viewed', label: 'Someone opens it', description: 'The first time each person opens it after their code.', email: true, defaults: { by_email: true, in_app: true } },
   { event: 'expiring', label: 'Expires soon', description: 'Three days before the links stop working. You always hear when one expires.', email: true, defaults: { by_email: true, in_app: false } },
 ]
 
