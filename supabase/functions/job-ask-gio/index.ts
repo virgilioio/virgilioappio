@@ -571,8 +571,9 @@ Deno.serve(async (req) => {
       const out: string[] = [];
       for (const s of list) {
         const stage = s.stage_instance_id ? stageLabelById.get(s.stage_instance_id) ?? 'Stage' : 'Stage';
-        const rating = s.rating != null ? `rating=${s.rating}/5` : 'rating=—';
-        const draft = s.is_ai_draft ? ' (AI draft)' : '';
+        // A draft's stored rating is a placeholder: nobody has rated it yet (2026-11-12).
+        const rating = s.is_ai_draft ? 'rating=not chosen yet' : s.rating != null ? `rating=${s.rating}` : 'rating=—';
+        const draft = s.is_ai_draft ? " (Gio's draft, not submitted)" : '';
         const ago = daysBetween(s.created_at);
         const overview = (s.general_overview ?? '').replace(/\s+/g, ' ').trim().slice(0, 160);
         const topResp = (s.responses ?? []).find((r) => r.answer_text && r.answer_text.trim().length > 4);

@@ -675,7 +675,8 @@ export async function buildJobSnapshot(
   }
   const stageNameById = new Map(stageDefs.map((s) => [s.id, s.name] as const));
   for (const sc of scorecardRows ?? []) {
-    const rating = sc.rating ? String(sc.rating) : 'unrated';
+    // A draft's stored rating is a placeholder: nobody has rated it yet (2026-11-12).
+    const rating = sc.rating && !sc.is_ai_draft ? String(sc.rating) : 'unrated';
     scorecards.total++;
     if (sc.is_ai_draft) scorecards.ai_drafts++;
     else scorecards.submitted++;
@@ -692,7 +693,7 @@ export async function buildJobSnapshot(
     candidate_id: sc.candidate_id ?? null,
     candidate_name: sc.candidate_id ? candidateNameById.get(sc.candidate_id) ?? 'Unknown' : 'Unknown',
     stage: sc.stage_instance_id ? stageNameById.get(sc.stage_instance_id) ?? null : null,
-    rating: sc.rating ? String(sc.rating) : null,
+    rating: sc.rating && !sc.is_ai_draft ? String(sc.rating) : null,
     is_ai_draft: !!sc.is_ai_draft,
     overview: sc.general_overview ? String(sc.general_overview).replace(/\s+/g, ' ').trim().slice(0, 240) : null,
     created_at: sc.created_at,

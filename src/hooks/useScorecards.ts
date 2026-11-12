@@ -20,6 +20,8 @@ export interface ScorecardRow {
   is_ai_draft?: boolean;
   ai_suggested_rating?: string | null;
   source_booking_id?: string | null;
+  /** Gio's recommendation from the interview (interview notes step 4), on drafts. */
+  ai_recommendation?: unknown;
   // Gio suggestion inbox: questions the reviewer accepted from Gio's suggestions.
   gio_added_questions?: unknown;
   /** Set when the stage it was written in was removed and it moved here (2026-10-13). */

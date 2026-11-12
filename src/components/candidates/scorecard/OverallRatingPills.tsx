@@ -2,8 +2,11 @@ import type { ScoreRating } from '@/hooks/useScorecards'
 import { RATING_VALUES, RATING_META } from '@/lib/scorecardRatings'
 
 interface Props {
-  value: ScoreRating
+  /** Nothing chosen yet: every pill at rest (a new scorecard has no preset rating). */
+  value: ScoreRating | null
   onChange: (value: ScoreRating) => void
+  /** Submitted without a rating: marked for `shakeFirstInvalid`, which focuses it. */
+  invalid?: boolean
   disabled?: boolean
   /** Compact mode hides labels (icon-only) — used for per-question scoring inside scorecards. */
   compact?: boolean
@@ -13,11 +16,13 @@ interface Props {
  * Overall rating — five outline pills (Strong no · Lean no · Lean yes · Yes · Strong yes).
  * Only the selected pill fills with its spec color; the others fade to opacity 0.65.
  */
-export function OverallRatingPills({ value, onChange, disabled, compact }: Props) {
+export function OverallRatingPills({ value, onChange, disabled, compact, invalid }: Props) {
   return (
     <div
       role="radiogroup"
       aria-label="Rating"
+      aria-invalid={invalid || undefined}
+      tabIndex={invalid ? -1 : undefined}
       className={compact ? 'grid grid-cols-5 gap-1.5' : 'grid grid-cols-5 gap-2'}
     >
       {RATING_VALUES.map((v) => {

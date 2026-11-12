@@ -1,26 +1,41 @@
 import { useState } from 'react';
-import { IconSwap } from '@/components/ui/icon-swap'
-import { ChevronDown, ChevronUp, Copy, Check, ArrowDown, CheckCircle2 } from 'lucide-react';
+import { IconSwap } from '@/components/ui/icon-swap';
+import { ChevronDown, Copy, Check, ArrowDown, CheckCircle2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { copyToClipboard } from '@/utils/clipboard';
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown';
+import { MUST_HAVE_STYLE } from '@/components/candidates/insights/fitParts';
 import { RATING_META } from '@/lib/scorecardRatings';
+import { clock, orderCriteria, verdictCounts, type Recommendation, type RecommendationCriterion, type Verdict } from '@/lib/interviewNotes';
+import { cn } from '@/lib/utils';
 import type { ScoreRating } from '@/hooks/useScorecards';
+
+/**
+ * Gio's recommendation on a scorecard draft (interview notes step 5, 2026-11-12): the
+ * rating Gio suggests (or "Not enough to recommend"), how sure it is, why, and each of
+ * the job's requirements with what was said about it, the quote and the moment in the
+ * call. Apply copies the notes, and the rating when there is one, into the form; the
+ * interviewer's rating is always the decision. Drafts written before step 4 carry no
+ * recommendation and show their notes only.
+ */
 
 interface Props {
   /** Gio's suggested rating, on the scorecard's own five-point scale; null when the
-   *  interview didn't cover enough of the job to recommend (2026-11-12). */
+   *  interview didn't cover enough of the job to recommend. */
   rating: ScoreRating | null;
-  /** Raw analysis content (JSON string or markdown). */
+  /** The structured recommendation (ai_recommendation), when the draft has one. */
+  recommendation?: Recommendation | null;
+  /** Gio's notes (Markdown, or an older draft's JSON). */
   analysis: string;
-  /** Whether the currently-selected rating already matches Gio's suggestion. */
+  /** Whether what Apply would do is already in the form. */
   applied: boolean;
-  /** Apply Gio's verdict to the overall rating control. */
   onApply: () => void;
   /** For markdown fallback rendering. */
   normalizedMarkdown: string;
+  /** Show a moment of the call in the Transcript tab (seconds). */
+  onJumpTo?: (seconds: number) => void;
   disabled?: boolean;
 }
-
 
 function parseStructured(text: string): { summary?: string; strengths?: string[] } {
   const trimmed = (text || '').trim();
@@ -42,192 +57,212 @@ function parseStructured(text: string): { summary?: string; strengths?: string[]
   return {};
 }
 
+const VERDICT_STYLE: Record<Verdict, (typeof MUST_HAVE_STYLE)[keyof typeof MUST_HAVE_STYLE]> = {
+  met: MUST_HAVE_STYLE.met,
+  partly: MUST_HAVE_STYLE.partial,
+  not_met: MUST_HAVE_STYLE.not_met,
+  not_discussed: { ...MUST_HAVE_STYLE.unknown, label: 'Not discussed' },
+};
+
+const KIND_TAG: Partial<Record<RecommendationCriterion['kind'], string>> = {
+  must: 'Must-have',
+  nice: 'Nice-to-have',
+};
+
+const CONFIDENCE_LABEL = { high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence' } as const;
+
+const eyebrow = 'font-inter text-[10.5px] font-semibold uppercase tracking-[0.07em]';
+
+function CriterionRow({ c, onJumpTo }: { c: RecommendationCriterion; onJumpTo?: (s: number) => void }) {
+  const style = VERDICT_STYLE[c.verdict];
+  const Icon = style.Icon;
+  const tag = KIND_TAG[c.kind];
+  return (
+    <li className="py-2.5 first:pt-0 last:pb-0">
+      <div className="flex items-start gap-2.5">
+        <span
+          className={cn(
+            'mt-px inline-flex h-[22px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 font-inter text-[11px] font-semibold',
+            style.className,
+          )}
+        >
+          {Icon && <Icon className="h-3 w-3" strokeWidth={2.4} aria-hidden="true" />}
+          {style.label}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="font-inter text-[13px] font-medium leading-[1.4] text-[#1F2230] [overflow-wrap:anywhere]">{c.label}</span>
+            {tag && <span className="font-inter text-[11px] text-[#6B7080]">{tag}</span>}
+          </div>
+          {c.evidence && (
+            <p className="mt-0.5 font-inter text-[12.5px] leading-[1.5] text-[#3D4257] [overflow-wrap:anywhere]">{c.evidence}</p>
+          )}
+          {(c.quote || c.at != null) && (
+            <p className="mt-1 font-inter text-[12.5px] leading-[1.5] text-[#5A6072] [overflow-wrap:anywhere]">
+              {c.quote && <q className="italic">{c.quote}</q>}
+              {c.at != null &&
+                (onJumpTo ? (
+                  <button
+                    type="button"
+                    onClick={() => onJumpTo(c.at as number)}
+                    aria-label={`Show ${clock(c.at)} in the transcript`}
+                    className={cn(c.quote && 'ml-1.5', 'gio-pressable inline-flex h-5 items-center rounded-full bg-[#F1F0EC] px-1.5 align-[1px] font-inter text-[11px] font-medium tabular-nums text-[#5B21B6] hover:bg-[#ECE3FB]')}
+                  >
+                    {clock(c.at)}
+                  </button>
+                ) : (
+                  <span className={cn(c.quote && 'ml-1.5', 'font-inter text-[11px] tabular-nums text-[#6B7080]')}>{clock(c.at)}</span>
+                ))}
+            </p>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+}
+
 export function AiSuggestedRatingCard({
   rating,
+  recommendation,
   analysis,
   applied,
   onApply,
   normalizedMarkdown,
+  onJumpTo,
   disabled,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(!recommendation);
   const [copied, setCopied] = useState(false);
 
   const meta = rating ? RATING_META[rating] : null;
   const verdict = meta ? { bg: meta.bg, fg: meta.text } : { bg: '#F1F0EC', fg: '#5A6072' };
   const { summary, strengths } = parseStructured(analysis);
   const hasStructured = !!(summary || (strengths && strengths.length > 0));
+  const criteria = recommendation ? orderCriteria(recommendation.criteria) : [];
+  const counts = verdictCounts(criteria);
+  const tally = [
+    counts.met && `${counts.met} met`,
+    counts.partly && `${counts.partly} partly`,
+    counts.not_met && `${counts.not_met} not met`,
+    counts.not_discussed && `${counts.not_discussed} not discussed`,
+  ].filter(Boolean).join(' · ');
+  const subtitle = recommendation
+    ? [recommendation.sourceKind === 'summary' ? "From the note-taker's summary" : 'From the interview transcript', tally].filter(Boolean).join(' · ')
+    : 'Based on the interview.';
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    copyToClipboard(analysis, 'Analysis copied to clipboard');
+    copyToClipboard(analysis, 'Notes copied');
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
   };
 
   return (
-    <div
-      className="relative rounded-[14px]"
-      style={{ background: '#F5F1FE', border: '1px solid #DCC9FA' }}
-    >
-      {/* Header row — entire row toggles expand/collapse */}
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-[14px] px-4 py-[15px] text-left"
-      >
-        {/* White tile with dot+pill ATS brand mark */}
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] bg-white"
-          style={{ border: '1px solid #E7D9FB', boxShadow: '0 1px 2px rgba(91,33,182,0.10)' }}
-          aria-hidden="true"
-        >
-          <svg viewBox="0 0 48 48" width={23} height={23} aria-hidden="true">
-            <circle cx="24" cy="19.4" r="9.9" fill="#0d0d09" />
-            <rect x="20.7" y="29.9" width="13.2" height="8.8" rx="4.4" fill="#D7C5FB" />
-          </svg>
-        </div>
-
-        {/* Copy */}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className="font-poppins"
-              style={{ fontSize: 14, fontWeight: 600, color: '#1F2230', letterSpacing: '-0.01em' }}
-            >
-              AI suggested rating
-            </span>
-            <span
-              className="font-poppins inline-flex items-center"
-              style={{
-                background: verdict.bg,
-                color: verdict.fg,
-                borderRadius: 999,
-                padding: '2px 9px',
-                fontSize: 11.5,
-                fontWeight: 600,
-                lineHeight: 1.2,
-                letterSpacing: '-0.005em',
-              }}
-            >
-              {meta ? meta.label : 'Not enough to recommend'}
-            </span>
-            <span
-              className="font-inter"
-              style={{
-                fontWeight: 700,
-                fontSize: 9.5,
-                letterSpacing: '0.07em',
-                textTransform: 'uppercase',
-                color: '#6F3FF5',
-                background: '#fff',
-                border: '1px solid #DCC9FA',
-                borderRadius: 999,
-                padding: '2px 7px',
-                lineHeight: 1,
-              }}
-            >
-              Gio
-            </span>
-          </div>
-          <p
-            className="font-inter"
-            style={{ marginTop: 3, fontSize: 11.5, color: '#5B21B6', opacity: 0.9 }}
-          >
-            Based on interview transcript analysis.
-          </p>
-        </div>
-
-        {/* Chevron toggle (visual only — entire row is the button) */}
-        <span
-          aria-hidden="true"
-          className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-white"
-          style={{
-            border: '1px solid #DCC9FA',
-            color: '#6F3FF5',
-            transition: 'transform 200ms ease',
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-          }}
-        >
-          <ChevronDown size={15} />
-        </span>
-      </button>
-
-      {/* Expanded body */}
-      {open && (
-        <div className="px-[14px] pb-[14px]">
+    <Collapsible open={open} onOpenChange={setOpen} className="relative rounded-[14px] border border-[#DCC9FA] bg-[#F5F1FE]">
+      <CollapsibleTrigger asChild>
+        <button type="button" className="flex w-full items-center gap-[14px] px-4 py-[15px] text-left">
+          {/* White tile with the Gio glyph */}
           <div
-            className="bg-white"
-            style={{ border: '1px solid #ECE3FB', borderRadius: 12, padding: '14px 16px' }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] bg-white"
+            style={{ border: '1px solid #E7D9FB', boxShadow: '0 1px 2px rgba(91,33,182,0.10)' }}
+            aria-hidden="true"
           >
-            <div className="flex items-center justify-between gap-3">
-              <div
-                className="font-inter"
-                style={{
-                  fontSize: 10.5,
-                  fontWeight: 600,
-                  letterSpacing: '0.07em',
-                  textTransform: 'uppercase',
-                  color: '#8B8F9E',
-                }}
-              >
-                Transcript analysis
-              </div>
-              <button
-                type="button"
-                onClick={handleCopy}
-                aria-label="Copy analysis"
-                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-[#F5F1FE] transition-colors"
-                style={{ color: copied ? '#0E7A53' : '#5B21B6', fontSize: 11.5 }}
-              >
-                <IconSwap swapped={copied} from={<Copy size={13} />} to={<Check size={13} />} />
-                <span className="font-inter" style={{ fontWeight: 500 }}>
-                  {copied ? 'Copied' : 'Copy'}
-                </span>
-              </button>
-            </div>
+            <svg viewBox="0 0 48 48" width={23} height={23} aria-hidden="true">
+              <circle cx="24" cy="19.4" r="9.9" fill="#0d0d09" />
+              <rect x="20.7" y="29.9" width="13.2" height="8.8" rx="4.4" fill="#D7C5FB" />
+            </svg>
+          </div>
 
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-poppins text-[14px] font-semibold tracking-[-0.01em] text-[#1F2230]">
+                Gio's recommendation
+              </span>
+              <span
+                className="font-poppins inline-flex items-center whitespace-nowrap rounded-full px-[9px] py-[2px] text-[11.5px] font-semibold leading-[1.2]"
+                style={{ background: verdict.bg, color: verdict.fg }}
+              >
+                {meta ? meta.label : 'Not enough to recommend'}
+              </span>
+              {recommendation && (
+                <span className="inline-flex items-center whitespace-nowrap rounded-full border border-[#DCC9FA] bg-white px-2 py-[2px] font-inter text-[11px] font-medium leading-[1.2] text-[#5B21B6]">
+                  {CONFIDENCE_LABEL[recommendation.confidence]}
+                </span>
+              )}
+            </div>
+            <p className="mt-[3px] truncate font-inter text-[11.5px] text-[#5B21B6]">{subtitle}</p>
+          </div>
+
+          <span
+            aria-hidden="true"
+            className={cn(
+              'gio-disclosure-chevron flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full border border-[#DCC9FA] bg-white text-[#6F3FF5]',
+              open && 'rotate-180',
+            )}
+          >
+            <ChevronDown size={15} />
+          </span>
+        </button>
+      </CollapsibleTrigger>
+
+      <CollapsibleContent className="px-[14px] pb-[14px]">
+        {recommendation && (recommendation.reason || criteria.length > 0) && (
+          <div className="rounded-[12px] border border-[#ECE3FB] bg-white px-4 py-3.5">
+            {recommendation.reason && (
+              <p className="font-inter text-[13px] leading-[1.6] text-[#1F2230] [overflow-wrap:anywhere]">{recommendation.reason}</p>
+            )}
+            {criteria.length > 0 && (
+              <div className={recommendation.reason ? 'mt-4' : undefined}>
+                <div className={cn(eyebrow, 'mb-2 text-[#5B21B6]')}>Against the job</div>
+                <ul className="divide-y divide-[#F1F0EC]">
+                  {criteria.map((c) => (
+                    <CriterionRow key={c.id} c={c} onJumpTo={onJumpTo} />
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Collapsible open={notesOpen} onOpenChange={setNotesOpen} className={cn('rounded-[12px] border border-[#ECE3FB] bg-white', recommendation && 'mt-2.5')}>
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+            <CollapsibleTrigger asChild>
+              <button type="button" className="flex min-w-0 items-center gap-1.5 text-left">
+                <ChevronDown
+                  size={14}
+                  aria-hidden="true"
+                  className={cn('gio-disclosure-chevron shrink-0 text-[#8B8F9E]', !notesOpen && '-rotate-90')}
+                />
+                <span className={cn(eyebrow, 'text-[#6B7080]')}>Gio's notes</span>
+              </button>
+            </CollapsibleTrigger>
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label="Copy Gio's notes"
+              data-swapped={copied || undefined}
+              className={cn(
+                'gio-pressable inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] hover:bg-[#F5F1FE]',
+                copied ? 'text-[#0E7A53]' : 'text-[#5B21B6]',
+              )}
+            >
+              <IconSwap swapped={copied} from={<Copy size={13} />} to={<Check size={13} />} />
+              <span className="font-inter font-medium">{copied ? 'Copied' : 'Copy'}</span>
+            </button>
+          </div>
+          <CollapsibleContent className="px-4 pb-3.5">
             {hasStructured ? (
-              <div className="mt-3 space-y-4">
-                {summary && (
-                  <p
-                    className="font-inter"
-                    style={{ fontSize: 12.5, lineHeight: 1.6, color: '#1F2230' }}
-                  >
-                    {summary}
-                  </p>
-                )}
+              <div className="space-y-4">
+                {summary && <p className="font-inter text-[12.5px] leading-[1.6] text-[#1F2230]">{summary}</p>}
                 {strengths && strengths.length > 0 && (
                   <div>
-                    <div
-                      className="font-inter"
-                      style={{
-                        fontSize: 10.5,
-                        fontWeight: 600,
-                        letterSpacing: '0.07em',
-                        textTransform: 'uppercase',
-                        color: '#5B21B6',
-                        marginBottom: 8,
-                      }}
-                    >
-                      Key strengths
-                    </div>
+                    <div className={cn(eyebrow, 'mb-2 text-[#5B21B6]')}>Key strengths</div>
                     <ul className="space-y-2">
                       {strengths.map((s, i) => (
                         <li key={i} className="flex items-start gap-2">
-                          <Check
-                            size={13}
-                            strokeWidth={2.5}
-                            className="mt-[3px] shrink-0"
-                            style={{ color: '#6F3FF5' }}
-                          />
-                          <span
-                            className="font-inter"
-                            style={{ fontSize: 12.5, lineHeight: 1.5, color: '#3D4257' }}
-                          >
-                            {s}
-                          </span>
+                          <Check size={13} strokeWidth={2.5} className="mt-[3px] shrink-0 text-[#6F3FF5]" />
+                          <span className="font-inter text-[12.5px] leading-[1.5] text-[#3D4257]">{s}</span>
                         </li>
                       ))}
                     </ul>
@@ -235,59 +270,36 @@ export function AiSuggestedRatingCard({
                 )}
               </div>
             ) : (
-              <div className="mt-3 max-h-80 overflow-y-auto">
+              <div className="max-h-80 overflow-y-auto">
                 <ProfileSummaryMarkdown
                   content={normalizedMarkdown}
                   className="[&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs [&_p]:text-[#3D4257] [&_li]:text-[#3D4257] [&_strong]:text-[#1F2230] [&_hr]:border-[#ECE3FB]"
                 />
               </div>
             )}
-          </div>
+          </CollapsibleContent>
+        </Collapsible>
 
-          {/* Footer row */}
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <span
-              className="font-inter"
-              style={{ fontSize: 11.5, color: '#8B8F9E' }}
-            >
-              Gio's suggestion — your rating is always the final say.
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <span className="font-inter text-[11.5px] text-[#6B7080]">Gio's suggestion. Your rating is always the decision.</span>
+          {applied ? (
+            <span className="gio-tick-in inline-flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-md border border-[#BBE3C9] bg-[#F4FBF6] px-2.5 font-inter text-[12px] font-medium text-[#0E7A53]">
+              <CheckCircle2 size={13} />
+              {rating ? 'Applied to your scorecard' : 'Notes added'}
             </span>
-            {applied ? (
-              <span
-                className="font-inter inline-flex items-center gap-1.5 rounded-md px-2.5 py-1"
-                style={{
-                  background: '#F4FBF6',
-                  border: '1px solid #BBE3C9',
-                  color: '#0E7A53',
-                  fontSize: 12,
-                  fontWeight: 500,
-                }}
-              >
-                <CheckCircle2 size={13} />
-                Applied to your rating
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={onApply}
-                disabled={disabled}
-                className="font-poppins inline-flex items-center gap-1.5 rounded-lg bg-white transition-colors hover:bg-[#FAFAF7] disabled:opacity-60"
-                style={{
-                  border: '1px solid #DCC9FA',
-                  color: '#5B21B6',
-                  height: 30,
-                  padding: '0 12px',
-                  fontWeight: 500,
-                  fontSize: 12,
-                }}
-              >
-                <ArrowDown size={13} />
-                {rating ? 'Apply to my rating' : 'Use these notes'}
-              </button>
-            )}
-          </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onApply}
+              disabled={disabled}
+              className="gio-pressable font-poppins inline-flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-lg border border-[#DCC9FA] bg-white px-3 text-[12px] font-medium text-[#5B21B6] hover:bg-[#FAFAF7] disabled:opacity-60"
+            >
+              <ArrowDown size={13} />
+              {rating ? 'Apply rating and notes' : 'Use these notes'}
+            </button>
+          )}
         </div>
-      )}
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

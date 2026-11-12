@@ -18,6 +18,7 @@ import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Tras
 import { copyToClipboard } from "@/utils/clipboard";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
+import type { Json } from "@/integrations/supabase/types";
 import { triggerFitAnalysis } from "@/utils/triggerFitAnalysis";
 import type { InterviewQuestion, SelectOption, SalaryConfig, ScorecardVisibility } from "@/hooks/useScorecardsConfiguration";
 import { RATING_VALUES, coerceRating, ratingLabel } from "@/lib/scorecardRatings";
@@ -89,6 +90,19 @@ import { OverallRatingPills } from "./scorecard/OverallRatingPills";
 import { ScoreFivePills } from "./scorecard/ScoreFivePills";
 import { KeyTakeawaysCard } from "./scorecard/KeyTakeawaysCard";
 import { AiSuggestedRatingCard } from "./scorecard/AiSuggestedRatingCard";
+import { InterviewNotesStatusLine, TranscriptPanel } from "./scorecard/InterviewNotes";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import { shakeFirstInvalid } from "@/lib/motion";
+import {
+  fetchInterviewDraft,
+  notesStatusKey,
+  notesStatusView,
+  parseRecommendation,
+  retryInterviewNotes,
+  useInterviewNotesStatus,
+  useScorecardInterview,
+} from "@/lib/interviewNotes";
 import { UnsavedGuard } from "@/components/ui/unsaved-guard";
 import { LinkedInFilled } from "@/components/icons/LinkedInFilled";
 import { useStageInterviewDefaults } from "@/hooks/useStageInterviewDefaults";
@@ -247,7 +261,15 @@ export function ScorecardSheet({
   onReject,
   scorecardVisibility = 'private',
 }: ScorecardSheetProps) {
-  const [rating, setRating] = useState<ScoreRating>(existing?.rating || "yes");
+  // No preset rating (interview notes step 5, 2026-11-12): a new scorecard and Gio's
+  // draft start with none, so a rating is always the interviewer's own choice.
+  const savedRating: ScoreRating | null = existing && !existing.is_ai_draft ? coerceRating(existing.rating) : null;
+  const [rating, setRatingState] = useState<ScoreRating | null>(savedRating);
+  const [ratingMissing, setRatingMissing] = useState(false);
+  const setRating = useCallback((v: ScoreRating | null) => {
+    setRatingState(v);
+    if (v) setRatingMissing(false);
+  }, []);
   const [overview, setOverview] = useState<string>(existing?.general_overview || "");
   const [saving, setSaving] = useState(false);
   // A scorecard that moved here from a removed stage is a record of that
@@ -294,6 +316,86 @@ export function ScorecardSheet({
   const [isAiDraft, setIsAiDraft] = useState(false);
   const gioAdded = useGioAddedQuestions((existing as any)?.gio_added_questions);
 
+  // Interview notes, step 5 (2026-11-12): the interview this scorecard is about, where
+  // Gio's notes on it got to (live), Retry, and the Transcript tab.
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const sheetBodyRef = useRef<HTMLDivElement>(null);
+  const interviewerId = existing?.created_by ?? user?.id ?? null;
+  const interviewQuery = useScorecardInterview({
+    bookingId: existing?.source_booking_id ?? null,
+    associationId,
+    stageInstanceId,
+    interviewerId,
+    enabled: open,
+  });
+  const bookingId = open ? interviewQuery.data ?? null : null;
+  const notesStatus = useInterviewNotesStatus(bookingId);
+  const submitted = !!existing && !existing.is_ai_draft;
+  const [statusNow, setStatusNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setInterval(() => setStatusNow(Date.now()), 60_000);
+    return () => window.clearInterval(t);
+  }, [open]);
+  const notesView = notesStatusView(notesStatus.data, { submitted, now: statusNow });
+  const [retrying, setRetrying] = useState(false);
+  const handleRetryNotes = async () => {
+    if (!bookingId || retrying) return;
+    setRetrying(true);
+    try {
+      await retryInterviewNotes(bookingId);
+      await queryClient.invalidateQueries({ queryKey: notesStatusKey(bookingId) });
+    } catch (e) {
+      sonner(e instanceof Error ? e.message : "Couldn't ask Gio to redo the notes.");
+    } finally {
+      setRetrying(false);
+    }
+  };
+  // Gio's draft as it is now: a Retry rewrites it while the sheet is open.
+  const [liveDraft, setLiveDraft] = useState<{ id: string; general_overview: string | null; ai_suggested_rating: string | null; ai_recommendation: unknown } | null>(null);
+  const seenStatusAt = useRef<string | null>(null);
+  useEffect(() => {
+    const row = notesStatus.data;
+    if (!open || !row || !bookingId || !interviewerId) return;
+    if (seenStatusAt.current === null) {
+      seenStatusAt.current = row.status_at;
+      return;
+    }
+    if (row.status_at === seenStatusAt.current) return;
+    seenStatusAt.current = row.status_at;
+    if (row.status !== 'drafted' || submitted) return;
+    void fetchInterviewDraft(bookingId, interviewerId).then((d) => {
+      if (!d) return;
+      setLiveDraft(d);
+      if (d.general_overview) {
+        setAiAnalysis(d.general_overview);
+        setIsAiDraft(true);
+        setNotesApplied(false);
+      }
+    }).catch(() => {});
+  }, [open, notesStatus.data, bookingId, interviewerId, submitted]);
+  useEffect(() => {
+    if (!open) seenStatusAt.current = null;
+  }, [open]);
+  const recommendation = useMemo(
+    () => parseRecommendation(liveDraft ? liveDraft.ai_recommendation : existing?.ai_recommendation),
+    [liveDraft, existing],
+  );
+  const [notesApplied, setNotesApplied] = useState(false);
+  const [leftTab, setLeftTab] = useState('resume');
+  const [transcriptFocus, setTranscriptFocus] = useState<{ seconds: number; key: number } | null>(null);
+  const showTranscript = (seconds: number) => {
+    setLeftTab('transcript');
+    setTranscriptFocus({ seconds, key: Date.now() });
+  };
+  useEffect(() => {
+    if (!open) {
+      setLeftTab('resume');
+      setTranscriptFocus(null);
+    }
+  }, [open]);
+
 
   // Track current values in refs for reliable close-time saving
   const overviewRef = useRef(overview);
@@ -306,7 +408,7 @@ export function ScorecardSheet({
   useEffect(() => { responsesRef.current = responses; }, [responses]);
 
   const isReadOnly = useMemo(() => !editMode, [editMode]);
-  const aiSuggestedRating = existing?.ai_suggested_rating;
+  const aiSuggestedRating = liveDraft ? liveDraft.ai_suggested_rating : existing?.ai_suggested_rating;
   // Gio saves its suggestion as a rating value ("lean_yes"); older drafts kept a label
   // ("Strong Yes") or the old four-point scale ("no", "definitely_no").
   const suggestedRating: ScoreRating | null =
@@ -324,7 +426,7 @@ export function ScorecardSheet({
   // Discard draft handler
   const handleDiscardDraft = useCallback(() => {
     clearDraft();
-    setRating('yes');
+    setRating(null);
     setOverview('');
     setResponses({});
     toast({
@@ -371,7 +473,7 @@ export function ScorecardSheet({
     // Check if there are unsaved changes
     const hasChanges = overview.trim() !== '' || 
       Object.keys(responses).length > 0 || 
-      rating !== (existing?.rating || 'yes') ||
+      rating !== savedRating ||
       overview !== (existing?.general_overview || '');
     
     if (hasChanges) {
@@ -381,12 +483,12 @@ export function ScorecardSheet({
       clearDraft();
       onOpenChange(false);
     }
-  }, [overview, responses, rating, existing, clearDraft, onOpenChange]);
+  }, [overview, responses, rating, savedRating, existing, clearDraft, onOpenChange]);
 
   // Handle confirmed cancel - discard changes and close
   const handleConfirmCancel = useCallback(() => {
     clearDraft();
-    setRating('yes');
+    setRating(null);
     setOverview('');
     setResponses({});
     setShowCancelDialog(false);
@@ -402,9 +504,12 @@ export function ScorecardSheet({
       return;
     }
     
-    // Base values from existing scorecard (or defaults)
-    // For AI drafts, always start with neutral rating — user applies suggestion explicitly
-    const baseRating = existing?.is_ai_draft ? "yes" : (existing?.rating || "yes");
+    // Base values from the existing scorecard. A new scorecard and Gio's draft start
+    // with no rating: the interviewer chooses (Apply on Gio's card can fill it in).
+    const baseRating: ScoreRating | null = existing && !existing.is_ai_draft ? coerceRating(existing.rating) : null;
+    setRatingMissing(false);
+    setNotesApplied(false);
+    setLiveDraft(null);
     const baseOverview = existing?.general_overview || "";
     
     // Store AI analysis separately for AI drafts — only on initial open
@@ -432,7 +537,7 @@ export function ScorecardSheet({
             const dbUpdateTime = new Date(existing.updated_at).getTime();
             if (draft.lastUpdated > dbUpdateTime) {
               // Draft is newer - restore it
-              setRating(draft.rating || baseRating);
+              setRating(coerceRating(draft.rating) ?? baseRating);
               setOverview(draft.overview || effectiveBaseOverview);
               setResponses(draft.responses || {});
               setHasDraft(true);
@@ -444,7 +549,7 @@ export function ScorecardSheet({
             }
           } else {
             // New scorecard - restore draft
-            setRating(draft.rating || baseRating);
+            setRating(coerceRating(draft.rating) ?? baseRating);
             setOverview(draft.overview || effectiveBaseOverview);
             setResponses(draft.responses || {});
             setHasDraft(true);
@@ -783,6 +888,11 @@ export function ScorecardSheet({
   };
 
   const handleSave = async () => {
+    if (!rating) {
+      setRatingMissing(true);
+      shakeFirstInvalid(sheetBodyRef.current);
+      return;
+    }
     if (!validateRequiredQuestions()) {
       toast({ 
         title: 'Required questions missing', 
@@ -861,6 +971,21 @@ export function ScorecardSheet({
           .eq('id', scorecardId);
       }
 
+      // Gio wrote its draft while this scorecard was open (Retry on a new one): the
+      // submitted scorecard keeps the interview and Gio's recommendation, and the
+      // draft it replaces goes, so nobody sees a stale draft beside it.
+      if (liveDraft && scorecardId && liveDraft.id !== scorecardId && liveDraft.id !== existing?.id) {
+        await supabase
+          .from('job_stage_scorecards')
+          .update({
+            source_booking_id: bookingId,
+            ai_suggested_rating: liveDraft.ai_suggested_rating,
+            ai_recommendation: (liveDraft.ai_recommendation ?? null) as Json,
+          })
+          .eq('id', scorecardId);
+        await supabase.from('job_stage_scorecards').delete().eq('id', liveDraft.id).eq('is_ai_draft', true);
+      }
+
       // Clear draft on successful save
       clearDraft();
 
@@ -887,15 +1012,13 @@ export function ScorecardSheet({
 
   const handleAcceptAiSuggestion = () => {
     if (aiAnalysis) setOverview(markdownToHtml(normalizeAiAnalysis(aiAnalysis)));
+    setNotesApplied(true);
     if (suggestedRating) {
       setRating(suggestedRating);
-      toast({
-        title: "AI suggestion applied",
-        description: `Rating set to "${ratingLabel(suggestedRating)}"`,
-      });
+      sonner(`Rating set to ${ratingLabel(suggestedRating)} and Gio's notes added`);
     } else if (aiAnalysis) {
       // No rating to apply (not enough to recommend): the notes still help.
-      toast({ title: "Gio's notes added", description: 'Choose the rating yourself.' });
+      sonner("Gio's notes added. Choose the rating yourself.");
     }
   };
 
@@ -1220,8 +1343,8 @@ export function ScorecardSheet({
         <SheetContent side="right" className="w-[95vw] sm:w-[95vw] max-w-[1190px] sm:max-w-[1190px] p-0 bg-[#FAFAF7]">
           <div className="flex h-full flex-col">
             <SheetHeader className="p-6 border-b border-[#E7E8EE] bg-white">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <div
                     className="font-poppins font-semibold uppercase text-[#6F3FF5]"
                     style={{ fontSize: 10.5, letterSpacing: '0.08em' }}
@@ -1269,9 +1392,9 @@ export function ScorecardSheet({
                       )}
                     </Badge>
                   </div>
-                  {/* Candidate context row */}
-                  {(candidateName || jobTitle) && (
-                    <div className="flex items-center gap-2 text-sm">
+                  {/* Candidate context row, then where Gio's notes on the interview got to */}
+                  {(candidateName || jobTitle || notesView) && (
+                    <div className="flex min-w-0 items-center gap-2 text-sm">
                       {candidateName && (
                         <span className="font-semibold text-virgilio-text">
                           {candidateName}
@@ -1292,9 +1415,15 @@ export function ScorecardSheet({
                         <span className="text-virgilio-muted">•</span>
                       )}
                       {jobTitle && (
-                        <span className="text-virgilio-muted">
+                        <span className="shrink-0 text-virgilio-muted">
                           {jobTitle}
                         </span>
+                      )}
+                      {notesView && (
+                        <>
+                          {(candidateName || jobTitle) && <span className="text-virgilio-muted">•</span>}
+                          <InterviewNotesStatusLine view={notesView} onRetry={() => void handleRetryNotes()} retrying={retrying} />
+                        </>
                       )}
                     </div>
                   )}
@@ -1310,7 +1439,7 @@ export function ScorecardSheet({
                       Discard Draft
                     </Button>
                   )}
-                  {existing && (
+                  {existing && rating && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -1342,10 +1471,10 @@ export function ScorecardSheet({
               </div>
             </SheetHeader>
 
-            <div className="flex-1 overflow-hidden flex">
+            <div ref={sheetBodyRef} className="flex-1 overflow-hidden flex">
               {/* Left Panel - Resume with Tabs */}
               <div className="w-full lg:w-[53%] border-r border-[#E7E8EE] bg-[#FAFAF7] flex flex-col">
-                <Tabs defaultValue="resume" className="flex flex-col h-full">
+                <Tabs value={leftTab} onValueChange={setLeftTab} className="flex flex-col h-full">
                   <div className="p-4 shrink-0">
                     <TabsList className="bg-[#ECEAE2] rounded-full p-1 h-auto gap-1">
                       <TabsTrigger
@@ -1360,6 +1489,12 @@ export function ScorecardSheet({
                         value="interview-details"
                         className="rounded-full px-3 py-1.5 text-[12.5px] data-[state=active]:bg-white data-[state=active]:shadow-sm"
                       >Interview Details</TabsTrigger>
+                      {bookingId && (
+                        <TabsTrigger
+                          value="transcript"
+                          className="rounded-full px-3 py-1.5 text-[12.5px] data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                        >Transcript</TabsTrigger>
+                      )}
                     </TabsList>
                   </div>
                   
@@ -1391,6 +1526,17 @@ export function ScorecardSheet({
                   <TabsContent value="interview-details" className="flex-1 overflow-y-auto m-0 p-6">
                     <InterviewDetailsTab jhsId={stageInstanceId} />
                   </TabsContent>
+
+                  {bookingId && (
+                    <TabsContent value="transcript" className="flex-1 overflow-y-auto m-0">
+                      <TranscriptPanel
+                        bookingId={bookingId}
+                        active={leftTab === 'transcript'}
+                        focus={transcriptFocus}
+                        emptyReason={notesStatus.data?.status_reason ?? null}
+                      />
+                    </TabsContent>
+                  )}
                 </Tabs>
               </div>
 
@@ -1414,11 +1560,14 @@ export function ScorecardSheet({
                 {/* AI Suggested Rating — structured lilac card */}
                 {isAiDraft && aiAnalysis && (
                   <AiSuggestedRatingCard
+                    key={liveDraft?.id ?? existing?.id ?? 'draft'}
                     rating={suggestedRating}
+                    recommendation={recommendation}
                     analysis={aiAnalysis}
                     normalizedMarkdown={normalizeAiAnalysis(aiAnalysis)}
-                    applied={suggestedRating ? suggestedRating === rating : false}
+                    applied={notesApplied && (!suggestedRating || suggestedRating === rating)}
                     onApply={handleAcceptAiSuggestion}
+                    onJumpTo={bookingId ? showTranscript : undefined}
                     disabled={isReadOnly}
                   />
                 )}
@@ -1429,7 +1578,17 @@ export function ScorecardSheet({
                     value={rating}
                     onChange={(v) => setRating(v)}
                     disabled={isReadOnly}
+                    invalid={ratingMissing}
                   />
+                  {!isReadOnly && (
+                    <p
+                      className="gio-field-message mt-1.5 font-inter text-[12px] text-destructive"
+                      data-state={ratingMissing ? 'error' : undefined}
+                      aria-live="polite"
+                    >
+                      {ratingMissing ? 'Choose your overall rating.' : ''}
+                    </p>
+                  )}
                 </CandidateSheetSection>
 
                 {(!loadingQuestions && questions.length > 0) || gioAdded.items.length > 0 ? (
@@ -1541,7 +1700,7 @@ export function ScorecardSheet({
       </Sheet>
 
       {/* Recommended Next Steps Dialog */}
-      {existing && (
+      {existing && rating && (
         <RecommendedNextStepsDialog
           open={showNextStepsDialog}
           onOpenChange={setShowNextStepsDialog}
