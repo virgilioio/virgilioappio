@@ -8,6 +8,7 @@ import { formatEmailList } from "../_shared/emailTemplate.ts";
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
 import { SUGGESTED_RATINGS, cleanInboundText, scorecardLink, tooLittleToDraft, toSuggestedRating, type SourceKind } from '../_shared/interviewNotes.ts';
+import { REASON, setStatus, sourceForNotes } from '../_shared/interviewTranscripts.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -25,8 +26,22 @@ serve(async (req) => {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.gogio.io';
 
+  // Only process-transcript-webhook calls this (with the service role key): it can
+  // fetch from Fireflies and rewrite a draft, so nobody else may start it.
+  const auth = req.headers.get('Authorization') ?? '';
+  if (!supabaseServiceKey || auth !== `Bearer ${supabaseServiceKey}`) {
+    return new Response(JSON.stringify({ error: 'Not allowed' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  let booking_id: string | null = null;
+  let drafting = false;
+  const supabaseForStatus = createClient(supabaseUrl, supabaseServiceKey);
+
   try {
-    const { booking_id } = await req.json();
+    ({ booking_id } = await req.json());
 
     if (!booking_id) {
       return new Response(JSON.stringify({ error: 'booking_id is required' }), {
@@ -86,7 +101,8 @@ serve(async (req) => {
       });
     }
 
-    if (!booking.transcript_raw) {
+    const meta = (booking.transcript_metadata || {}) as Record<string, any>;
+    if (!booking.transcript_raw && !meta.fireflies_id) {
       console.error('[generate-scorecard] No transcript found for booking');
       return new Response(JSON.stringify({ error: 'No transcript available' }), {
         status: 400,
@@ -98,7 +114,7 @@ serve(async (req) => {
       candidate: booking.candidate?.candidate_name,
       job: booking.job?.title,
       stage: booking.job_hiring_stage?.stage?.stage_name,
-      transcript_length: booking.transcript_raw.length,
+      transcript_length: (booking.transcript_raw || "").length,
     });
 
     // Fetch scorecard questions for this stage if available
@@ -149,14 +165,30 @@ INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}
 
     // What arrived is cleaned when it's received (process-transcript-webhook); older rows
     // still hold the whole recap email, so clean them the same way here.
-    const meta = (booking.transcript_metadata || {}) as Record<string, any>;
     let sourceKind: SourceKind = meta.source_kind === 'summary' || meta.source_kind === 'transcript' ? meta.source_kind : 'transcript';
-    let sourceText: string = booking.transcript_raw;
+    let sourceText: string = booking.transcript_raw || '';
+    let provider = (meta.provider || 'other') as 'fireflies' | 'read_ai' | 'other';
+    let firefliesId: string | null = meta.fireflies_id ?? null;
     if (!meta.source_kind) {
-      const cleaned = cleanInboundText(booking.transcript_raw, String(meta.from || ''));
+      const cleaned = cleanInboundText(booking.transcript_raw || '', String(meta.from || ''));
       sourceText = cleaned.text;
       sourceKind = cleaned.kind;
+      provider = cleaned.provider;
+      firefliesId = cleaned.firefliesId;
     }
+
+    // The whole conversation from Fireflies' API when there is one (step 3,
+    // 2026-11-12); otherwise the recap's summary, saying why.
+    const source = await sourceForNotes(
+      supabase,
+      { id: booking.id, tenant_id: booking.tenant_id },
+      { text: sourceText, kind: sourceKind, provider, firefliesId },
+      { apiKey: Deno.env.get('FIREFLIES_API_KEY') },
+    );
+    sourceText = source.text;
+    sourceKind = source.kind;
+    const interviewerName = [interviewer?.first_name, interviewer?.last_name].filter(Boolean).join(' ').trim();
+    const candidateName = booking.candidate?.candidate_name || booking.candidate_name || '';
 
     // A full interview runs to tens of thousands of characters; the model reads it whole.
     const MAX_SOURCE = 120000;
@@ -172,6 +204,7 @@ INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}
 
     if (nothingSaid) {
       console.log('[generate-scorecard] Empty/near-empty conversation detected, skipping AI analysis');
+      await setStatus(supabase, booking_id, 'nothing_said', source.reason);
       
       const emptyMessage = sourceKind === 'summary'
         ? "The note-taker's summary of this call has nothing about the interview in it, so Gio has no notes to draft. Open the recording to check, or write your notes yourself."
@@ -247,7 +280,9 @@ If the transcript contains only greetings, silence markers, or system messages w
 - question_responses: all set to "[No discussion took place during this interview]"
 Do NOT use the candidate's resume, profile, or job description to fabricate interview notes. Your analysis must be based solely on what was actually said during the interview.
 
-${sourceKind === 'summary' ? `SOURCE: What you have is the note-taker's short written summary of the call, NOT a word-for-word transcript. Write only what the summary states. Do not invent quotes, examples, numbers or details, and do not fill gaps from the candidate's resume or the job description. Start the general_overview with one line saying the notes come from the note-taker's summary, not the full transcript. Instead of NOTABLE QUOTES, write "No transcript, so no quotes." Keep the notes as short as the summary allows.
+${source.full ? `SOURCE: The full transcript of the call. Each line is one turn: "[m:ss] Speaker name: what they said", the time counted from the start of the call. ${interviewerName ? `${interviewerName} is the interviewer` : 'The interviewer works for the hiring team'}${candidateName ? `; ${candidateName} is the candidate` : ''}. The note-taker names speakers from the calendar, so someone may appear under another name or as "Speaker"; work out who is who from what they say. When you quote, quote exactly and add the time it was said, e.g. "..." (12:05).
+
+` : ''}${sourceKind === 'summary' ? `SOURCE: What you have is the note-taker's short written summary of the call, NOT a word-for-word transcript. Write only what the summary states. Do not invent quotes, examples, numbers or details, and do not fill gaps from the candidate's resume or the job description. Start the general_overview with one line saying the notes come from the note-taker's summary, not the full transcript. Instead of NOTABLE QUOTES, write "No transcript, so no quotes." Keep the notes as short as the summary allows.
 
 ` : ''}LANGUAGE: Write the general_overview, its section headings and every answer in the language the interview was held in (the language of the source below), whatever the language of these instructions, the job or the resume.
 
@@ -272,6 +307,8 @@ ${questionsContext}`;
     const userPrompt = `${candidateContext}\n${jobContext}\n${stageContext}\n\nINTERVIEW TRANSCRIPT:\n${transcriptContent}\n\nPlease analyze this interview and submit your structured evaluation using the submit_scorecard tool.`;
 
     console.log('[generate-scorecard] Calling OpenAI with tool calling...');
+    await setStatus(supabase, booking_id, 'drafting', source.reason);
+    drafting = true;
 
     // Build request body — use tool calling when questions exist, plain text as fallback
     const hasQuestions = scorecardQuestions.length > 0;
@@ -517,6 +554,9 @@ ${questionsContext}`;
 
     }
 
+    await setStatus(supabase, booking_id, 'drafted', source.reason);
+    drafting = false;
+
     return new Response(JSON.stringify({
       status: 'success',
       booking_id,
@@ -531,6 +571,7 @@ ${questionsContext}`;
 
   } catch (error) {
     console.error('[generate-scorecard] Error:', error);
+    if (booking_id && drafting) await setStatus(supabaseForStatus, booking_id, 'failed', REASON.failed);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

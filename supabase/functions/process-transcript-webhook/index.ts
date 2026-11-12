@@ -6,6 +6,7 @@ import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
 import { cleanInboundText } from '../_shared/interviewNotes.ts';
+import { REASON, recordReceived, setStatus } from '../_shared/interviewTranscripts.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature',
@@ -563,7 +564,9 @@ serve(async (req) => {
       verified_with_resend: true,
     };
 
-    if (!content || content.trim().length < 20) {
+    // A Fireflies recap with no overview still names the meeting: its full transcript
+    // is fetched from Fireflies' API when the notes are drafted (step 3, 2026-11-12).
+    if ((!content || content.trim().length < 20) && !cleaned.firefliesId) {
       // Answer normally: an error here only makes the sender deliver it again.
       console.warn('[Transcript Webhook] Nothing usable in the email:', {
         raw_length: rawLength,
@@ -591,8 +594,12 @@ serve(async (req) => {
       throw updateError;
     }
 
+    // Where the notes get to, for the screens (interview_transcripts).
+    await recordReceived(supabase, booking, cleaned);
+
     if (!hasPipelineContext) {
       console.warn('[Transcript Webhook] Transcript stored without scorecard generation - no pipeline context, booking:', booking.id);
+      await setStatus(supabase, booking.id, 'ready', REASON.noContext);
       return new Response(JSON.stringify({
         status: 'stored_without_scorecard',
         reason: 'no_pipeline_context',

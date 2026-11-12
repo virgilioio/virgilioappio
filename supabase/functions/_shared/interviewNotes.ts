@@ -134,6 +134,8 @@ const HEADER_LINE = /^(Meeting|When|Topics):.*$/gim
 export function substantiveWords(text: string): number {
   const t = text
     .replace(HEADER_LINE, '')
+    // A fetched transcript's turns: "[12:05] Allan Bravo: ..." (src: _shared/fireflies.ts)
+    .replace(/^\[\d{1,2}:\d{2}(:\d{2})?\]\s*[^:\n]{1,60}:/gm, '')
     .replace(/\d{1,2}:\d{2}(:\d{2})?\s*(AM|PM|am|pm)?\s*/g, '')
     .replace(/\[\d{1,2}:\d{2}(:\d{2})?\]/g, '')
     .replace(/Speaker\s*\d+\s*:/gi, '')
