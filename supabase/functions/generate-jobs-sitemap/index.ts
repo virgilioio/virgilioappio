@@ -16,12 +16,13 @@ const VIRGILIO_INTERNAL_ORG_ID = '4b8e739f-2b15-487e-8d31-0a2ce765a8ef'
 
 interface PostingRow {
   slug: string
+  tenant_id: string | null
   updated_at: string | null
   jobs: { organization_id: string | null; status: string } | null
 }
 
 interface CareersRow {
-  organization_id: string
+  tenant_id: string
   company_slug: string | null
 }
 
@@ -36,7 +37,7 @@ Deno.serve(async (req) => {
 
     const { data: postings, error } = await supabase
       .from('job_postings')
-      .select('slug, updated_at, jobs!inner(organization_id, status)')
+      .select('slug, tenant_id, updated_at, jobs!inner(organization_id, status)')
       .eq('is_active', true)
       .eq('jobs.status', 'open')
       .filter('syndication->google_jobs->>enabled', 'eq', 'true')
@@ -48,22 +49,28 @@ Deno.serve(async (req) => {
     }
 
     const rows = (postings ?? []) as unknown as PostingRow[]
-    const orgIds = Array.from(
+    // A careers page belongs to a workspace (careers_page_settings.tenant_id), as in
+    // LegacyPostingRedirect and the job board feeds, so each job is listed at the
+    // address its page calls canonical, never the /p/ redirect (2026-11-12).
+    const tenantIds = Array.from(
       new Set(
         rows
-          .map((r) => r.jobs?.organization_id)
-          .filter((v): v is string => !!v && v !== VIRGILIO_INTERNAL_ORG_ID),
+          .filter((r) => r.jobs?.organization_id !== VIRGILIO_INTERNAL_ORG_ID)
+          .map((r) => r.tenant_id)
+          .filter((v): v is string => !!v),
       ),
     )
 
     const slugMap = new Map<string, string>()
-    if (orgIds.length) {
-      const { data: careers } = await supabase
+    if (tenantIds.length) {
+      const { data: careers, error: careersError } = await supabase
         .from('careers_page_settings')
-        .select('organization_id, company_slug')
-        .in('organization_id', orgIds)
+        .select('tenant_id, company_slug')
+        .in('tenant_id', tenantIds)
+        .eq('is_active', true)
+      if (careersError) console.error('sitemap careers lookup failed', careersError)
       ;((careers ?? []) as CareersRow[]).forEach((c) => {
-        if (c.company_slug) slugMap.set(c.organization_id, c.company_slug)
+        if (c.company_slug) slugMap.set(c.tenant_id, c.company_slug)
       })
     }
 
@@ -74,7 +81,7 @@ Deno.serve(async (req) => {
       if (orgId === VIRGILIO_INTERNAL_ORG_ID) {
         path = `/virgilio-careers/${row.slug}`
       } else {
-        const companySlug = orgId ? slugMap.get(orgId) : null
+        const companySlug = row.tenant_id ? slugMap.get(row.tenant_id) : null
         path = companySlug ? `/careers/${companySlug}/${row.slug}` : `/p/${row.slug}`
       }
       const loc = `${BASE_URL}${path}`

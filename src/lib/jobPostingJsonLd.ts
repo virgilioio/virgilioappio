@@ -90,7 +90,8 @@ export function buildJobPostingJsonLd(input: JobPostingJsonLdInput): Record<stri
       value: posting.id,
     },
     url,
-    directApply: false,
+    // The application form is on the posting page itself (2026-11-12), which Google ranks as direct apply.
+    directApply: true,
   }
 
   const employmentType = mapEmploymentType(d.employmentType ?? d.employment_type)
