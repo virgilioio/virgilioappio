@@ -3590,6 +3590,8 @@ export type Database = {
           ai_fit_score: number | null
           ai_fit_version: number | null
           applied_at: string | null
+          applied_via: string | null
+          applied_via_detail: Json | null
           auto_rejected_rule: string | null
           booking_link_sent_at: string | null
           candidate_id: string
@@ -3632,6 +3634,8 @@ export type Database = {
           ai_fit_score?: number | null
           ai_fit_version?: number | null
           applied_at?: string | null
+          applied_via?: string | null
+          applied_via_detail?: Json | null
           auto_rejected_rule?: string | null
           booking_link_sent_at?: string | null
           candidate_id: string
@@ -3674,6 +3678,8 @@ export type Database = {
           ai_fit_score?: number | null
           ai_fit_version?: number | null
           applied_at?: string | null
+          applied_via?: string | null
+          applied_via_detail?: Json | null
           auto_rejected_rule?: string | null
           booking_link_sent_at?: string | null
           candidate_id?: string
@@ -7631,6 +7637,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      posting_share_codes: {
+        Row: {
+          code: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       privacy_requests: {
         Row: {
@@ -12987,6 +13011,7 @@ export type Database = {
         }[]
       }
       posting_current_slug: { Args: { _slug: string }; Returns: string }
+      posting_share_code: { Args: never; Returns: string }
       privacy_hash: {
         Args: { p_kind: string; p_value: string }
         Returns: string
