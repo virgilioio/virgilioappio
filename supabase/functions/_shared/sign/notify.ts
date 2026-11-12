@@ -11,6 +11,7 @@ import {
   senderCompletedEmail,
   senderDeclinedEmail,
   senderSignedEmail,
+  senderViewedEmail,
   senderExpiryEmail,
   reminderEmail,
   voidedEmail,
@@ -336,6 +337,15 @@ export async function notifySenderViewed(supabase: SupabaseClient, envelopeId: s
   const { data: r } = await supabase.from("sign_recipients").select("*").eq("id", recipientId).maybeSingle();
   if (!e || !r) return;
   if (String(r.email).toLowerCase() === String(e.sender_email).toLowerCase()) return;
+  if (r.role === "cc") return;
   const p = await prefs(supabase, e.tenant_id, e.sender_email, "viewed");
   if (p.inApp) await bell(supabase, e, { title: `${r.name} opened it`, actor: r.name, event: "viewed" });
+  // The sender's email, once per recipient (this runs only on their first open).
+  if (p.email && e.sender_email) {
+    const brand = await brandOf(supabase, e.tenant_id);
+    const list = await people(supabase, e.id);
+    await sendMail(
+      senderViewedEmail({ brand, senderEmail: e.sender_email, title: e.title, viewerName: r.name, people: list, recordUrl: recordUrl(e) }),
+    );
+  }
 }
