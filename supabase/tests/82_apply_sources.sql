@@ -1,4 +1,4 @@
--- Run after 20261112150000_apply_sources inside a transaction that is rolled back.
+-- Run after 20261112155416_apply_sources inside a transaction that is rolled back.
 -- Applications record where they came from, and each person gets one share code.
 --   someone    an active member of a workspace
 --   other      another active member
