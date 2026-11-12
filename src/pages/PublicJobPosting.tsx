@@ -62,6 +62,7 @@ import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 import { MediaQuestionField } from '@/components/public/MediaQuestionField'
 import { StarScoreInput, type ScoreFieldConfig } from '@/components/forms/StarScoreInput'
 import { isMediaKind, type StagedMedia } from '@/lib/applicationMedia'
+import { applySourceTags, useCaptureApplySource } from '@/lib/applySource'
 
 function getViolationToast(violation: { type?: string; message?: string; cooldown_until?: string }) {
   const cooldownDate = violation.cooldown_until ? new Date(violation.cooldown_until) : null
@@ -131,6 +132,7 @@ interface SelectOption {
 }
 
 export default function PublicJobPosting() {
+  useCaptureApplySource()
   const params = useParams<{ slug?: string; postingSlug?: string }>()
   const slug = params.slug || params.postingSlug
   const navigate = useNavigate()
@@ -625,6 +627,8 @@ export default function PublicJobPosting() {
         location_sync: locationSync,
         phone_sync: phoneSync,
         linkedin_sync: linkedinSync,
+        // Where they came from (?src=, ?source=, utm tags, the sending site); the server decides the channel.
+        source_tags: applySourceTags(),
         eeo: (eeoResponses.gender || eeoResponses.race_ethnicity || eeoResponses.veteran_status || eeoResponses.disability_status)
           ? eeoResponses
           : null,

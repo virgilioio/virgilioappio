@@ -13,6 +13,7 @@ import { LoadError } from '@/components/empty/LoadError'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { CareersSkeleton } from '@/components/careers/public/CareersSkeleton'
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
+import { useCaptureApplySource } from '@/lib/applySource'
 
 // Hardcoded so the duplicate "Virgilio" org (with 0 jobs) can never be selected.
 // Org id is the one currently holding the 7 internal Virgilio job postings.
@@ -45,6 +46,7 @@ interface RawPosting {
 }
 
 export default function VirgilioCareersPage() {
+  useCaptureApplySource()
   const [settings, setSettings] = useState<CareersSettings | null>(null)
   const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null)
   const [postings, setPostings] = useState<RawPosting[]>([])

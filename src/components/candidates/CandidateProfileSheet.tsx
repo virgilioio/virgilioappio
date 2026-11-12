@@ -72,6 +72,8 @@ import { AgreementsCard } from '@/components/sign/AgreementsCard'
 import { useJobClient } from '@/hooks/useJobClient'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
+import { sourceLabel } from '@/lib/candidateLabels'
+import { appliedViaFor } from '@/lib/applySource'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { fetchEmailForReply } from '@/lib/emailLog'
 import { EmailHistoryCardEmail } from './EmailHistoryCard'
@@ -244,6 +246,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [isFavorite, setIsFavorite] = useState(false)
   // When they applied through a form (null when added by the team): phones show the application first.
   const [assocAppliedAt, setAssocAppliedAt] = useState<string | null>(null)
+  const [appliedVia, setAppliedVia] = useState<string | null>(null)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
   const [enteredStageAt, setEnteredStageAt] = useState<string | null>(null)
   const [stageWindowStartAt, setStageWindowStartAt] = useState<string | null>(null)
@@ -758,6 +761,7 @@ const stageHasAutomation = useMemo(() => {
     setCandidate(null)
     setAssociationId(null)
     setAssocAppliedAt(null)
+    setAppliedVia(null)
     setAssociationStatus(null)
     setIsFavorite(false)
     setCurrentStageId(null)
@@ -949,6 +953,8 @@ const stageHasAutomation = useMemo(() => {
         setWhatsAppTemplateSentAt((assoc as any)?.whatsapp_template_sent_at ?? null)
         setIsFavorite((assoc as any)?.is_favorite ?? false)
         setAssocAppliedAt((assoc as { applied_at?: string | null } | null)?.applied_at ?? null)
+        // Where the application came from (2026-11-12), with the teammate who shared the link.
+        setAppliedVia(assoc?.id ? await appliedViaFor(assoc.id) : null)
         
         // Set rejection details if rejected
         if (assoc?.status === 'rejected' && assoc?.rejected_at) {
@@ -1603,7 +1609,7 @@ const stageHasAutomation = useMemo(() => {
                                 candidate={candidate}
                                 job={job}
                                 appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
-                                source={candidate?.job_board_source || candidate?.source || null}
+                                source={appliedVia || sourceLabel(candidate?.job_board_source || candidate?.source) || null}
                                 urls={urls}
                                 filesCount={attachments.length}
                                 onFilesSelected={canEditCandidates ? handleSidebarFiles : undefined}
@@ -1688,7 +1694,7 @@ const stageHasAutomation = useMemo(() => {
                       candidateId={candidate.id}
                       jobId={jobId}
                       jobTitle={job?.title}
-                      source={candidate?.job_board_source || candidate?.source || null}
+                      source={appliedVia || sourceLabel(candidate?.job_board_source || candidate?.source) || null}
                       appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
                       currentStageName={isPhone && associationStatus === 'active' ? null : currentStage?.stage.stage_name || null}
                       daysInStage={daysInStage}
@@ -2352,7 +2358,7 @@ const stageHasAutomation = useMemo(() => {
                             <ProfileApplicationCard
                               appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
                               createdByName={createdByName}
-                              source={candidate?.job_board_source || candidate?.source || null}
+                              source={appliedVia || sourceLabel(candidate?.job_board_source || candidate?.source) || null}
                               compensation={formatSalaryExpectation(candidate as any)}
                               openTo={(candidate as any)?.location || null}
                               workAuth={(candidate as any)?.work_authorization || null}

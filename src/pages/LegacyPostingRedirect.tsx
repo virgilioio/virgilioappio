@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Navigate } from 'react-router-dom'
+import { useParams, Navigate, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { buildPostingPath } from '@/lib/postingUrl'
@@ -14,6 +14,8 @@ import PublicJobPosting from '@/pages/PublicJobPosting'
  */
 export default function LegacyPostingRedirect() {
   const { slug } = useParams<{ slug: string }>()
+  // Keep the link's tags (?src=, ?source=, utm) so the posting still knows where the visitor came from.
+  const { search } = useLocation()
   const [target, setTarget] = useState<string | null>(null)
   const [resolved, setResolved] = useState(false)
 
@@ -57,7 +59,7 @@ export default function LegacyPostingRedirect() {
     return () => { cancelled = true }
   }, [slug])
 
-  if (target) return <Navigate to={target} replace />
+  if (target) return <Navigate to={`${target}${search}`} replace />
   if (!resolved) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-virgilio-cream">

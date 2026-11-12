@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 import { applyCandidateUpdate } from "../_shared/candidateUpdate.ts";
+import { appliedViaText, resolveApplySource, type RawApplySource } from "../_shared/applySource.ts";
 import {
   extOf,
   isMediaKind,
@@ -52,6 +53,8 @@ interface SubmitApplicationPayload {
     confidence: number;
     source?: string;
   }>;
+  /** Where the applicant came from, as the careers page saw it (job exposure, 2026-11-12). */
+  source_tags?: RawApplySource | null;
   eeo?: {
     gender?: string | null;
     race_ethnicity?: string | null;
@@ -464,6 +467,37 @@ serve(withRequestCors(async (req) => {
       console.error("⚠️ Error looking up application_review stage:", stageErr);
     }
 
+    // Where the application came from (job exposure, 2026-11-12): the channel is decided
+    // here from the link's tags and the sending site, never taken from the browser. A
+    // share code is credited only to someone in the posting's workspace.
+    const applySource = resolveApplySource(
+      body.source_tags && typeof body.source_tags === "object" ? body.source_tags : null,
+    );
+    const { share_code: _shareCode, ...sourceDetail } = applySource.detail;
+    const applySourceDetail: Record<string, unknown> = { ...sourceDetail };
+    if (applySource.detail.share_code) {
+      try {
+        const { data: sharer } = await supabase
+          .from("posting_share_codes")
+          .select("user_id")
+          .eq("code", applySource.detail.share_code)
+          .maybeSingle();
+        if (sharer?.user_id) {
+          const { data: member } = await supabase
+            .from("members")
+            .select("user_id")
+            .eq("tenant_id", posting.tenant_id)
+            .eq("user_id", sharer.user_id)
+            .limit(1)
+            .maybeSingle();
+          if (member?.user_id) applySourceDetail.shared_by = sharer.user_id;
+        }
+      } catch (shareErr) {
+        console.warn("⚠️ Couldn't read the share code:", shareErr);
+      }
+    }
+    console.log(`🧭 Applied via ${applySource.channel}`);
+
     // Create association in Application Review stage using the GLOBAL candidate id
     // Check for existing association first to avoid unique constraint crash
     const { data: existingAssoc } = await supabase
@@ -484,6 +518,8 @@ serve(withRequestCors(async (req) => {
           entered_stage_at: new Date().toISOString(),
           // An application: job_settings screens it and tells the team (jca_z_application).
           applied_at: new Date().toISOString(),
+          applied_via: applySource.channel,
+          applied_via_detail: applySourceDetail,
         });
 
       if (assocErr) {
@@ -526,9 +562,9 @@ serve(withRequestCors(async (req) => {
         p_organization_id: (posting as any).job?.organization_id || null,
         p_tenant_id: posting.tenant_id || null,
         p_activity_type: 'candidate_applied',
-        p_title: 'Applied via job posting',
+        p_title: applySource.channel === 'direct' ? 'Applied via job posting' : `Applied via ${appliedViaText(applySource.channel, applySource.detail)}`,
         p_description: `Candidate applied for ${jobTitle}`,
-        p_metadata: {},
+        p_metadata: { applied_via: applySource.channel },
         p_entity_type: 'candidate',
         p_entity_id: globalCandidateId,
       });

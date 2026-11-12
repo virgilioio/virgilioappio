@@ -14,6 +14,7 @@ import { LoadError } from '@/components/empty/LoadError'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { CareersSkeleton } from '@/components/careers/public/CareersSkeleton'
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
+import { useCaptureApplySource } from '@/lib/applySource'
 
 // Virgilio internal org — its jobs live exclusively on /virgilio-careers, never here.
 const VIRGILIO_INTERNAL_ORG_ID = '4b8e739f-2b15-487e-8d31-0a2ce765a8ef'
@@ -44,6 +45,7 @@ interface RawPosting {
 }
 
 export default function PublicCareersPage() {
+  useCaptureApplySource()
   const { companySlug } = useParams<{ companySlug: string }>()
   const [settings, setSettings] = useState<CareersSettings | null>(null)
   const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null)
