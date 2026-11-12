@@ -126,6 +126,8 @@ interface ScorecardSheetProps {
   onScheduleFollowUp?: () => void;
   onReject?: () => void;
   scorecardVisibility?: ScorecardVisibility;
+  /** The left panel's tab on open ('transcript' from the Scorecards card's Show transcript). */
+  initialTab?: 'resume' | 'transcript';
 }
 
 interface QuestionResponse {
@@ -260,6 +262,7 @@ export function ScorecardSheet({
   onScheduleFollowUp,
   onReject,
   scorecardVisibility = 'private',
+  initialTab = 'resume',
 }: ScorecardSheetProps) {
   // No preset rating (interview notes step 5, 2026-11-12): a new scorecard and Gio's
   // draft start with none, so a rating is always the interviewer's own choice.
@@ -390,11 +393,9 @@ export function ScorecardSheet({
     setTranscriptFocus({ seconds, key: Date.now() });
   };
   useEffect(() => {
-    if (!open) {
-      setLeftTab('resume');
-      setTranscriptFocus(null);
-    }
-  }, [open]);
+    if (open) setLeftTab(initialTab);
+    else setTranscriptFocus(null);
+  }, [open, initialTab]);
 
 
   // Track current values in refs for reliable close-time saving

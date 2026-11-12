@@ -32,6 +32,8 @@ export interface ScorecardWithAuthor {
   /** Set when the stage it was written in was removed and it moved here. */
   moved_from_stage_name?: string | null;
   source_booking_id?: string | null;
+  /** Gio's recommendation on a draft (interview notes step 4). */
+  ai_recommendation?: unknown;
   /** Per-criterion 1–5 scores derived from score_1_5 question responses. */
   criterion_scores?: ScorecardCriterionScore[];
 }

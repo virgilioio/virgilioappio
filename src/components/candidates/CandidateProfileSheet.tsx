@@ -36,6 +36,7 @@ import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMa
 import { getSkillColor } from '@/utils/skillColors'
 import { ScorecardSheet } from '@/components/candidates/ScorecardSheet'
 import { useMyScorecards } from '@/hooks/useScorecards'
+import { retryInterviewNotes, useMyInterviewNotes } from '@/lib/interviewNotes'
 import { useAllStageScorecards } from '@/hooks/useAllStageScorecards'
 import { useAssociationScorecardSummary } from '@/hooks/useAssociationScorecardSummary'
 import { useAssociationScorecards } from '@/hooks/useAssociationScorecards'
@@ -316,6 +317,17 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
 // Scorecards
 const { rows: myScorecards, byStage: myScorecardsByStage, upsertMyScorecard, refetch: refetchScorecards, deleteMyScorecard } = useMyScorecards(associationId)
 const [scoreOpen, setScoreOpen] = useState(false)
+// Interview notes step 5b: the Scorecards card's line under your name and its Retry.
+const [scoreInitialTab, setScoreInitialTab] = useState<'resume' | 'transcript'>('resume')
+const myInterviewNotes = useMyInterviewNotes(associationId, user?.id)
+const handleRetryNotes = async (bookingId: string) => {
+  try {
+    await retryInterviewNotes(bookingId)
+  } catch (e) {
+    sonnerToast(e instanceof Error ? e.message : "Couldn't ask Gio to redo the notes.")
+  }
+  await myInterviewNotes.refetch()
+}
 const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
 const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
 // Set from a `?focus=my-scorecard` deep link — opens the current-stage scorecard editor once the stage is resolved.
@@ -2049,6 +2061,17 @@ const stageHasAutomation = useMemo(() => {
                               onDismissAiDraft={handleDismissAiDraft}
                               onRequest={(stageInstanceId, uid) => handleRequestScorecard(uid, stageInstanceId)}
                               onCompleteMine={handleCompleteMyScorecard}
+                              myNotes={myInterviewNotes.data}
+                              onRetryNotes={handleRetryNotes}
+                              onOpenTranscript={(scorecardId, stageInstanceId) => {
+                                const st = planStages.find(p => p.jhsId === stageInstanceId) ?? currentStage
+                                setScoreStageInstId(st.jhsId)
+                                setScoreStageName(st.stage.stage_name)
+                                setViewingScorecardId(scorecardId)
+                                setScoreInitialTab('transcript')
+                                setScoreOpen(true)
+                                onScorecardChange?.(scorecardId, st.jhsId)
+                              }}
                             />
                           )}
 
@@ -2433,6 +2456,8 @@ const stageHasAutomation = useMemo(() => {
                 if (!o) {
                   setScoreStageInstId(null)
                   setViewingScorecardId(null)
+                  setScoreInitialTab('resume')
+                  void myInterviewNotes.refetch()
                   onScorecardChange?.(null)
                 }
               }}
@@ -2451,6 +2476,7 @@ const stageHasAutomation = useMemo(() => {
               linkedinUrl={candidate?.linkedin_url}
               jobTitle={job?.title}
               scorecardVisibility={scorecardTemplateVisibility || 'private'}
+              initialTab={scoreInitialTab}
               onSubmit={async (rating, overview) => {
                 await upsertMyScorecard(scoreStageInstId!, rating, overview || '')
                 await refetchScorecards()

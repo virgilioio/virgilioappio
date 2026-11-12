@@ -1,5 +1,14 @@
 import { useMemo, useState } from 'react'
-import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check, PenLine } from 'lucide-react'
+import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check, PenLine, MoreHorizontal, ScrollText, Trash2 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { IconTip } from '@/components/ui/tooltip'
+import { draftLine, notesStatusView, type MyStageInterview } from '@/lib/interviewNotes'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -35,6 +44,12 @@ interface StageScorecardsCardProps {
   onRequest?: (stageInstanceId: string, interviewerUserId?: string) => Promise<void>
   /** Opens the current user's own scorecard editor for that stage. */
   onCompleteMine?: (stageInstanceId: string) => void
+  /** Your interview at each stage and where Gio's notes on it got to (step 5b). */
+  myNotes?: Record<string, MyStageInterview>
+  /** Ask Gio to write an interview's notes again. */
+  onRetryNotes?: (bookingId: string) => Promise<void>
+  /** Opens a draft in the scorecard sheet on its Transcript tab. */
+  onOpenTranscript?: (scorecardId: string, stageInstanceId: string) => void
 }
 
 function ratingTone(r?: string | null): 'green' | 'yellow' | 'orange' | 'red' | 'neutral' {
@@ -70,9 +85,107 @@ export function StageScorecardsCard({
   currentUserId,
   loading,
   onOpenFullSheet, onSubmitScorecard, onCompare, onDismissAiDraft,
-  onRequest, onCompleteMine,
+  onRequest, onCompleteMine, myNotes, onRetryNotes, onOpenTranscript,
 }: StageScorecardsCardProps) {
   const [requestingKey, setRequestingKey] = useState<string | null>(null)
+  const [retryingBooking, setRetryingBooking] = useState<string | null>(null)
+
+  const retry = async (bookingId: string) => {
+    if (!onRetryNotes) return
+    setRetryingBooking(bookingId)
+    try { await onRetryNotes(bookingId) } finally { setRetryingBooking(null) }
+  }
+
+  /**
+   * Interview notes step 5b (2026-11-12): Gio's draft lives in your own row, not in a
+   * banner above it: a "Gio draft" chip, a line saying what Gio found (or that it is
+   * still writing, or couldn't, with Retry), Review draft where Complete scorecard was,
+   * and the rest (Show transcript, Dismiss) in a ⋯ menu.
+   */
+  const gioChip = (
+    <span className="inline-flex h-[18px] items-center gap-1 whitespace-nowrap rounded-full border border-[#DCC9FA] bg-[#F5F1FE] px-1.5 font-inter text-[11px] font-medium text-[#5B21B6]">
+      <Sparkles className="h-3 w-3" aria-hidden="true" />
+      Gio draft
+    </span>
+  )
+
+  /** The line under your name: Gio's draft, Gio at work, or why there are no notes. */
+  const mineLine = (stageId: string, draft: ScorecardWithAuthor | undefined, fallback: string) => {
+    const notes = myNotes?.[stageId]
+    const view = notes ? notesStatusView(notes.row, { submitted: false }) : null
+    if (view?.tone === 'working') {
+      return (
+        <span className="inline-flex min-w-0 items-center gap-1.5 text-[#5B21B6]">
+          <span className="gio-spinner gio-spinner-current h-3 w-3 shrink-0" aria-hidden="true" />
+          <span className="truncate">{draft ? 'Gio is rewriting your notes…' : view.text}</span>
+        </span>
+      )
+    }
+    if (draft) return <span className="truncate text-[#5B21B6]">{draftLine(draft)}</span>
+    if (notes && view && (view.tone === 'problem' || view.tone === 'note')) {
+      return (
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <span className={view.tone === 'problem' ? 'truncate text-[#B91C1C]' : 'truncate'}>{view.text}</span>
+          {view.retry && onRetryNotes && (
+            <>
+              <span aria-hidden="true" className="text-[#B5B9C4]">·</span>
+              <button
+                type="button"
+                onClick={() => void retry(notes.bookingId)}
+                disabled={retryingBooking === notes.bookingId}
+                className="gio-pressable inline-flex shrink-0 items-center gap-1 whitespace-nowrap font-medium text-[#5B21B6] underline-offset-2 hover:underline disabled:opacity-60"
+              >
+                {retryingBooking === notes.bookingId && <span className="gio-spinner gio-spinner-current h-3 w-3" aria-hidden="true" />}
+                {view.retry}
+              </button>
+            </>
+          )}
+        </span>
+      )
+    }
+    return <span className="truncate">{fallback}</span>
+  }
+
+  /** Review draft and its ⋯ menu. */
+  const draftActions = (draft: ScorecardWithAuthor, stageId: string) => (
+    <>
+      <Button variant="primary" size="sm" icon={Sparkles} onClick={() => onOpenFullSheet(draft.id, stageId)}>
+        Review draft
+      </Button>
+      {((onOpenTranscript && draft.source_booking_id) || onDismissAiDraft) && (
+        <DropdownMenu modal={false}>
+          <IconTip label="More">
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="More"
+                className="gio-pressable inline-flex h-button-sm-v2 w-button-sm-v2 shrink-0 items-center justify-center rounded-lg border border-[#E7E8EE] bg-white text-[#5A6072] hover:bg-[#F6F5F1] data-[state=open]:bg-[#F6F5F1]"
+              >
+                <MoreHorizontal className="h-[15px] w-[15px]" strokeWidth={2} />
+              </button>
+            </DropdownMenuTrigger>
+          </IconTip>
+          <DropdownMenuContent align="end" sideOffset={6} className="z-[90] w-[240px]">
+            {onOpenTranscript && draft.source_booking_id && (
+              <DropdownMenuItem onSelect={() => onOpenTranscript(draft.id, stageId)}>
+                <ScrollText aria-hidden />
+                <span className="truncate">Show transcript</span>
+              </DropdownMenuItem>
+            )}
+            {onDismissAiDraft && (
+              <>
+                {onOpenTranscript && draft.source_booking_id && <DropdownMenuSeparator />}
+                <DropdownMenuItem className="text-destructive" onSelect={() => void onDismissAiDraft(draft.id)}>
+                  <Trash2 aria-hidden />
+                  <span className="truncate">Dismiss Gio's draft</span>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </>
+  )
   const [requestingAllStage, setRequestingAllStage] = useState<string | null>(null)
 
   const visibleGroups = useMemo(
@@ -155,6 +268,11 @@ export function StageScorecardsCard({
             const bannerActive = g.isCurrent && g.required && g.pending.length > 0
             const onlyMinePending =
               !!currentUserId && g.pending.length === 1 && g.pending[0]?.userId === currentUserId
+            // Gio's draft of your scorecard folds into your pending row; one with no
+            // pending row (you weren't on the required list) gets a row of its own.
+            const mePending = !!currentUserId && g.pending.some(p => p.userId === currentUserId)
+            const myDraft = drafts.find(d => d.created_by === currentUserId)
+            const ownRowDrafts = drafts.filter(d => !(mePending && d === myDraft))
 
             return (
               <div key={g.stageInstanceId} className="border-t border-virgilio-border/60 first:border-t-0">
@@ -188,11 +306,8 @@ export function StageScorecardsCard({
                         {g.totalExpected === 1 ? '' : 's'} still owe{g.pending.length === 1 ? 's' : ''} a scorecard for this stage.
                       </div>
                     </div>
-                    {onlyMinePending && onCompleteMine ? (
-                      <Button variant="primary" size="sm" icon={PenLine} onClick={() => onCompleteMine(g.stageInstanceId)}>
-                        Complete scorecard
-                      </Button>
-                    ) : onRequest ? (
+                    {/* When the only scorecard owed is yours, your row below has the button. */}
+                    {onlyMinePending ? null : onRequest ? (
                       <Button
                         variant="purple"
                         size="sm"
@@ -292,23 +407,32 @@ export function StageScorecardsCard({
                     )
                   })}
 
-                  {/* AI drafts (visible to author) */}
-                  {drafts.map((s) => (
-                    <div key={s.id} className="px-5 sm:px-6 py-3 flex items-center gap-3 bg-[hsl(var(--menu-selected))]/40">
-                      <Sparkles className="h-4 w-4 text-virgilio-purple shrink-0" />
-                      <div className="text-[12.5px] font-poppins text-text-primary flex-1 min-w-0">
-                        AI notes analysis available — review your draft
+                  {/* Gio's drafts with no pending row to fold into */}
+                  {ownRowDrafts.map((d) => {
+                    const name = d.author_name || d.author_email || 'You'
+                    const isMine = d.created_by === currentUserId
+                    return (
+                      <div key={d.id} className="px-5 sm:px-6 py-2.5 flex flex-wrap items-start gap-x-[9px] gap-y-2">
+                        <Avatar className="h-6 w-6 shrink-0">
+                          <AvatarFallback className="text-[10.5px] font-medium">{initials(name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1 basis-[220px]">
+                          <div className="flex items-center gap-[9px] flex-wrap">
+                            <span className="font-poppins font-medium text-[13px] text-text-primary">{name}</span>
+                            {isMine && <Badge tone="lilac" size="xs">You</Badge>}
+                            {gioChip}
+                          </div>
+                          <div className="mt-0.5 flex min-w-0 text-[12px] text-text-tertiary font-poppins">
+                            {isMine ? mineLine(g.stageInstanceId, d, '') : <span className="truncate">{draftLine(d)}</span>}
+                          </div>
+                        </div>
+                        <div className="ml-auto flex shrink-0 items-center gap-2">
+                          {draftActions(d, g.stageInstanceId)}
+                          <Badge tone="lilac" size="sm" dot className="shrink-0">Draft</Badge>
+                        </div>
                       </div>
-                      <Button variant="purple" size="xs" onClick={() => onOpenFullSheet(s.id, g.stageInstanceId)}>
-                        Review
-                      </Button>
-                      {onDismissAiDraft && (
-                        <Button variant="ghost" size="xs" onClick={() => onDismissAiDraft(s.id)}>
-                          Dismiss
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
 
                   {/* Pending rows */}
                   {g.pending.map((p) => {
@@ -316,27 +440,33 @@ export function StageScorecardsCard({
                     const timeStr = requested ? timeAgoShort(p.lastRequestedAt) : ''
                     const isBusy = requestingKey === `${g.stageInstanceId}:${p.userId}`
                     const isMe = !!currentUserId && p.userId === currentUserId
+                    const draft = isMe ? myDraft : undefined
+                    const fallback = !g.isCurrent ? `still pending from ${g.stageName}` : isMe
+                      ? 'your scorecard is pending'
+                      : requested
+                        ? `requested ${timeStr}`
+                        : 'awaiting scorecard'
                     return (
-                      <div key={`${g.stageInstanceId}:${p.userId}`} className="px-5 sm:px-6 py-2.5 flex items-start gap-[9px]">
+                      <div key={`${g.stageInstanceId}:${p.userId}`} className="px-5 sm:px-6 py-2.5 flex flex-wrap items-start gap-x-[9px] gap-y-2">
                         <Avatar className="h-6 w-6 shrink-0">
                           <AvatarFallback className="text-[10.5px] font-medium">{initials(p.name)}</AvatarFallback>
                         </Avatar>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 basis-[220px]">
                           <div className="flex items-center gap-[9px] flex-wrap">
                             <span className="font-poppins font-medium text-[13px] text-text-primary">{p.name}</span>
                             {isMe && <Badge tone="lilac" size="xs">You</Badge>}
                             {g.required && <Badge tone="purple" size="xs" dot>Required</Badge>}
+                            {draft && gioChip}
                           </div>
-                          <div className="mt-0.5 text-[12px] text-text-tertiary font-poppins">
-                            {p.roleLabel ? `${p.roleLabel} · ` : ''}
-                            {!g.isCurrent ? `still pending from ${g.stageName}` : isMe
-                              ? 'your scorecard is pending'
-                              : requested
-                                ? `requested ${timeStr}`
-                                : 'awaiting scorecard'}
+                          <div className="mt-0.5 flex min-w-0 text-[12px] text-text-tertiary font-poppins">
+                            {p.roleLabel && !draft && <span className="shrink-0">{p.roleLabel} ·&nbsp;</span>}
+                            {isMe ? mineLine(g.stageInstanceId, draft, fallback) : <span className="truncate">{fallback}</span>}
                           </div>
                         </div>
-                        {isMe && onCompleteMine ? (
+                        <div className="ml-auto flex shrink-0 items-center gap-2">
+                        {draft ? (
+                          draftActions(draft, g.stageInstanceId)
+                        ) : isMe && onCompleteMine ? (
                           <Button
                             variant="primary"
                             size="sm"
@@ -369,6 +499,7 @@ export function StageScorecardsCard({
                           )
                         ) : null}
                         <Badge tone="yellow" size="sm" dot className="shrink-0">Pending</Badge>
+                        </div>
                       </div>
                     )
                   })}

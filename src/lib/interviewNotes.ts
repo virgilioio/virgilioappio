@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { ScoreRating } from '@/hooks/useScorecards'
-import { coerceRating } from '@/lib/scorecardRatings'
+import { coerceRating, ratingLabel } from '@/lib/scorecardRatings'
 
 /**
  * Interview notes, step 5 (2026-11-12): what the scorecard sheet shows about Gio's
@@ -369,3 +369,76 @@ export async function retryInterviewNotes(bookingId: string): Promise<void> {
   const { error } = await rpc.call(supabase, 'interview_notes_retry', { p_booking: bookingId })
   if (error) throw new RetryError(RETRY_ERRORS[error.code as string] ?? "Couldn't ask Gio to redo the notes.")
 }
+
+// -- The Scorecards card on the profile (step 5b, 2026-11-12) ---------------------------
+
+export interface MyStageInterview {
+  bookingId: string
+  row: NotesStatusRow | null
+}
+
+/**
+ * Your interviews with this candidate in this job, the latest per stage, with where
+ * Gio's notes on each got to: the Scorecards card's line under your name.
+ */
+export function useMyInterviewNotes(associationId: string | null | undefined, userId: string | null | undefined) {
+  const qc = useQueryClient()
+  const key = ['my-interview-notes', associationId ?? null, userId ?? null] as const
+  const query = useQuery({
+    queryKey: key,
+    enabled: !!associationId && !!userId,
+    staleTime: 30_000,
+    queryFn: async (): Promise<Record<string, MyStageInterview>> => {
+      const { data, error } = await supabase
+        .from('scheduled_bookings')
+        .select(`id, job_hiring_stage_id, scheduled_start, interview_transcripts(${STATUS_COLUMNS})`)
+        .eq('job_candidate_association_id', associationId!)
+        .eq('interviewer_id', userId!)
+        .order('scheduled_start', { ascending: false })
+        .limit(50)
+      if (error) throw error
+      const out: Record<string, MyStageInterview> = {}
+      for (const b of (data ?? []) as Array<{ id: string; job_hiring_stage_id: string | null; interview_transcripts: unknown }>) {
+        if (!b.job_hiring_stage_id || out[b.job_hiring_stage_id]) continue
+        const t = Array.isArray(b.interview_transcripts) ? b.interview_transcripts[0] : b.interview_transcripts
+        out[b.job_hiring_stage_id] = { bookingId: b.id, row: (t as NotesStatusRow | null | undefined) ?? null }
+      }
+      return out
+    },
+    refetchInterval: (q) => {
+      const rows = Object.values((q.state.data as Record<string, MyStageInterview> | undefined) ?? {})
+      return rows.some((r) => r.row && ['received', 'fetching', 'ready', 'drafting'].includes(r.row.status)) ? 15_000 : false
+    },
+  })
+  const ids = Object.values(query.data ?? {}).map((r) => r.bookingId).sort().join(',')
+  useEffect(() => {
+    if (!ids) return
+    const channel = supabase
+      .channel(`my-interview-notes-${associationId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'interview_transcripts', filter: `booking_id=in.(${ids})` }, () => {
+        void qc.invalidateQueries({ queryKey: ['my-interview-notes', associationId ?? null, userId ?? null] })
+      })
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [ids, associationId, userId, qc])
+  return query
+}
+
+/** The line under your name when Gio has drafted your scorecard. */
+export function draftLine(draft: { ai_suggested_rating?: string | null; ai_recommendation?: unknown }): string {
+  const rec = parseRecommendation(draft.ai_recommendation)
+  const rating = coerceRating(draft.ai_suggested_rating ?? null) ?? rec?.rating ?? null
+  const summary = rec?.sourceKind === 'summary'
+  if (rating) {
+    const label = ratingLabel(rating)
+    const judged = rec ? rec.criteria.length : 0
+    const met = rec ? rec.criteria.filter((c) => c.verdict === 'met').length : 0
+    const tail = summary ? "from the note-taker's summary" : judged ? `${met} of ${judged} requirements met` : null
+    return [`Gio suggests ${label}`, tail].filter(Boolean).join(' · ')
+  }
+  if (summary) return "Gio drafted notes from the note-taker's summary"
+  return rec ? 'Gio drafted your notes · not enough to recommend' : 'Gio drafted your notes'
+}
+
