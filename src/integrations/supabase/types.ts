@@ -12321,6 +12321,7 @@ export type Database = {
         Args: { table_name: string; term_name: string }
         Returns: undefined
       }
+      interview_notes_retry: { Args: { p_booking: string }; Returns: Json }
       invite_token_status: {
         Args: { token_input: string }
         Returns: {

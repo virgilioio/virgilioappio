@@ -364,9 +364,7 @@ export class RetryError extends Error {}
 
 /** Ask Gio to write the notes again. Throws a RetryError with a readable message. */
 export async function retryInterviewNotes(bookingId: string): Promise<void> {
-  // Not in the generated types until the migration is applied and they're regenerated.
-  const rpc = supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ error: { code?: string } | null }>
-  const { error } = await rpc.call(supabase, 'interview_notes_retry', { p_booking: bookingId })
+  const { error } = await supabase.rpc('interview_notes_retry', { p_booking: bookingId })
   if (error) throw new RetryError(RETRY_ERRORS[error.code as string] ?? "Couldn't ask Gio to redo the notes.")
 }
 

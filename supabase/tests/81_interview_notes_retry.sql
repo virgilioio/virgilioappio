@@ -1,4 +1,4 @@
--- Run after 20261112053000_interview_notes_retry inside a transaction that is rolled back.
+-- Run after 20261112061203_interview_notes_retry inside a transaction that is rolled back.
 -- Retry on an interview's notes: the interviewer or whoever manages the job, never
 -- once the scorecard is submitted, never twice in a row; it starts one run.
 --   outsider     in the workspace, no seat on the job
