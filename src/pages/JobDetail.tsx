@@ -15,7 +15,9 @@ import { useJobPostings } from '@/hooks/useJobPostings'
 import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
 import { JobPostingsTab } from '@/components/jobs/JobPostingsTab'
 import { useCareersPageSettings } from '@/hooks/useCareersPageSettings'
-import { buildPostingPath } from '@/lib/postingUrl'
+import { buildPostingPath, buildPostingUrl } from '@/lib/postingUrl'
+import { postingFacts } from '@/lib/jobShare'
+import type { ShareKitPost } from '@/components/jobs/share/JobShareKit'
 import { copyToClipboard } from '@/utils/clipboard'
 import { inPipelineSection, saveCandidateNavOrder, type PipelineSection as NavSection } from '@/lib/candidateNavOrder'
 
@@ -1096,6 +1098,19 @@ export default function JobDetail() {
     }
   }
 
+  // The share kit (job exposure, 2026-11-12): only an open job's live post is shared.
+  const sharePost = useMemo<ShareKitPost | null>(() => {
+    if (!job || job.status !== 'open' || !activePosting?.is_active) return null
+    const facts = postingFacts((activePosting as { details?: Record<string, unknown> | null }).details ?? null, job as never)
+    return {
+      jobId: job.id,
+      tenantId: activePosting.tenant_id,
+      title: activePosting.title || job.title,
+      url: buildPostingUrl({ postingSlug: activePosting.slug, organizationId: job.organization_id ?? null, companySlug }),
+      facts: [facts.location, facts.workMode, facts.employmentType, facts.pay].filter((f): f is string => !!f),
+      logoUrl: careersSettings?.logo_url ?? null,
+    }
+  }, [job, activePosting, companySlug, careersSettings?.logo_url])
   if (error) {
     return (
       <div className="min-h-screen bg-virgilio-cream">
@@ -1208,6 +1223,7 @@ export default function JobDetail() {
                     setActiveTab('job-setup')
                     navigate(`/jobs/${id}/setup#hiring-team`)
                   }}
+                  sharePost={sharePost}
                   onViewPosting={() => {
                     openActivePosting()
                   }}

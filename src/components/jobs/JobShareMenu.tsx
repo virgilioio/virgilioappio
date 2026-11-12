@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconSwap } from '@/components/ui/icon-swap'
 import { useLocation } from 'react-router-dom'
-import { Link2, Check, Share2, Globe } from 'lucide-react'
+import { Link2, Check, Share2, Globe, Megaphone } from 'lucide-react'
+import { JobShareKit, type ShareKitPost } from './share/JobShareKit'
 import { pipelinePublicUrl, useJobPipelineShare } from '@/hooks/useJobPipelineShare'
 import { copyToClipboardSilent } from '@/utils/clipboard'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,8 @@ interface JobShareMenuProps {
   /** Only shown to users who can edit the hiring team. */
   canManageTeam?: boolean
   onManage?: () => void
+  /** The live job post, when there is one: "Share the job post" opens the share kit. */
+  post?: ShareKitPost | null
 }
 
 interface AccessPerson {
@@ -31,8 +34,9 @@ function initials(name: string) {
   return (a + b).toUpperCase() || name.slice(0, 2).toUpperCase() || '?'
 }
 
-export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShareMenuProps) {
+export function JobShareMenu({ jobId, canManageTeam = false, onManage, post = null }: JobShareMenuProps) {
   const [open, setOpen] = useState(false)
+  const [kitOpen, setKitOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [manualCopy, setManualCopy] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -240,6 +244,28 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
             </button>
           )}
 
+          {post && (
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                setKitOpen(true)
+              }}
+              className={cn(menuItem, 'items-start hover:bg-[hsl(var(--menu-hover))]')}
+            >
+              <span data-menu-lead className="grid place-items-center">
+                <Megaphone />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">Share the job post</span>
+                <span className="block text-[12px] leading-5 text-[hsl(var(--menu-group-color))]">
+                  Links, a post by Gio and an image
+                </span>
+              </span>
+            </button>
+          )}
+
           {/* The footer (Gio Docs' menu foot): who has access, and Manage. */}
           <div aria-hidden className={menuSeparator} />
           <div className="flex min-h-[28px] items-center gap-2 px-2 py-1 font-inter text-[12px] leading-5 text-[hsl(var(--menu-group-color))]">
@@ -277,6 +303,8 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
           </div>
         </div>
       )}
+
+      {post && <JobShareKit open={kitOpen} onOpenChange={setKitOpen} post={post} />}
     </div>
   )
 }

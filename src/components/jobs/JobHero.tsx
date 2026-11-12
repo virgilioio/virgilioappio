@@ -29,6 +29,7 @@ import {
 import { formatDistanceToNowStrict } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { JobShareMenu } from './JobShareMenu'
+import type { ShareKitPost } from './share/JobShareKit'
 import { DraftPill } from './drafts/DraftPill'
 
 type HiringTeamMember = {
@@ -43,6 +44,8 @@ interface JobHeroProps {
   jobId?: string
   canManageTeam?: boolean
   onManageAccess?: () => void
+  /** The live job post for the share kit (job exposure, 2026-11-12). */
+  sharePost?: ShareKitPost | null
   title: string
   status?: string | null
   priority?: string | null
@@ -108,6 +111,7 @@ export function JobHero({
   jobId,
   canManageTeam = false,
   onManageAccess,
+  sharePost = null,
   title,
   status,
   priority,
@@ -189,6 +193,7 @@ export function JobHero({
             jobId={jobId}
             canManageTeam={canManageTeam}
             onManage={onManageAccess}
+            post={sharePost}
           />
         )}
         {canEdit && (
