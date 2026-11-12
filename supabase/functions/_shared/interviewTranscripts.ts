@@ -5,6 +5,8 @@
 import {
   PROBLEM_REASON,
   fetchFirefliesTranscript,
+  findFirefliesMeeting,
+  type MeetingLookup,
   transcriptText,
   type FetchResult,
   type Sentence,
@@ -35,6 +37,7 @@ export const REASON = {
   noKey: "Gio isn't connected to Fireflies, so the notes use its summary.",
   noContext: "This interview isn't linked to a job stage, so Gio kept the transcript but wrote no notes.",
   failed: "Gio couldn't write the notes. Try again.",
+  notFound: "Gio couldn't find this interview in Fireflies, so there are no notes to draft.",
 } as const
 
 /** Where a cleaned email came from, as the table records it. */
@@ -119,6 +122,8 @@ interface EnsureOptions {
   /** Waits before asking again while Fireflies is still processing (ms). */
   retryAfter?: number[]
   sleep?: (ms: number) => Promise<void>
+  /** When no meeting id came with an email: find the interview in Fireflies by time and attendees. */
+  lookup?: MeetingLookup | null
 }
 
 /**
@@ -152,18 +157,25 @@ export async function sourceForNotes(
     return { text: transcriptText(row.sentences), kind: 'transcript', full: true, reason: null }
   }
 
-  const externalId = row.external_id ?? fallback.firefliesId
+  let externalId = row.external_id ?? fallback.firefliesId
   if (fallback.provider !== 'fireflies' && row.source !== 'fireflies_recap') {
     await setStatus(db, booking.id, 'ready')
     return { text: fallback.text, kind: fallback.kind, full: false, reason: null }
   }
-  if (!externalId) {
-    await setStatus(db, booking.id, 'ready', REASON.noLink)
-    return { text: fallback.text, kind: fallback.kind, full: false, reason: REASON.noLink }
-  }
   if (!opts.apiKey) {
     await setStatus(db, booking.id, 'ready', REASON.noKey)
     return { text: fallback.text, kind: fallback.kind, full: false, reason: REASON.noKey }
+  }
+  if (!externalId && opts.lookup) {
+    await setStatus(db, booking.id, 'fetching')
+    const found = await findFirefliesMeeting(opts.lookup, opts.apiKey, opts.fetchImpl)
+    if (found.ok) externalId = found.id
+    else console.warn('[interview_transcripts] No Fireflies meeting found for', booking.id, found.problem)
+  }
+  if (!externalId) {
+    const reason = fallback.text.trim() ? REASON.noLink : REASON.notFound
+    await setStatus(db, booking.id, 'ready', reason)
+    return { text: fallback.text, kind: fallback.kind, full: false, reason }
   }
 
   await setStatus(db, booking.id, 'fetching')

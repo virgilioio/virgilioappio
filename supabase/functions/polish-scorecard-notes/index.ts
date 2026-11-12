@@ -1,9 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import {
+  NOTES_RULES,
+  criteriaPrompt,
+  jobCriteria,
+  languageCode,
+  notesTool,
+  renderNotes,
+  settleRecommendation,
+  type ModelNotes,
+} from '../_shared/interviewNotesFormat.ts';
+
+// Polish notes (2026-11-12, interview notes step 4): the interviewer's own notes and
+// answers rewritten in the same structure as Gio's drafts (Summary, Strengths,
+// Concerns, Motivation & logistics, Not covered, Recommendation against the job's
+// requirements), in the language the notes are written in. Returns Markdown; the
+// sheet turns it into the box's HTML. Reads under the caller's own access.
+
 function stripHtml(html: string): string {
   if (!html) return '';
   return html
@@ -54,7 +70,7 @@ serve(async (req) => {
     // Fetch candidate profile
     const { data: candidate, error: candidateError } = await supabase
       .from('candidates')
-      .select('profile_summary, candidate_name')
+      .select('candidate_name, role_current, company_current')
       .eq('id', candidateId)
       .single();
 
@@ -63,20 +79,16 @@ serve(async (req) => {
       throw new Error('Failed to fetch candidate data');
     }
 
-    // Get candidate profile
-    let candidateProfile = candidate.profile_summary || '';
-    if (!candidateProfile) {
-      candidateProfile = `${candidate.candidate_name} - No profile summary available`;
-    }
-
     // Fetch job context from stage instance
     const { data: stageInstance, error: stageError } = await supabase
       .from('job_hiring_stages')
       .select(`
         job_id,
         jobs!inner(
-          title,
-          description
+          title, description, skills, skill_priorities, min_years_experience, max_years_experience,
+          location, additional_locations, location_requirement, work_mode,
+          salary_min, salary_max, salary_period, currency,
+          budget_salary_min, budget_salary_max, budget_currency, budget_period
         )
       `)
       .eq('id', stageInstanceId)
@@ -86,18 +98,19 @@ serve(async (req) => {
       console.error('Error fetching job context:', stageError);
     }
 
-    const jobTitle = stageInstance?.jobs?.title || 'Position';
-    const jobDescription = stageInstance?.jobs?.description || '';
+    const job: any = (stageInstance as any)?.jobs || {};
+    const jobTitle = job.title || 'Position';
+    const criteria = jobCriteria(job);
 
     // Format questions and answers
-    const formattedQuestionsAndAnswers = questions.map((q: any, idx: number) => {
+    const formattedQuestionsAndAnswers = (Array.isArray(questions) ? questions : []).map((q: any, idx: number) => {
       let answer = 'Not answered';
-      
+
       if (q.answer_type === 'salary_expectations' && q.answerText) {
         // Format salary with currency and period for better AI context
         const amount = parseFloat(q.answerText);
-        const formattedAmount = !isNaN(amount) 
-          ? amount.toLocaleString('en-US') 
+        const formattedAmount = !isNaN(amount)
+          ? amount.toLocaleString('en-US')
           : q.answerText;
         const currency = q.salary_config?.currency || 'USD';
         const period = q.salary_config?.period || 'annually';
@@ -111,69 +124,26 @@ serve(async (req) => {
       return `Q${idx + 1}. ${q.question_text}\nA: ${answer}`;
     }).join('\n\n');
 
-    // Construct AI prompt
-    const systemPrompt = `Create professional interview notes for a candidate using the following structure:
+    const systemPrompt = `You turn an interviewer's rough notes into clear interview notes for the hiring team, measured against what this job needs. The interviewer always makes the decision; your recommendation must be accurate and rest only on their notes and answers.
 
-1. Candidate Overview — Summarize the candidate's background, education, relevant experience, and current or most recent role. Include industries, company types, and sales motion exposure (e.g., SaaS, SMB, Mid-Market, Enterprise, full cycle, inbound/outbound).
-2. Key Strengths — Highlight 4–6 bullet points that capture the candidate's top abilities, such as communication skills, sales methodologies used, adaptability, prospecting discipline, strategic thinking, consultative selling, cross-functional collaboration, and measurable results or metrics.
-3. Growth Areas — Outline 1–2 developmental areas or learning opportunities. Keep these constructive and realistic, focused on coaching, adaptation, or market-specific knowledge.
-4. Motivation & Personal Context — Summarize the candidate's personal drivers, career goals, and cultural fit indicators (e.g., coachability, curiosity, resilience, or team mindset). Include any relevant personal details that reflect stability, motivation, or professional maturity.
-5. Assessment Summary — Provide a final qualitative evaluation that synthesizes the candidate's fit for the specific role. Emphasize their readiness, alignment with Motive's culture, and the level of confidence in recommending next steps. End with a clear recommendation line (e.g., "Strongly recommend advancing to panel," "Recommended for next stage," or "Not a fit for this role currently").
+SOURCE: The interviewer's own notes and their answers to the scorecard questions, not a transcript. Keep every fact they wrote, add none: no quotes, no times, nothing filled in from the resume or the job description. Where the notes don't cover a requirement, judge it not_discussed and list it in not_covered.
 
-Tone & Format:
+${NOTES_RULES}
 
-* Professional and concise
-* Use clear subheadings and bullet points
-* Keep the writing factual, neutral, and readable for internal use.
-* Reflect the language and structure below:
+LANGUAGE: the language of the interviewer's notes (and answers); for mixed notes, the language most of the notes are in.`;
 
-Candidate Overview
-
-[Brief summary paragraph]
-
-Key Strengths
-
-* [Strength 1]
-* [Strength 2]
-* [Strength 3]
-
-Growth Areas
-
-* [Growth Area 1]
-* [Growth Area 2]
-
-Motivation & Personal Context
-[Brief paragraph capturing motivation, context, or career aspirations]
-
-Assessment Summary
-[Final evaluative paragraph summarizing fit, readiness, and recommendation]
-
-Recommendation: [Advance / Hold / Reject]`;
-
-    const userPrompt = `Please create comprehensive interview notes for the following candidate.
-
-**Candidate Profile:**
-${candidateProfile}
-
-**Position:**
-${jobTitle}
-${jobDescription ? `\n\n**Job Description:**\n${stripHtml(jobDescription)}` : ''}
-
-**Interview Questions & Candidate Responses:**
-${formattedQuestionsAndAnswers}
-
-**Interviewer's Raw Notes:**
-${currentNotes ? stripHtml(currentNotes) : "No additional notes provided."}
-
----
-
-Based on the above information, create professional interview notes following the exact structure specified in your system instructions. Ensure all sections are complete, factual, and provide actionable insights for the hiring team.
-
-IMPORTANT - Language Rule: Detect the language used in the "Interviewer's Raw Notes" and "Interview Questions & Candidate Responses" sections above. Generate the ENTIRE output (including section headings, bullet points, and recommendation) in that SAME language. For example, if the notes are in Spanish, write everything in Spanish. If in Portuguese, write everything in Portuguese. If in English, write in English. Do NOT translate -- match the original language exactly. If the input is mixed-language, default to the dominant language of the raw notes.`;
+    const userPrompt = [
+      `JOB: ${jobTitle}`,
+      job.description ? `JOB DESCRIPTION:\n${stripHtml(job.description).slice(0, 4000)}` : '',
+      criteriaPrompt(criteria, job),
+      `CANDIDATE (context only, never evidence): ${candidate.candidate_name}${candidate.role_current ? `, ${candidate.role_current}` : ''}${candidate.company_current ? ` at ${candidate.company_current}` : ''}`,
+      formattedQuestionsAndAnswers ? `INTERVIEW QUESTIONS AND THE INTERVIEWER'S ANSWERS:\n${formattedQuestionsAndAnswers}` : '',
+      `INTERVIEWER'S NOTES:\n${currentNotes ? stripHtml(currentNotes) : 'No notes written.'}`,
+      'Submit the notes with submit_interview_notes.',
+    ].filter(Boolean).join('\n\n');
 
     console.log('Calling OpenAI API...');
 
-    // Call OpenAI API
     const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -186,10 +156,12 @@ IMPORTANT - Language Rule: Detect the language used in the "Interviewer's Raw No
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_completion_tokens: 6000,
+        max_completion_tokens: 8000,
         reasoning_effort: 'low',
+        tools: [notesTool(false)],
+        tool_choice: { type: 'function', function: { name: 'submit_interview_notes' } },
       }),
-    }, 'polish-scorecard-notes');
+    }, 'polish-scorecard-notes', { timeoutMs: 90_000 });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -198,27 +170,36 @@ IMPORTANT - Language Rule: Detect the language used in the "Interviewer's Raw No
     }
 
     const data = await response.json();
-    const polishedNotes = data.choices[0].message.content;
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) throw new Error('No notes came back');
+    const notes: ModelNotes = JSON.parse(toolCall.function.arguments);
+    const recommendation = settleRecommendation(notes.recommendation, notes.criteria, criteria, {
+      full: false,
+      sourceKind: 'transcript',
+      language: languageCode(notes.language),
+    });
+    // The interviewer's own notes: no "from the summary" line, no quotes.
+    const polishedNotes = renderNotes(notes, { ...recommendation, source_kind: 'transcript' }, { full: false });
 
     console.log('Polish notes successful');
 
     return new Response(
-      JSON.stringify({ polishedNotes }),
-      { 
+      JSON.stringify({ polishedNotes, recommendation }),
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200
       }
     );
 
   } catch (error) {
     console.error('Error in polish-scorecard-notes function:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      JSON.stringify({
+        error: error instanceof Error ? error.message : 'Unknown error'
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: 500
       }
     );
   }

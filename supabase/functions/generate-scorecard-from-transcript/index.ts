@@ -7,15 +7,42 @@ import { formatEmailList } from "../_shared/emailTemplate.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
-import { SUGGESTED_RATINGS, cleanInboundText, scorecardLink, tooLittleToDraft, toSuggestedRating, type SourceKind } from '../_shared/interviewNotes.ts';
+import { cleanInboundText, scorecardLink, tooLittleToDraft, type SourceKind } from '../_shared/interviewNotes.ts';
 import { REASON, setStatus, sourceForNotes } from '../_shared/interviewTranscripts.ts';
+import {
+  NOTES_RULES,
+  answerRows,
+  criteriaPrompt,
+  jobCriteria,
+  languageCode,
+  notesTool,
+  payBand,
+  questionsPrompt,
+  renderNotes,
+  salaryAmount,
+  salaryVerdict,
+  settleRecommendation,
+  type ModelNotes,
+  type QuestionForNotes,
+  type Verdict,
+} from '../_shared/interviewNotesFormat.ts';
+import { loadCurrencyRates, normaliseSalary } from '../_shared/salary.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-secret',
 };
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+/** "<p>..</p>" to plain text, for the job description in the prompt. */
+const plain = (html: string | null | undefined) =>
+  String(html ?? '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|li|h[1-6])>/gi, '\n').replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\n{3,}/g, '\n\n').trim();
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -24,42 +51,52 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.gogio.io';
 
-  // Only process-transcript-webhook calls this (with the service role key): it can
-  // fetch from Fireflies and rewrite a draft, so nobody else may start it.
+  // Only the server starts this: process-transcript-webhook (service role key) or a
+  // run from the database (x-internal-secret, as the scheduled jobs send). It can
+  // fetch from Fireflies and rewrite a draft, so nobody else may.
   const auth = req.headers.get('Authorization') ?? '';
-  if (!supabaseServiceKey || auth !== `Bearer ${supabaseServiceKey}`) {
-    return new Response(JSON.stringify({ error: 'Not allowed' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+  const internal = Deno.env.get('INTERNAL_FUNCTION_SECRET') ?? '';
+  const allowed =
+    (!!supabaseServiceKey && auth === `Bearer ${supabaseServiceKey}`) ||
+    (!!internal && req.headers.get('x-internal-secret') === internal);
+  if (!allowed) return json({ error: 'Not allowed' }, 401);
 
-  let booking_id: string | null = null;
+  let body: { booking_id?: string; find?: boolean } = {};
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: 'booking_id is required' }, 400);
+  }
+  if (!body.booking_id) return json({ error: 'booking_id is required' }, 400);
+
+  // Drafting takes a minute or two (a whole interview, a reasoning model): answer at
+  // once and keep working, so no caller times out. interview_transcripts.status says
+  // where it got to.
+  const work = draft(supabaseUrl, supabaseServiceKey, body.booking_id, body.find === true);
+  // @ts-ignore EdgeRuntime is provided by the Supabase edge runtime
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(work);
+    return json({ status: 'started', booking_id: body.booking_id }, 202);
+  }
+  return await work;
+});
+
+async function draft(supabaseUrl: string, supabaseServiceKey: string, booking_id: string, find: boolean): Promise<Response> {
+  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.gogio.io';
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
   let drafting = false;
-  const supabaseForStatus = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    ({ booking_id } = await req.json());
-
-    if (!booking_id) {
-      return new Response(JSON.stringify({ error: 'booking_id is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log('[generate-scorecard] Processing booking:', booking_id);
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log('[generate-scorecard] Processing booking:', booking_id, find ? '(find in Fireflies)' : '');
 
     // Fetch full booking context (without FK join to profiles)
     const { data: booking, error: bookingError } = await supabase
       .from('scheduled_bookings')
       .select(`
         *,
-        job:jobs(id, title, description, organization_id),
+        job:jobs(id, title, description, organization_id, tenant_id, skills, skill_priorities, min_years_experience, max_years_experience, location, additional_locations, location_requirement, work_mode, salary_min, salary_max, salary_period, currency, budget_salary_min, budget_salary_max, budget_currency, budget_period),
         candidate:candidates(id, candidate_name, email, profile_summary, resume_url, skills, role_current, company_current),
         job_hiring_stage:job_hiring_stages(
           id,
@@ -71,10 +108,7 @@ serve(async (req) => {
 
     if (bookingError || !booking) {
       console.error('[generate-scorecard] Booking not found:', bookingError);
-      return new Response(JSON.stringify({ error: 'Booking not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'Booking not found' }, 404);
     }
 
     // Fetch interviewer separately (no FK constraint exists)
@@ -91,41 +125,31 @@ serve(async (req) => {
     // Skip scorecard generation for simple bookings (no pipeline context)
     if (!booking.candidate_id || !booking.job_hiring_stage_id) {
       console.log('[generate-scorecard] Simple booking detected - skipping scorecard generation');
-      return new Response(JSON.stringify({ 
-        status: 'skipped',
-        reason: 'simple_booking_no_pipeline_context',
-        booking_id 
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ status: 'skipped', reason: 'simple_booking_no_pipeline_context', booking_id });
     }
 
     const meta = (booking.transcript_metadata || {}) as Record<string, any>;
-    if (!booking.transcript_raw && !meta.fireflies_id) {
+    if (!booking.transcript_raw && !meta.fireflies_id && !find) {
       console.error('[generate-scorecard] No transcript found for booking');
-      return new Response(JSON.stringify({ error: 'No transcript available' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'No transcript available' }, 400);
     }
 
     console.log('[generate-scorecard] Booking loaded:', {
       candidate: booking.candidate?.candidate_name,
       job: booking.job?.title,
       stage: booking.job_hiring_stage?.stage?.stage_name,
-      transcript_length: (booking.transcript_raw || "").length,
+      transcript_length: (booking.transcript_raw || '').length,
     });
 
     // Fetch scorecard questions for this stage if available
-    let scorecardQuestions: any[] = [];
+    let scorecardQuestions: QuestionForNotes[] = [];
     if (booking.job_hiring_stage?.id) {
       const { data: template } = await supabase
         .from('stage_scorecard_templates')
         .select(`
           id,
           questions:scorecard_interview_questions(
-            id, question_text, answer_type, is_required, display_order, select_options, retired_at
+            id, question_text, answer_type, is_required, display_order, select_options, salary_config, retired_at
           )
         `)
         .eq('job_hiring_stage_id', booking.job_hiring_stage.id)
@@ -140,51 +164,46 @@ serve(async (req) => {
       }
     }
 
-    // Build context for AI
-    const candidateContext = booking.candidate ? `
-CANDIDATE PROFILE:
-- Name: ${booking.candidate.candidate_name}
-- Current Role: ${booking.candidate.role_current || 'Not specified'}
-- Current Company: ${booking.candidate.company_current || 'Not specified'}
-- Skills: ${booking.candidate.skills?.join(', ') || 'Not specified'}
-- Profile Summary: ${booking.candidate.profile_summary || 'Not available'}
-` : '';
-
-    const jobContext = booking.job ? `
-JOB CONTEXT:
-- Position: ${booking.job.title}
-- Description: ${booking.job.description?.substring(0, 1000) || 'Not available'}
-` : '';
-
-    const stageContext = booking.job_hiring_stage?.stage ? `
-INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}
-` : '';
-
-    // Build enhanced questions context with IDs, types, and options for tool calling
-    const questionsContext = buildQuestionsContext(scorecardQuestions);
-
     // What arrived is cleaned when it's received (process-transcript-webhook); older rows
     // still hold the whole recap email, so clean them the same way here.
     let sourceKind: SourceKind = meta.source_kind === 'summary' || meta.source_kind === 'transcript' ? meta.source_kind : 'transcript';
     let sourceText: string = booking.transcript_raw || '';
-    let provider = (meta.provider || 'other') as 'fireflies' | 'read_ai' | 'other';
+    let provider = (meta.provider || (find ? 'fireflies' : 'other')) as 'fireflies' | 'read_ai' | 'other';
     let firefliesId: string | null = meta.fireflies_id ?? null;
-    if (!meta.source_kind) {
-      const cleaned = cleanInboundText(booking.transcript_raw || '', String(meta.from || ''));
+    if (!meta.source_kind && booking.transcript_raw) {
+      const cleaned = cleanInboundText(booking.transcript_raw, String(meta.from || ''));
       sourceText = cleaned.text;
       sourceKind = cleaned.kind;
       provider = cleaned.provider;
       firefliesId = cleaned.firefliesId;
     }
+    if (!booking.transcript_raw) sourceKind = 'summary';
 
-    // The whole conversation from Fireflies' API when there is one (step 3,
-    // 2026-11-12); otherwise the recap's summary, saying why.
+    // The whole conversation from Fireflies' API when there is one (step 3); with no
+    // meeting id, Gio looks the interview up in Fireflies by time and the candidate's
+    // email (step 4); otherwise the recap's summary, saying why.
+    const candidateEmails = [booking.candidate_email, booking.candidate?.email].filter(Boolean) as string[];
     const source = await sourceForNotes(
       supabase,
       { id: booking.id, tenant_id: booking.tenant_id },
       { text: sourceText, kind: sourceKind, provider, firefliesId },
-      { apiKey: Deno.env.get('FIREFLIES_API_KEY') },
+      {
+        apiKey: Deno.env.get('FIREFLIES_API_KEY'),
+        lookup: provider === 'fireflies' && booking.scheduled_start
+          ? {
+              start: booking.scheduled_start,
+              end: booking.scheduled_end || booking.scheduled_start,
+              emails: [...new Set(candidateEmails)],
+              name: booking.candidate?.candidate_name || booking.candidate_name,
+            }
+          : null,
+      },
     );
+    if (!source.full && !source.text.trim()) {
+      // Nothing reached Gio and Fireflies has nothing for this interview: no draft.
+      await setStatus(supabase, booking_id, 'failed', source.reason || REASON.notFound);
+      return json({ status: 'not_found', booking_id });
+    }
     sourceText = source.text;
     sourceKind = source.kind;
     const interviewerName = [interviewer?.first_name, interviewer?.last_name].filter(Boolean).join(' ').trim();
@@ -200,16 +219,16 @@ INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}
     // Counts real content only: no recap header lines, timestamps, speaker labels,
     // join/leave notices or fillers (src: _shared/interviewNotes.ts).
     const nothingSaid = tooLittleToDraft(transcriptContent, sourceKind);
-    console.log('[generate-scorecard] Source kind:', sourceKind, 'length:', transcriptContent.length, 'nothing said:', nothingSaid);
+    console.log('[generate-scorecard] Source kind:', sourceKind, 'full:', source.full, 'length:', transcriptContent.length, 'nothing said:', nothingSaid);
 
     if (nothingSaid) {
       console.log('[generate-scorecard] Empty/near-empty conversation detected, skipping AI analysis');
       await setStatus(supabase, booking_id, 'nothing_said', source.reason);
-      
+
       const emptyMessage = sourceKind === 'summary'
         ? "The note-taker's summary of this call has nothing about the interview in it, so Gio has no notes to draft. Open the recording to check, or write your notes yourself."
         : 'No substantive conversation took place during this call. The interview may need to be rescheduled.';
-      
+
       // Still create/update the AI draft scorecard but with empty-conversation message
       if (booking.job_candidate_association_id && booking.job_hiring_stage?.id && interviewer?.user_id) {
         const { data: existingScorecard } = await supabase
@@ -227,6 +246,7 @@ INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}
             .update({
               general_overview: emptyMessage,
               ai_suggested_rating: null,
+              ai_recommendation: null,
               source_booking_id: booking_id,
               updated_at: new Date().toISOString(),
             })
@@ -258,74 +278,52 @@ INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}
           .update({ transcript_summary: emptyMessage })
           .eq('id', booking_id);
 
-        return new Response(JSON.stringify({
-          status: 'empty_conversation',
-          booking_id,
-          scorecard_id: scorecardId,
-          message: emptyMessage,
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return json({ status: 'empty_conversation', booking_id, scorecard_id: scorecardId, message: emptyMessage });
       }
     }
     // === END EMPTY CONVERSATION GUARD ===
 
-    const systemPrompt = `You are an expert interview analyst helping recruiters document interview feedback. Your task is to analyze an interview transcript and generate structured, professional interview notes.
+    // What the recommendation is measured against: the job's own requirements.
+    const job = booking.job || {};
+    const criteria = jobCriteria(job);
+    const band = payBand(job);
 
-CRITICAL — EMPTY OR NEAR-EMPTY TRANSCRIPTS:
-If the transcript contains only greetings, silence markers, or system messages with no substantive interview discussion, respond with:
-- general_overview: "No substantive interview discussion took place during this call."
-- suggested_rating: "not_enough"
-- question_responses: all set to "[No discussion took place during this interview]"
-Do NOT use the candidate's resume, profile, or job description to fabricate interview notes. Your analysis must be based solely on what was actually said during the interview.
+    const sourceNote = source.full
+      ? `SOURCE: The full transcript of the call. Each line is one turn: "[m:ss] Speaker name: what they said", the time counted from the start of the call. ${interviewerName ? `${interviewerName} is the interviewer` : 'The interviewer works for the hiring team'}${candidateName ? `; ${candidateName} is the candidate` : ''}. The note-taker names speakers from the calendar, so someone may appear under another name or as "Speaker"; work out who is who from what they say. Quote exactly, and give the time of every quote (the "at" fields, m:ss).`
+      : sourceKind === 'summary'
+        ? `SOURCE: The note-taker's short written summary of the call, NOT a word-for-word transcript. Write only what it states: no quotes, no times, nothing filled in from the resume or the job description. Keep the notes as short as the summary allows, judge only the requirements it actually mentions, and list the rest in not_covered.`
+        : `SOURCE: The interview as the note-taker sent it. Quote only words that appear in it.`;
 
-${source.full ? `SOURCE: The full transcript of the call. Each line is one turn: "[m:ss] Speaker name: what they said", the time counted from the start of the call. ${interviewerName ? `${interviewerName} is the interviewer` : 'The interviewer works for the hiring team'}${candidateName ? `; ${candidateName} is the candidate` : ''}. The note-taker names speakers from the calendar, so someone may appear under another name or as "Speaker"; work out who is who from what they say. When you quote, quote exactly and add the time it was said, e.g. "..." (12:05).
+    const systemPrompt = `You write interview notes for a hiring team: what the candidate said, measured against what this job needs. The interviewer always makes the decision; your recommendation must be accurate and rest only on the interview.
 
-` : ''}${sourceKind === 'summary' ? `SOURCE: What you have is the note-taker's short written summary of the call, NOT a word-for-word transcript. Write only what the summary states. Do not invent quotes, examples, numbers or details, and do not fill gaps from the candidate's resume or the job description. Start the general_overview with one line saying the notes come from the note-taker's summary, not the full transcript. Instead of NOTABLE QUOTES, write "No transcript, so no quotes." Keep the notes as short as the summary allows.
+${sourceNote}
 
-` : ''}LANGUAGE: Write the general_overview, its section headings and every answer in the language the interview was held in (the language of the source below), whatever the language of these instructions, the job or the resume.
+${NOTES_RULES}
 
-Guidelines:
-- Be objective and evidence-based - cite specific examples from the transcript
-- Focus on job-relevant competencies and behaviors
-- Highlight both strengths and areas for development
-- Use professional language appropriate for HR documentation
-- Structure notes clearly with headers and bullet points
-- Suggest an overall rating on the scorecard's five-point scale, from what was said measured against this job's requirements: strong_yes, yes, lean_yes, lean_no or strong_no. Never default to yes. If the source says too little about the job's requirements to judge, use not_enough
-- CRITICAL: If a scorecard question topic was NOT discussed during the interview, explicitly state that rather than inferring or fabricating an answer. Honesty about information gaps is far more valuable than completeness. Never guess or extrapolate answers for topics not covered in the transcript.
+If the source has no real interview in it (greetings, silence, people joining), judge every requirement not_discussed and give the rating not_enough.`;
 
-Your general_overview should follow this format:
-1. OVERALL IMPRESSION (2-3 sentences)
-2. KEY STRENGTHS (3-5 bullet points with examples)
-3. AREAS FOR DEVELOPMENT (2-3 bullet points)
-4. NOTABLE QUOTES (2-3 direct quotes that stood out)
-5. RECOMMENDED RATING (Strong yes, Yes, Lean yes, Lean no, Strong no, or Not enough to recommend) with justification
+    const jobContext = [
+      `JOB: ${job.title || 'Position'}`,
+      booking.job_hiring_stage?.stage?.stage_name ? `INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}` : '',
+      job.description ? `JOB DESCRIPTION:\n${plain(job.description).slice(0, 4000)}` : '',
+      criteriaPrompt(criteria, job),
+    ].filter(Boolean).join('\n\n');
 
-${questionsContext}`;
+    const candidateContext = booking.candidate
+      ? `CANDIDATE (context only, never evidence): ${booking.candidate.candidate_name}${booking.candidate.role_current ? `, ${booking.candidate.role_current}` : ''}${booking.candidate.company_current ? ` at ${booking.candidate.company_current}` : ''}`
+      : '';
 
-    const userPrompt = `${candidateContext}\n${jobContext}\n${stageContext}\n\nINTERVIEW TRANSCRIPT:\n${transcriptContent}\n\nPlease analyze this interview and submit your structured evaluation using the submit_scorecard tool.`;
+    const userPrompt = [
+      jobContext,
+      candidateContext,
+      questionsPrompt(scorecardQuestions),
+      `INTERVIEW:\n${transcriptContent}`,
+      'Submit the notes with submit_interview_notes.',
+    ].filter(Boolean).join('\n\n');
 
-    console.log('[generate-scorecard] Calling OpenAI with tool calling...');
+    console.log('[generate-scorecard] Calling OpenAI, criteria:', criteria.length, 'questions:', scorecardQuestions.length);
     await setStatus(supabase, booking_id, 'drafting', source.reason);
     drafting = true;
-
-    // Build request body — use tool calling when questions exist, plain text as fallback
-    const hasQuestions = scorecardQuestions.length > 0;
-    const requestBody: any = {
-      model: AI_MODELS.reasoning,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      max_completion_tokens: 8000,
-      reasoning_effort: 'medium',
-    };
-
-    if (hasQuestions) {
-      requestBody.tools = [buildToolDefinition(scorecardQuestions)];
-      requestBody.tool_choice = { type: 'function', function: { name: 'submit_scorecard' } };
-    }
 
     const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -333,8 +331,18 @@ ${questionsContext}`;
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody),
-    }, 'generate-scorecard-from-transcript');
+      body: JSON.stringify({
+        model: AI_MODELS.reasoning,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        max_completion_tokens: 12000,
+        reasoning_effort: 'medium',
+        tools: [notesTool(scorecardQuestions.length > 0)],
+        tool_choice: { type: 'function', function: { name: 'submit_interview_notes' } },
+      }),
+    }, 'generate-scorecard-from-transcript', { timeoutMs: 180_000 });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -343,67 +351,53 @@ ${questionsContext}`;
     }
 
     const aiResponse = await response.json();
-
-    // Parse response — tool call or plain text
-    let generatedNotes: string;
-    let suggestedRating: string | null = null;
-    let questionResponses: Array<{ question_id: string; answer_text?: string; answer_options?: string[] }> = [];
-
-    const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
-
-    if (toolCall && toolCall.function?.name === 'submit_scorecard') {
-      // Tool calling path — structured output
-      try {
-        const parsed = JSON.parse(toolCall.function.arguments);
-        const rawOverview = parsed.general_overview || '';
-        // OpenAI sometimes returns an object instead of a markdown string
-        if (typeof rawOverview === 'object' && rawOverview !== null) {
-          generatedNotes = convertOverviewObjectToMarkdown(rawOverview);
-          console.log('[generate-scorecard] Converted object general_overview to markdown');
-        } else {
-          generatedNotes = rawOverview;
-        }
-        suggestedRating = toSuggestedRating(parsed.suggested_rating);
-        questionResponses = parsed.question_responses || [];
-        console.log('[generate-scorecard] Tool call parsed successfully, questions:', questionResponses.length);
-      } catch (parseErr) {
-        console.error('[generate-scorecard] Failed to parse tool call, falling back:', parseErr);
-        // Fallback: try to use message content
-        generatedNotes = aiResponse.choices[0]?.message?.content || '';
-      }
-    } else {
-      // Plain text fallback (no questions or tool call failed)
-      generatedNotes = aiResponse.choices[0]?.message?.content || '';
+    const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall || toolCall.function?.name !== 'submit_interview_notes') throw new Error('No notes came back from the model');
+    let notes: ModelNotes;
+    try {
+      notes = JSON.parse(toolCall.function.arguments);
+    } catch {
+      throw new Error('The notes that came back could not be read');
     }
 
-    if (!generatedNotes) {
-      throw new Error('No content generated from AI');
+    // Pay is the server's to judge: the stated figure on the band's own basis.
+    const rates = await loadCurrencyRates(supabase as any, booking.tenant_id ?? job.tenant_id ?? null);
+    const convert = (amount: number, fromC: string, fromP: string, toC: string, toP: string) =>
+      normaliseSalary(amount, fromC, fromP, toC, toP, rates)?.amount ?? null;
+    const stated = notes.stated_salary ?? null;
+    const statedAmount = salaryAmount(stated);
+    let payVerdict: Verdict | null = null;
+    if (band && statedAmount != null) {
+      const onBand = convert(statedAmount, String(stated?.currency || band.currency), String(stated?.period || band.period), band.currency, band.period);
+      // An order of magnitude apart means the figures aren't on the same basis.
+      const ref = Number(band.min ?? band.max ?? 0);
+      if (onBand != null && !(ref > 0 && (onBand / ref > 10 || ref / onBand > 10))) payVerdict = salaryVerdict(onBand, band.min, band.max);
     }
 
-    // Extract suggested rating from prose if not set by tool call
-    if (!toolCall) {
-      const ratingMatch = generatedNotes.match(/RECOMMENDED RATING[^:\n]*:\s*\**\s*(Strong Yes|Lean Yes|Lean No|Strong No|Definitely No|Yes|No)\b/i);
-      suggestedRating = ratingMatch ? toSuggestedRating(ratingMatch[1]) : null;
-    }
+    const language = languageCode(notes.language);
+    const recommendation = settleRecommendation(notes.recommendation, notes.criteria, criteria, {
+      full: source.full,
+      sourceKind,
+      language,
+      salaryVerdict: payVerdict,
+    });
+    const generatedNotes = renderNotes(notes, recommendation, { full: source.full });
+    const suggestedRating = recommendation.rating;
+    const rows = answerRows(scorecardQuestions, notes.question_responses ?? [], stated, convert);
 
-    console.log('[generate-scorecard] AI notes generated, length:', generatedNotes.length);
-
-    // Validate question IDs — only keep responses whose question_id exists in actual questions
-    const validQuestionIds = new Set(scorecardQuestions.map((q: any) => q.id));
-    questionResponses = questionResponses.filter(r => validQuestionIds.has(r.question_id));
-    console.log('[generate-scorecard] Validated question responses:', questionResponses.length);
+    if (!generatedNotes.trim()) throw new Error('No content generated from AI');
+    console.log('[generate-scorecard] Notes written:', generatedNotes.length, 'chars, rating:', suggestedRating, 'confidence:', recommendation.confidence, 'answers:', rows.length);
 
     // Store summary in booking
     await supabase
       .from('scheduled_bookings')
-      .update({
-        transcript_summary: generatedNotes,
-      })
+      .update({ transcript_summary: generatedNotes })
       .eq('id', booking_id);
 
     // Check if a scorecard already exists for this interviewer/stage/candidate
     let scorecardId = null;
-    
+    let isDraft = false;
+
     if (booking.job_candidate_association_id && booking.job_hiring_stage?.id && interviewer?.user_id) {
       const { data: existingScorecard } = await supabase
         .from('job_stage_scorecards')
@@ -421,6 +415,7 @@ ${questionsContext}`;
             .update({
               general_overview: generatedNotes,
               ai_suggested_rating: suggestedRating,
+              ai_recommendation: recommendation,
               source_booking_id: booking_id,
               updated_at: new Date().toISOString(),
             })
@@ -428,16 +423,10 @@ ${questionsContext}`;
 
           if (!updateError) {
             scorecardId = existingScorecard.id;
+            isDraft = true;
             console.log('[generate-scorecard] Updated existing draft scorecard:', scorecardId);
-
-            // Idempotency: delete old AI-generated question responses before inserting new ones
-            if (questionResponses.length > 0) {
-              await supabase
-                .from('scorecard_question_responses')
-                .delete()
-                .eq('scorecard_id', scorecardId);
-              console.log('[generate-scorecard] Cleared old question responses for idempotency');
-            }
+          } else {
+            console.error('[generate-scorecard] Failed to update draft:', updateError);
           }
         } else {
           console.log('[generate-scorecard] Existing scorecard is already submitted, not updating');
@@ -458,12 +447,14 @@ ${questionsContext}`;
             is_ai_draft: true,
             source_booking_id: booking_id,
             ai_suggested_rating: suggestedRating,
+            ai_recommendation: recommendation,
           })
           .select('id')
           .single();
 
         if (!insertError && newScorecard) {
           scorecardId = newScorecard.id;
+          isDraft = true;
           console.log('[generate-scorecard] Created new draft scorecard:', scorecardId);
 
           // Update booking with scorecard reference
@@ -477,27 +468,20 @@ ${questionsContext}`;
       }
     }
 
-    // Insert per-question AI responses
-    if (scorecardId && questionResponses.length > 0) {
-      const rows = questionResponses.map(r => ({
-        scorecard_id: scorecardId,
-        question_id: r.question_id,
-        answer_text: r.answer_text || null,
-        answer_options: r.answer_options || null,
-      }));
-
-      const { error: qrError } = await supabase
-        .from('scorecard_question_responses')
-        .insert(rows);
-
-      if (qrError) {
-        console.error('[generate-scorecard] Failed to insert question responses:', qrError);
-      } else {
-        console.log('[generate-scorecard] Inserted', rows.length, 'question responses');
+    // Gio's answers on a draft are replaced as a whole: an earlier draft's answers
+    // (an old "[Not discussed]" text, a Yes in the wrong field) never linger.
+    if (scorecardId && isDraft) {
+      await supabase.from('scorecard_question_responses').delete().eq('scorecard_id', scorecardId);
+      if (rows.length) {
+        const { error: qrError } = await supabase
+          .from('scorecard_question_responses')
+          .insert(rows.map((r) => ({ scorecard_id: scorecardId, ...r })));
+        if (qrError) console.error('[generate-scorecard] Failed to insert question responses:', qrError);
+        else console.log('[generate-scorecard] Inserted', rows.length, 'question responses');
       }
     }
 
-    // Send notification email to interviewer — once per booking.
+    // Send notification email to interviewer, once per booking.
     // Claim the notification atomically so a re-run (or a duplicate delivery)
     // regenerates the draft without re-emailing the interviewer.
     let notificationClaimed = false;
@@ -554,164 +538,22 @@ ${questionsContext}`;
 
     }
 
-    await setStatus(supabase, booking_id, 'drafted', source.reason);
+    await setStatus(supabase, booking_id, 'drafted', source.reason, language ? { language } : {});
     drafting = false;
 
-    return new Response(JSON.stringify({
+    return json({
       status: 'success',
       booking_id,
       scorecard_id: scorecardId,
       suggested_rating: suggestedRating,
+      confidence: recommendation.confidence,
       notes_length: generatedNotes.length,
-      questions_filled: questionResponses.length,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      questions_filled: rows.length,
     });
 
   } catch (error) {
     console.error('[generate-scorecard] Error:', error);
-    if (booking_id && drafting) await setStatus(supabaseForStatus, booking_id, 'failed', REASON.failed);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    if (drafting) await setStatus(supabase, booking_id, 'failed', REASON.failed);
+    return json({ error: (error as Error).message }, 500);
   }
-});
-
-// --- Helper functions ---
-
-function convertOverviewObjectToMarkdown(obj: any): string {
-  const sections: string[] = [];
-
-  // Handle nested { general_overview: { ... } } wrapper
-  const data = obj.general_overview && typeof obj.general_overview === 'object' ? obj.general_overview : obj;
-
-  if (data.overall_impression) {
-    sections.push(`## Overall Impression\n\n${data.overall_impression}`);
-  }
-  if (Array.isArray(data.key_strengths) && data.key_strengths.length > 0) {
-    sections.push(`## Key Strengths\n\n${data.key_strengths.map((s: string) => `- ${s}`).join('\n')}`);
-  }
-  if (Array.isArray(data.areas_for_development) && data.areas_for_development.length > 0) {
-    sections.push(`## Areas for Development\n\n${data.areas_for_development.map((s: string) => `- ${s}`).join('\n')}`);
-  }
-  if (Array.isArray(data.notable_quotes) && data.notable_quotes.length > 0) {
-    sections.push(`## Notable Quotes\n\n${data.notable_quotes.map((q: string) => `> ${q}`).join('\n\n')}`);
-  }
-  if (data.recommended_rating || data.justification) {
-    const ratingLabel = data.recommended_rating ? data.recommended_rating.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : '';
-    sections.push(`## Recommended Rating: ${ratingLabel}\n\n${data.justification || ''}`);
-  }
-
-  // Fallback: if no known keys matched, JSON.stringify as code block
-  if (sections.length === 0) {
-    return '```json\n' + JSON.stringify(obj, null, 2) + '\n```';
-  }
-
-  return sections.join('\n\n');
-}
-
-function buildQuestionsContext(questions: any[]): string {
-  if (questions.length === 0) return '';
-
-  const lines = questions
-    .filter((q: any) => q.answer_type !== 'salary_expectations') // Skip salary — too structured
-    .map((q: any, i: number) => {
-      let instruction = '';
-      switch (q.answer_type) {
-        case 'text':
-          instruction = 'provide a detailed text answer with evidence from the transcript';
-          break;
-        case 'yes_no':
-          instruction = 'answer "yes" or "no"';
-          break;
-        case 'single_select':
-          instruction = `pick exactly one option from: ${formatOptions(q.select_options)}`;
-          break;
-        case 'multi_select':
-          instruction = `pick one or more options from: ${formatOptions(q.select_options)}`;
-          break;
-        default:
-          instruction = 'provide a text answer';
-      }
-      return `${i + 1}. [id: ${q.id}] "${q.question_text}" (type: ${q.answer_type}) — ${instruction}`;
-    });
-
-  if (lines.length === 0) return '';
-
-  return `
-SCORECARD QUESTIONS — respond to each, but ONLY with evidence actually found in the transcript:
-${lines.join('\n')}
-
-IMPORTANT: If a question's topic was NOT discussed or covered during the interview, do NOT fabricate or infer an answer. Instead:
-- For "text" questions: set answer_text to exactly: "[Not discussed during this interview]"
-- For "yes_no" questions: set answer_text to "[Not discussed during this interview]" and set answer_options to an empty array []
-- For "single_select" questions: set answer_text to "[Not discussed during this interview]" and set answer_options to an empty array []
-- For "multi_select" questions: set answer_text to "[Not discussed during this interview]" and set answer_options to an empty array []
-
-When a question WAS discussed, populate the response normally:
-- For "text" questions: set answer_text with your evidence-based response
-- For "yes_no" questions: set answer_options to ["yes"] or ["no"]
-- For "single_select" questions: set answer_options to an array with exactly one of the provided options
-- For "multi_select" questions: set answer_options to an array with one or more of the provided options
-- Always use the exact question id provided in brackets
-- Only provide substantive answers when you can cite specific evidence from the transcript`;
-}
-
-function formatOptions(selectOptions: any): string {
-  if (!selectOptions) return 'N/A';
-  if (Array.isArray(selectOptions)) {
-    // Handle both string arrays and object arrays with label/value
-    return selectOptions.map((o: any) => typeof o === 'string' ? o : o.label || o.value || String(o)).join(' / ');
-  }
-  return String(selectOptions);
-}
-
-function buildToolDefinition(questions: any[]) {
-  return {
-    type: 'function' as const,
-    function: {
-      name: 'submit_scorecard',
-      description: 'Submit the complete interview analysis including general overview, suggested rating, and per-question responses',
-      parameters: {
-        type: 'object',
-        properties: {
-          general_overview: {
-            type: 'string',
-            description: 'Full analysis in markdown format covering overall impression, key strengths, areas for development, notable quotes, and rating justification',
-          },
-          suggested_rating: {
-            type: 'string',
-            enum: [...SUGGESTED_RATINGS, 'not_enough'],
-            description: "Overall rating on the scorecard's five-point scale, judged against this job's requirements; not_enough when the source doesn't cover enough of them",
-          },
-          question_responses: {
-            type: 'array',
-            description: 'Structured responses to each scorecard question. Include ALL questions — for questions not discussed in the interview, set answer_text to "[Not discussed during this interview]" and answer_options to [].',
-            items: {
-              type: 'object',
-              properties: {
-                question_id: {
-                  type: 'string',
-                  description: 'The exact UUID of the question from the scorecard',
-                },
-                answer_text: {
-                  type: 'string',
-                  description: 'Text answer for text-type questions',
-                },
-                answer_options: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Selected option(s) for yes_no, single_select, or multi_select questions',
-                },
-              },
-              required: ['question_id'],
-            },
-          },
-        },
-        required: ['general_overview', 'suggested_rating', 'question_responses'],
-      },
-    },
-  };
 }

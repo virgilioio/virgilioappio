@@ -12,16 +12,16 @@ import {
 // Shaped like the recaps Fireflies sends to the ingest address (2026-11).
 const RECAP = `Fred from Fireflies
 [https://files.fireflies.ai/email-templates/meeting-recap-v2/fred-notetaker.png]
-https://app.fireflies.ai/view/Recruiter-Screening-with-Luke-Seria-Head-of-Marketing::01M6VREDFGKZNPQN35SPKK4SFA?ref=recap&track=x
+https://app.fireflies.ai/view/Recruiter-Screening-with-Jordan-Rivera-Head-of-Marketing::01FAKEMEETING00000000TEST01?ref=recap&track=x
 Your meeting recap
-is ready Invited by Allan Bravo allan@virgilio.tech [allan@virgilio.tech]
+is ready Invited by Sam Ortiz allan@virgilio.tech [allan@virgilio.tech]
 
-Recruiter Screening with Luke Seria - Head of Marketing
+Recruiter Screening with Jordan Rivera - Head of Marketing
 
 Nov 11th at 11:30 AM CST
 
 View meeting recap
-[https://app.fireflies.ai/view/Recruiter-Screening-with-Luke-Seria-Head-of-Marketing::01M6VREDFGKZNPQN35SPKK4SFA?ref=recap]
+[https://app.fireflies.ai/view/Recruiter-Screening-with-Jordan-Rivera-Head-of-Marketing::01FAKEMEETING00000000TEST01?ref=recap]
 
 105+ Questions were asked
 
@@ -38,10 +38,10 @@ See more insights
    para ventas enterprise.
  * Objetivo comercial: Subir el ticket de advisory de aproximadamente 40K a
    100K–150K o más.
- * Experiencia: Luke aporta 17 años en marketing, 13 en partnerships y manejo de
+ * Experiencia: Jordan aporta 15 años en marketing, 11 en partnerships y manejo de
    presupuestos superiores a 1M.
- * Compensación y proceso: Luke requiere al menos 160K; entrevista con Asher el
-   viernes a las 11:00, seguida posiblemente por Ty.
+ * Compensación y proceso: Jordan requiere al menos 150K; entrevista con Morgan el
+   viernes a las 11:00, seguida posiblemente por Lee.
 
 View complete meeting notes
 [https://app.fireflies.ai/view/x]
@@ -55,7 +55,7 @@ Fireflies.ai Corp • 1000 Brickell Ave, Ste 715 PMB 5136 Miami, FL 33131`
 
 // An older recap with no overview at all (Manuel Perez, Aug 31): Gio wrote 4,000
 // characters of notes from it.
-const EMPTY_RECAP = `Allan Bravo
+const EMPTY_RECAP = `Sam Ortiz
 
 (allan@virgilio.tech) [allan@virgilio.tech]
 
@@ -96,18 +96,18 @@ describe('cleanInboundText: Fireflies recaps', () => {
     const c = cleanInboundText(RECAP, 'Fred from Fireflies <fred@fireflies.ai>')
     expect(c.kind).toBe('summary')
     expect(c.provider).toBe('fireflies')
-    expect(c.firefliesId).toBe('01M6VREDFGKZNPQN35SPKK4SFA')
+    expect(c.firefliesId).toBe('01FAKEMEETING00000000TEST01')
     expect(c.text).toBe(
       [
-        'Meeting: Recruiter Screening with Luke Seria - Head of Marketing',
+        'Meeting: Recruiter Screening with Jordan Rivera - Head of Marketing',
         'When: Nov 11th at 11:30 AM CST',
         'Topics: Generación de demanda, Marketing empresarial',
         '',
         'Meeting overview:',
         '- Rol: Head of Marketing para escalar una función existente y generar demanda para ventas enterprise.',
         '- Objetivo comercial: Subir el ticket de advisory de aproximadamente 40K a 100K–150K o más.',
-        '- Experiencia: Luke aporta 17 años en marketing, 13 en partnerships y manejo de presupuestos superiores a 1M.',
-        '- Compensación y proceso: Luke requiere al menos 160K; entrevista con Asher el viernes a las 11:00, seguida posiblemente por Ty.',
+        '- Experiencia: Jordan aporta 15 años en marketing, 11 en partnerships y manejo de presupuestos superiores a 1M.',
+        '- Compensación y proceso: Jordan requiere al menos 150K; entrevista con Morgan el viernes a las 11:00, seguida posiblemente por Lee.',
       ].join('\n'),
     )
     expect(c.text).not.toMatch(/https?:|Supercharge|Brickell/)

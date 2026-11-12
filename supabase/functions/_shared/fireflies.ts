@@ -179,3 +179,121 @@ export async function fetchFirefliesTranscript(
   if (!transcript.sentences.length) return { ok: false, problem: 'not_ready' }
   return { ok: true, transcript }
 }
+
+// -- Finding a meeting that sent no recap (step 4, 2026-11-12) ----------------------
+// When nothing reached the ingest address, Gio looks for the interview in Fireflies
+// by its time and the candidate's email, and takes the one meeting that matches.
+
+export const FIREFLIES_LIST_QUERY = `query GioFindMeeting($from: DateTime, $to: DateTime, $participants: [String!], $limit: Int) {
+  transcripts(fromDate: $from, toDate: $to, participants: $participants, limit: $limit) {
+    id
+    title
+    date
+    participants
+  }
+}`
+
+export interface MeetingListing {
+  id: string
+  title: string | null
+  /** Milliseconds since 1970, as Fireflies gives it. */
+  date: number | null
+  participants: string[]
+}
+
+export interface MeetingLookup {
+  /** The interview's scheduled start and end (ISO). */
+  start: string
+  end: string
+  /** The candidate's emails; a meeting must include one of them, or carry their name. */
+  emails: string[]
+  name?: string | null
+}
+
+const lc = (s: unknown) => String(s ?? '').trim().toLowerCase()
+
+/**
+ * The meeting that is this interview: it started within 45 minutes of the scheduled
+ * start and has the candidate among its participants (or their full name in the
+ * title). The closest one wins; nothing when none fits.
+ */
+export function pickMeeting(list: MeetingListing[], q: MeetingLookup): MeetingListing | null {
+  const start = Date.parse(q.start)
+  if (!Number.isFinite(start)) return null
+  const emails = new Set(q.emails.map(lc).filter(Boolean))
+  const nameParts = lc(q.name).split(/\s+/).filter((w) => w.length > 1)
+  const fits = list.filter((m) => {
+    if (m.date == null || Math.abs(m.date - start) > 45 * 60 * 1000) return false
+    if (m.participants.some((p) => emails.has(lc(p)))) return true
+    const title = lc(m.title)
+    return nameParts.length >= 2 && nameParts.every((w) => title.includes(w))
+  })
+  fits.sort((a, b) => Math.abs((a.date as number) - start) - Math.abs((b.date as number) - start))
+  return fits[0] ?? null
+}
+
+function toListing(raw: any): MeetingListing | null {
+  if (!raw?.id) return null
+  const date = typeof raw.date === 'number' ? raw.date : num(raw.date) ?? (raw.date ? Date.parse(String(raw.date)) : null)
+  return {
+    id: String(raw.id),
+    title: raw.title ? String(raw.title) : null,
+    date: date != null && Number.isFinite(date) ? date : null,
+    participants: Array.isArray(raw.participants) ? raw.participants.map((p: unknown) => String(p)) : [],
+  }
+}
+
+export type FindResult = { ok: true; id: string } | { ok: false; problem: FetchProblem }
+
+/** Ask Fireflies for the meetings around the interview, by the candidate's email first. */
+export async function findFirefliesMeeting(
+  q: MeetingLookup,
+  apiKey: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<FindResult> {
+  const start = Date.parse(q.start)
+  const end = Date.parse(q.end)
+  if (!Number.isFinite(start)) return { ok: false, problem: 'not_found' }
+  const from = new Date(start - 2 * 60 * 60 * 1000).toISOString()
+  const to = new Date((Number.isFinite(end) ? end : start) + 3 * 60 * 60 * 1000).toISOString()
+  const ask = async (participants: string[] | null): Promise<MeetingListing[] | FetchProblem> => {
+    let res: Response
+    try {
+      res = await fetchImpl(FIREFLIES_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          query: FIREFLIES_LIST_QUERY,
+          variables: { from, to, participants: participants ?? undefined, limit: 50 },
+        }),
+      })
+    } catch {
+      return 'error'
+    }
+    let body: any = null
+    try {
+      body = await res.json()
+    } catch {
+      body = null
+    }
+    const problem = problemFrom(res.status, body)
+    if (problem) return problem
+    const rows = Array.isArray(body?.data?.transcripts) ? body.data.transcripts : []
+    return rows.map(toListing).filter(Boolean) as MeetingListing[]
+  }
+  const emails = q.emails.map((e) => e.trim()).filter(Boolean)
+  let lastProblem: FetchProblem = 'not_found'
+  for (const participants of emails.length ? [emails, null] : [null]) {
+    const got = await ask(participants)
+    if (typeof got === 'string') {
+      lastProblem = got
+      // A wrong key or a rate limit won't change on a second ask; anything else
+      // (the participants filter refused, say) is worth one ask by time alone.
+      if (got === 'unauthorized' || got === 'rate_limited') break
+      continue
+    }
+    const hit = pickMeeting(got, q)
+    if (hit) return { ok: true, id: hit.id }
+  }
+  return { ok: false, problem: lastProblem }
+}

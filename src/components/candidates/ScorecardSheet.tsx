@@ -886,15 +886,16 @@ export function ScorecardSheet({
   };
 
   const handleAcceptAiSuggestion = () => {
+    if (aiAnalysis) setOverview(markdownToHtml(normalizeAiAnalysis(aiAnalysis)));
     if (suggestedRating) {
       setRating(suggestedRating);
-      if (aiAnalysis) {
-        setOverview(markdownToHtml(normalizeAiAnalysis(aiAnalysis)));
-      }
       toast({
         title: "AI suggestion applied",
         description: `Rating set to "${ratingLabel(suggestedRating)}"`,
       });
+    } else if (aiAnalysis) {
+      // No rating to apply (not enough to recommend): the notes still help.
+      toast({ title: "Gio's notes added", description: 'Choose the rating yourself.' });
     }
   };
 
@@ -1411,12 +1412,12 @@ export function ScorecardSheet({
                   />
                 )}
                 {/* AI Suggested Rating — structured lilac card */}
-                {isAiDraft && suggestedRating && aiAnalysis && (
+                {isAiDraft && aiAnalysis && (
                   <AiSuggestedRatingCard
                     rating={suggestedRating}
                     analysis={aiAnalysis}
                     normalizedMarkdown={normalizeAiAnalysis(aiAnalysis)}
-                    applied={suggestedRating === rating}
+                    applied={suggestedRating ? suggestedRating === rating : false}
                     onApply={handleAcceptAiSuggestion}
                     disabled={isReadOnly}
                   />

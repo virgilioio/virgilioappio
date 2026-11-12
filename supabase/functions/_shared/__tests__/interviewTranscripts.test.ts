@@ -39,8 +39,8 @@ function fakeDb(initial: Record<string, any> = {}) {
 }
 
 const SENTENCES = [
-  { index: 0, speaker_name: 'Allan Bravo', text: 'Tell me about your work.', start_time: 3, end_time: 5 },
-  { index: 1, speaker_name: 'Luke Seria', text: 'Seventeen years in marketing.', start_time: 6, end_time: 9 },
+  { index: 0, speaker_name: 'Sam Ortiz', text: 'Tell me about your work.', start_time: 3, end_time: 5 },
+  { index: 1, speaker_name: 'Jordan Rivera', text: 'Seventeen years in marketing.', start_time: 6, end_time: 9 },
 ]
 const ok = () =>
   vi.fn(async () =>
@@ -79,7 +79,7 @@ describe('sourceForNotes', () => {
     const f = ok()
     const s = await sourceForNotes(db, booking, recap, { apiKey: 'k', fetchImpl: f as any })
     expect(s).toMatchObject({ kind: 'transcript', full: true, reason: null })
-    expect(s.text).toBe('[0:03] Allan Bravo: Tell me about your work.\n[0:06] Luke Seria: Seventeen years in marketing.')
+    expect(s.text).toBe('[0:03] Sam Ortiz: Tell me about your work.\n[0:06] Jordan Rivera: Seventeen years in marketing.')
     expect(db.rows.get('b1')).toMatchObject({ source: 'fireflies_api', status: 'ready', duration_seconds: 9, provider_summary: { overview: 'x' } })
     // A re-run reads the row, never Fireflies again.
     const again = await sourceForNotes(db, booking, recap, { apiKey: 'k', fetchImpl: f as any })
@@ -132,6 +132,39 @@ describe('sourceForNotes', () => {
 
 describe('substantiveWords on a fetched transcript', () => {
   it("doesn't count times or speaker names", () => {
-    expect(substantiveWords('[0:03] Allan Bravo: Tell me about your work.\n[1:02:06] Luke Seria: Seventeen years marketing.')).toBe(8)
+    expect(substantiveWords('[0:03] Sam Ortiz: Tell me about your work.\n[1:02:06] Jordan Rivera: Seventeen years marketing.')).toBe(8)
+  })
+})
+
+describe('sourceForNotes: finding a meeting that sent no recap', () => {
+  const lookup = { start: '2026-11-11T19:00:00Z', end: '2026-11-11T19:45:00Z', emails: ['dana@example.com'], name: 'Dana Whitfield' }
+  const at = Date.parse(lookup.start)
+  it('finds it by time and attendee, then fetches it', async () => {
+    const calls: string[] = []
+    const f = vi.fn(async (_u: string, init: any) => {
+      const body = JSON.parse(init.body)
+      calls.push(body.query.includes('GioFindMeeting') ? 'find' : 'get')
+      if (body.query.includes('GioFindMeeting')) {
+        return new Response(JSON.stringify({ data: { transcripts: [
+          { id: 'OTHER', title: 'Weekly sync', date: at + 5 * 60000, participants: ['x@example.com'] },
+          { id: 'FFH', title: 'Screening', date: at + 2 * 60000, participants: ['dana@example.com', 'allan@example.com'] },
+          { id: 'LATE', title: 'Screening', date: at + 120 * 60000, participants: ['dana@example.com'] },
+        ] } }), { status: 200 })
+      }
+      expect(body.variables.id).toBe('FFH')
+      return new Response(JSON.stringify({ data: { transcript: { id: 'FFH', sentences: SENTENCES } } }), { status: 200 })
+    })
+    const db = fakeDb()
+    const s = await sourceForNotes(db, booking, { text: '', kind: 'summary', provider: 'fireflies', firefliesId: null }, { apiKey: 'k', fetchImpl: f as any, lookup })
+    expect(s.full).toBe(true)
+    expect(calls).toEqual(['find', 'get'])
+    expect(db.rows.get('b1')).toMatchObject({ source: 'fireflies_api', external_id: 'FFH' })
+  })
+  it('says it found nothing when no meeting fits', async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify({ data: { transcripts: [] } }), { status: 200 }))
+    const db = fakeDb()
+    const s = await sourceForNotes(db, booking, { text: '', kind: 'summary', provider: 'fireflies', firefliesId: null }, { apiKey: 'k', fetchImpl: f as any, lookup })
+    expect(s).toMatchObject({ full: false, reason: REASON.notFound, text: '' })
+    expect(f).toHaveBeenCalledTimes(2) // by attendee, then by time alone
   })
 })

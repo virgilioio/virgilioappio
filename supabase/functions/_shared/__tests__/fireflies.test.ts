@@ -4,20 +4,21 @@ import {
   clock,
   fetchFirefliesTranscript,
   normalizeTranscript,
+  pickMeeting,
   problemFrom,
   transcriptText,
 } from '../fireflies'
 
 const RAW = {
-  id: '01M6VREDFGKZNPQN35SPKK4SFA',
-  title: 'Recruiter Screening with Luke Seria - Head of Marketing',
-  speakers: [{ id: 0, name: 'Allan Bravo' }, { id: 1, name: 'Luke Seria' }],
+  id: '01FAKEMEETING00000000TEST01',
+  title: 'Recruiter Screening with Jordan Rivera - Head of Marketing',
+  speakers: [{ id: 0, name: 'Sam Ortiz' }, { id: 1, name: 'Jordan Rivera' }],
   sentences: [
-    { index: 2, speaker_name: 'Luke Seria', speaker_id: 1, text: 'Llevo 17 años en marketing.', start_time: 64.2, end_time: 66.9 },
-    { index: 0, speaker_name: 'Allan Bravo', speaker_id: 0, text: 'Cuéntame de tu experiencia.', start_time: 60.0, end_time: 61.5 },
-    { index: 3, speaker_name: null, speaker_id: 1, text: 'Y 13 en partnerships.', start_time: 67.0, end_time: 69.1 },
-    { index: 1, speaker_name: 'Allan Bravo', speaker_id: 0, text: '   ', start_time: 62, end_time: 63 },
-    { index: 4, speaker_name: 'Allan Bravo', speaker_id: 0, text: '¿Y tu expectativa salarial?', start_time: 1841.4, end_time: 1843.8 },
+    { index: 2, speaker_name: 'Jordan Rivera', speaker_id: 1, text: 'Llevo 15 años en marketing.', start_time: 64.2, end_time: 66.9 },
+    { index: 0, speaker_name: 'Sam Ortiz', speaker_id: 0, text: 'Cuéntame de tu experiencia.', start_time: 60.0, end_time: 61.5 },
+    { index: 3, speaker_name: null, speaker_id: 1, text: 'Y 11 en partnerships.', start_time: 67.0, end_time: 69.1 },
+    { index: 1, speaker_name: 'Sam Ortiz', speaker_id: 0, text: '   ', start_time: 62, end_time: 63 },
+    { index: 4, speaker_name: 'Sam Ortiz', speaker_id: 0, text: '¿Y tu expectativa salarial?', start_time: 1841.4, end_time: 1843.8 },
   ],
   summary: { overview: 'Head of Marketing', keywords: ['Generación de demanda'] },
 }
@@ -25,10 +26,10 @@ const RAW = {
 describe('normalizeTranscript', () => {
   it('orders sentences, fills a missing speaker from its id, drops empty text, measures the call', () => {
     const t = normalizeTranscript(RAW)!
-    expect(t.sentences.map((s) => s.speaker)).toEqual(['Allan Bravo', 'Luke Seria', 'Luke Seria', 'Allan Bravo'])
-    expect(t.sentences[0]).toEqual({ i: 0, speaker: 'Allan Bravo', text: 'Cuéntame de tu experiencia.', start: 60, end: 61.5 })
+    expect(t.sentences.map((s) => s.speaker)).toEqual(['Sam Ortiz', 'Jordan Rivera', 'Jordan Rivera', 'Sam Ortiz'])
+    expect(t.sentences[0]).toEqual({ i: 0, speaker: 'Sam Ortiz', text: 'Cuéntame de tu experiencia.', start: 60, end: 61.5 })
     expect(t.durationSeconds).toBe(1844)
-    expect(t.speakers).toEqual([{ id: '0', name: 'Allan Bravo' }, { id: '1', name: 'Luke Seria' }])
+    expect(t.speakers).toEqual([{ id: '0', name: 'Sam Ortiz' }, { id: '1', name: 'Jordan Rivera' }])
     expect(t.summary).toEqual(RAW.summary)
   })
   it('gives nothing for an empty answer', () => {
@@ -42,9 +43,9 @@ describe('transcriptText', () => {
     const t = normalizeTranscript(RAW)!
     expect(transcriptText(t.sentences)).toBe(
       [
-        '[1:00] Allan Bravo: Cuéntame de tu experiencia.',
-        '[1:04] Luke Seria: Llevo 17 años en marketing. Y 13 en partnerships.',
-        '[30:41] Allan Bravo: ¿Y tu expectativa salarial?',
+        '[1:00] Sam Ortiz: Cuéntame de tu experiencia.',
+        '[1:04] Jordan Rivera: Llevo 15 años en marketing. Y 11 en partnerships.',
+        '[30:41] Sam Ortiz: ¿Y tu expectativa salarial?',
       ].join('\n'),
     )
   })
@@ -74,12 +75,12 @@ describe('fetchFirefliesTranscript', () => {
 
   it('asks Fireflies for the transcript with the key and returns it normalized', async () => {
     const f = reply(200, { data: { transcript: RAW } })
-    const r = await fetchFirefliesTranscript('01M6VREDFGKZNPQN35SPKK4SFA', 'k-123', f as any)
+    const r = await fetchFirefliesTranscript('01FAKEMEETING00000000TEST01', 'k-123', f as any)
     expect(r.ok).toBe(true)
     const [url, init] = f.mock.calls[0] as any
     expect(url).toBe(FIREFLIES_ENDPOINT)
     expect(init.headers.Authorization).toBe('Bearer k-123')
-    expect(JSON.parse(init.body).variables).toEqual({ id: '01M6VREDFGKZNPQN35SPKK4SFA' })
+    expect(JSON.parse(init.body).variables).toEqual({ id: '01FAKEMEETING00000000TEST01' })
     if (r.ok) expect(r.transcript.sentences).toHaveLength(4)
   })
   it('says not ready when there are no sentences yet', async () => {
@@ -97,5 +98,16 @@ describe('fetchFirefliesTranscript', () => {
       throw new Error('boom')
     })
     expect(await fetchFirefliesTranscript('x', 'k', f as any)).toEqual({ ok: false, problem: 'error' })
+  })
+})
+
+describe('pickMeeting', () => {
+  const q = { start: '2026-11-11T19:00:00Z', end: '2026-11-11T19:45:00Z', emails: ['robin@example.com'], name: 'Robin Castellanos' }
+  const at = Date.parse(q.start)
+  it('takes the closest meeting with the candidate, by email or full name in the title', () => {
+    expect(pickMeeting([{ id: 'a', title: 'x', date: at + 10 * 60000, participants: ['robin@example.com'] }, { id: 'b', title: 'x', date: at + 60000, participants: ['robin@example.com'] }], q)?.id).toBe('b')
+    expect(pickMeeting([{ id: 'c', title: 'Screening - Robin Castellanos', date: at, participants: [] }], q)?.id).toBe('c')
+    expect(pickMeeting([{ id: 'd', title: 'Screening - Robin', date: at, participants: [] }], q)).toBeNull()
+    expect(pickMeeting([{ id: 'e', title: 'x', date: at + 50 * 60000, participants: ['robin@example.com'] }], q)).toBeNull()
   })
 })

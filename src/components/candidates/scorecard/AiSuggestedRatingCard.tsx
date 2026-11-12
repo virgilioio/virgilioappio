@@ -7,8 +7,9 @@ import { RATING_META } from '@/lib/scorecardRatings';
 import type { ScoreRating } from '@/hooks/useScorecards';
 
 interface Props {
-  /** Gio's suggested rating, on the scorecard's own five-point scale. */
-  rating: ScoreRating;
+  /** Gio's suggested rating, on the scorecard's own five-point scale; null when the
+   *  interview didn't cover enough of the job to recommend (2026-11-12). */
+  rating: ScoreRating | null;
   /** Raw analysis content (JSON string or markdown). */
   analysis: string;
   /** Whether the currently-selected rating already matches Gio's suggestion. */
@@ -52,8 +53,8 @@ export function AiSuggestedRatingCard({
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const meta = RATING_META[rating];
-  const verdict = { bg: meta.bg, fg: meta.text };
+  const meta = rating ? RATING_META[rating] : null;
+  const verdict = meta ? { bg: meta.bg, fg: meta.text } : { bg: '#F1F0EC', fg: '#5A6072' };
   const { summary, strengths } = parseStructured(analysis);
   const hasStructured = !!(summary || (strengths && strengths.length > 0));
 
@@ -110,7 +111,7 @@ export function AiSuggestedRatingCard({
                 letterSpacing: '-0.005em',
               }}
             >
-              {meta.label}
+              {meta ? meta.label : 'Not enough to recommend'}
             </span>
             <span
               className="font-inter"
@@ -281,7 +282,7 @@ export function AiSuggestedRatingCard({
                 }}
               >
                 <ArrowDown size={13} />
-                Apply to my rating
+                {rating ? 'Apply to my rating' : 'Use these notes'}
               </button>
             )}
           </div>
