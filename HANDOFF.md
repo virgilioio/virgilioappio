@@ -116,7 +116,7 @@ Hard limits:
 
 - Allan asked whether Gio's "or" skills ("Customer Success or Project Management") work with our logic. Checked every reader: Gio Fit, interview notes and the shortlist read them as text (fine); Find's match splits on "or", "/" and commas and counts either side (`skillInText`, fine); the job briefing's must-have stat matches either side by containment (fine). The one gap: with "Require must-haves on Apollo" on, must-haves went to Apollo's keyword search, which needs every word, so an "or" skill asked for both sides.
 - Go! (2026-11-12): `apolloMustKeywords` (`_shared/findCriteria.ts`) leaves skills with alternatives out of what Apollo requires; they're checked after adding, as every other skill. The switch's hint says so. `generate-job-skills` keeps writing alternatives as one skill. Tests: `findCriteria.test.ts` (12).
-- Applied 2026-11-12: `search-apollo-candidates` redeployed (live matched main first). No database change.
+- Applied 2026-11-12: `search-apollo-candidates` v410 (live matched main first; the deploy tool wrote the accent range in `findCriteria.ts` as literal characters again, same regex). No database change.
 
 ## Done 2026-11-12 (ATS) — Job exposure, Phase 1: where applicants come from, the share kit, Google — on main
 
