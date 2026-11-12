@@ -3341,6 +3341,68 @@ export type Database = {
         }
         Relationships: []
       }
+      interview_transcripts: {
+        Row: {
+          booking_id: string
+          created_at: string
+          duration_seconds: number | null
+          external_id: string | null
+          fetched_at: string | null
+          language: string | null
+          provider_summary: Json | null
+          sentences: Json
+          source: string
+          speakers: Json
+          status: string
+          status_at: string
+          status_reason: string | null
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          duration_seconds?: number | null
+          external_id?: string | null
+          fetched_at?: string | null
+          language?: string | null
+          provider_summary?: Json | null
+          sentences?: Json
+          source: string
+          speakers?: Json
+          status?: string
+          status_at?: string
+          status_reason?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          duration_seconds?: number | null
+          external_id?: string | null
+          fetched_at?: string | null
+          language?: string | null
+          provider_summary?: Json | null
+          sentences?: Json
+          source?: string
+          speakers?: Json
+          status?: string
+          status_at?: string
+          status_reason?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_transcripts_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "scheduled_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           created_at: string | null
@@ -4329,6 +4391,7 @@ export type Database = {
       }
       job_stage_scorecards: {
         Row: {
+          ai_recommendation: Json | null
           ai_suggested_rating: string | null
           association_id: string
           candidate_id: string
@@ -4347,6 +4410,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_recommendation?: Json | null
           ai_suggested_rating?: string | null
           association_id: string
           candidate_id: string
@@ -4365,6 +4429,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_recommendation?: Json | null
           ai_suggested_rating?: string | null
           association_id?: string
           candidate_id?: string
@@ -11621,6 +11686,7 @@ export type Database = {
           user_type: string
         }[]
       }
+      automation_file_access: { Args: { _name: string }; Returns: boolean }
       backfill_default_stages_to_all_jobs: { Args: never; Returns: number }
       can_access_job_pipeline: { Args: { p_job_id: string }; Returns: boolean }
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
@@ -11650,6 +11716,9 @@ export type Database = {
         }
         Returns: undefined
       }
+      candidate_file_access: { Args: { _name: string }; Returns: boolean }
+      candidate_file_can_remove: { Args: { _name: string }; Returns: boolean }
+      candidate_file_owner: { Args: { _name: string }; Returns: string }
       candidate_identity_keys: {
         Args: { c: Database["public"]["Tables"]["candidates"]["Row"] }
         Returns: {
@@ -11674,6 +11743,7 @@ export type Database = {
         Returns: unknown
       }
       candidate_tracked_fields: { Args: never; Returns: string[] }
+      candidate_visible: { Args: { _candidate_id: string }; Returns: boolean }
       candidates_due_for_notice: {
         Args: { p_limit: number; p_tenant: string }
         Returns: {
@@ -11960,20 +12030,30 @@ export type Database = {
         }
         Returns: string
       }
+      fit_job_text: { Args: { t: string }; Returns: string }
       fit_queue_acquire_lease: { Args: { _seconds: number }; Returns: boolean }
-      fit_queue_sweep: { Args: never; Returns: undefined }
-      fit_queue_rescore: { Args: { p_association_ids: string[] }; Returns: number }
-      fit_queue_job_rescore_pending: { Args: { p_job_id: string }; Returns: number }
+      fit_queue_cancel_job_rescore: {
+        Args: { p_job_id: string }
+        Returns: number
+      }
+      fit_queue_job_rescore_pending: {
+        Args: { p_job_id: string }
+        Returns: number
+      }
       fit_queue_job_status: {
         Args: { p_job_id: string }
-        Returns: { association_id: string; due: boolean; due_at: string }[]
+        Returns: {
+          association_id: string
+          due: boolean
+          due_at: string
+        }[]
       }
-      fit_queue_cancel_job_rescore: { Args: { p_job_id: string }; Returns: number }
-      fit_job_text: { Args: { t: string }; Returns: string }
+      fit_queue_rescore: {
+        Args: { p_association_ids: string[] }
+        Returns: number
+      }
+      fit_queue_sweep: { Args: never; Returns: undefined }
       fit_queue_wake: { Args: never; Returns: undefined }
-      scheduled_email_cancel: { Args: { p_id: string }; Returns: undefined }
-      scheduled_email_uncancel: { Args: { p_id: string }; Returns: string }
-      scheduled_email_can_act: { Args: { p_job_id: string; p_tenant_id: string }; Returns: boolean }
       generate_invite_token: { Args: never; Returns: string }
       geo_cities_search: {
         Args: {
@@ -13038,6 +13118,20 @@ export type Database = {
         Returns: Json
       }
       same_company: { Args: { a: string; b: string }; Returns: boolean }
+      scheduled_email_activity_sync: {
+        Args: { se: Database["public"]["Tables"]["scheduled_emails"]["Row"] }
+        Returns: undefined
+      }
+      scheduled_email_activity_title: {
+        Args: { p_state: string; p_type: string }
+        Returns: string
+      }
+      scheduled_email_can_act: {
+        Args: { p_job_id: string; p_tenant_id: string }
+        Returns: boolean
+      }
+      scheduled_email_cancel: { Args: { p_id: string }; Returns: undefined }
+      scheduled_email_uncancel: { Args: { p_id: string }; Returns: string }
       search_candidates: {
         Args: {
           p_cities?: string[]
@@ -13629,7 +13723,6 @@ export type Database = {
         | "interview_cancelled"
         | "interview_rescheduled"
         | "candidate_email_automated"
-        | "candidate_email_scheduled"
         | "automation_triggered"
         | "automation_skipped"
         | "sequence_enrolled"
@@ -13646,6 +13739,7 @@ export type Database = {
         | "agreement_voided"
         | "agreement_expired"
         | "agreement_reminded"
+        | "candidate_email_scheduled"
       application_field_source: "library" | "custom"
       automation_action:
         | "email"
@@ -14050,7 +14144,6 @@ export const Constants = {
         "interview_cancelled",
         "interview_rescheduled",
         "candidate_email_automated",
-        "candidate_email_scheduled",
         "automation_triggered",
         "automation_skipped",
         "sequence_enrolled",
@@ -14067,6 +14160,7 @@ export const Constants = {
         "agreement_voided",
         "agreement_expired",
         "agreement_reminded",
+        "candidate_email_scheduled",
       ],
       application_field_source: ["library", "custom"],
       automation_action: [
