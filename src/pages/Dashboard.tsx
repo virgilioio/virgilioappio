@@ -534,17 +534,20 @@ function QueueSkeleton() {
             display: 'flex',
             gap: 12,
             alignItems: 'center',
-            padding: '11px 16px',
+            padding: '11px 12px 11px 16px',
+            minHeight: 60,
+            boxSizing: 'border-box',
             borderBottom: i === 3 ? 'none' : `1px solid ${C.hairline}`,
           }}
         >
-          <div className="gio-shimmer" style={{ width: 18, height: 18, borderRadius: 6 }} />
-          <div className="gio-shimmer" style={{ width: 26, height: 26, borderRadius: 8 }} />
+          <div className="gio-shimmer" style={{ width: 28, height: 28, borderRadius: 8 }} />
           <div style={{ flex: 1 }}>
             <div className="gio-shimmer" style={{ width: '50%', height: 11, borderRadius: 4 }} />
             <div className="gio-shimmer" style={{ width: '35%', height: 9, borderRadius: 4, marginTop: 6 }} />
           </div>
           <div className="gio-shimmer" style={{ width: 60, height: 16, borderRadius: 999 }} />
+          <div className="gio-shimmer" style={{ width: 92, height: 28, borderRadius: 8 }} />
+          <div style={{ width: 28 }} />
         </div>
       ))}
     </div>
