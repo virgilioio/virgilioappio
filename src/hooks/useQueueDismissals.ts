@@ -93,6 +93,35 @@ export function useQueueDismissals() {
     else dismiss.mutate(itemKey)
   }
 
+  /**
+   * Hide or show several rows at once (a job's applications are one row holding a
+   * key per applicant). Optimistic; a failed save puts the keys back as they were.
+   */
+  const setHidden = useMutation({
+    mutationFn: async ({ keys, hidden }: { keys: string[]; hidden: boolean }) => {
+      if (!userId || keys.length === 0) return
+      if (hidden) {
+        const { error } = await supabase
+          .from('dashboard_queue_dismissals')
+          .upsert(keys.map(item_key => ({ user_id: userId, item_key })), { onConflict: 'user_id,item_key' })
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('dashboard_queue_dismissals')
+          .delete()
+          .eq('user_id', userId)
+          .in('item_key', keys)
+        if (error) throw error
+      }
+    },
+    onMutate: ({ keys, hidden }) => {
+      setLocal(prev => (hidden ? Array.from(new Set([...prev, ...keys])) : prev.filter(k => !keys.includes(k))))
+    },
+    onError: (_e, { keys, hidden }) => {
+      setLocal(prev => (hidden ? prev.filter(k => !keys.includes(k)) : Array.from(new Set([...prev, ...keys]))))
+    },
+  })
+
   // One-time best-effort migration of legacy localStorage dismissals.
   useEffect(() => {
     if (!userId || typeof window === 'undefined') return
@@ -136,5 +165,11 @@ export function useQueueDismissals() {
       })
   }, [userId, queryClient])
 
-  return { dismissed, isLoading, toggle }
+  return {
+    dismissed,
+    isLoading,
+    toggle,
+    hide: (keys: string[]) => setHidden.mutateAsync({ keys, hidden: true }),
+    show: (keys: string[]) => setHidden.mutateAsync({ keys, hidden: false }),
+  }
 }

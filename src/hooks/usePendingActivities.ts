@@ -25,7 +25,10 @@ export interface PendingActivity {
   interviewerId?: string;
   interviewerName?: string;
   isOwnTask?: boolean;
-  
+  /** A scorecard Gio has drafted from the interview (not yet submitted). */
+  hasGioDraft?: boolean;
+  /** An offer approval: the approver's step, for offer_approval_decide. */
+  offerStepId?: string;
 }
 
 export function usePendingActivities() {
