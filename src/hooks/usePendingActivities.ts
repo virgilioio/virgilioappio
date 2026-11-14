@@ -27,6 +27,8 @@ export interface PendingActivity {
   isOwnTask?: boolean;
   /** A scorecard Gio has drafted from the interview (not yet submitted). */
   hasGioDraft?: boolean;
+  /** A reply row's conversation in your own mailbox (queue_replies). */
+  threadId?: string;
   /** An offer approval: the approver's step, for offer_approval_decide. */
   offerStepId?: string;
 }
@@ -62,7 +64,7 @@ export function usePendingActivities() {
       activities.push(...decisionActivities);
 
       // 3. Fetch unread email replies
-      const emailActivities = await fetchUnreadEmails(user.id, isAdmin, assignedJobIds);
+      const emailActivities = await fetchWaitingReplies();
       activities.push(...emailActivities);
 
       // 4. Fetch pending offer approvals for this user
@@ -335,93 +337,46 @@ async function fetchNeedsDecision(userId: string, isAdmin: boolean, assignedJobI
   return activities;
 }
 
-async function fetchUnreadEmails(userId: string, isAdmin: boolean, assignedJobIds: string[] | null): Promise<PendingActivity[]> {
-  // Fetch unread emails received from candidates
-  let query = supabase
-    .from('email_logs')
-    .select(`
-      id,
-      candidate_id,
-      job_id,
-      subject,
-      snippet,
-      received_at,
-      rfc822_message_id,
-      candidates(id, candidate_name),
-      jobs(id, title)
-    `)
-    .eq('direction', 'received')
-    .eq('is_read', false)
-    .not('candidate_id', 'is', null)
-    .order('received_at', { ascending: false })
-    .limit(50);
-
-  // Apply job-scoping for restricted roles
-  if (assignedJobIds) {
-    query = query.in('job_id', assignedJobIds);
+/**
+ * Conversations in your own mailbox waiting on your reply (queue_replies, 2026-11-14):
+ * one per conversation, the candidate's last real message after yours, not Done in the
+ * Inbox, from the last 30 days; calendar answers and automatic replies left out. Never
+ * another person's mailbox, admins included.
+ */
+async function fetchWaitingReplies(): Promise<PendingActivity[]> {
+  type Row = {
+    thread_id: string
+    email_id: string
+    message_id: string | null
+    candidate_id: string
+    candidate_name: string | null
+    job_id: string | null
+    job_title: string | null
+    subject: string | null
+    received_at: string
   }
-
-  const { data: emails, error } = await query;
-
-  if (error || !emails || emails.length === 0) return [];
-
-  // Deduplicate by rfc822_message_id (Gmail sync + inbound webhook can create two records)
-  const seen = new Set<string>();
-  const dedupedEmails = emails.filter(email => {
-    const msgId = (email as any).rfc822_message_id;
-    if (!msgId) return true;
-    if (seen.has(msgId)) return false;
-    seen.add(msgId);
-    return true;
-  });
-
-  // Resolve missing job_id/title via candidate's most recent active job association.
-  // email_logs.job_id is often null for inbound replies, which caused "Unknown Job"
-  // and routing to /jobs/ (the list) instead of the candidate profile.
-  const candidateIdsMissingJob = [
-    ...new Set(
-      dedupedEmails
-        .filter(e => !e.job_id && e.candidate_id)
-        .map(e => e.candidate_id as string),
-    ),
-  ];
-
-  const resolvedByCandidate = new Map<string, { jobId: string; jobTitle: string }>();
-  if (candidateIdsMissingJob.length > 0) {
-    const { data: assocRows } = await supabase
-      .from('job_candidate_associations')
-      .select('candidate_id, job_id, updated_at, jobs(id, title)')
-      .in('candidate_id', candidateIdsMissingJob)
-      .eq('status', 'active')
-      .order('updated_at', { ascending: false });
-
-    for (const row of (assocRows as any[]) || []) {
-      if (!row?.candidate_id || resolvedByCandidate.has(row.candidate_id)) continue;
-      resolvedByCandidate.set(row.candidate_id, {
-        jobId: row.job_id ?? '',
-        jobTitle: row.jobs?.title ?? '',
-      });
-    }
+  const { data, error } = await (supabase.rpc as unknown as (fn: string, args?: object) => Promise<{ data: Row[] | null; error: unknown }>)(
+    'queue_replies',
+    { _days: 30 },
+  )
+  // A failed read leaves replies out instead of taking the whole queue down.
+  if (error) {
+    console.warn('[queue] queue_replies failed', error)
+    return []
   }
-
-  return dedupedEmails.map(email => {
-    const fallback = email.candidate_id ? resolvedByCandidate.get(email.candidate_id) : undefined;
-    const jobId = email.job_id || fallback?.jobId || '';
-    const jobTitle = (email.jobs as any)?.title || fallback?.jobTitle || '';
-    return {
-      type: 'email' as const,
-      id: email.id,
-      emailId: email.id,
-      messageId: (email as any).rfc822_message_id || undefined,
-      candidateId: email.candidate_id!,
-      candidateName: (email.candidates as any)?.candidate_name || 'Unknown',
-      jobId,
-      jobTitle,
-      emailSubject: email.subject || 'No subject',
-      emailSnippet: email.snippet || '',
-      timestamp: email.received_at || new Date().toISOString(),
-    };
-  });
+  return (data ?? []).map((r) => ({
+    type: 'email' as const,
+    id: r.thread_id,
+    threadId: r.thread_id,
+    emailId: r.email_id,
+    messageId: r.message_id || undefined,
+    candidateId: r.candidate_id,
+    candidateName: r.candidate_name || 'Unnamed candidate',
+    jobId: r.job_id || '',
+    jobTitle: r.job_title || 'Unknown Job',
+    emailSubject: r.subject || 'No subject',
+    timestamp: r.received_at,
+  }))
 }
 
 async function fetchPendingOfferApprovals(userId: string): Promise<PendingActivity[]> {

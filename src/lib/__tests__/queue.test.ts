@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ago, arrangeQueue, buildQueue, orderedQueue, queueCounts, rowActions, visibleApplications, withoutHidden } from '../queue'
+import { ago, arrangeQueue, buildQueue, hiddenState, orderedQueue, queueCounts, rowActions, snoozeLabel, snoozeTimes, snoozedRows, visibleApplications, withoutHidden } from '../queue'
 import type { PendingActivity } from '@/hooks/usePendingActivities'
 import type { NewApplicationItem } from '@/hooks/useNewApplicationsQueue'
 
@@ -88,8 +88,9 @@ describe('arrangeQueue', () => {
 
 describe('hidden rows', () => {
   it('leaves out hidden rows and hidden applicants, old keys too', () => {
-    const items = buildQueue([act({ type: 'email', id: 'e9', timestamp: hAgo(1), messageId: 'm-9' })], [], NOW)
-    expect(withoutHidden(items, new Set(['reply:m-9']))).toEqual([])
+    const items = buildQueue([act({ type: 'email', id: 'e9', timestamp: hAgo(1), messageId: 'm-9', threadId: 't-9' })], [], NOW)
+    expect(items[0].dismissKey).toBe('reply:thread:t-9')
+    expect(withoutHidden(items, new Set(['reply:thread:t-9']))).toEqual([])
     const apps = [app('a', 'job-2', 1), app('b', 'job-2', 2)]
     expect(visibleApplications(apps, new Set(['application:jca-a'])).map((a) => a.associationId)).toEqual(['jca-b'])
     expect(visibleApplications(apps, new Set(['a-jca-b'])).map((a) => a.associationId)).toEqual(['jca-a'])
@@ -120,5 +121,63 @@ describe('rowActions', () => {
   it('an offer without its step only opens it', () => {
     const q = buildQueue([act({ type: 'offer_approval', id: 'o2', timestamp: hAgo(1) })], [], NOW)
     expect(labels(q[0])).toEqual(['Open offer'])
+  })
+})
+
+describe('snooze', () => {
+  const MX = 'America/Mexico_City'
+  it('ends at 9:00 AM tomorrow and on the coming Monday, in the person\'s zone', () => {
+    // Saturday Nov 14, 2026, 12:00 in Mexico City (18:00 UTC).
+    const { tomorrow, monday } = snoozeTimes(new Date('2026-11-14T18:00:00Z'), MX)
+    expect(tomorrow.toISOString()).toBe('2026-11-15T15:00:00.000Z')
+    expect(monday.toISOString()).toBe('2026-11-16T15:00:00.000Z')
+    // On a Sunday, "Monday" is a week out, never tomorrow twice.
+    const sunday = snoozeTimes(new Date('2026-11-15T18:00:00Z'), MX)
+    expect(sunday.tomorrow.toISOString()).toBe('2026-11-16T15:00:00.000Z')
+    expect(sunday.monday.toISOString()).toBe('2026-11-23T15:00:00.000Z')
+    // Late evening in Mexico City is already the next day in UTC.
+    const late = snoozeTimes(new Date('2026-11-17T04:30:00Z'), MX) // Mon 22:30 local
+    expect(late.tomorrow.toISOString()).toBe('2026-11-17T15:00:00.000Z')
+    // Madrid's 9:00.
+    expect(snoozeTimes(new Date('2026-11-14T18:00:00Z'), 'Europe/Madrid').tomorrow.toISOString()).toBe('2026-11-15T08:00:00.000Z')
+  })
+
+  it('says when it comes back', () => {
+    const now = new Date('2026-11-14T18:00:00Z')
+    expect(snoozeLabel(new Date('2026-11-15T15:00:00Z'), MX, now)).toBe('tomorrow at 9:00 AM')
+    expect(snoozeLabel(new Date('2026-11-16T15:00:00Z'), MX, now)).toBe('Mon at 9:00 AM')
+    expect(snoozeLabel(new Date('2026-11-23T15:00:00Z'), MX, now)).toBe('Nov 23 at 9:00 AM')
+  })
+
+  it('hides a snoozed row until its time, and a passed snooze hides nothing', () => {
+    const now = Date.parse('2026-11-14T18:00:00Z')
+    const s = hiddenState([
+      { key: 'gone', until: null },
+      { key: 'later', until: '2026-11-15T15:00:00Z' },
+      { key: 'past', until: '2026-11-14T15:00:00Z' },
+    ], now)
+    expect([...s.hidden].sort()).toEqual(['gone', 'later'])
+    expect([...s.snoozed.keys()]).toEqual(['later'])
+    expect(s.nextWake).toBe(Date.parse('2026-11-15T15:00:00Z'))
+  })
+
+  it('lists snoozed rows with their time, a job\'s applications together', () => {
+    const snoozed = new Map([
+      ['application:jca-a', '2026-11-16T15:00:00Z'],
+      ['application:jca-b', '2026-11-16T15:00:00Z'],
+      ['decision:jca-c-d:', '2026-11-15T15:00:00Z'],
+    ])
+    const rows = snoozedRows(
+      [act({ type: 'decision', id: 'd', timestamp: hAgo(1), associationId: 'jca-c-d' }), act({ type: 'email', id: 'e', timestamp: hAgo(1) })],
+      [app('a', 'job-2', 1), app('b', 'job-2', 2), app('c', 'job-2', 3)],
+      snoozed,
+      new Set(),
+      NOW,
+    )
+    expect(rows.map((r) => [r.id, r.snoozedUntil])).toEqual([
+      ['d-d', '2026-11-15T15:00:00Z'],
+      ['j-job-2', '2026-11-16T15:00:00Z'],
+    ])
+    expect(rows[1].label).toBe('2 new applications')
   })
 })

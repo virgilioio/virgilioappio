@@ -52,6 +52,8 @@ export interface QueueItem {
   stageName?: string
   emailId?: string
   messageId?: string
+  /** A reply row's conversation (queue_replies, the Inbox's thread id). */
+  threadId?: string
   offerStepId?: string
   /** The scorecard is yours to write (admins also see other people's). */
   isOwn?: boolean
@@ -182,7 +184,8 @@ export function buildQueue(
       const h = hours(a.timestamp, now)
       const d = Math.floor(h / 24)
       const urgency: Urgency = d >= 2 ? 'overdue' : d >= 1 ? 'today' : 'normal'
-      const key = `reply:${a.messageId ?? a.emailId ?? a.id}`
+      // One row per conversation in your own mailbox (queue_replies, 2026-11-14).
+      const key = `reply:thread:${a.threadId ?? a.messageId ?? a.emailId ?? a.id}`
       out.push({
         id: `e-${a.id}`,
         dismissKey: key,
@@ -204,6 +207,7 @@ export function buildQueue(
         since: a.timestamp,
         emailId: a.emailId,
         messageId: a.messageId,
+        threadId: a.threadId,
       })
     }
   }
@@ -359,4 +363,108 @@ export function rowActions(item: QueueItem): QueueAction[] {
     case 'applications':
       return [{ id: 'review', label: 'Start review', variant: 'primary' }]
   }
+}
+
+// ─── Snooze (2026-11-14) ─────────────────────────────────────────────
+
+/** A hidden row: for good (until null) or snoozed until a time. */
+export interface HiddenEntry {
+  key: string
+  until: string | null
+}
+
+const dayKeyIn = (instant: Date, timeZone: string) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(instant)
+
+function wallToUtc(dayKey: string, minutes: number, timeZone: string): Date {
+  const [y, m, d] = dayKey.split('-').map(Number)
+  const naive = Date.UTC(y, m - 1, d, 0, minutes)
+  const offsetAt = (t: number) => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric',
+    }).formatToParts(new Date(t))
+    const get = (k: string) => Number(parts.find((p) => p.type === k)?.value ?? 0)
+    return Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute')) - Math.floor(t / 60000) * 60000
+  }
+  let utc = naive - offsetAt(naive)
+  utc = naive - offsetAt(utc)
+  return new Date(utc)
+}
+
+function shiftDay(dayKey: string, days: number): string {
+  const [y, m, d] = dayKey.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
+}
+
+/** 9:00 AM tomorrow, and 9:00 AM on the coming Monday (a week out when tomorrow is Monday), in `timeZone`. */
+export function snoozeTimes(now: Date, timeZone: string): { tomorrow: Date; monday: Date } {
+  const today = dayKeyIn(now, timeZone)
+  const [y, m, d] = today.split('-').map(Number)
+  const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay() // 0 Sunday … 6 Saturday
+  let toMonday = (8 - weekday) % 7 || 7
+  if (toMonday === 1) toMonday = 8
+  return {
+    tomorrow: wallToUtc(shiftDay(today, 1), 9 * 60, timeZone),
+    monday: wallToUtc(shiftDay(today, toMonday), 9 * 60, timeZone),
+  }
+}
+
+/** "tomorrow at 9:00 AM", "Mon at 9:00 AM", "Nov 23 at 9:00 AM" in `timeZone`. */
+export function snoozeLabel(until: Date, timeZone: string, now: Date = new Date()): string {
+  const time = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit' }).format(until)
+  const day = dayKeyIn(until, timeZone)
+  const today = dayKeyIn(now, timeZone)
+  if (day === today) return `today at ${time}`
+  if (day === shiftDay(today, 1)) return `tomorrow at ${time}`
+  const diff = (Date.parse(day) - Date.parse(today)) / 86_400_000
+  const fmt = diff < 7
+    ? { timeZone, weekday: 'short' as const }
+    : { timeZone, month: 'short' as const, day: 'numeric' as const }
+  return `${new Intl.DateTimeFormat('en-US', fmt).format(until)} at ${time}`
+}
+
+/**
+ * Hidden keys now (for good, or snoozed until a time still ahead) and the snoozed ones
+ * with their times. A snooze that has passed hides nothing: the row is back.
+ */
+export function hiddenState(entries: HiddenEntry[], now: number = Date.now()): {
+  hidden: Set<string>
+  snoozed: Map<string, string>
+  nextWake: number | null
+} {
+  const hidden = new Set<string>()
+  const snoozed = new Map<string, string>()
+  let nextWake: number | null = null
+  for (const e of entries) {
+    if (!e.until) {
+      hidden.add(e.key)
+      continue
+    }
+    const t = Date.parse(e.until)
+    if (t > now) {
+      hidden.add(e.key)
+      snoozed.set(e.key, e.until)
+      nextWake = nextWake === null ? t : Math.min(nextWake, t)
+    }
+  }
+  return { hidden, snoozed, nextWake }
+}
+
+/** The snoozed rows, each with when it comes back (a job's applications: the latest of theirs). */
+export function snoozedRows(
+  activities: PendingActivity[] | undefined,
+  apps: NewApplicationItem[] | undefined,
+  snoozed: Map<string, string>,
+  hiddenForGood: Set<string>,
+  now: number = Date.now(),
+): (QueueItem & { snoozedUntil: string })[] {
+  if (snoozed.size === 0) return []
+  const snoozedApps = (apps ?? []).filter((a) => snoozed.has(`application:${a.associationId}`))
+  return buildQueue(activities, snoozedApps, now)
+    .filter((q) => q.dismissKeys.some((k) => snoozed.has(k)) && !hiddenForGood.has(q.dismissKey))
+    .map((q) => {
+      const times = q.dismissKeys.map((k) => snoozed.get(k)).filter((t): t is string => !!t)
+      return { ...q, snoozedUntil: times.sort().at(-1)! }
+    })
+    .sort((a, b) => Date.parse(a.snoozedUntil) - Date.parse(b.snoozedUntil))
 }
