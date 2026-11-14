@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-14 (ATS) — Your queue: actions instead of a checkbox — on main
+
+- Allan: newest on top, a real "done" instead of the checkbox, and a card that lets you act and decide. Data first (totals): about 250 rows had been hidden with the checkbox by two people, mostly Reply needed (147) and New application (80). Mock-up on a canvas first (Today vs Proposed), then built: see CLAUDE.md "Your queue".
+- Built: `src/lib/queue.ts` (order: Overdue oldest first, New newest first; a job's applications in one row; Show N more in the card), `QueueRow` + `useQueueRowActions` (`src/components/dashboard/`) on `src/lib/queueActions.ts` (Approve, Advance with the scorecard rule and Undo, Reply, Reject dialog, Review draft, Start review, Hide with Undo), `/jobs/:id?review=1` opens Application review, icons in the bell's tints (Allan, mid-build). Fixed on the way: a Gio draft hid the Scorecard due row as if submitted; No reply needed no longer writes Gmail's `is_read`.
+- Checked: browser with fake data at 1440 and 390 (29 checks: order, groups, colours, Show more/less, Approve, Advance + Undo, No reply needed + Undo, Hide, Reject dialog, Reply composer, every link), tests 410, types clean. No database or function change.
+- Next, with a database change (own plan): Snooze (tomorrow, next week), "cleared today", replies that clear when answered from Gmail or the Inbox, and why so many "Reply needed" rows get hidden (the row is any unread candidate email).
+
 ## Done 2026-11-14 (ATS) — Schedule interview: Guests right under Interviewers — on main
 
 - Allan: the Guests card (Cc'd guests) sat last in the scheduling sheet and was easy to miss. `ScheduleInterviewSheet` now runs What & who → Guests → When → Location → Invitation; the card itself is unchanged. The older two-step scheduler (`SimpleScheduleInterviewSheet`, its guest field in the confirmation step) is untouched.
