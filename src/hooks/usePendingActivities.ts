@@ -190,7 +190,7 @@ async function fetchPendingScorecards(userId: string, isAdmin: boolean): Promise
   // Fetch scorecards
   let scorecardsQuery = supabase
     .from('job_stage_scorecards')
-    .select('id, association_id, stage_instance_id, created_by')
+    .select('id, association_id, stage_instance_id, created_by, is_ai_draft')
     .is('moved_from_stage_name', null);
   
   if (!isAdmin) {
@@ -199,8 +199,17 @@ async function fetchPendingScorecards(userId: string, isAdmin: boolean): Promise
 
   const { data: scorecards } = await scorecardsQuery;
 
+  // A submitted scorecard clears the row; Gio's draft (is_ai_draft) doesn't: the
+  // interviewer still has to review and submit it, so it stays, marked as drafted.
   const scorecardKeys = new Set(
-    (scorecards || []).map(sc => `${sc.association_id}:${sc.stage_instance_id}:${sc.created_by}`)
+    (scorecards || [])
+      .filter(sc => !(sc as any).is_ai_draft)
+      .map(sc => `${sc.association_id}:${sc.stage_instance_id}:${sc.created_by}`)
+  );
+  const draftKeys = new Set(
+    (scorecards || [])
+      .filter(sc => (sc as any).is_ai_draft)
+      .map(sc => `${sc.association_id}:${sc.stage_instance_id}:${sc.created_by}`)
   );
 
   const activities: PendingActivity[] = [];
@@ -237,6 +246,7 @@ async function fetchPendingScorecards(userId: string, isAdmin: boolean): Promise
       interviewerId: booking.interviewer_id,
       interviewerName,
       isOwnTask: booking.interviewer_id === userId,
+      hasGioDraft: draftKeys.has(key),
     });
   }
 
@@ -473,6 +483,7 @@ async function fetchPendingOfferApprovals(userId: string): Promise<PendingActivi
       jobId: req.job_id,
       jobTitle: jobMap.get(req.job_id) || 'Unknown Job',
       timestamp: req.created_at,
+      offerStepId: step.id,
     };
   });
 }

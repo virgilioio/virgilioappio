@@ -6,14 +6,9 @@ import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   Inbox,
-  ClipboardCheck,
-  GitBranch,
-  Mail,
-  FileText,
   Calendar as CalendarIcon,
   Briefcase,
   Video,
-  Check,
   ArrowRight,
 } from 'lucide-react'
 import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
@@ -32,6 +27,9 @@ import { useJobs } from '@/hooks/useJobs'
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics'
 import { useNewApplicationsQueue } from '@/hooks/useNewApplicationsQueue'
 import { useQueueDismissals } from '@/hooks/useQueueDismissals'
+import { QueueRow } from '@/components/dashboard/QueueRow'
+import { useQueueRowActions } from '@/components/dashboard/useQueueRowActions'
+import { profileHref } from '@/lib/queueActions'
 import {
   arrangeQueue,
   buildQueue,
@@ -115,7 +113,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const isPhone = useIsMobile()
 
-  const { data: pending, isLoading: pendingLoading, markEmailAsRead } = usePendingActivities()
+  const { data: pending, isLoading: pendingLoading } = usePendingActivities()
   const { data: stale } = useStaleCandidates()
   const { data: newApps, isLoading: appsLoading } = useNewApplicationsQueue()
   const { bookings: todayBookings, isLoading: bookingsLoading, error: bookingsError, refetch: refetchBookings } =
@@ -128,14 +126,18 @@ export default function Dashboard() {
 
   // Hidden queue rows are kept server-side per person, by a stable key, so they
   // survive reloads, other browsers and devices (useQueueDismissals).
-  const { dismissed: doneIds, toggle: toggleDismissed, hide: hideKeys } = useQueueDismissals()
+  const { dismissed: doneIds, hide: hideKeys, show: showKeys } = useQueueDismissals()
+  const rowActions = useQueueRowActions({ hide: hideKeys, show: showKeys })
 
   // Your queue (2026-11-14): rows from src/lib/queue.ts; a job's applications are one
   // row, and an applicant hidden on their own stays out of it. `q.id` is also checked
   // so keys migrated from the old localStorage version keep hiding their rows.
   const queue = useMemo(
-    () => withoutHidden(buildQueue(pending, visibleApplications(newApps, doneIds)), doneIds),
-    [pending, newApps, doneIds],
+    () =>
+      withoutHidden(buildQueue(pending, visibleApplications(newApps, doneIds)), doneIds).filter(
+        q => !rowActions.gone.has(q.id),
+      ),
+    [pending, newApps, doneIds, rowActions.gone],
   )
 
   const counts = useMemo(() => queueCounts(queue), [queue])
@@ -197,29 +199,6 @@ export default function Dashboard() {
     return acc
   }, {})
   const topStuckJob = Object.entries(stuckByJob).sort((a, b) => b[1] - a[1])[0]
-
-  // ─── Toggle done ────────────────────────────────────────────
-  const toggleDone = (item: QueueItem) => {
-    if (item.dismissKeys.length > 1) {
-      void hideKeys(item.dismissKeys)
-      return
-    }
-    const wasDone = doneIds.has(item.dismissKey) || doneIds.has(item.id)
-    if (wasDone) {
-      // Clear both the semantic key and any legacy row-id key.
-      if (doneIds.has(item.dismissKey)) toggleDismissed(item.dismissKey)
-      if (doneIds.has(item.id)) toggleDismissed(item.id)
-    } else {
-      toggleDismissed(item.dismissKey)
-    }
-    // Mark email as read for reply rows (only when marking done, not undoing).
-    // The mutation updates all email_logs rows sharing the same
-    // rfc822_message_id, so Gmail-sync + inbound-webhook duplicates can't
-    // resurface the row on the next refetch.
-    if (item.type === 'reply' && item.emailId && !wasDone) {
-      markEmailAsRead.mutate(item.emailId)
-    }
-  }
 
   const firstName = profile?.first_name ?? 'there'
   const today = new Date()
@@ -310,10 +289,22 @@ export default function Dashboard() {
           onFilter={setFilter}
           items={filtered}
           loading={queueLoading}
-          doneIds={doneIds}
-          onToggleDone={toggleDone}
-          onRowClick={(href) => navigate(href)}
+          renderRow={(item, isLast) => (
+            <QueueRow
+              key={item.id}
+              item={item}
+              isLast={isLast}
+              busy={rowActions.busyFor(item)}
+              onOpen={() => navigate(item.href)}
+              onAction={(id) => void rowActions.run(item, id)}
+              onOpenProfile={() =>
+                navigate(item.candidateId ? profileHref(item.jobId, item.candidateId) : `/jobs/${item.jobId}`)
+              }
+              onHide={() => void rowActions.hideRow(item)}
+            />
+          )}
         />
+        {rowActions.dialogs}
 
         {/* RIGHT rail */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -354,12 +345,10 @@ interface QueueCardProps {
   onFilter: (f: 'all' | QueueType) => void
   items: QueueItem[]
   loading: boolean
-  doneIds: Set<string>
-  onToggleDone: (item: QueueItem) => void
-  onRowClick: (href: string) => void
+  renderRow: (item: QueueItem, isLast: boolean) => ReactNode
 }
 
-function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggleDone, onRowClick }: QueueCardProps) {
+function QueueCard({ counts, filter, onFilter, items, loading, renderRow }: QueueCardProps) {
   const [expanded, setExpanded] = useState(false)
   const chips: { id: 'all' | QueueType; label: string; count: number }[] = [
     { id: 'all', label: 'Everything', count: counts.all },
@@ -429,20 +418,7 @@ function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggle
       ) : items.length === 0 ? (
         <EmptyQueue filter={filter} totalAll={counts.all} onClear={() => onFilter('all')} />
       ) : (
-        <QueueGroups
-          items={items}
-          expanded={expanded}
-          renderRow={(item, isLast) => (
-            <QueueRow
-              key={item.id}
-              item={item}
-              isDone={doneIds.has(item.dismissKey) || doneIds.has(item.id)}
-              isLast={isLast}
-              onToggleDone={() => onToggleDone(item)}
-              onClick={() => onRowClick(item.href)}
-            />
-          )}
-        />
+        <QueueGroups items={items} expanded={expanded} renderRow={renderRow} />
       )}
 
       {/* Footer: the rest opens in the card (2026-11-14), never another page. */}
@@ -517,130 +493,6 @@ function QueueGroups({
           {shownFresh.map((item, i) => renderRow(item, i === shownFresh.length - 1))}
         </section>
       )}
-    </div>
-  )
-}
-
-function QueueRow({
-  item,
-  isDone,
-  isLast,
-  onToggleDone,
-  onClick,
-}: {
-  item: QueueItem
-  isDone: boolean
-  isLast: boolean
-  onToggleDone: () => void
-  onClick: () => void
-}) {
-  const TypeIcon = (
-    item.type === 'scorecard' ? ClipboardCheck :
-    item.type === 'decision' ? GitBranch :
-    item.type === 'reply' ? Mail : FileText
-  )
-  const urgencyColors = urgencyChipColors(item.urgency)
-
-  return (
-    <div
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest('[data-checkbox]')) return
-        onClick()
-      }}
-      style={{
-        display: 'flex',
-        gap: 12,
-        alignItems: 'center',
-        padding: '11px 16px',
-        borderBottom: isLast ? 'none' : `1px solid ${C.hairline}`,
-        opacity: isDone ? 0.45 : 1,
-        transition: 'opacity 250ms ease',
-        cursor: 'pointer',
-      }}
-    >
-      {/* Checkbox */}
-      <button
-        data-checkbox
-        onClick={onToggleDone}
-        aria-label={isDone ? 'Mark not done' : 'Mark done'}
-        style={{
-          width: 18,
-          height: 18,
-          borderRadius: 6,
-          border: `1.5px solid ${isDone ? C.green : '#D2D4DC'}`,
-          background: isDone ? C.green : '#fff',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 0,
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
-      >
-        {isDone ? <Check size={11} strokeWidth={3} color="#fff" /> : null}
-      </button>
-
-      {/* Type icon chip */}
-      <div
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: 8,
-          background: C.pageBg,
-          color: C.muted,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
-        <TypeIcon size={13} strokeWidth={2} />
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            font: '600 12.5px/1.35 Inter',
-            color: C.ink2,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            textDecoration: isDone ? 'line-through' : 'none',
-          }}
-        >
-          {item.label}
-          <span style={{ color: C.muted, fontWeight: 400 }}> · {item.candidateName}</span>
-        </div>
-        <div
-          style={{
-            font: '400 11px/1.4 Inter',
-            color: C.tertiary,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            marginTop: 2,
-          }}
-        >
-          {item.context}
-        </div>
-      </div>
-
-      {/* Urgency */}
-      <span
-        style={{
-          font: '600 10.5px/1 Inter',
-          padding: '2px 8px',
-          borderRadius: 999,
-          color: urgencyColors.color,
-          background: urgencyColors.bg,
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-        }}
-      >
-        {item.urgencyLabel}
-      </span>
-
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ago, arrangeQueue, buildQueue, orderedQueue, queueCounts, visibleApplications, withoutHidden } from '../queue'
+import { ago, arrangeQueue, buildQueue, orderedQueue, queueCounts, rowActions, visibleApplications, withoutHidden } from '../queue'
 import type { PendingActivity } from '@/hooks/usePendingActivities'
 import type { NewApplicationItem } from '@/hooks/useNewApplicationsQueue'
 
@@ -93,5 +93,32 @@ describe('hidden rows', () => {
     const apps = [app('a', 'job-2', 1), app('b', 'job-2', 2)]
     expect(visibleApplications(apps, new Set(['application:jca-a'])).map((a) => a.associationId)).toEqual(['jca-b'])
     expect(visibleApplications(apps, new Set(['a-jca-b'])).map((a) => a.associationId)).toEqual(['jca-a'])
+  })
+})
+
+describe('rowActions', () => {
+  const labels = (q: ReturnType<typeof buildQueue>[number]) => rowActions(q).map((a) => a.label)
+  it('gives each row its real next step, primary last', () => {
+    const q = buildQueue([
+      act({ type: 'offer_approval', id: 'o', timestamp: hAgo(1), offerStepId: 'st' }),
+      act({ type: 'scorecard', id: 'mine', timestamp: hAgo(1), isOwnTask: true }),
+      act({ type: 'scorecard', id: 'draft', timestamp: hAgo(1), isOwnTask: true, hasGioDraft: true }),
+      act({ type: 'scorecard', id: 'theirs', timestamp: hAgo(1), isOwnTask: false, interviewerName: 'Daniel Kim' }),
+      act({ type: 'decision', id: 'd', timestamp: hAgo(1) }),
+      act({ type: 'email', id: 'e', timestamp: hAgo(1) }),
+    ], [app('one', 'job-3', 1), app('a', 'job-2', 1), app('b', 'job-2', 2)], NOW)
+    const by = (id: string) => q.find((r) => r.id === id)!
+    expect(labels(by('o-o'))).toEqual(['Decline', 'Approve'])
+    expect(labels(by('s-mine'))).toEqual(['Complete scorecard'])
+    expect(labels(by('s-draft'))).toEqual(['Review draft'])
+    expect(labels(by('s-theirs'))).toEqual(['Open scorecards'])
+    expect(labels(by('d-d'))).toEqual(['Reject', 'Advance'])
+    expect(labels(by('e-e'))).toEqual(['No reply needed', 'Reply'])
+    expect(labels(by('a-jca-one'))).toEqual(['Review'])
+    expect(labels(by('j-job-2'))).toEqual(['Start review'])
+  })
+  it('an offer without its step only opens it', () => {
+    const q = buildQueue([act({ type: 'offer_approval', id: 'o2', timestamp: hAgo(1) })], [], NOW)
+    expect(labels(q[0])).toEqual(['Open offer'])
   })
 })

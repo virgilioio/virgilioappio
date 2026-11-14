@@ -312,3 +312,51 @@ export function withoutHidden(items: QueueItem[], hidden: Set<string>): QueueIte
 export function visibleApplications(apps: NewApplicationItem[] | undefined, hidden: Set<string>): NewApplicationItem[] {
   return (apps ?? []).filter((a) => !hidden.has(`application:${a.associationId}`) && !hidden.has(`a-${a.associationId}`))
 }
+
+// ─── The row's buttons (QueueRow) ───────────────────────────────────
+
+export type QueueActionId =
+  | 'approve'
+  | 'decline'
+  | 'scorecard'
+  | 'advance'
+  | 'reject'
+  | 'reply'
+  | 'no_reply'
+  | 'review'
+
+export interface QueueAction {
+  id: QueueActionId
+  label: string
+  variant: 'primary' | 'secondary' | 'ghost'
+}
+
+/** The row's buttons, primary last (it sits at the right edge). */
+export function rowActions(item: QueueItem): QueueAction[] {
+  switch (item.kind) {
+    case 'offer':
+      return item.offerStepId
+        ? [
+            { id: 'decline', label: 'Decline', variant: 'secondary' },
+            { id: 'approve', label: 'Approve', variant: 'primary' },
+          ]
+        : [{ id: 'decline', label: 'Open offer', variant: 'primary' }]
+    case 'scorecard':
+      if (item.isOwn === false) return [{ id: 'scorecard', label: 'Open scorecards', variant: 'secondary' }]
+      return [{ id: 'scorecard', label: item.hasGioDraft ? 'Review draft' : 'Complete scorecard', variant: 'primary' }]
+    case 'decision':
+      return [
+        { id: 'reject', label: 'Reject', variant: 'secondary' },
+        { id: 'advance', label: 'Advance', variant: 'primary' },
+      ]
+    case 'reply':
+      return [
+        { id: 'no_reply', label: 'No reply needed', variant: 'ghost' },
+        { id: 'reply', label: 'Reply', variant: 'primary' },
+      ]
+    case 'application':
+      return [{ id: 'review', label: 'Review', variant: 'primary' }]
+    case 'applications':
+      return [{ id: 'review', label: 'Start review', variant: 'primary' }]
+  }
+}
