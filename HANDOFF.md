@@ -112,12 +112,19 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-14 (ATS) — Your queue step 2: replies from your own mailbox, Snooze, done today — on main
+
+- Allan's plan, Go! and Apply! the same day. Why (totals): of 289 unread candidate emails behind "Reply needed" (9 mailboxes), 112 were calendar answers or automatic replies, 144 had been answered since and 51 had a newer message in the same conversation; admins also saw teammates' mail. With the new rule about 85 conversations really wait over the last 30 days, across 4 mailboxes.
+- **Database:** `20261114194729_queue_replies_snooze` (applied as written): `dashboard_queue_dismissals.snoozed_until`; `email_is_automatic`; `queue_replies(_days)` (your own mailbox only, one row per conversation, waiting when the candidate's last real message came after yours, last 30 days, not Done in the Inbox); `queue_reply_mark` (No reply needed and its Undo = the Inbox's Done); `queue_done_today` (Mexico City day). Rolled-back test `supabase/tests/83_queue_replies.sql` (28 checks, passed). Types updated for the new column and functions.
+- **Screens:** replies come from `queue_replies` (`fetchWaitingReplies`), keyed `reply:thread:<id>`; ⋯ Snooze until tomorrow / Monday at 9:00 AM in your profile's time zone, Undo, back by itself, footer "N snoozed · Show" with Unsnooze; header "N done today" (hidden while 0 or unknown). Answering from the composer takes the row and refreshes 10s later. Allan's two open questions were taken as recommended: own mailbox only (admins too), 30 days.
+- Checked: browser with fake data (27 + 2 phone checks from step 1, 15 new), queue tests 13, types clean. No function change.
+
 ## Done 2026-11-14 (ATS) — Your queue: actions instead of a checkbox — on main
 
 - Allan: newest on top, a real "done" instead of the checkbox, and a card that lets you act and decide. Data first (totals): about 250 rows had been hidden with the checkbox by two people, mostly Reply needed (147) and New application (80). Mock-up on a canvas first (Today vs Proposed), then built: see CLAUDE.md "Your queue".
 - Built: `src/lib/queue.ts` (order: Overdue oldest first, New newest first; a job's applications in one row; Show N more in the card), `QueueRow` + `useQueueRowActions` (`src/components/dashboard/`) on `src/lib/queueActions.ts` (Approve, Advance with the scorecard rule and Undo, Reply, Reject dialog, Review draft, Start review, Hide with Undo), `/jobs/:id?review=1` opens Application review, icons in the bell's tints (Allan, mid-build). Fixed on the way: a Gio draft hid the Scorecard due row as if submitted; No reply needed no longer writes Gmail's `is_read`.
 - Checked: browser with fake data at 1440 and 390 (29 checks: order, groups, colours, Show more/less, Approve, Advance + Undo, No reply needed + Undo, Hide, Reject dialog, Reply composer, every link), tests 410, types clean. No database or function change.
-- Next, with a database change (own plan): Snooze (tomorrow, next week), "cleared today", replies that clear when answered from Gmail or the Inbox, and why so many "Reply needed" rows get hidden (the row is any unread candidate email).
+- Next (done the same day, step 2 above): Snooze, done today, replies that clear when answered.
 
 ## Done 2026-11-14 (ATS) — Schedule interview: Guests right under Interviewers — on main
 

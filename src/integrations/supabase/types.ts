@@ -2271,6 +2271,7 @@ export type Database = {
           dismissed_at: string
           id: string
           item_key: string
+          snoozed_until: string | null
           tenant_id: string | null
           user_id: string
         }
@@ -2278,6 +2279,7 @@ export type Database = {
           dismissed_at?: string
           id?: string
           item_key: string
+          snoozed_until?: string | null
           tenant_id?: string | null
           user_id: string
         }
@@ -2285,6 +2287,7 @@ export type Database = {
           dismissed_at?: string
           id?: string
           item_key?: string
+          snoozed_until?: string | null
           tenant_id?: string | null
           user_id?: string
         }
@@ -11994,6 +11997,10 @@ export type Database = {
           size: number
         }[]
       }
+      email_is_automatic: {
+        Args: { _from: string; _headers: Json; _subject: string }
+        Returns: boolean
+      }
       emit_notification: {
         Args: {
           _action_url: string
@@ -13021,6 +13028,25 @@ export type Database = {
         Returns: number
       }
       provenance_source_for: { Args: { p_source: string }; Returns: string }
+      queue_done_today: { Args: never; Returns: number }
+      queue_replies: {
+        Args: { _days?: number }
+        Returns: {
+          candidate_id: string
+          candidate_name: string
+          email_id: string
+          job_id: string
+          job_title: string
+          message_id: string
+          received_at: string
+          subject: string
+          thread_id: string
+        }[]
+      }
+      queue_reply_mark: {
+        Args: { _done: boolean; _thread_ids: string[] }
+        Returns: number
+      }
       reassign_candidates_for_stage: {
         Args: { stage_id_param: string }
         Returns: undefined

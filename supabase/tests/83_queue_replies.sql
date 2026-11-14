@@ -1,4 +1,4 @@
--- Run after 20261114200000_queue_replies_snooze inside a transaction that is rolled back.
+-- Run after 20261114194729_queue_replies_snooze inside a transaction that is rolled back.
 -- Replies waiting on you come from your own mailbox only, one row per conversation,
 -- leaving out automatic messages and anything you've answered or marked done.
 --   someone    an active member (their mailbox)
