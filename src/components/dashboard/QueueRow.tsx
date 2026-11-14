@@ -4,9 +4,10 @@
  * "done" checkbox. Secondary actions and the ⋯ menu (Open profile, Hide from my
  * queue) sit beside it; the ⋯ shows on hover with a mouse and always on touch.
  */
-import { ClipboardCheck, EyeOff, FileCheck2, GitBranch, Mail, MoreHorizontal, UserRound, Users2, Briefcase } from 'lucide-react'
+import { AlarmClock, CalendarClock, ClipboardCheck, EyeOff, FileCheck2, GitBranch, Mail, MoreHorizontal, UserRound, Users2, Briefcase } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
+  DropdownMenuShortcut,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -48,12 +49,19 @@ interface Props {
   onAction: (id: QueueActionId) => void
   onOpenProfile: () => void
   onHide: () => void
+  /** Snooze until 9:00 AM tomorrow or on Monday (the hints show those times). */
+  onSnooze: (when: 'tomorrow' | 'monday') => void
+  snoozeHints: { tomorrow: string; monday: string }
+  /** A snoozed row (the Snoozed group): when it comes back, and Unsnooze instead of its actions. */
+  snoozedLabel?: string
+  onUnsnooze?: () => void
 }
 
-export function QueueRow({ item, isLast, busy, onOpen, onAction, onOpenProfile, onHide }: Props) {
+export function QueueRow({ item, isLast, busy, onOpen, onAction, onOpenProfile, onHide, onSnooze, snoozeHints, snoozedLabel, onUnsnooze }: Props) {
   const kind = KIND[item.kind]
   const Icon = kind.icon
-  const actions = rowActions(item)
+  const snoozed = !!snoozedLabel
+  const actions = snoozed ? [] : rowActions(item)
   const isGroup = item.kind === 'applications'
   return (
     <div
@@ -96,13 +104,18 @@ export function QueueRow({ item, isLast, busy, onOpen, onAction, onOpenProfile, 
       <span
         className={cn(
           'shrink-0 whitespace-nowrap rounded-full px-2 py-1 font-inter text-[10.5px] font-semibold leading-none tabular-nums',
-          URGENCY[item.urgency],
+          snoozed ? URGENCY.normal : URGENCY[item.urgency],
         )}
       >
-        {item.urgencyLabel}
+        {snoozed ? `back ${snoozedLabel}` : item.urgencyLabel}
       </span>
 
       <div className="flex shrink-0 items-center gap-1.5">
+        {snoozed && onUnsnooze && (
+          <Button type="button" size="sm" variant="secondary" onClick={onUnsnooze}>
+            Unsnooze
+          </Button>
+        )}
         {actions.map((a) => (
           <Button
             key={a.id}
@@ -140,6 +153,21 @@ export function QueueRow({ item, isLast, busy, onOpen, onAction, onOpenProfile, 
             {isGroup ? <Briefcase /> : <UserRound />}
             <span className="truncate">{isGroup ? 'Open job' : 'Open profile'}</span>
           </DropdownMenuItem>
+          {!snoozed && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => onSnooze('tomorrow')}>
+                <AlarmClock />
+                <span className="truncate">Snooze until tomorrow</span>
+                <DropdownMenuShortcut>{snoozeHints.tomorrow}</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onSnooze('monday')}>
+                <CalendarClock />
+                <span className="truncate">Snooze until Monday</span>
+                <DropdownMenuShortcut>{snoozeHints.monday}</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={onHide}>
             <EyeOff />

@@ -6,6 +6,7 @@ import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   Inbox,
+  Check,
   Calendar as CalendarIcon,
   Briefcase,
   Video,
@@ -27,12 +28,16 @@ import { useJobs } from '@/hooks/useJobs'
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics'
 import { useNewApplicationsQueue } from '@/hooks/useNewApplicationsQueue'
 import { useQueueDismissals } from '@/hooks/useQueueDismissals'
+import { useQueueDoneToday } from '@/hooks/useQueueDoneToday'
 import { QueueRow } from '@/components/dashboard/QueueRow'
 import { useQueueRowActions } from '@/components/dashboard/useQueueRowActions'
 import { profileHref } from '@/lib/queueActions'
 import {
   arrangeQueue,
   buildQueue,
+  snoozedRows,
+  snoozeLabel,
+  snoozeTimes,
   orderedQueue,
   queueCounts,
   visibleApplications,
@@ -126,8 +131,18 @@ export default function Dashboard() {
 
   // Hidden queue rows are kept server-side per person, by a stable key, so they
   // survive reloads, other browsers and devices (useQueueDismissals).
-  const { dismissed: doneIds, hide: hideKeys, show: showKeys } = useQueueDismissals()
-  const rowActions = useQueueRowActions({ hide: hideKeys, show: showKeys })
+  const {
+    dismissed: doneIds,
+    hiddenForGood,
+    snoozed,
+    hide: hideKeys,
+    show: showKeys,
+    snooze: snoozeKeys,
+  } = useQueueDismissals()
+  // Snoozes end at 9:00 AM in your own time zone (your profile's, else Mexico City).
+  const timeZone = profile?.timezone || 'America/Mexico_City'
+  const rowActions = useQueueRowActions({ hide: hideKeys, show: showKeys, snooze: snoozeKeys, timeZone })
+  const doneToday = useQueueDoneToday()
 
   // Your queue (2026-11-14): rows from src/lib/queue.ts; a job's applications are one
   // row, and an applicant hidden on their own stays out of it. `q.id` is also checked
@@ -141,6 +156,19 @@ export default function Dashboard() {
   )
 
   const counts = useMemo(() => queueCounts(queue), [queue])
+
+  // Snoozed rows wait in their own group at the bottom until their time comes.
+  const snoozedItems = useMemo(
+    () => snoozedRows(pending, newApps, snoozed, hiddenForGood),
+    [pending, newApps, snoozed, hiddenForGood],
+  )
+  const snoozeHints = useMemo(() => {
+    const t = snoozeTimes(new Date(), timeZone)
+    return {
+      tomorrow: new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit' }).format(t.tomorrow),
+      monday: new Intl.DateTimeFormat('en-US', { timeZone, month: 'short', day: 'numeric' }).format(t.monday),
+    }
+  }, [timeZone])
 
   const filtered = filter === 'all' ? queue : queue.filter(q => q.type === filter)
 
@@ -289,20 +317,29 @@ export default function Dashboard() {
           onFilter={setFilter}
           items={filtered}
           loading={queueLoading}
-          renderRow={(item, isLast) => (
-            <QueueRow
-              key={item.id}
-              item={item}
-              isLast={isLast}
-              busy={rowActions.busyFor(item)}
-              onOpen={() => navigate(item.href)}
-              onAction={(id) => void rowActions.run(item, id)}
-              onOpenProfile={() =>
-                navigate(item.candidateId ? profileHref(item.jobId, item.candidateId) : `/jobs/${item.jobId}`)
-              }
-              onHide={() => void rowActions.hideRow(item)}
-            />
-          )}
+          doneToday={doneToday}
+          snoozedItems={snoozedItems}
+          renderRow={(item, isLast) => {
+            const snoozedUntil = (item as QueueItem & { snoozedUntil?: string }).snoozedUntil
+            return (
+              <QueueRow
+                key={item.id}
+                item={item}
+                isLast={isLast}
+                busy={rowActions.busyFor(item)}
+                onOpen={() => navigate(item.href)}
+                onAction={(id) => void rowActions.run(item, id)}
+                onOpenProfile={() =>
+                  navigate(item.candidateId ? profileHref(item.jobId, item.candidateId) : `/jobs/${item.jobId}`)
+                }
+                onHide={() => void rowActions.hideRow(item)}
+                onSnooze={(when) => void rowActions.snoozeRow(item, when)}
+                snoozeHints={snoozeHints}
+                snoozedLabel={snoozedUntil ? snoozeLabel(new Date(snoozedUntil), timeZone) : undefined}
+                onUnsnooze={snoozedUntil ? () => void rowActions.unsnooze(item) : undefined}
+              />
+            )
+          }}
         />
         {rowActions.dialogs}
 
@@ -346,10 +383,14 @@ interface QueueCardProps {
   items: QueueItem[]
   loading: boolean
   renderRow: (item: QueueItem, isLast: boolean) => ReactNode
+  /** What you finished today; null while it's being counted. */
+  doneToday: number | null
+  snoozedItems: QueueItem[]
 }
 
-function QueueCard({ counts, filter, onFilter, items, loading, renderRow }: QueueCardProps) {
+function QueueCard({ counts, filter, onFilter, items, loading, renderRow, doneToday, snoozedItems }: QueueCardProps) {
   const [expanded, setExpanded] = useState(false)
+  const [showSnoozed, setShowSnoozed] = useState(false)
   const chips: { id: 'all' | QueueType; label: string; count: number }[] = [
     { id: 'all', label: 'Everything', count: counts.all },
     { id: 'scorecard', label: 'Scorecards', count: counts.scorecard },
@@ -382,6 +423,23 @@ function QueueCard({ counts, filter, onFilter, items, loading, renderRow }: Queu
         >
           {counts.all}
         </span>
+        {doneToday !== null && doneToday > 0 ? (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              marginLeft: 4,
+              font: '500 11.5px/1 Inter',
+              color: '#0B7A52',
+              fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Check size={12} strokeWidth={2.4} aria-hidden="true" />
+            {doneToday} done today
+          </span>
+        ) : null}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {chips.map(c => {
             const active = filter === c.id
@@ -421,28 +479,60 @@ function QueueCard({ counts, filter, onFilter, items, loading, renderRow }: Queu
         <QueueGroups items={items} expanded={expanded} renderRow={renderRow} />
       )}
 
-      {/* Footer: the rest opens in the card (2026-11-14), never another page. */}
-      {!loading && items.length > QUEUE_MAX ? (
-        <div style={{ padding: '10px 16px', textAlign: 'center', borderTop: `1px solid ${C.hairline}` }}>
-          <button
-            type="button"
-            onClick={() => setExpanded(v => !v)}
+      {/* Snoozed rows (2026-11-14): their own group, opened from the footer. */}
+      {!loading && showSnoozed && snoozedItems.length > 0 ? (
+        <section aria-label="Snoozed">
+          <div
             style={{
-              font: '500 12px/1 Inter',
-              color: C.purple,
-              background: 'none',
-              border: 0,
-              padding: '6px 8px',
-              cursor: 'pointer',
-              fontVariantNumeric: 'tabular-nums',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 16px 6px',
+              borderTop: `1px solid ${C.hairline}`,
             }}
           >
-            {expanded ? 'Show less' : `Show ${items.length - QUEUE_MAX} more`}
-          </button>
+            <span style={{ font: '600 12px/16px Inter', color: C.muted }}>Snoozed</span>
+            <span style={{ font: '400 11.5px/16px Inter', color: '#6B7080' }}>Soonest first</span>
+          </div>
+          {snoozedItems.map((item, i) => renderRow(item, i === snoozedItems.length - 1))}
+        </section>
+      ) : null}
+
+      {/* Footer: the rest opens in the card (2026-11-14), never another page. */}
+      {!loading && (items.length > QUEUE_MAX || snoozedItems.length > 0) ? (
+        <div
+          style={{
+            padding: '10px 16px',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 16,
+            borderTop: `1px solid ${C.hairline}`,
+          }}
+        >
+          {items.length > QUEUE_MAX ? (
+            <button type="button" onClick={() => setExpanded(v => !v)} style={footerLink}>
+              {expanded ? 'Show less' : `Show ${items.length - QUEUE_MAX} more`}
+            </button>
+          ) : null}
+          {snoozedItems.length > 0 ? (
+            <button type="button" onClick={() => setShowSnoozed(v => !v)} style={{ ...footerLink, color: C.muted }}>
+              {showSnoozed ? 'Hide snoozed' : `${snoozedItems.length} snoozed · Show`}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
   )
+}
+
+const footerLink: React.CSSProperties = {
+  font: '500 12px/1 Inter',
+  color: C.purple,
+  background: 'none',
+  border: 0,
+  padding: '6px 8px',
+  cursor: 'pointer',
+  fontVariantNumeric: 'tabular-nums',
 }
 
 const QUEUE_MAX = 10

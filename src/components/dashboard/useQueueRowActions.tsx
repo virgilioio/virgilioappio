@@ -16,12 +16,23 @@ import { formatQuotedReply, getReplySubject } from '@/utils/emailFormatUtils'
 import { collapseRows } from '@/lib/motion'
 import { undoToast } from '@/lib/undoToast'
 import { advanceCandidate, approvalError, approveOfferStep, candidateEmail, profileHref } from '@/lib/queueActions'
-import type { QueueItem } from '@/lib/queue'
+import { snoozeLabel, snoozeTimes, type QueueItem } from '@/lib/queue'
+import { supabase } from '@/lib/supabaseClient'
 import type { QueueActionId } from '@/lib/queue'
 
 interface Options {
   hide: (keys: string[]) => Promise<unknown>
   show: (keys: string[]) => Promise<unknown>
+  snooze: (keys: string[], until: Date) => Promise<unknown>
+  /** The person's time zone: snoozes end at 9:00 AM there. */
+  timeZone: string
+}
+
+/** No reply needed (and its Undo) is the Inbox's Done on your own conversation (queue_reply_mark). */
+async function markReply(threadId: string, done: boolean): Promise<void> {
+  const rpc = supabase.rpc.bind(supabase) as unknown as (fn: string, args: object) => Promise<{ error: unknown }>
+  const { error } = await rpc('queue_reply_mark', { _thread_ids: [threadId], _done: done })
+  if (error) throw error
 }
 
 interface ReplyState {
@@ -42,7 +53,7 @@ function rowEl(id: string): Element | null {
   return document.querySelector(`[data-queue-row="${CSS.escape(id)}"]`)
 }
 
-export function useQueueRowActions({ hide, show }: Options) {
+export function useQueueRowActions({ hide, show, snooze, timeZone }: Options) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [busy, setBusy] = useState<{ id: string; action: QueueActionId } | null>(null)
@@ -65,6 +76,7 @@ export function useQueueRowActions({ hide, show }: Options) {
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
     void queryClient.invalidateQueries({ queryKey: ['new-applications-queue'] })
+    void queryClient.invalidateQueries({ queryKey: ['queue-done-today'] })
   }, [queryClient])
 
   const hideRow = useCallback(
@@ -85,6 +97,40 @@ export function useQueueRowActions({ hide, show }: Options) {
     [hide, show, take, putBack],
   )
 
+  const snoozeRow = useCallback(
+    async (item: QueueItem, when: 'tomorrow' | 'monday') => {
+      const times = snoozeTimes(new Date(), timeZone)
+      const until = when === 'tomorrow' ? times.tomorrow : times.monday
+      await take(item)
+      try {
+        await snooze(item.dismissKeys, until)
+      } catch {
+        putBack(item)
+        toast("Couldn't snooze it", { action: { label: 'Retry', onClick: () => void snoozeRow(item, when) } })
+        return
+      }
+      undoToast(`Snoozed until ${snoozeLabel(until, timeZone)} · ${item.candidateName}`, async () => {
+        await show(item.dismissKeys)
+        putBack(item)
+      })
+    },
+    [snooze, show, take, putBack, timeZone],
+  )
+
+  const unsnooze = useCallback(
+    async (item: QueueItem) => {
+      try {
+        await show(item.dismissKeys)
+      } catch {
+        toast("Couldn't bring it back", { action: { label: 'Retry', onClick: () => void unsnooze(item) } })
+        return
+      }
+      putBack(item)
+      toast(`Back in your queue · ${item.candidateName}`)
+    },
+    [show, putBack],
+  )
+
   const run = useCallback(
     async (item: QueueItem, action: QueueActionId) => {
       const cand = item.candidateId
@@ -98,9 +144,28 @@ export function useQueueRowActions({ hide, show }: Options) {
         case 'review':
           navigate(`/jobs/${item.jobId}?review=1`)
           return
-        case 'no_reply':
-          await hideRow(item, `Marked no reply needed · ${item.candidateName}`)
+        case 'no_reply': {
+          const thread = item.threadId
+          if (!thread) {
+            await hideRow(item, `Marked no reply needed · ${item.candidateName}`)
+            return
+          }
+          await take(item)
+          try {
+            await markReply(thread, true)
+          } catch {
+            putBack(item)
+            toast("Couldn't mark it", { action: { label: 'Retry', onClick: () => void run(item, 'no_reply') } })
+            return
+          }
+          refresh()
+          undoToast(`Marked no reply needed · ${item.candidateName}`, async () => {
+            await markReply(thread, false)
+            putBack(item)
+            refresh()
+          })
           return
+        }
         case 'approve': {
           if (!item.offerStepId) return
           setBusy({ id: item.id, action })
@@ -221,12 +286,13 @@ export function useQueueRowActions({ hide, show }: Options) {
         defaultCc={reply?.cc}
         inReplyToMessageId={reply?.replyToId}
         onSuccess={() => {
-          // Sent (or waiting out Undo Send): the reply is no longer owed.
+          // Sent (or waiting out Undo Send): the reply is no longer owed. The conversation
+          // leaves queue_replies once the sent message is in (your reply is the last word).
           const item = reply?.item
           setReply(null)
           if (item) {
             void take(item)
-            void hide(item.dismissKeys)
+            window.setTimeout(refresh, 10_000)
           }
         }}
       />
@@ -256,6 +322,8 @@ export function useQueueRowActions({ hide, show }: Options) {
   return {
     run,
     hideRow,
+    snoozeRow,
+    unsnooze,
     gone,
     busyFor: (item: QueueItem): QueueActionId | null => (busy?.id === item.id ? busy.action : null),
     dialogs,
