@@ -436,6 +436,20 @@ export default function JobDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
+  // Deep link: /jobs/:id?review=1 (the dashboard queue's Start review, 2026-11-14) lands
+  // on Pipeline > Application review with the review sheet open, once; the parameter
+  // leaves the address so Back and a reload don't reopen it.
+  useEffect(() => {
+    if (searchParams.get('review') !== '1' || isRestrictedViewer) return
+    setActiveTab('pipeline')
+    setPipelineSectionTab('application')
+    setShowApplicationReview(true)
+    const next = new URLSearchParams(searchParams)
+    next.delete('review')
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, isRestrictedViewer])
+
   // Force restricted viewers (HM/Interviewer) to 'recruiting' tab only
   useEffect(() => {
     if (isRestrictedViewer && pipelineSectionTab !== 'recruiting') {

@@ -4,7 +4,7 @@
  * "done" checkbox. Secondary actions and the ⋯ menu (Open profile, Hide from my
  * queue) sit beside it; the ⋯ shows on hover with a mouse and always on touch.
  */
-import { BadgeCheck, ClipboardCheck, EyeOff, GitBranch, Mail, MoreHorizontal, UserRound, Users, Briefcase } from 'lucide-react'
+import { ClipboardCheck, EyeOff, FileCheck2, GitBranch, Mail, MoreHorizontal, UserRound, Users2, Briefcase } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -20,13 +20,17 @@ import { rowActions, type QueueActionId, type QueueItem } from '@/lib/queue'
 
 export type { QueueActionId } from '@/lib/queue'
 
-const ICON = {
-  scorecard: ClipboardCheck,
-  decision: GitBranch,
-  offer: BadgeCheck,
-  reply: Mail,
-  application: UserRound,
-  applications: Users,
+/**
+ * Each kind's icon and tint, the notification centre's (NotificationCenter
+ * CATEGORY_META), so a scorecard or an offer looks the same in the bell and here.
+ */
+const KIND = {
+  scorecard: { icon: ClipboardCheck, bg: '#FFEDD5', fg: '#C2410C' },
+  decision: { icon: GitBranch, bg: '#DBEAFE', fg: '#1D4ED8' },
+  offer: { icon: FileCheck2, bg: '#DCFCE7', fg: '#15803D' },
+  reply: { icon: Mail, bg: '#EDE4FF', fg: '#6F3FF5' },
+  application: { icon: Users2, bg: '#DCFCE7', fg: '#15803D' },
+  applications: { icon: Users2, bg: '#DCFCE7', fg: '#15803D' },
 } as const
 
 const URGENCY = {
@@ -47,8 +51,8 @@ interface Props {
 }
 
 export function QueueRow({ item, isLast, busy, onOpen, onAction, onOpenProfile, onHide }: Props) {
-  const Icon = ICON[item.kind]
-  const overdue = item.urgency === 'overdue'
+  const kind = KIND[item.kind]
+  const Icon = kind.icon
   const actions = rowActions(item)
   const isGroup = item.kind === 'applications'
   return (
@@ -61,10 +65,8 @@ export function QueueRow({ item, isLast, busy, onOpen, onAction, onOpenProfile, 
     >
       <span
         aria-hidden="true"
-        className={cn(
-          'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
-          overdue ? 'bg-[#FEF2F2] text-[#B91C1C]' : 'bg-[#F6F5F1] text-[#5A6072]',
-        )}
+        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+        style={{ background: kind.bg, color: kind.fg }}
       >
         <Icon className="h-3.5 w-3.5" strokeWidth={2} />
       </span>
