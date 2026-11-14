@@ -112,6 +112,11 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-14 (ATS) — Schedule interview: Guests right under Interviewers — on main
+
+- Allan: the Guests card (Cc'd guests) sat last in the scheduling sheet and was easy to miss. `ScheduleInterviewSheet` now runs What & who → Guests → When → Location → Invitation; the card itself is unchanged. The older two-step scheduler (`SimpleScheduleInterviewSheet`, its guest field in the confirmation step) is untouched.
+- Checked in the browser with fake data at 1440 and 390: the order, Guests fully on screen when the sheet opens, adding a guest counts 1/10; types clean. No database or function change.
+
 ## Done 2026-11-12 (ATS) — Find: "or" must-haves stay off Apollo's keywords — on main
 
 - Allan asked whether Gio's "or" skills ("Customer Success or Project Management") work with our logic. Checked every reader: Gio Fit, interview notes and the shortlist read them as text (fine); Find's match splits on "or", "/" and commas and counts either side (`skillInText`, fine); the job briefing's must-have stat matches either side by containment (fine). The one gap: with "Require must-haves on Apollo" on, must-haves went to Apollo's keyword search, which needs every word, so an "or" skill asked for both sides.
