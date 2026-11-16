@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { QUEUE_QUERY_OPTIONS } from '@/lib/queueRefresh';
+import { chunk, mapLimit } from '@/lib/parallel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -78,7 +80,8 @@ export function usePendingActivities() {
       );
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    // Fresh whenever the dashboard opens: work done elsewhere must not linger.
+    ...QUEUE_QUERY_OPTIONS,
   });
 
   const markEmailAsRead = useMutation({
@@ -189,27 +192,39 @@ async function fetchPendingScorecards(userId: string, isAdmin: boolean): Promise
     (profiles || []).map(p => [p.user_id, p])
   );
 
-  // Fetch scorecards
-  let scorecardsQuery = supabase
-    .from('job_stage_scorecards')
-    .select('id, association_id, stage_instance_id, created_by, is_ai_draft')
-    .is('moved_from_stage_name', null);
-  
-  if (!isAdmin) {
-    scorecardsQuery = scorecardsQuery.eq('created_by', userId);
+  // Scorecards for these interviews' candidates only, read in batches: an unbounded
+  // read stops at 1,000 rows and submitted scorecards would go missing from the check.
+  let scorecards: { id: string; association_id: string; stage_instance_id: string; created_by: string; is_ai_draft: boolean | null }[];
+  try {
+    scorecards = (
+      await mapLimit(chunk(associationIds, 100), 4, async (ids) => {
+        let q = supabase
+          .from('job_stage_scorecards')
+          .select('id, association_id, stage_instance_id, created_by, is_ai_draft')
+          .in('association_id', ids)
+          .is('moved_from_stage_name', null);
+        if (!isAdmin) q = q.eq('created_by', userId);
+        const { data, error } = await q;
+        if (error) throw error;
+        return data ?? [];
+      })
+    ).flat();
+  } catch (e) {
+    // Without the scorecards we can't tell which are done: leave these rows out
+    // rather than show submitted ones as due.
+    console.warn('[queue] scorecards read failed', e);
+    return [];
   }
-
-  const { data: scorecards } = await scorecardsQuery;
 
   // A submitted scorecard clears the row; Gio's draft (is_ai_draft) doesn't: the
   // interviewer still has to review and submit it, so it stays, marked as drafted.
   const scorecardKeys = new Set(
-    (scorecards || [])
+    scorecards
       .filter(sc => !(sc as any).is_ai_draft)
       .map(sc => `${sc.association_id}:${sc.stage_instance_id}:${sc.created_by}`)
   );
   const draftKeys = new Set(
-    (scorecards || [])
+    scorecards
       .filter(sc => (sc as any).is_ai_draft)
       .map(sc => `${sc.association_id}:${sc.stage_instance_id}:${sc.created_by}`)
   );
@@ -288,15 +303,28 @@ async function fetchNeedsDecision(userId: string, isAdmin: boolean, assignedJobI
   // Get association IDs to check for scorecards
   const associationIds = associations.map(a => a.id);
 
-  // Fetch human scorecards for these associations at their current stage
-  const { data: scorecards } = await supabase
-    .from('job_stage_scorecards')
-    .select('id, association_id, stage_instance_id, created_at, is_ai_draft')
-    .in('association_id', associationIds)
-    .eq('is_ai_draft', false)
-    .is('moved_from_stage_name', null);
+  // Human scorecards for these associations, read in batches (one request with
+  // every active candidate's id grows too long and fails).
+  let scorecards: { id: string; association_id: string; stage_instance_id: string; created_at: string; is_ai_draft: boolean | null }[];
+  try {
+    scorecards = (
+      await mapLimit(chunk(associationIds, 100), 4, async (ids) => {
+        const { data, error } = await supabase
+          .from('job_stage_scorecards')
+          .select('id, association_id, stage_instance_id, created_at, is_ai_draft')
+          .in('association_id', ids)
+          .eq('is_ai_draft', false)
+          .is('moved_from_stage_name', null);
+        if (error) throw error;
+        return data ?? [];
+      })
+    ).flat();
+  } catch (e) {
+    console.warn('[queue] decision scorecards read failed', e);
+    return [];
+  }
 
-  if (!scorecards || scorecards.length === 0) return [];
+  if (scorecards.length === 0) return [];
 
   // Create map of association+stage -> latest scorecard date
   const scorecardMap = new Map<string, string>();

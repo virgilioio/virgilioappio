@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { QUEUE_QUERY_OPTIONS } from '@/lib/queueRefresh'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -12,7 +13,7 @@ export function useQueueDoneToday(): number | null {
   const { data } = useQuery({
     queryKey: ['queue-done-today', user?.id],
     enabled: !!user?.id,
-    staleTime: 60_000,
+    ...QUEUE_QUERY_OPTIONS,
     refetchInterval: 5 * 60_000,
     queryFn: async () => {
       const rpc = supabase.rpc.bind(supabase) as unknown as (fn: string) => Promise<{ data: number | null; error: unknown }>

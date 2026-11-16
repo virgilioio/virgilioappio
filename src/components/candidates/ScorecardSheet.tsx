@@ -110,6 +110,7 @@ import {
 import { UnsavedGuard } from "@/components/ui/unsaved-guard";
 import { LinkedInFilled } from "@/components/icons/LinkedInFilled";
 import { useStageInterviewDefaults } from "@/hooks/useStageInterviewDefaults";
+import { refreshQueue } from "@/lib/queueRefresh";
 
 interface ScorecardSheetProps {
   open: boolean;
@@ -1078,6 +1079,8 @@ export function ScorecardSheet({
 
       // Clear draft on successful save
       clearDraft();
+      // Your queue: the Scorecard due row (and a Stage decision) follows at once.
+      refreshQueue(queryClient);
 
       setEditMode(false);
 

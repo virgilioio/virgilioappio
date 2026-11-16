@@ -112,6 +112,12 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-16 (ATS) — Your queue: finished work leaves the card — on the branch, waiting for Apply!
+
+- Allan: a submitted scorecard and rejected candidates stayed in Your queue. The database was right (the scorecard matched its interview, the candidates were rejected); the card showed a copy kept for 5 minutes and saved in the browser, so even a reload showed it, and only the queue's own buttons refreshed it.
+- Fixed: the queue's reads are fresh whenever the dashboard opens or the tab comes back and are no longer saved in the browser (`src/lib/queueRefresh.ts`, persister); scorecard save, reject (single and bulk), stage moves and status changes, Application review and sent emails call `refreshQueue()`. Scorecards are read only for the queue's candidates and in batches of 100 (an unbounded read stops at 1,000 rows; one request with every active candidate's id grows too long); a failed read leaves that kind of row out instead of showing done work as due.
+- Checked: browser with fake data (14 checks: scorecard, decision and reply rows leave after work elsewhere and after a reload, done today updates, tab focus refreshes, no saved copy, batched reads with 250 candidates; the same script fails on the old code), phone width, tests 414, types clean. No database or function change.
+
 ## Done 2026-11-14 (ATS) — Your queue step 2: replies from your own mailbox, Snooze, done today — on main
 
 - Allan's plan, Go! and Apply! the same day. Why (totals): of 289 unread candidate emails behind "Reply needed" (9 mailboxes), 112 were calendar answers or automatic replies, 144 had been answered since and 51 had a newer message in the same conversation; admins also saw teammates' mail. With the new rule about 85 conversations really wait over the last 30 days, across 4 mailboxes.
