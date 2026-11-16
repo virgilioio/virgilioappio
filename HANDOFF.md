@@ -112,6 +112,12 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-16 (ATS) — Gio Sign: pasting the code works — on the branch, waiting for Apply!
+
+- A customer signer (the first real Gio Sign envelope, a Gio Sales customer agreement) couldn't get past the code. The server logs showed the page opened and the code sent, but no code ever came back (0 attempts): the code email writes it as "123 456" and each box took at most 6 characters, so a paste became "123 45" (or "123 4" with a leading space from Outlook) and Verify stayed disabled.
+- Fixed in `SigningPage` (`CodeGate`): a paste into any box keeps only the digits and fills all six (`fill`), a box selects its digit on focus so typing replaces it, the 6-character limit is gone; autofill still works.
+- Checked in the browser with fake server answers (14 checks): paste "482 913", " 482 913" in box 3, "482-913", typing, typing over a box, a wrong code then the right one, then the rest of the flow (document opens, adopt signature, fill a field, submit carries the values and signature, the done screen names the next signer, Decline sends its reason) and paste at phone width. Server side read: `sign-session` verify and load, and her envelope's PDF, fields and order are sound. No database or function change.
+
 ## Done 2026-11-16 (ATS) — Your queue: finished work leaves the card — on main
 
 - Allan: a submitted scorecard and rejected candidates stayed in Your queue. The database was right (the scorecard matched its interview, the candidates were rejected); the card showed a copy kept for 5 minutes and saved in the browser, so even a reload showed it, and only the queue's own buttons refreshed it.

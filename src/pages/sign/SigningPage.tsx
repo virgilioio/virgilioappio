@@ -200,16 +200,30 @@ function Gate({
     }
   }
 
+  /**
+   * Fill the boxes from digits starting at box `from` (2026-11-16). The code email
+   * writes it as "123 456" and mail apps often add a space before it, so a paste or
+   * an autofill is read for its digits only: six or more fill every box from the
+   * first; fewer fill from the box that has focus.
+   */
+  const fill = (from: number, digits: string) => {
+    const d = digits.replace(/\D/g, '')
+    if (!d) return
+    const start = d.length >= 6 ? 0 : from
+    const a = [...code]
+    d.slice(0, 6 - start).split('').forEach((ch, k) => (a[start + k] = ch))
+    setCode(a)
+    setError(null)
+    const next = a.findIndex((x) => !x)
+    refs.current[next === -1 ? 5 : next]?.focus()
+    void check(a)
+  }
+
   const put = (i: number, raw: string) => {
-    const d = raw.replace(/\D/g, '')
-    if (d.length > 1) {
-      const a = d.slice(0, 6).split('')
-      while (a.length < 6) a.push('')
-      setCode(a)
-      refs.current[Math.min(5, d.length)]?.focus()
-      void check(a)
-      return
-    }
+    let d = raw.replace(/\D/g, '')
+    // Typing into a box that already holds a digit: keep the new one.
+    if (d.length === 2 && code[i] && d.includes(code[i])) d = d.replace(code[i], '') || code[i]
+    if (d.length > 1) return fill(i, d)
     const a = [...code]
     a[i] = d
     setCode(a)
@@ -290,11 +304,17 @@ function Gate({
                       value={c}
                       inputMode="numeric"
                       autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                      maxLength={6}
                       aria-label={`Digit ${i + 1}`}
                       aria-invalid={!!error}
                       disabled={busy}
                       onChange={(e) => put(i, e.target.value)}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onPaste={(e) => {
+                        const text = e.clipboardData.getData('text')
+                        if (!/\d/.test(text)) return
+                        e.preventDefault()
+                        fill(i, text)
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Backspace' && !code[i] && i > 0) refs.current[i - 1]?.focus()
                       }}
