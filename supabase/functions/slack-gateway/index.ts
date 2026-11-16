@@ -15,6 +15,8 @@
 //        to = { type: 'channel' | 'user', id, label } | { type: 'email', email, label }
 //                               -> { results: [{ key, to, ok, error?, problem?, retry? }] }
 //        an email is looked up in Slack (users.lookupByEmail) and sent by DM.
+//        <gio-mention:email|Name> in the text or blocks becomes that person's
+//        Slack tag, or their name when they aren't in Slack.
 // ASCII only.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -203,24 +205,42 @@ Deno.serve(async (req) => {
   if (action === 'send') {
     const messages = (Array.isArray(body.messages) ? body.messages : []).slice(0, 25) as Message[]
     const ids = new Map<string, string | null>()
+    const lookup = async (raw: string) => {
+      const email = raw.toLowerCase()
+      if (!ids.has(email)) {
+        const r = await slackApi(token, 'users.lookupByEmail', { email })
+        ids.set(email, r.ok && r.user?.id && !r.user.deleted ? String(r.user.id) : null)
+        if (!r.ok) await broken(String(r.error))
+      }
+      return ids.get(email) ?? null
+    }
+    // Gio Sales writes people as <gio-mention:email|Name>; Slack gets <@U...> or the name.
+    const MENTION = /<gio-mention:([^|>]+)\|([^>]*)>/g
+    const mentions = async (s: string) => {
+      const found = [...s.matchAll(MENTION)]
+      if (!found.length) return s
+      const tags = new Map<string, string | null>()
+      for (const m of found) if (!tags.has(m[1]) && EMAIL.test(m[1])) tags.set(m[1], await lookup(m[1]))
+      return s.replace(MENTION, (_w, email: string, name: string) => {
+        const id = tags.get(email)
+        return id ? `<@${id}>` : name
+      })
+    }
     const results = []
     for (const m of messages) {
       const to = m?.to as Target | undefined
       const label = String(to?.label ?? '').slice(0, 120) || 'Slack'
-      const text = String(m?.text ?? '').slice(0, 3000)
-      const blocks = Array.isArray(m?.blocks) ? m.blocks.slice(0, 10) : [{ type: 'section', text: { type: 'mrkdwn', text } }]
+      const text = (await mentions(String(m?.text ?? ''))).slice(0, 3000)
+      const blocks = Array.isArray(m?.blocks)
+        ? JSON.parse(await mentions(JSON.stringify(m.blocks.slice(0, 10))))
+        : [{ type: 'section', text: { type: 'mrkdwn', text } }]
       if (!to || !text.trim()) { results.push({ key: m?.key, to: label, ok: false, error: 'bad_request', problem: 'Nothing to send.' }); continue }
       let target: { channel?: string; user?: string; label: string } | null = null
       if ((to.type === 'channel' || to.type === 'user') && SLACK_ID.test(String(to.id))) {
         target = to.type === 'channel' ? { channel: to.id, label } : { user: to.id, label }
       } else if (to.type === 'email' && EMAIL.test(String(to.email))) {
         const email = String(to.email).toLowerCase()
-        if (!ids.has(email)) {
-          const r = await slackApi(token, 'users.lookupByEmail', { email })
-          ids.set(email, r.ok && r.user?.id && !r.user.deleted ? String(r.user.id) : null)
-          if (!r.ok) await broken(String(r.error))
-        }
-        const id = ids.get(email)
+        const id = await lookup(email)
         if (!id) { results.push({ key: m.key, to: label, ok: false, error: 'users_not_found', problem: `${label} isn't in your Slack with ${email}.` }); continue }
         target = { user: id, label }
       }
