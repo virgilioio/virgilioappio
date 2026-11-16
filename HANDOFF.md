@@ -112,7 +112,7 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-11-16 (ATS) — Gio Sign: pasting the code works — on the branch, waiting for Apply!
+## Done 2026-11-16 (ATS) — Gio Sign: pasting the code works — on main
 
 - A customer signer (the first real Gio Sign envelope, a Gio Sales customer agreement) couldn't get past the code. The server logs showed the page opened and the code sent, but no code ever came back (0 attempts): the code email writes it as "123 456" and each box took at most 6 characters, so a paste became "123 45" (or "123 4" with a leading space from Outlook) and Verify stayed disabled.
 - Fixed in `SigningPage` (`CodeGate`): a paste into any box keeps only the digits and fills all six (`fill`), a box selects its digit on focus so typing replaces it, the 6-character limit is gone; autofill still works.
