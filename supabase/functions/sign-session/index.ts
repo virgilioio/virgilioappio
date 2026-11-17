@@ -3,6 +3,9 @@
 //   open       { token }                 -> where the signer stands, what they're signing
 //   send_code  { token, consent: true }  -> records consent, emails a 6-digit code
 //   verify     { token, code }           -> checks the code, opens a 2-hour session
+//   enter      { token, consent: true }  -> envelopes without the code (require_code off,
+//                                           the default since 2026-11-17): records consent
+//                                           and opens a 2-hour session from the link alone
 //   load       { token, session }        -> the documents (5-minute URLs) and fields
 // Every auth-shaped failure is { error: "not_found" }. ASCII only.
 
@@ -91,6 +94,7 @@ Deno.serve(async (req) => {
         documents: (docs ?? []).map((d: any) => ({ name: d.name, pages: d.page_count })),
         recipient: { name: r.name, first_name: String(r.name || "").split(/\s+/)[0], email_masked: maskEmail(r.email), role: r.role },
         consented: !!r.consent_at,
+        code_required: !!e.require_code,
         code_sent_at: s.code_sent_at,
         expires_at: e.expires_at,
         declined_by: decliner?.name ?? null,
@@ -157,11 +161,44 @@ Deno.serve(async (req) => {
         .eq("recipient_id", r.id);
       const patch: Record<string, unknown> = {};
       if (!r.verified_at) patch.verified_at = now.toISOString();
+      patch.verified_by = "code";
       if (!r.viewed_at) patch.viewed_at = now.toISOString();
       if (r.status === "sent") patch.status = "viewed";
       if (Object.keys(patch).length) await supabase.from("sign_recipients").update(patch).eq("id", r.id);
       if (!r.viewed_at) later(notifySenderViewed(supabase, e.id, r.id));
       await logEvent(supabase, ctx, "code_verified", `Code verified by ${r.name}`, req, ip);
+      return json(200, { session, expires_at: new Date(now.getTime() + SESSION_HOURS * 3_600_000).toISOString() }, corsHeaders);
+    }
+
+    if (action === "enter") {
+      // The emailed link is enough when the envelope doesn't ask for a code.
+      if (state !== "open") return json(409, { error: state }, corsHeaders);
+      if (e.require_code) return json(400, { error: "code_required" }, corsHeaders);
+      if (body?.consent !== true && !r.consent_at) return json(400, { error: "consent_required" }, corsHeaders);
+      const now = new Date();
+      if (!r.consent_at) {
+        await supabase.from("sign_recipients").update({ consent_at: now.toISOString() }).eq("id", r.id);
+        await logEvent(supabase, ctx, "consented", `${r.name} agreed to sign electronically`, req, ip);
+      }
+      const session = randomToken();
+      await supabase
+        .from("sign_recipient_secrets")
+        .update({
+          session_hash: await sha256Hex(session),
+          session_expires_at: new Date(now.getTime() + SESSION_HOURS * 3_600_000).toISOString(),
+          updated_at: now.toISOString(),
+        })
+        .eq("recipient_id", r.id);
+      const patch: Record<string, unknown> = {};
+      if (!r.verified_at) patch.verified_at = now.toISOString();
+      if (!r.verified_by) patch.verified_by = "link";
+      if (!r.viewed_at) patch.viewed_at = now.toISOString();
+      if (r.status === "sent") patch.status = "viewed";
+      if (Object.keys(patch).length) await supabase.from("sign_recipients").update(patch).eq("id", r.id);
+      if (!r.viewed_at) later(notifySenderViewed(supabase, e.id, r.id));
+      // Kept as a consent entry: the history's kinds are fixed, and this one stays
+      // out of Gio Sales' copy and the candidate's Activity, like the code steps.
+      await logEvent(supabase, ctx, "consented", `${r.name} opened the document from the emailed link`, req, ip);
       return json(200, { session, expires_at: new Date(now.getTime() + SESSION_HOURS * 3_600_000).toISOString() }, corsHeaders);
     }
 
