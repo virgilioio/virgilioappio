@@ -16,6 +16,7 @@ import { PersonAvatar } from '@/components/candidates/comments/PersonAvatar'
 import { EmailAttachmentsList } from '@/components/candidates/EmailAttachmentsList'
 import { LoadError } from '@/components/empty/LoadError'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import {
   bareAddress, displayName, inboxFullTime, inboxTime, type InboxConversation, type InboxMessage,
@@ -34,7 +35,9 @@ export interface ReaderPosition {
 /**
  * One conversation, oldest first. Earlier messages fold to one line each and
  * open on a click; the latest is open. Reply, Reply all and Forward hand the
- * message to the Gio composer.
+ * message to the Gio composer: from the ↩ on an open message, the ⋯ menu, the
+ * buttons under the conversation, and on phones a row that stays at the bottom
+ * of the card (2026-11-17, after Gmail's phone app).
  */
 export function InboxReader({
   conversation,
@@ -87,7 +90,13 @@ export function InboxReader({
   }
 
   return (
-    <Loadable loading={loading || !conversation} skeleton={<ReaderSkeleton />} className="h-full">
+    // The grid row takes the card's height (not the email's), so the messages scroll
+    // inside the card and the phone's reply row stays at its bottom (2026-11-17).
+    <Loadable
+      loading={loading || !conversation}
+      skeleton={<ReaderSkeleton />}
+      className="h-full [grid-template-rows:minmax(0,1fr)] [&>*]:min-h-0"
+    >
       {conversation ? (
         <Conversation
           conversation={conversation}
@@ -122,6 +131,7 @@ function Conversation({
 }) {
   const { thread, messages } = conversation
   const last = messages[messages.length - 1]
+  const phone = useIsMobile()
   // The latest message is open; earlier ones fold. A new message opens itself.
   const [open, setOpen] = React.useState<Set<string>>(() => new Set(last ? [last.id] : []))
   React.useEffect(() => {
@@ -181,6 +191,20 @@ function Conversation({
                     <Briefcase aria-hidden />
                     <span className="truncate">Open job</span>
                   </Link>
+                </DropdownMenuItem>
+              )}
+              {last && (
+                <DropdownMenuItem onSelect={() => onReply(last, 'reply')}>
+                  <Reply aria-hidden />
+                  <span className="truncate">Reply</span>
+                  <DropdownMenuShortcut>R</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              )}
+              {last && others.size > 1 && (
+                <DropdownMenuItem onSelect={() => onReply(last, 'reply_all')}>
+                  <ReplyAll aria-hidden />
+                  <span className="truncate">Reply all</span>
+                  <DropdownMenuShortcut>A</DropdownMenuShortcut>
                 </DropdownMenuItem>
               )}
               {last && (
@@ -250,12 +274,13 @@ function Conversation({
                 }
                 candidateName={thread.candidate_name}
                 me={me}
+                onReply={() => onReply(m, 'reply')}
               />
             </li>
           ))}
         </ol>
 
-        {last && (
+        {last && !phone && (
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button variant="secondary" size="md" icon={Reply} onClick={() => onReply(last, 'reply')}>
               Reply
@@ -271,6 +296,30 @@ function Conversation({
           </div>
         )}
       </div>
+
+      {last && phone && (
+        // Phones: the replies stay in reach at the bottom of the card, above the
+        // app's bottom bar, while the messages scroll (Gmail's phone layout).
+        <div className="flex shrink-0 items-center gap-2 border-t border-[#F1F0EC] bg-white px-4 py-3" data-inbox-reply-bar>
+          <Button
+            variant="primary"
+            size="lg"
+            iconOnly
+            icon={Reply}
+            aria-label="Reply"
+            className="h-11 w-11 shrink-0 rounded-full"
+            onClick={() => onReply(last, 'reply')}
+          />
+          {others.size > 1 && (
+            <Button variant="secondary" size="lg" icon={ReplyAll} className="h-11 min-w-0 flex-1 rounded-full" onClick={() => onReply(last, 'reply_all')}>
+              Reply all
+            </Button>
+          )}
+          <Button variant="secondary" size="lg" icon={Forward} className="h-11 min-w-0 flex-1 rounded-full" onClick={() => onReply(last, 'forward')}>
+            Forward
+          </Button>
+        </div>
+      )}
     </article>
   )
 }
@@ -281,12 +330,15 @@ function Message({
   onToggle,
   candidateName,
   me,
+  onReply,
 }: {
   m: InboxMessage
   open: boolean
   onToggle: () => void
   candidateName: string
   me: Set<string>
+  /** Reply to this message (the ↩ beside its time while it's open). */
+  onReply: () => void
 }) {
   const fromYou = m.direction === 'sent' || me.has(bareAddress(m.from_address))
   const sender = fromYou ? 'You' : displayName(m.from_address)
@@ -296,11 +348,12 @@ function Message({
 
   return (
     <div className={cn('rounded-xl border bg-white', open ? 'border-[#E7E8EE]' : 'border-[#F1F0EC]')}>
+      <div className="flex items-start">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-start gap-3 px-4 py-3 text-left"
+        className={cn('flex min-w-0 flex-1 items-start gap-3 py-3 pl-4 text-left', open ? 'pr-1' : 'pr-4')}
       >
         <PersonAvatar
           name={fromYou ? displayName(m.from_address) : displayName(m.from_address) || candidateName}
@@ -332,6 +385,12 @@ function Message({
           )}
         </div>
       </button>
+      {open && (
+        <IconTip label="Reply">
+          <Button variant="ghost" size="sm" iconOnly icon={Reply} aria-label="Reply to this message" className="mr-2 mt-2 shrink-0" onClick={onReply} />
+        </IconTip>
+      )}
+      </div>
 
       {open && (
         <div className="px-4 pb-4 pl-[60px]">

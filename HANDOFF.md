@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-17 (ATS) — Inbox: reply from a phone — on the branch, waiting for Apply!
+
+- Allan: no way to reply in the Inbox on a phone. The reader card has a fixed height but its loading wrapper (a grid) grew with the email, so the messages never scrolled inside the card: long emails were cut off and the Reply buttons under them were out of reach (on desktop too, for emails taller than the window).
+- Fixed in `InboxReader`: the wrapper's row takes the card's height (`[grid-template-rows:minmax(0,1fr)]`), so the messages scroll inside it; on phones Reply (round, noir) · Reply all · Forward stay at the bottom of the card (`data-inbox-reply-bar`, Gmail's phone layout) instead of under the messages; every open message has a ↩ that replies to that message; the ⋯ menu has Reply and Reply all above Forward. Desktop keeps its buttons under the conversation.
+- Checked in the browser with fake data (15 checks, iPhone 13 and 1440 wide): the row on screen and above the app's bottom bar, the last line visible above it when scrolled, Reply / Reply all (with the cc) / Forward open the phone composer filled in, the ↩ on an older message replies to it, the menu, desktop unchanged and a long email scrolling inside the card. Types and lint clean. No database or function change.
+- Still open: "Â" in stored emails (1,007 of 2,682; a decoding fault in the Gmail sync), to be traced and planned on its own.
+
 ## Done 2026-11-16 (ATS) — Gio Sign: pasting the code works — on main
 
 - A customer signer (the first real Gio Sign envelope, a Gio Sales customer agreement) couldn't get past the code. The server logs showed the page opened and the code sent, but no code ever came back (0 attempts): the code email writes it as "123 456" and each box took at most 6 characters, so a paste became "123 45" (or "123 4" with a leading space from Outlook) and Verify stayed disabled.
