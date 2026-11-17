@@ -40,7 +40,7 @@ export function decodePart(data: string, contentType?: string | null): string {
   }
 }
 
-const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
+const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' }
 
 /** Gmail's HTML-escaped snippet as plain text ("there&#39;s" → "there's"). */
 export function decodeSnippet(s: string | null | undefined): string | null {
