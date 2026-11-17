@@ -112,7 +112,7 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-11-17 (ATS) — Inbox: reply from a phone — on the branch, waiting for Apply!
+## Done 2026-11-17 (ATS) — Inbox: reply from a phone — on main
 
 - Allan: no way to reply in the Inbox on a phone. The reader card has a fixed height but its loading wrapper (a grid) grew with the email, so the messages never scrolled inside the card: long emails were cut off and the Reply buttons under them were out of reach (on desktop too, for emails taller than the window).
 - Fixed in `InboxReader`: the wrapper's row takes the card's height (`[grid-template-rows:minmax(0,1fr)]`), so the messages scroll inside it; on phones Reply (round, noir) · Reply all · Forward stay at the bottom of the card (`data-inbox-reply-bar`, Gmail's phone layout) instead of under the messages; every open message has a ↩ that replies to that message; the ⋯ menu has Reply and Reply all above Forward. Desktop keeps its buttons under the conversation.
