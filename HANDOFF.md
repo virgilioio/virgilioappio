@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-17 (ATS) — Inbox on phones, round 2, and broken characters in email — on the branch, waiting for Apply!
+
+- Allan (screenshots, Go!): the phone composer's message box was shorter than its text, the conversation's type much smaller than the composer's, the reply buttons tied to the card instead of the screen, and "thereâ€™s" / "Â" / "lÃneas" in emails.
+- Broken characters: `sync-gmail-messages` read every Gmail part with `atob()` alone (UTF-8 stored as Latin-1). Now `decodePart` / `decodeSnippet` (`_shared/mailDecode.ts`, unit tests). `20261117030000_email_text_repair` (not applied yet) repairs what's stored with `email_text_unmangle` (only text that is all mis-read bytes and valid UTF-8) and unescapes Gmail's snippets with `email_snippet_unescape`; dry run: 1,292 of 1,323 marked bodies repaired, 31 left as they were (mixed or not clean), 638 snippets unescaped; rolled-back test `84_email_text_repair.sql` (17 checks). On Apply: the migration, then deploy `sync-gmail-messages` (check the live copy against git first).
+- Screens: the phone composer's message box grows with its text and the page scrolls; the conversation's email text is 16px on phones (names, times and lines up to match); an open conversation runs to the bottom of the screen with the reply row floating above the bottom bar (portalled); Reply and Reply all now pass bare addresses ("Name <address>" split into three chips, two red).
+- Checked: browser with fake data (18 checks, iPhone 13 and desktop), tests 419, types clean. Not touched: `process-transcript-webhook` reads a note-taker's .txt attachment with `atob()` too (only matters for non-English transcripts).
+
 ## Done 2026-11-17 (ATS) — Inbox: reply from a phone — on main
 
 - Allan: no way to reply in the Inbox on a phone. The reader card has a fixed height but its loading wrapper (a grid) grew with the email, so the messages never scrolled inside the card: long emails were cut off and the Reply buttons under them were out of reach (on desktop too, for emails taller than the window).

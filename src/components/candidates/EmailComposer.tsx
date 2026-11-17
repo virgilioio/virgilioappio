@@ -794,10 +794,11 @@ export function EmailComposer({
             )}
           </div>
 
-          {/* Message */}
+          {/* Message: grows with its text (a long quoted reply included) and the page
+              scrolls, never a box the text spills out of (2026-11-17). */}
           <div
             className={cn(
-              'flex min-h-[280px] flex-1 flex-col bg-white',
+              'flex min-h-[280px] flex-[1_0_auto] flex-col bg-white',
               '[&>.gne]:flex-1 [&_.gne>.relative]:flex-1',
             )}
             style={{ borderRadius: 14, border: '1px solid #E7E8EE' }}

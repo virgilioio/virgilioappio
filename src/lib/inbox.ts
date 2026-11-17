@@ -297,7 +297,9 @@ export function replyAllRecipients(message: InboxMessage, mine: string[]): { to:
     return true
   }
   const first = message.direction === 'received' ? [message.from_address] : message.to_addresses
-  const to = first.filter(keep)
-  const cc = [...(message.direction === 'received' ? message.to_addresses : []), ...(message.cc_addresses ?? [])].filter(keep)
-  return { to: to[0] ?? message.from_address, cc: [...to.slice(1), ...cc] }
+  // Bare addresses: "Ana Prueba <ana@example.com>" in a To chip split into three
+  // chips, two of them invalid (2026-11-17).
+  const to = first.filter(keep).map(bareAddress)
+  const cc = [...(message.direction === 'received' ? message.to_addresses : []), ...(message.cc_addresses ?? [])].filter(keep).map(bareAddress)
+  return { to: to[0] ?? bareAddress(message.from_address), cc: [...to.slice(1), ...cc] }
 }
