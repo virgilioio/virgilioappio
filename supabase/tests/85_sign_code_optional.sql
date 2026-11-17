@@ -1,4 +1,4 @@
--- Run after 20261117130000_sign_code_optional. One transaction that always ends
+-- Run after 20261117163905_sign_code_optional. One transaction that always ends
 -- with raise exception 'RESULT ...', so nothing it makes is kept. Every k=v is
 -- expected to read true.
 --

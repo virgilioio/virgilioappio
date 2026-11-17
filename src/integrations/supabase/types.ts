@@ -8957,6 +8957,7 @@ export type Database = {
           out_of_date: boolean
           public_id: string
           reminder_days: number
+          require_code: boolean
           sales_company_id: string | null
           sales_org_id: string | null
           scheduled_at: string | null
@@ -9010,6 +9011,7 @@ export type Database = {
           out_of_date?: boolean
           public_id?: string
           reminder_days?: number
+          require_code?: boolean
           sales_company_id?: string | null
           sales_org_id?: string | null
           scheduled_at?: string | null
@@ -9063,6 +9065,7 @@ export type Database = {
           out_of_date?: boolean
           public_id?: string
           reminder_days?: number
+          require_code?: boolean
           sales_company_id?: string | null
           sales_org_id?: string | null
           scheduled_at?: string | null
@@ -9420,6 +9423,7 @@ export type Database = {
           updated_at: string
           user_id: string | null
           verified_at: string | null
+          verified_by: string | null
           viewed_at: string | null
         }
         Insert: {
@@ -9449,6 +9453,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           verified_at?: string | null
+          verified_by?: string | null
           viewed_at?: string | null
         }
         Update: {
@@ -9478,6 +9483,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           verified_at?: string | null
+          verified_by?: string | null
           viewed_at?: string | null
         }
         Relationships: [
@@ -9578,6 +9584,7 @@ export type Database = {
           offer_form_id: string | null
           ordered: boolean
           reminder_days: number
+          require_code: boolean
           single_use: boolean
           subject: string
           tenant_id: string
@@ -9600,6 +9607,7 @@ export type Database = {
           offer_form_id?: string | null
           ordered?: boolean
           reminder_days?: number
+          require_code?: boolean
           single_use?: boolean
           subject?: string
           tenant_id: string
@@ -9622,6 +9630,7 @@ export type Database = {
           offer_form_id?: string | null
           ordered?: boolean
           reminder_days?: number
+          require_code?: boolean
           single_use?: boolean
           subject?: string
           tenant_id?: string
@@ -13481,6 +13490,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      sign_set_require_code: {
+        Args: { _envelope_id: string; _on: boolean }
+        Returns: boolean
+      }
       sign_signer_submit: {
         Args: {
           _ip: unknown
@@ -13498,6 +13511,10 @@ export type Database = {
           key: string
           needed: boolean
         }[]
+      }
+      sign_template_set_require_code: {
+        Args: { _on: boolean; _template_id: string }
+        Returns: boolean
       }
       sign_template_set_single_use: {
         Args: { _template_id: string }
