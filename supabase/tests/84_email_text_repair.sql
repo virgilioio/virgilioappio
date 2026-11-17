@@ -1,4 +1,4 @@
--- Run after 20261117030000_email_text_repair inside a transaction that is rolled back.
+-- Run after 20261117024057_email_text_repair inside a transaction that is rolled back.
 -- Bodies stored as Latin-1 come back as the UTF-8 they were, anything else is left
 -- alone, and Gmail's escaped snippets read as text. Every row's ok is true.
 -- pg_temp.sc() writes a semicolon where the text has a broken bar, so no string
