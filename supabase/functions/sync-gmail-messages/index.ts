@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decodePart, decodeSnippet } from "../_shared/mailDecode.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -136,14 +137,6 @@ async function refreshAccessToken(supabase: any, identity: any): Promise<string>
   return tokens.access_token;
 }
 
-function decodeBase64(str: string): string {
-  try {
-    return atob(str.replace(/-/g, '+').replace(/_/g, '/'));
-  } catch {
-    return '';
-  }
-}
-
 function decodeBase64ToBytes(str: string): Uint8Array {
   try {
     const binaryStr = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
@@ -165,11 +158,14 @@ function extractEmailBody(message: GoogleMessage): { text: string; html: string 
   const parts = message.payload?.parts || [];
   let textBody = '';
   let htmlBody = '';
+  // Each part in its own charset (decodePart), never atob() alone: that read
+  // UTF-8 as Latin-1 and stored "thereâ€™s" (2026-11-17).
+  const contentType = (headers?: Array<{ name: string; value: string }>) => getHeader(headers, 'Content-Type');
 
   // Check main body first
   if (message.payload?.body?.data) {
     const mimeType = message.payload?.mimeType || '';
-    const decoded = decodeBase64(message.payload.body.data);
+    const decoded = decodePart(message.payload.body.data, contentType(message.payload.headers));
     if (mimeType.includes('text/plain')) textBody = decoded;
     if (mimeType.includes('text/html')) htmlBody = decoded;
   }
@@ -177,19 +173,19 @@ function extractEmailBody(message: GoogleMessage): { text: string; html: string 
   // Check parts
   for (const part of parts) {
     if (part.mimeType === 'text/plain' && part.body?.data) {
-      textBody = decodeBase64(part.body.data);
+      textBody = decodePart(part.body.data, contentType(part.headers));
     }
     if (part.mimeType === 'text/html' && part.body?.data) {
-      htmlBody = decodeBase64(part.body.data);
+      htmlBody = decodePart(part.body.data, contentType(part.headers));
     }
     // Check nested parts
     if (part.parts) {
       for (const nested of part.parts) {
         if (nested.mimeType === 'text/plain' && nested.body?.data) {
-          textBody = decodeBase64(nested.body.data);
+          textBody = decodePart(nested.body.data, contentType(nested.headers));
         }
         if (nested.mimeType === 'text/html' && nested.body?.data) {
-          htmlBody = decodeBase64(nested.body.data);
+          htmlBody = decodePart(nested.body.data, contentType(nested.headers));
         }
       }
     }
@@ -642,7 +638,7 @@ const handler = async (req: Request): Promise<Response> => {
           rfc822_message_id: rfc822MessageId,
           in_reply_to: inReplyTo,
           references_header: referencesHeader,
-          snippet: fullMessage.snippet || null,
+          snippet: decodeSnippet(fullMessage.snippet) || null,
           is_read: !fullMessage.labelIds?.includes('UNREAD'),
           gmail_labels: fullMessage.labelIds || [],
           status: direction === 'sent' ? 'sent' : 'delivered',
@@ -652,7 +648,7 @@ const handler = async (req: Request): Promise<Response> => {
               return acc;
             }, {}),
             labelIds: fullMessage.labelIds,
-            snippet: fullMessage.snippet,
+            snippet: decodeSnippet(fullMessage.snippet),
           },
         };
 
