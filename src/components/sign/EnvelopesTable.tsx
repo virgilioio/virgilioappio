@@ -245,7 +245,7 @@ export function EnvelopesTable({
         {!isLoading && !loadError && rows.length > 0 && (
           <div className="flex items-center gap-1.5 border-t border-[#F1F0EC] bg-[#FAFAF7] px-3.5 py-2.5 font-inter text-[11.5px] text-text-tertiary">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            Every signature carries consent, an email code, a sealed PDF and a trusted timestamp. Signed copies attach to the related record.
+            Every signature carries consent, the signer’s IP and browser, a sealed PDF and a trusted timestamp, plus an email code where you ask for one. Signed copies attach to the related record.
           </div>
         )}
       </div>

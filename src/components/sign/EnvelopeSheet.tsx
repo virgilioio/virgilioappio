@@ -12,6 +12,13 @@ import { cn } from '@/lib/utils'
 import { fillTags, sealStuck, useEnvelopeDetail, type EnvelopeRow, type SignRecipientStatus } from '@/lib/sign/api'
 import { ENVELOPE_KIND, ENVELOPE_STATUS, ago, nextPending, shortDateTime } from '@/lib/sign/status'
 import { useEnvelopeActions } from './envelopeActions'
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { Switch } from '@/components/ui/switch'
+import { useAuth } from '@/contexts/AuthContext'
+import { usePermissions } from '@/hooks/usePermissions'
+import { setEnvelopeRequireCode } from '@/lib/sign/send'
 
 const RECIPIENT_STATUS: Record<SignRecipientStatus, { label: string; icon: typeof Clock; tone?: 'ok' | 'bad' }> = {
   waiting: { label: 'Waiting', icon: Clock },
@@ -59,6 +66,12 @@ export function EnvelopeSheet({
 }) {
   const detail = useEnvelopeDetail(open && envelope ? envelope.id : null)
   const { actionsFor, dialogs } = useEnvelopeActions({ onRemoved: () => onOpenChange(false) })
+  const { user } = useAuth()
+  const { isAdmin, isPlatformAdmin } = usePermissions()
+  const qc = useQueryClient()
+  // The email code switch (2026-11-17): shown at once, saved in the background,
+  // put back with a toast if the database refuses.
+  const [codePending, setCodePending] = useState<boolean | null>(null)
   if (!envelope) return null
 
   const e = envelope
@@ -200,6 +213,42 @@ export function EnvelopeSheet({
                   </span>
                 ))}
               </div>
+            </FormSection>
+          )}
+
+          {['draft', 'scheduled', 'queued', 'sent'].includes(e.status) && (isAdmin || isPlatformAdmin || e.sender_user_id === user?.id) && (
+            <FormSection title="Signing in">
+              <label className="flex items-start justify-between gap-4">
+                <span className="min-w-0">
+                  <span className="block font-inter text-[13px] font-medium text-text-primary">Ask for an email code</span>
+                  <span className="mt-0.5 block font-inter text-[12px] leading-normal text-text-tertiary">
+                    {(codePending ?? d.require_code)
+                      ? 'Signers type a 6-digit code from a second email before the document opens.'
+                      : 'The emailed link is enough to open the document. Applies the next time each signer opens their link.'}
+                  </span>
+                </span>
+                <Switch
+                  checked={codePending ?? d.require_code}
+                  aria-label="Ask for an email code"
+                  className="mt-0.5 shrink-0"
+                  onCheckedChange={async (v) => {
+                    setCodePending(v)
+                    try {
+                      await setEnvelopeRequireCode(e.id, v)
+                      await qc.invalidateQueries({ queryKey: ['sign', 'envelope', e.id] })
+                      toast.success(v ? 'Email code turned on' : 'Email code turned off', {
+                        description: v ? 'Signers enter a code from their email to open it.' : 'Signers open it from the emailed link.',
+                      })
+                    } catch {
+                      toast.error(v ? 'Couldn’t turn on the email code' : 'Couldn’t turn off the email code', {
+                        action: { label: 'Retry', onClick: () => void setEnvelopeRequireCode(e.id, v).then(() => qc.invalidateQueries({ queryKey: ['sign', 'envelope', e.id] })) },
+                      })
+                    } finally {
+                      setCodePending(null)
+                    }
+                  }}
+                />
+              </label>
             </FormSection>
           )}
 

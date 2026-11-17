@@ -132,7 +132,10 @@ function Gate({
   info: SignerOpen
   onVerified: (session: string) => void
 }) {
-  const [phase, setPhase] = useState<'consent' | 'code'>(info.consented && info.code_sent_at ? 'code' : 'consent')
+  // The code step only when the envelope asks for it (2026-11-17); otherwise
+  // consenting opens the document from the emailed link alone.
+  const needsCode = info.code_required !== false
+  const [phase, setPhase] = useState<'consent' | 'code'>(needsCode && info.consented && info.code_sent_at ? 'code' : 'consent')
   const [agree, setAgree] = useState(info.consented)
   const [disc, setDisc] = useState(false)
   const [code, setCode] = useState(['', '', '', '', '', ''])
@@ -152,6 +155,26 @@ function Gate({
   useEffect(() => {
     if (phase === 'code') refs.current[0]?.focus()
   }, [phase])
+
+  const enter = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const r = await signer.enter(token)
+      sessionStore.set(token, r.session, r.expires_at)
+      onVerified(r.session)
+    } catch (e) {
+      const err = e as SignerError
+      // The sender turned the code on since this page opened: send one instead.
+      if (err.code === 'code_required') {
+        await send()
+        return
+      }
+      setError('Couldn’t open the document. Try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const send = async () => {
     setBusy(true)
@@ -347,7 +370,7 @@ function Gate({
         <div className="flex flex-col gap-2.5 px-6 pb-5 sm:px-[26px]">
           {phase === 'consent' ? (
             <>
-              <Button size="lg" className="h-11 w-full" iconRight={ArrowRight} disabled={!agree} loading={busy} onClick={() => void send()}>
+              <Button size="lg" className="h-11 w-full" iconRight={ArrowRight} disabled={!agree} loading={busy} onClick={() => void (needsCode ? send() : enter())}>
                 Continue
               </Button>
             </>
