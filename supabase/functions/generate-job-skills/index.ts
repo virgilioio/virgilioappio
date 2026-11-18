@@ -17,6 +17,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeadersFor, handlePreflight } from "../_shared/mod.ts";
 import { jobFileSources, sourcesBlock } from "../_shared/jobSources.ts";
 import { balance, type Tier, yearsRange } from "../_shared/skillBalance.ts";
+import { employmentTypeLabel } from "../_shared/employmentTypes.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
@@ -73,7 +74,7 @@ serve(async (req) => {
     const lines = [
       `- Job title: ${title}`,
       job.job_level ? `- Job level: ${job.job_level}` : "",
-      job.employment_type ? `- Employment type: ${job.employment_type}` : "",
+      job.employment_type ? `- Employment type: ${employmentTypeLabel(job.employment_type)}` : "",
       job.work_mode ? `- Work mode: ${job.work_mode}` : "",
       job.min_years_experience != null || job.max_years_experience != null
         ? `- Experience: ${job.min_years_experience ?? "?"}-${job.max_years_experience ?? "?"} years`

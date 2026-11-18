@@ -8,6 +8,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handlePreflight, corsHeadersFor } from '../_shared/cors.ts';
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { employmentTypeLabel } from '../_shared/employmentTypes.ts';
 
 const MODEL = AI_MODELS.reasoning;
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
@@ -395,7 +396,7 @@ Deno.serve(async (req) => {
         job.location ? `Location: ${job.location}${job.work_mode ? ' (' + job.work_mode + ')' : ''}` : '',
         job.status ? `Status: ${job.status}` : '',
         job.job_level ? `Level: ${job.job_level}` : '',
-        job.employment_type ? `Employment: ${job.employment_type}` : '',
+        job.employment_type ? `Employment: ${employmentTypeLabel(job.employment_type)}` : '',
         salary ? `Salary: ${salary}` : '',
         exp ? `Experience: ${exp}` : '',
         skills.length ? `Skills: ${skills.slice(0, 15).join(', ')}` : '',

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeadersFor, handlePreflight } from "../_shared/mod.ts";
 import { jobFileSources, sourcesBlock } from "../_shared/jobSources.ts";
+import { employmentTypeLabel } from "../_shared/employmentTypes.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
@@ -65,7 +66,7 @@ function buildContextBlock(jobData: JobDataInput, department: string | null, cli
   push("Job title", jobData.title);
   push("Job level", jobData.job_level);
   push("Seniority", jobData.seniority);
-  push("Employment type", jobData.employment_type);
+  push("Employment type", employmentTypeLabel(jobData.employment_type));
   push("Work mode", jobData.work_mode);
   push("Department", department ?? jobData.department);
   push("Primary location", jobData.primary_location ?? jobData.location);
