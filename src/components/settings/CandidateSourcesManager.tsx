@@ -69,6 +69,7 @@ export function CandidateSourcesManager() {
           name: s.name,
           meta: s.description || undefined,
           onEdit: () => setEditing(s),
+          editLabel: 'Rename',
           onDelete: () => void handleDelete(s),
         }))}
       >
