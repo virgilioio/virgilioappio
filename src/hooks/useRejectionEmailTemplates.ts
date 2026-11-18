@@ -57,7 +57,7 @@ export function useRejectionEmailTemplates(context: RejectionEmailTemplatesConte
     subject: string;
     body: string;
     rejection_reason_id?: string | null;
-  }) => {
+  }, opts: { quiet?: boolean } = {}): Promise<{ id: string }> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -75,7 +75,7 @@ export function useRejectionEmailTemplates(context: RejectionEmailTemplatesConte
         tenantId = memberData?.tenant_id || null;
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('rejection_email_templates')
         .insert({
           name: templateData.name,
@@ -85,16 +85,22 @@ export function useRejectionEmailTemplates(context: RejectionEmailTemplatesConte
           tenant_id: tenantId,
           created_by: user.id,
           source: tenantId ? 'custom' : 'platform',
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
 
-      toast({
-        title: 'Success',
-        description: 'Rejection email template created successfully',
-      });
+      // `quiet`: the caller says what happened itself (Duplicate does).
+      if (!opts.quiet) {
+        toast({
+          title: 'Success',
+          description: 'Rejection email template created successfully',
+        });
+      }
 
       await fetchTemplates();
+      return { id: data.id as string };
     } catch (error: any) {
       console.error('Error creating rejection email template:', error);
       // The sheet says what went wrong in its footer, never the server's message.

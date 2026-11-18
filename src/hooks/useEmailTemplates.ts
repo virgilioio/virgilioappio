@@ -69,7 +69,7 @@ export function useEmailTemplates(context: EmailTemplatesContext = 'organization
     name: string;
     subject: string;
     body: string;
-  }) => {
+  }, opts: { quiet?: boolean } = {}): Promise<{ id: string }> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -86,7 +86,7 @@ export function useEmailTemplates(context: EmailTemplatesContext = 'organization
         orgId = memberData?.organization_id || null;
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('email_templates')
         .insert({
           name: templateData.name,
@@ -95,16 +95,22 @@ export function useEmailTemplates(context: EmailTemplatesContext = 'organization
           organization_id: orgId,
           created_by: user.id,
           source: orgId ? 'custom' : 'platform',
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
 
-      toast({
-        title: 'Success',
-        description: 'Email template created successfully',
-      });
+      // `quiet`: the caller says what happened itself (Duplicate does).
+      if (!opts.quiet) {
+        toast({
+          title: 'Success',
+          description: 'Email template created successfully',
+        });
+      }
 
       await fetchTemplates();
+      return { id: data.id as string };
     } catch (error: any) {
       console.error('Error creating email template:', error);
       // The sheet says what went wrong in its footer, never the server's message.
