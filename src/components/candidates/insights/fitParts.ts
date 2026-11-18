@@ -24,3 +24,13 @@ export const MUST_HAVE_STYLE: Record<MustHave['status'], { label: string; classN
   not_met: { label: 'Not met', className: 'border-fit-risk-border bg-fit-warning-soft text-fit-risk-copy', Icon: Minus },
   unknown: { label: 'Not verified', className: 'border-fit-row-border bg-surface-primary text-fit-subtle', Icon: null },
 }
+
+/**
+ * A must-have's chip. One of the job's must-have skills that nothing mentions
+ * yet reads "Not shown yet" (v5): it costs a few points until a résumé, an
+ * application answer or a scorecard shows it.
+ */
+export function mustHaveStyle(item: Pick<MustHave, 'status' | 'from_skill'>) {
+  const style = MUST_HAVE_STYLE[item.status] ?? MUST_HAVE_STYLE.unknown
+  return item.status === 'unknown' && item.from_skill ? { ...style, label: 'Not shown yet' } : style
+}

@@ -12,7 +12,7 @@ import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { asString, computeExperienceStats, getScoreBand, splitExecutiveSummary } from './dossier/dossierData'
 import './loading/gioFitLoading.css'
-import { FIT_DIMENSION_COLORS, MUST_HAVE_STYLE, fitCardClass, fitSectionHeadingClass } from './fitParts'
+import { FIT_DIMENSION_COLORS, fitCardClass, fitSectionHeadingClass, mustHaveStyle } from './fitParts'
 
 /**
  * Gio Fit, condensed (2026-11-07): the application review's read of the profile's
@@ -219,7 +219,7 @@ export function GioFitReviewCard({ candidateId, jobId }: { candidateId: string; 
           <p className={fitSectionHeadingClass}><ShieldCheck className="h-3 w-3" /> Must-haves from the job</p>
           <ul className="mt-2 space-y-1.5">
             {mustHaves.map((item) => {
-              const style = MUST_HAVE_STYLE[item.status] ?? MUST_HAVE_STYLE.unknown
+              const style = mustHaveStyle(item)
               return (
                 <li key={item.requirement} className="flex items-start gap-2">
                   <span className={cn('mt-px inline-flex h-[20px] w-[84px] shrink-0 items-center gap-1 rounded-md border px-1.5 text-[10.5px] font-medium', style.className)}>

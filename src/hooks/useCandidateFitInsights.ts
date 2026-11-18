@@ -25,7 +25,12 @@ export interface MustHave {
   requirement: string
   status: 'met' | 'partial' | 'not_met' | 'unknown'
   evidence: string | null
+  /** v5: one of the job's must-have skills. With `unknown` it reads "Not shown yet". */
+  from_skill?: boolean
 }
+
+/** v5: what an assessment was caused by (`causeOf` in analyze-candidate-fit/scoring.ts). */
+export type FitCause = 'first' | 'scorecard' | 'application' | 'profile' | 'job' | 'recipe' | 'refresh' | 'recheck'
 
 export interface FitScoring {
   version: number
@@ -33,6 +38,9 @@ export interface FitScoring {
   weighted_mean: number | null
   rules_applied: string[]
   previous_score: number | null
+  /** v5: why this assessment ran, and the points the must-haves cost. */
+  cause?: FitCause
+  deduction?: number
   tenure?: { flag: 'red' | 'yellow' | 'green' | 'best' | 'unknown'; label: string; band: [number, number] | null; short_stints: number; promotions: number }
 }
 

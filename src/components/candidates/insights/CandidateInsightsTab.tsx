@@ -31,7 +31,7 @@ import { GioFitRescoringBar } from './loading/GioFitRescoringBar'
 import { buildNarrationSteps, stepProgress, useGioFitNarration } from './loading/GioFitNarration'
 import { useCandidateFitInsights, type FitDimension, type MustHave, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { useDossierShare } from '@/hooks/useDossierShare'
-import { TRIGGER_LABEL, useFitScoreHistory, type FitScorePoint } from '@/hooks/useFitScoreHistory'
+import { pointLabel, useFitScoreHistory, type FitScorePoint } from '@/hooks/useFitScoreHistory'
 import { SkillPriorityLegend } from '@/components/jobs/SkillPill'
 import { SKILL_PRIORITY, readSkillPriorities, sortByPriority } from '@/lib/skillPriority'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -59,7 +59,7 @@ import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import { coerceRating } from '@/lib/scorecardRatings'
-import { FIT_DIMENSION_COLORS, MUST_HAVE_STYLE, fitCardClass, fitSectionHeadingClass } from './fitParts'
+import { FIT_DIMENSION_COLORS, fitCardClass, fitSectionHeadingClass, mustHaveStyle } from './fitParts'
 
 interface CandidateInsightsTabProps {
   candidateId: string
@@ -182,7 +182,7 @@ function MustHaves({ items }: { items: MustHave[] }) {
       </div>
       <div className="mt-4 divide-y divide-fit-chip">
         {items.map((item) => {
-          const style = MUST_HAVE_STYLE[item.status] ?? MUST_HAVE_STYLE.unknown
+          const style = mustHaveStyle(item)
           return (
             <div key={item.requirement} className="grid gap-1.5 py-2.5 first:pt-0 last:pb-0 sm:grid-cols-[112px_minmax(0,1fr)] sm:gap-3">
               <span className={cn('inline-flex h-[22px] w-fit items-center gap-1 rounded-md border px-2 text-[11px] font-medium', style.className)}>
@@ -219,7 +219,7 @@ function ScoreTrajectory({ points }: { points: FitScorePoint[] }) {
                 </span>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[260px]">
-                <p className="text-[11px] font-medium">{TRIGGER_LABEL[point.trigger]} · {new Date(point.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{delta != null && delta !== 0 ? ` · ${delta > 0 ? '+' : ''}${delta}` : ''}</p>
+                <p className="text-[11px] font-medium">{pointLabel(point)} · {new Date(point.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{delta != null && delta !== 0 ? ` · ${delta > 0 ? '+' : ''}${delta}` : ''}</p>
                 {point.changesSinceLast && <p className="mt-1 text-[11px] leading-[1.45] opacity-80">{point.changesSinceLast}</p>}
               </TooltipContent>
             </Tooltip>
