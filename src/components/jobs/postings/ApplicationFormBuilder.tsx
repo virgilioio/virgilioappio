@@ -10,6 +10,7 @@
  * lock + required toggle + inline label edit + delete, and the EEO survey toggle.
  */
 
+import { EMPLOYMENT_TYPE_HINT } from '@/lib/employmentTypes'
 import * as React from 'react'
 import { useRef, useState } from 'react'
 import {
@@ -91,7 +92,7 @@ export const SMART_FIELDS: SmartFieldDef[] = [
   { id: 'sf_location',        label: 'Location',            type: 'location',        icon: MapPin,     hint: 'City · state · country',            description: 'Where the candidate is based' },
   { id: 'sf_phone',           label: 'Phone',               type: 'phone',           icon: Phone,      hint: 'International format',              description: 'Contact phone number' },
   { id: 'sf_linkedin',        label: 'LinkedIn',            type: 'linkedin',        icon: Linkedin,   hint: 'Profile URL',                       description: 'LinkedIn profile' },
-  { id: 'sf_employment_type', label: 'Employment type',     type: 'employment_type', icon: Briefcase,  hint: 'Full-time · part-time · contract',  description: 'Preferred employment type' },
+  { id: 'sf_employment_type', label: 'Employment type',     type: 'employment_type', icon: Briefcase,  hint: EMPLOYMENT_TYPE_HINT,  description: 'Preferred employment type' },
   { id: 'sf_work_location',   label: 'Work location',       type: 'work_location',   icon: Building2,  hint: 'Remote · hybrid · on-site',         description: 'Preferred work arrangement' },
   { id: 'sf_recruiter',       label: 'Preferred recruiter', type: 'recruiter',       icon: Users,      hint: 'Team member assignment',            description: 'Routes the application to a recruiter' },
 ]

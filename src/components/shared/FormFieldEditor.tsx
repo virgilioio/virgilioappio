@@ -1,3 +1,4 @@
+import { EMPLOYMENT_TYPE_LIST } from '@/lib/employmentTypes'
 import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -36,13 +37,6 @@ export function fieldTypeLabel(t: string) {
     default: return t
   }
 }
-
-export const EMPLOYMENT_TYPE_OPTIONS = [
-  { value: 'full_time', label: 'Full-time' },
-  { value: 'part_time', label: 'Part-time' },
-  { value: 'temporary', label: 'Temporary' },
-  { value: 'internship', label: 'Internship' },
-]
 
 export const WORK_LOCATION_OPTIONS = [
   { value: 'remote', label: 'Remote' },
@@ -330,7 +324,7 @@ export function FormFieldEditor({
                 <div className="flex items-start gap-2 p-3 bg-muted/50 border border-border/40 rounded-lg">
                   <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <p className="text-xs text-muted-foreground">
-                    Options are standardized ({localType === 'employment_type' ? 'Full-time, Part-time, Temporary, Internship' : 'Remote, Hybrid, On-site'}) and cannot be customized.
+                    Options are standardized ({localType === 'employment_type' ? EMPLOYMENT_TYPE_LIST : 'Remote, Hybrid, On-site'}) and cannot be customized.
                   </p>
                 </div>
               )}

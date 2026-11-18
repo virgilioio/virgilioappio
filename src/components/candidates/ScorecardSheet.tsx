@@ -1,3 +1,4 @@
+import { EMPLOYMENT_TYPES } from "@/lib/employmentTypes";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { EmptyState, InlineEmpty } from "@/components/ui/empty-state";
 import { SoftPaper } from "@/components/ui/EmptyIllustrations";
@@ -1362,13 +1363,7 @@ export function ScorecardSheet({
 
         // Predefined options for employment_type / work_location.
         const presetOptions: { value: string; label: string }[] | null =
-          t === 'employment_type' ? [
-            { value: 'full_time', label: 'Full-time' },
-            { value: 'part_time', label: 'Part-time' },
-            { value: 'contract', label: 'Contract' },
-            { value: 'internship', label: 'Internship' },
-            { value: 'temporary', label: 'Temporary' },
-          ] :
+          t === 'employment_type' ? [...EMPLOYMENT_TYPES] :
           t === 'work_location' ? [
             { value: 'remote', label: 'Remote' },
             { value: 'hybrid', label: 'Hybrid' },

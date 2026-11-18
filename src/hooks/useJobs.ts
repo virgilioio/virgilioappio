@@ -1,4 +1,5 @@
 
+import { type EmploymentType } from '@/lib/employmentTypes'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { readSkillPriorities, type SkillPriorities } from '@/lib/skillPriority'
 import { refreshOnboardingProgress } from '@/utils/refreshOnboardingProgress'
@@ -22,7 +23,7 @@ const FIT_FIELDS = new Set([
 ])
 
 export type JobWorkMode = 'remote' | 'hybrid' | 'onsite'
-export type JobEmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship' | 'temporary'
+export type JobEmploymentType = EmploymentType
 
 export interface Job {
   id: string

@@ -6,14 +6,7 @@
  * rules in sign_offer_display() for agreements.
  */
 
-export const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
-  full_time: 'Full-time',
-  part_time: 'Part-time',
-  contract: 'Contract',
-  temporary: 'Temporary',
-  internship: 'Internship',
-  freelance: 'Freelance',
-}
+import { employmentTypeLabel } from '@/lib/employmentTypes'
 
 export const WORK_LOCATION_LABELS: Record<string, string> = {
   remote: 'Remote',
@@ -105,7 +98,7 @@ export function formatOfferValue(raw: unknown, type?: string | null, ctx: OfferV
     case 'checkbox':
       return value === true || value === 'true' ? 'Yes' : 'No'
     case 'employment_type':
-      return EMPLOYMENT_TYPE_LABELS[String(value)] ?? String(value)
+      return employmentTypeLabel(String(value)) ?? String(value)
     case 'work_location':
       return WORK_LOCATION_LABELS[String(value)] ?? String(value)
     case 'recruiter':

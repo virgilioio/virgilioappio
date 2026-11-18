@@ -88,7 +88,7 @@ function RoleRow({ role, onOpen }: { role: CareersRole; onOpen: () => void }) {
       </div>
 
       <div className="hidden md:block col-span-2 text-[12.5px] text-[#3f4451]">
-        {role.type || 'Full-time'}
+        {role.type}
       </div>
 
       <div className="hidden md:block col-span-1 text-[11.5px] text-[#8B8F9E]">

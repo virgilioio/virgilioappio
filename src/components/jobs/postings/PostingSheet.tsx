@@ -1,3 +1,4 @@
+import { EMPLOYMENT_TYPES, employmentTypeKey } from '@/lib/employmentTypes'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
@@ -209,7 +210,7 @@ export function PostingSheet({
           } else {
             setDepartmentId('')
           }
-          setEmploymentType(d.employment_type || job?.employment_type || 'full_time')
+          setEmploymentType(employmentTypeKey(d.employment_type) || employmentTypeKey(job?.employment_type) || 'full_time')
           setLocationType(d.location_type || job?.work_mode || 'onsite')
 
           // Compensation — prefer posting.details override, fall back to job (wizard values).
@@ -278,7 +279,7 @@ export function PostingSheet({
         setLocation(job?.location || '')
         setAdditionalLocations(job?.additional_locations || [])
         setDepartmentId('')
-        setEmploymentType(job?.employment_type || 'full_time')
+        setEmploymentType(employmentTypeKey(job?.employment_type) || 'full_time')
         setLocationType(job?.work_mode || 'onsite')
         // Seed from parent job so a new posting inherits wizard compensation.
         setSalaryCurrency(job?.currency || 'USD')
@@ -667,12 +668,9 @@ export function PostingSheet({
                     <Select value={employmentType} onValueChange={setEmploymentType} disabled={readOnly}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="full_time">Full-time</SelectItem>
-                        <SelectItem value="part_time">Part-time</SelectItem>
-                        <SelectItem value="contract">Contract</SelectItem>
-                        <SelectItem value="internship">Internship</SelectItem>
-                        <SelectItem value="temporary">Temporary</SelectItem>
-                        <SelectItem value="freelance">Freelance</SelectItem>
+                        {EMPLOYMENT_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </FormField>

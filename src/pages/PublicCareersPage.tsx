@@ -1,3 +1,4 @@
+import { employmentTypeLabel } from '@/lib/employmentTypes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
@@ -41,7 +42,6 @@ interface RawPosting {
   job_id: string
   tenant_id: string
   location: string | null
-  job_type: string | null
 }
 
 export default function PublicCareersPage() {
@@ -82,7 +82,7 @@ export default function PublicCareersPage() {
 
         const { data: p, error: pe } = await supabase
           .from('job_postings')
-          .select('id, title, slug, details, created_at, job_id, tenant_id, location, job_type, jobs!inner(status, organization_id)')
+          .select('id, title, slug, details, created_at, job_id, tenant_id, location, jobs!inner(status, organization_id)')
           .eq('is_active', true).eq('tenant_id', s.tenant_id)
           .eq('jobs.status', 'open')
           .neq('jobs.organization_id', VIRGILIO_INTERNAL_ORG_ID)
@@ -112,7 +112,7 @@ export default function PublicCareersPage() {
     title: p.title,
     department: (p.details?.department as string) || 'Other',
     location: p.location,
-    type: p.job_type,
+    type: employmentTypeLabel(p.details?.employment_type),
     workMode: (p.details?.work_mode as string) || (p.location?.toLowerCase().includes('remote') ? 'Remote' : null),
     postedAt: p.created_at,
     featured: !!p.details?.featured,

@@ -1,3 +1,4 @@
+import { EMPLOYMENT_TYPE_HINT } from '@/lib/employmentTypes'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -34,7 +35,7 @@ export const SCORECARD_SMART_FIELDS: ScorecardFieldDef[] = [
   { type: 'location',            label: 'Location',            icon: MapPin,     hint: 'City · state · country',            defaultQuestion: 'Where is the candidate based?',                       syncTarget: 'location' },
   { type: 'phone',               label: 'Phone',               icon: Phone,      hint: 'International format',              defaultQuestion: "What is the candidate's phone number?",               syncTarget: 'phone' },
   { type: 'linkedin',            label: 'LinkedIn',            icon: Linkedin,   hint: 'Profile URL',                       defaultQuestion: "What is the candidate's LinkedIn profile URL?",       syncTarget: 'linkedin' },
-  { type: 'employment_type',     label: 'Employment type',     icon: Briefcase,  hint: 'Full-time · part-time · contract',  defaultQuestion: "What is the candidate's preferred employment type?" },
+  { type: 'employment_type',     label: 'Employment type',     icon: Briefcase,  hint: EMPLOYMENT_TYPE_HINT,  defaultQuestion: "What is the candidate's preferred employment type?" },
   { type: 'work_location',       label: 'Work location',       icon: Building2,  hint: 'Remote · hybrid · on-site',         defaultQuestion: "What is the candidate's preferred work arrangement?" },
   { type: 'recruiter',           label: 'Preferred recruiter', icon: Users,      hint: 'Team member assignment',            defaultQuestion: 'Which recruiter should this candidate be routed to?' },
 ]

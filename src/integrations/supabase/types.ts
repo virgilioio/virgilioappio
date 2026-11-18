@@ -13928,6 +13928,7 @@ export type Database = {
         | "contract"
         | "internship"
         | "temporary"
+        | "vendor"
       job_priority: "critical" | "high" | "standard" | "low"
       job_status: "draft" | "open" | "closed" | "archived"
       job_work_mode: "remote" | "hybrid" | "onsite"
@@ -14364,6 +14365,7 @@ export const Constants = {
         "contract",
         "internship",
         "temporary",
+        "vendor",
       ],
       job_priority: ["critical", "high", "standard", "low"],
       job_status: ["draft", "open", "closed", "archived"],

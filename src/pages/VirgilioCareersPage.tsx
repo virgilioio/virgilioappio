@@ -1,3 +1,4 @@
+import { employmentTypeLabel } from '@/lib/employmentTypes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Loader2, RotateCcw } from 'lucide-react'
@@ -42,7 +43,6 @@ interface RawPosting {
   job_id: string
   tenant_id: string
   location: string | null
-  job_type: string | null
 }
 
 export default function VirgilioCareersPage() {
@@ -81,7 +81,7 @@ export default function VirgilioCareersPage() {
 
         const { data: p, error: pe } = await supabase
           .from('job_postings')
-          .select('id, title, slug, details, created_at, job_id, tenant_id, location, job_type, jobs!inner(status, organization_id)')
+          .select('id, title, slug, details, created_at, job_id, tenant_id, location, jobs!inner(status, organization_id)')
           .eq('is_active', true).eq('tenant_id', VIRGILIO_TENANT_ID)
           .eq('jobs.status', 'open')
           .eq('jobs.organization_id', VIRGILIO_INTERNAL_ORG_ID)
@@ -111,7 +111,7 @@ export default function VirgilioCareersPage() {
     title: p.title,
     department: (p.details?.department as string) || 'Other',
     location: p.location,
-    type: p.job_type,
+    type: employmentTypeLabel(p.details?.employment_type),
     workMode: (p.details?.work_mode as string) || (p.location?.toLowerCase().includes('remote') ? 'Remote' : null),
     postedAt: p.created_at,
     featured: !!p.details?.featured,
