@@ -1,7 +1,7 @@
-import { Sparkles } from 'lucide-react'
+import { ArrowDown, ArrowUp, Sparkles } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { BlendNumber } from '@/components/ui/blend-number'
-import { minutesUntil, useFitQueueEntry } from '@/lib/fitQueueStatus'
+import { fitMoveText, minutesUntil, useFitMove, useFitQueueEntry, type FitMove } from '@/lib/fitQueueStatus'
 import { cn } from '@/lib/utils'
 
 /**
@@ -11,6 +11,10 @@ import { cn } from '@/lib/utils'
  * turns into a small spinner (a still ring with reduced motion) and the old score
  * fades to half; the new score blends in (`BlendNumber`) and the cell flashes once.
  * The tooltip names it: "Gio Fit score 72".
+ *
+ * A score that moved for a reason (2026-11-17, `useFitMove`) carries a small arrow
+ * with the points (`cell`, `inline`) or the arrow alone (`chip`), green up and red
+ * down, and the tooltip says why: "Gio Fit score 78, up 8 after a scorecard on Nov 17".
  */
 interface GioFitScoreProps {
   associationId?: string | null
@@ -24,21 +28,41 @@ interface GioFitScoreProps {
   emptyColor?: string
 }
 
-function tipFor(score: number | null, due: boolean | undefined, dueAt: string | undefined) {
+const MOVE_UP = '#1F7A4D'
+const MOVE_DOWN = 'var(--color-danger)'
+
+function tipFor(score: number | null, due: boolean | undefined, dueAt: string | undefined, move?: FitMove) {
   if (dueAt && due === false) {
     const n = minutesUntil(dueAt)
     return `Re-scoring in about ${n} minute${n === 1 ? '' : 's'}, against the new job details.`
   }
   if (due) return score === null ? 'Gio is scoring this candidate.' : 'Gio is re-scoring this candidate. The old score stays until then.'
-  return score === null ? 'No Gio Fit score yet' : `Gio Fit score ${score}`
+  if (score === null) return 'No Gio Fit score yet'
+  return move ? `Gio Fit score ${score}, ${fitMoveText(move)}` : `Gio Fit score ${score}`
 }
 
 export function GioFitScore({ associationId, score: raw, variant, color, tint, emptyColor }: GioFitScoreProps) {
   const score = typeof raw === 'number' ? Math.round(raw) : null
   const { entry, justScored } = useFitQueueEntry(associationId)
   const queued = !!entry
-  const label = tipFor(score, entry?.due, entry?.dueAt)
+  // A move belongs to the score on screen: not while a new one is on its way.
+  const found = useFitMove(associationId)
+  const move = !queued && score !== null ? found : undefined
+  const label = tipFor(score, entry?.due, entry?.dueAt, move)
   const iconSize = variant === 'chip' ? 10 : 11
+
+  const MoveIcon = move && move.delta > 0 ? ArrowUp : ArrowDown
+  const marker = move ? (
+    <span
+      aria-hidden
+      data-fit-move={move.delta > 0 ? 'up' : 'down'}
+      className="inline-flex shrink-0 items-center tabular-nums"
+      style={{ gap: 1, color: move.delta > 0 ? MOVE_UP : MOVE_DOWN, fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, lineHeight: 1, letterSpacing: 0 }}
+    >
+      <MoveIcon size={variant === 'chip' ? 9 : 10} strokeWidth={2.5} />
+      {variant === 'chip' ? null : Math.abs(move.delta)}
+    </span>
+  ) : null
 
   const icon = queued ? (
     <span
@@ -89,6 +113,7 @@ export function GioFitScore({ associationId, score: raw, variant, color, tint, e
       >
         {icon}
         {number}
+        {marker}
       </span>
     ) : variant === 'inline' ? (
       <span
@@ -99,6 +124,7 @@ export function GioFitScore({ associationId, score: raw, variant, color, tint, e
       >
         {icon}
         <span style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600 }}>{number}</span>
+        {marker}
       </span>
     ) : (
       <span
@@ -111,6 +137,7 @@ export function GioFitScore({ associationId, score: raw, variant, color, tint, e
         <span style={{ fontFamily: 'Poppins, sans-serif', fontSize: 13.5, fontWeight: 600, letterSpacing: '-0.02em' }}>
           {number}
         </span>
+        {marker}
       </span>
     )
 
