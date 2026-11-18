@@ -12080,6 +12080,16 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: number
       }
+      fit_job_movements: {
+        Args: { p_job_id: string }
+        Returns: {
+          association_id: string
+          cause: string
+          moved_at: string
+          previous_score: number
+          score: number
+        }[]
+      }
       fit_queue_job_status: {
         Args: { p_job_id: string }
         Returns: {
