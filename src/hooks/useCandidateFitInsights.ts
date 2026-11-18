@@ -27,6 +27,8 @@ export interface MustHave {
   evidence: string | null
   /** v5: one of the job's must-have skills. With `unknown` it reads "Not shown yet". */
   from_skill?: boolean
+  /** v5: the skill got no verdict in this run, so it stays "Not verified". */
+  unjudged?: boolean
 }
 
 /** v5: what an assessment was caused by (`causeOf` in analyze-candidate-fit/scoring.ts). */

@@ -14,6 +14,16 @@ export interface SkillEntry {
   evidence: string | null;
   source: string | null;
   priority: SkillPriority;
+  /** False when the model sent no verdict for this skill: unknown, not a miss. Absent when it did. */
+  judged?: false;
+}
+
+/** What came back, as it came: for the log when verdicts go missing. Skill names only. */
+export interface SkillRaw {
+  kind: "array" | "string" | "object" | "missing";
+  count: number;
+  /** `name=status` (+q when it quoted evidence), as the model wrote the name. */
+  sample: string[];
 }
 
 export interface SkillReconcile {
@@ -24,6 +34,7 @@ export interface SkillReconcile {
   missing: string[];
   /** Verdicts that claimed evidence without quoting any. */
   unquoted: number;
+  raw: SkillRaw;
 }
 
 const PRIORITY_LABEL: Record<SkillPriority, string> = { must: "must-have", nice: "nice-to-have", bonus: "extra" };
@@ -64,6 +75,36 @@ export function skillListBlock(skills: string[], priorityOf: (skill: string) => 
 
 interface Cleaned { key: string; raw: string; status: SkillStatus; evidence: string | null; source: string | null; used: boolean }
 
+const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
+
+/**
+ * The list of verdicts, whatever shape it arrived in: an array, the same array
+ * as a JSON string, an object wrapping the array, or an object keyed by skill.
+ */
+export function verdictList(returned: unknown): { list: any[]; kind: SkillRaw["kind"] } {
+  if (Array.isArray(returned)) return { list: returned, kind: "array" };
+  if (typeof returned === "string" && returned.trim()) {
+    try {
+      const inner = verdictList(JSON.parse(returned));
+      return { list: inner.list, kind: "string" };
+    } catch { return { list: [], kind: "string" }; }
+  }
+  if (returned && typeof returned === "object") {
+    const record = returned as Record<string, unknown>;
+    for (const key of ["skill_evidence", "skills", "items", "entries"]) {
+      if (Array.isArray(record[key])) return { list: record[key] as any[], kind: "object" };
+    }
+    const list = Object.entries(record)
+      .filter(([, value]) => value && typeof value === "object")
+      .map(([skill, value]) => ({ skill, ...(value as object) }));
+    return { list, kind: "object" };
+  }
+  return { list: [], kind: "missing" };
+}
+
+/** The skill's name, under whichever key the model used for it. */
+const nameOf = (entry: any): string => text(entry?.skill) || text(entry?.name) || text(entry?.skill_name) || text(entry?.requirement);
+
 /**
  * Exactly one entry per job skill, in the job's order and spelling. A returned
  * entry is matched by its cleaned name, then as one side of an alternative,
@@ -76,11 +117,17 @@ export function reconcileSkillEvidence(
   priorityOf: (skill: string) => SkillPriority,
 ): SkillReconcile {
   let unquoted = 0;
-  const cleaned: Cleaned[] = (Array.isArray(returned) ? returned : [])
+  const { list, kind } = verdictList(returned);
+  const raw: SkillRaw = {
+    kind,
+    count: list.length,
+    sample: list.slice(0, 20).map((entry: any) => `${nameOf(entry).slice(0, 60) || "(no name)"}=${text(entry?.status) || "(no status)"}${text(entry?.evidence) || text(entry?.quote) ? "+q" : ""}`),
+  };
+  const cleaned: Cleaned[] = list
     .map((entry: any) => {
-      const raw = typeof entry?.skill === "string" ? entry.skill.trim() : "";
-      const evidence = typeof entry?.evidence === "string" && entry.evidence.trim() ? entry.evidence.trim() : null;
-      const source = typeof entry?.source === "string" && entry.source.trim() ? entry.source.trim() : null;
+      const raw = nameOf(entry);
+      const evidence = text(entry?.evidence) || text(entry?.quote) || null;
+      const source = text(entry?.source) || null;
       let status: SkillStatus = VALID.has(entry?.status) ? entry.status : "not_evidenced";
       if (status !== "not_evidenced" && !evidence) { status = "not_evidenced"; unquoted++; }
       return { key: skillKey(raw), raw, status, evidence: status === "not_evidenced" ? null : evidence, source: status === "not_evidenced" ? null : source, used: false };
@@ -126,7 +173,9 @@ export function reconcileSkillEvidence(
   const entries: SkillEntry[] = skills.map((skill, index) => {
     const hit = found[index];
     const priority = priorityOf(skill);
-    if (!hit || hit.status === "not_evidenced") return { skill, status: "not_evidenced", evidence: null, source: null, priority };
+    // No verdict at all is not a verdict of "not evidenced": it must never cost points.
+    if (!hit) return { skill, status: "not_evidenced", evidence: null, source: null, priority, judged: false };
+    if (hit.status === "not_evidenced") return { skill, status: "not_evidenced", evidence: null, source: null, priority };
     return { skill, status: hit.status, evidence: hit.evidence, source: hit.source, priority };
   });
 
@@ -135,5 +184,6 @@ export function reconcileSkillEvidence(
     unmatched: cleaned.filter((entry) => !entry.used).map((entry) => entry.raw),
     missing: skills.filter((_, index) => !found[index]),
     unquoted,
+    raw,
   };
 }

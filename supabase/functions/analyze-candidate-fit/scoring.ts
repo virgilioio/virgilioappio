@@ -17,6 +17,8 @@ export interface MustHave {
   evidence: string | null;
   /** Set on a must-have that is one of the job's must-have skills. */
   from_skill?: boolean;
+  /** The skill got no verdict this run: it reads "Not verified" and costs nothing. */
+  unjudged?: boolean;
 }
 
 export const NOT_MET_POINTS = 8;
@@ -49,6 +51,7 @@ export function buildMustHaves(returned: unknown, skills: SkillEntry[]): MustHav
     const covering = list.find((m) => m.requirement.toLowerCase().includes(needle));
     if (covering) {
       covering.from_skill = true;
+      if (entry.judged === false && covering.status === "unknown") covering.unjudged = true;
       // The skill verdict quotes the candidate, so it settles an open must-have.
       if (covering.status === "unknown" && entry.status !== "not_evidenced") {
         covering.status = SKILL_TO_MUST[entry.status];
@@ -57,7 +60,10 @@ export function buildMustHaves(returned: unknown, skills: SkillEntry[]): MustHav
       continue;
     }
     if (list.length >= 12) continue;
-    list.push({ requirement: `Skill: ${entry.skill}`, status: SKILL_TO_MUST[entry.status], evidence: entry.evidence, from_skill: true });
+    list.push({
+      requirement: `Skill: ${entry.skill}`, status: SKILL_TO_MUST[entry.status], evidence: entry.evidence, from_skill: true,
+      ...(entry.judged === false ? { unjudged: true } : {}),
+    });
   }
   return list;
 }
@@ -112,7 +118,8 @@ export function settleScore(input: SettleInput): Settled {
 
   // Then what the must-haves cost.
   const notMet = input.mustHaves.filter((m) => m.status === "not_met").length;
-  const notShown = input.mustHaves.filter((m) => m.status === "unknown" && m.from_skill).length;
+  // Only a skill the model looked for and didn't find: one it never judged costs nothing.
+  const notShown = input.mustHaves.filter((m) => m.status === "unknown" && m.from_skill && !m.unjudged).length;
   const notMetCost = Math.min(NOT_MET_MAX, notMet * NOT_MET_POINTS);
   const notShownCost = Math.min(NOT_SHOWN_MAX, notShown * NOT_SHOWN_POINTS);
   if (notMetCost) rules.push(`${plural(notMet, "must-have", "must-haves")} not met: ${notMetCost} points off.`);

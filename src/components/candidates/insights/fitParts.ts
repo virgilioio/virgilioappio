@@ -30,7 +30,7 @@ export const MUST_HAVE_STYLE: Record<MustHave['status'], { label: string; classN
  * yet reads "Not shown yet" (v5): it costs a few points until a résumé, an
  * application answer or a scorecard shows it.
  */
-export function mustHaveStyle(item: Pick<MustHave, 'status' | 'from_skill'>) {
+export function mustHaveStyle(item: Pick<MustHave, 'status' | 'from_skill' | 'unjudged'>) {
   const style = MUST_HAVE_STYLE[item.status] ?? MUST_HAVE_STYLE.unknown
-  return item.status === 'unknown' && item.from_skill ? { ...style, label: 'Not shown yet' } : style
+  return item.status === 'unknown' && item.from_skill && !item.unjudged ? { ...style, label: 'Not shown yet' } : style
 }

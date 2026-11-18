@@ -60,9 +60,33 @@ describe('reconcileSkillEvidence', () => {
     expect(out.entries.every((e) => e.evidence === null && e.priority === 'must')).toBe(true)
   })
 
-  it('survives nothing coming back', () => {
-    expect(reconcileSkillEvidence(JOB, null, priorityOf).entries).toHaveLength(5)
+  it('survives nothing coming back, and marks every skill as never judged', () => {
+    const out = reconcileSkillEvidence(JOB, null, priorityOf)
+    expect(out.entries).toHaveLength(5)
+    expect(out.entries.every((e) => e.judged === false && e.status === 'not_evidenced')).toBe(true)
+    expect(out.raw).toEqual({ kind: 'missing', count: 0, sample: [] })
     expect(reconcileSkillEvidence([], [ev('Apollo')], priorityOf).entries).toEqual([])
+  })
+
+  it('tells a verdict of not evidenced from no verdict at all', () => {
+    const out = reconcileSkillEvidence(['Apollo', 'SaaS'], [ev('Apollo', 'not_evidenced')], () => 'must')
+    expect(out.entries[0].judged).toBeUndefined()
+    expect(out.entries[1].judged).toBe(false)
+    expect(out.raw.sample).toEqual(['Apollo=not_evidenced'])
+  })
+
+  it('reads the list in the other shapes a model sends it', () => {
+    const asString = reconcileSkillEvidence(['Apollo', 'SaaS'], JSON.stringify([ev('Apollo'), ev('SaaS', 'partial')]), () => 'nice')
+    expect(asString.entries.map((e) => e.status)).toEqual(['evidenced', 'partial'])
+    expect(asString.raw.kind).toBe('string')
+    const wrapped = reconcileSkillEvidence(['Apollo'], { items: [ev('Apollo')] }, () => 'nice')
+    expect(wrapped.entries[0].status).toBe('evidenced')
+    const keyed = reconcileSkillEvidence(['Apollo', 'SaaS'], { Apollo: { status: 'evidenced', evidence: 'Used Apollo daily', source: 'résumé' }, SaaS: { status: 'not_evidenced', evidence: null } }, () => 'nice')
+    expect(keyed.entries.map((e) => e.status)).toEqual(['evidenced', 'not_evidenced'])
+    expect(keyed.entries[1].judged).toBeUndefined()
+    const named = reconcileSkillEvidence(['Apollo'], [{ name: 'Apollo', status: 'partial', quote: 'prospecting tools' }], () => 'nice')
+    expect(named.entries[0]).toMatchObject({ status: 'partial', evidence: 'prospecting tools' })
+    expect(reconcileSkillEvidence(['Apollo'], 'not json', () => 'nice').entries[0].judged).toBe(false)
   })
 })
 
@@ -128,6 +152,16 @@ describe('settleScore', () => {
     expect(out.overall).toBe(78 - 2 * NOT_SHOWN_POINTS)
     expect(out.notShown).toBe(2)
     expect(out.rules).toEqual(['2 must-have skills not shown yet: 6 points off.'])
+  })
+
+  it('never charges for a skill the model sent no verdict for', () => {
+    const skills = reconcileSkillEvidence(['Apollo', 'HubSpot', 'SaaS'], [], () => 'must').entries
+    const musts = buildMustHaves([], skills)
+    expect(musts.every((m) => m.status === 'unknown' && m.from_skill && m.unjudged)).toBe(true)
+    const out = settleScore({ modelScore: 78, dimensions: dims, mustHaves: musts, skills, tenureFlag: 'green' })
+    expect(out.overall).toBe(78)
+    expect(out.notShown).toBe(0)
+    expect(out.rules).toEqual([])
   })
 
   it('gives the points back when an interview shows the skill', () => {

@@ -700,7 +700,7 @@ serve(async (req) => {
     canonicalAnalysis.skill_evidence = skillResult.entries;
     if (skillResult.unmatched.length || skillResult.missing.length || skillResult.unquoted) {
       // Skill names only: nothing about the candidate.
-      console.log(`[analyze-candidate-fit] skill_evidence reconciled: job requires ${requiredSkills.length}; unmatched from the model ${JSON.stringify(skillResult.unmatched.slice(0, 12))}; job skills with no verdict ${JSON.stringify(skillResult.missing.slice(0, 12))}; verdicts without a quote ${skillResult.unquoted}.`);
+      console.log(`[analyze-candidate-fit] skill_evidence reconciled: job requires ${requiredSkills.length}; the model sent ${skillResult.raw.count} (${skillResult.raw.kind}) ${JSON.stringify(skillResult.raw.sample)}; unmatched from the model ${JSON.stringify(skillResult.unmatched.slice(0, 20))}; job skills with no verdict ${skillResult.missing.length} ${JSON.stringify(skillResult.missing.slice(0, 20))}; verdicts without a quote ${skillResult.unquoted}.`);
     }
     canonicalAnalysis.skill_evidence_version = 4;
 
