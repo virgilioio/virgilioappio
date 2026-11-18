@@ -112,6 +112,18 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-18 (ATS) — Settings › Templates: row menus (⋯), Duplicate, Preview — on the branch, waiting for Apply!
+
+- Allan: the rows in Settings › Templates should end in a three-dot menu with a fuller set of options (edit, duplicate, delete and whatever else is needed). He said yes to both questions: Pipeline stages and Application form get the menu too (they share the row), and clicking a row's name opens Edit.
+- The row: `LibraryCard` rows end in one ⋯ (always visible) instead of a pencil and a bin; the menu is built by `libraryMenu` (`src/components/settings/shared/libraryMenu.ts`): Edit, the row's `actions`, Delete last after a divider. Seven lists use it.
+- Menus: offer forms Edit · Duplicate · Make inactive / Make active · Delete; email templates and rejection templates Edit · Preview · Duplicate · Delete; rejection reasons Edit · Delete; candidate sources Rename · Delete; pipeline stages and application fields Edit · Delete. Delete is what it was (same confirmations, "in use" blocks and Undo).
+- Duplicate saves the copy at once and opens it in the editor ("Copy of …", then "(2)"; `copyName`). A rejection template's copy keeps its reason. An offer form is copied by `offer_form_duplicate` (migration `supabase/migrations/20261118200000_offer_form_duplicate.sql`, NOT applied yet): sections, fields and select options in one go, the copy inactive and linked to no Gio Sign document. It runs with the caller's rights, so the existing rules decide who may copy. Test `supabase/tests/89_offer_form_duplicate.sql`: 17 checks passed in a rolled-back dry run.
+- Make inactive / Make active is the switch from inside the form editor, in the menu: at once, Undo in the toast, put back with "Couldn't make … inactive" when the save fails.
+- Preview: `TemplatePreviewDialog`, the editor's own preview with sample values, and Edit template.
+- The template sheets take the template from the list (`template` prop): each sheet keeps its own copy of the list, which doesn't hold a copy made a moment ago.
+- `src/integrations/supabase/types.ts` has `offer_form_duplicate` added by hand; regenerate after the migration is applied.
+- Checked: 462 tests (9 new in `libraryMenu.test.ts`), typecheck, no new lint problems, and a browser pass on desktop and phone with fake data over all five Templates tabs: menus and their order, 28px rows (36px on touch), the 272px panel inside the window, Make inactive with Undo and a failed save, Duplicate (refused, failed and done) for the three kinds, Preview and Preview → Edit, Delete blocked and confirmed, focus back on the ⋯ after Esc. Pipeline stages and Application form were not opened in the browser: they use the same row.
+
 ## Done 2026-11-18 (ATS) — Employment type: one name, one list — on the branch, waiting for Apply!
 
 - Allan: "Job Type" and "Employment Type" read as the same thing and should be one, with Contractor and External vendor among the options; Work Location is right as it is.
