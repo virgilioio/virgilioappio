@@ -12670,6 +12670,10 @@ export type Database = {
       offer_base_salary: { Args: { _fv: Json }; Returns: Json }
       offer_can_send: { Args: { _offer_id: string }; Returns: Json }
       offer_chain_is_approver: { Args: { _chain_id: string }; Returns: boolean }
+      offer_form_duplicate: {
+        Args: { p_form_id: string; p_name?: string }
+        Returns: string
+      }
       offer_form_last_section: { Args: { _form_id: string }; Returns: string }
       offer_letter_is_approver: {
         Args: { _offer_id: string }

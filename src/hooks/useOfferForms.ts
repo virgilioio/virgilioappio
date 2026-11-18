@@ -128,6 +128,34 @@ export function useOfferForms(context: OfferFormsContext = 'organization') {
     }
   }
 
+  /**
+   * A copy of a form with its sections, fields and dropdown options, made in
+   * one go by the database (offer_form_duplicate). It starts inactive and isn't
+   * linked to any Gio Sign document. The caller says what happened.
+   */
+  const duplicateForm = async (id: string, name: string): Promise<string> => {
+    const { data, error } = await supabase.rpc('offer_form_duplicate', { p_form_id: id, p_name: name })
+    if (error) {
+      console.error('Error duplicating offer form:', error)
+      throw error
+    }
+    await fetchForms()
+    return data
+  }
+
+  /** Active forms are offered when writing an offer. The caller says what happened. */
+  const setFormActive = async (id: string, active: boolean) => {
+    // Shown at once, put back if the save fails (§5).
+    const flip = (to: boolean) => setForms((list) => list.map((f) => (f.id === id ? { ...f, is_active: to } : f)))
+    flip(active)
+    const { error } = await supabase.from('offer_forms').update({ is_active: active }).eq('id', id)
+    if (error) {
+      console.error('Error changing an offer form:', error)
+      flip(!active)
+      throw error
+    }
+  }
+
   /** `quiet`: the caller shows the error itself (the delete dialog does). */
   const deleteForm = async (id: string, opts: { quiet?: boolean } = {}) => {
     try {
@@ -157,6 +185,8 @@ export function useOfferForms(context: OfferFormsContext = 'organization') {
     loadError,
     createForm,
     updateForm,
+    duplicateForm,
+    setFormActive,
     deleteForm,
     refetchForms: fetchForms
   }
