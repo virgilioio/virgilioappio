@@ -13,6 +13,9 @@ import { accessDenied, checkRecordAccess } from '../_shared/recordAccess.ts';
 import { loadResumeText } from '../_shared/resumeText.ts';
 import { mergeTranslatedProse } from './language-utils.ts';
 import { analyseTenure } from './tenure.ts';
+import { reconcileSkillEvidence, skillListBlock, type SkillPriority } from './skills.ts';
+import { buildMustHaves, causeOf, settleScore, NOT_MET_POINTS, NOT_MET_MAX, NOT_SHOWN_POINTS, NOT_SHOWN_MAX } from './scoring.ts';
+import { applicationAnswersBlock } from './evidence.ts';
 import { formatMoney, loadCurrencyRates, normaliseSalary } from '../_shared/salary.ts';
 
 // Bump when the prompt, the dimensions or the scoring rules change, so a
@@ -23,7 +26,14 @@ import { formatMoney, loadCurrencyRates, normaliseSalary } from '../_shared/sala
 // job description, not the skills list; Tenure & Progression replaces Company
 // Pedigree; years-of-experience bounds and additional locations are sent;
 // unchanged inputs are not re-scored; a re-score explains what changed.
-const PROMPT_VERSION = 4;
+//
+// v5 (2026-11-17): per-skill verdicts are matched back to the job's list by a
+// cleaned name (they were being thrown away, so every skill read "not
+// evidenced" and two must-have skills cut the score to exactly 70); a missing
+// must-have is a deduction instead of a ceiling; a must-have skill nothing
+// mentions is "not shown yet", not a miss; the application form's answers are
+// read; each assessment records what caused it (scoring.cause).
+const PROMPT_VERSION = 5;
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -58,6 +68,7 @@ const SOURCE_LABELS: Record<string, string> = {
   salary: "Candidate profile", salary_uncomparable: "Candidate profile",
   work_experience: "Work experience",
   education: "Education", resume: "Résumé", scorecards: "Scorecards",
+  application_answers: "Application answers",
 };
 
 const TOOL_SCHEMA = {
@@ -125,11 +136,11 @@ const TOOL_SCHEMA = {
         },
         skill_evidence: {
           type: "array",
-          description: "One entry per skill listed under REQUIRED SKILLS, in the same order and with the job's exact spelling. Never add, drop, merge or rename a skill.",
+          description: "One entry per numbered line under SKILLS TO CHECK, in the same order. Never add, drop, merge, split or rename a skill.",
           items: {
             type: "object",
             properties: {
-              skill: { type: "string", description: "The required skill, copied verbatim from the job's list." },
+              skill: { type: "string", description: "Only the name between the quotation marks on that line: no number, no priority, no brackets." },
               status: {
                 type: "string",
                 enum: ["evidenced", "partial", "not_evidenced"],
@@ -203,8 +214,6 @@ Interpret scores as follows:
 0-39: Poor fit. Lacks core requirements or is clearly not aligned.
 
 A candidate MUST NOT receive a high score if they miss critical job requirements, even if they are strong in other ways.
-If the candidate is missing a must-have, apply a meaningful penalty.
-If multiple must-haves are missing, the score should usually fall below 60.
 If data is missing for an important dimension, reduce confidence and score accordingly.
 
 REQUIRED EVALUATION PROCESS
@@ -245,20 +254,30 @@ ANTI-HALLUCINATION RULES
 
 MUST-HAVES (must_haves)
 
-Read the job description and list what it states as mandatory: "must", "required", "essential", "minimum N years", "must be based in", "fluent in", a specific certification or degree. At most 8. The SKILLS TO CHECK list is not a list of must-haves: a skill tagged [must-have] there is handled separately by the system from its skill verdict, and a tool or method tagged [nice-to-have] or [extra] is only a must-have when the description says it is required. For each one: met when the candidate data shows it, partial when adjacent experience supports it, not_met only when the candidate data explicitly contradicts it, unknown when there is no data either way. "Not mentioned" is unknown, never not_met.
+Read the job description and list what it states as mandatory: "must", "required", "essential", "minimum N years", "must be based in", "fluent in", a specific certification or degree. At most 8. The SKILLS TO CHECK list is not a list of must-haves: a skill with priority must-have there is handled by the system from its skill verdict, and a tool or method with priority nice-to-have or extra is only a must-have when the description says it is required. For each one: met when the candidate data shows it, partial when adjacent experience supports it, not_met only when the candidate data explicitly contradicts it, unknown when there is no data either way. "Not mentioned" is unknown, never not_met. The one time a must-have skill belongs in this list is when the candidate data (an application answer, a scorecard, the résumé) explicitly shows the candidate lacks it: then list it as not_met, naming the skill exactly, with the evidence.
 
-HOW THE SCORE IS BOUNDED
+HOW THE SCORE IS SETTLED
 
-overall_score is your holistic judgement of the whole case, not an average of the dimensions. After you return it, the system enforces these rules, so apply them yourself first:
+overall_score is your holistic judgement of the whole case as the evidence stands, not an average of the dimensions. After you return it, the system applies these rules.
+
+Ceilings, which you should respect yourself:
 - A dealbreaker dimension (Location, Salary or Language at 30 or below) caps the score at 55.
-- Two or more must-haves not_met cap it at 70; one not_met caps it at 79.
-- A score above 80 needs at least three strong matches (must-haves met plus skills evidenced) and no must-have not_met.
+- A score above 80 needs at least three strong matches (must-haves met plus skills evidenced).
 - A red tenure flag caps it at 69.
 - The score never sits more than 10 points above the weighted mean of the scored dimensions.
 
+Deductions, which the system makes and you must NOT make a second time:
+- ${NOT_MET_POINTS} points for each must-have that is not_met, to a maximum of ${NOT_MET_MAX}.
+- ${NOT_SHOWN_POINTS} points for each must-have skill that is not_evidenced, to a maximum of ${NOT_SHOWN_MAX}.
+Because these are taken off afterwards, score what the candidate has shown and let your must_haves and skill_evidence verdicts carry the misses. Be exact with those verdicts: they move the score.
+
+APPLICATION ANSWERS
+
+Answers the candidate gave on this job's application form, when supplied, are the candidate's own statements about this role. Use them as evidence for skills, must-haves, language and location: a "Yes" to "Do you have experience using HubSpot?" is partial evidence of HubSpot (the candidate says so, nothing shows it), a written answer describing the work is evidence like a résumé line, and a "No" to something the job requires is an explicit miss. A scorecard outranks an answer on the same point.
+
 INTERVIEW EVIDENCE
 
-Scorecards, when supplied, are first-hand evidence and outrank the résumé on the same point. A scorecard that contradicts a CV claim lowers that skill; a "no" or "strong_no" rating is a material risk to name in the executive summary; a "strong_yes" with specifics strengthens the matching dimension. A validation point that a scorecard already answers must not be asked again: leave it out.
+Scorecards, when supplied, are first-hand evidence and outrank the résumé on the same point. A skill or must-have an interviewer confirmed is evidenced or met even when the résumé never names it: quote the scorecard. A scorecard that contradicts a CV claim lowers that skill; a "no" or "strong_no" rating is a material risk to name in the executive summary; a "strong_yes" with specifics strengthens the matching dimension. A validation point that a scorecard already answers must not be asked again: leave it out.
 
 RE-SCORING
 
@@ -271,8 +290,7 @@ High scores must be earned.
 Missing must-haves, unclear evidence, or major tradeoffs should materially reduce the score.
 Strong but imperfect candidates should often land in the 60-75 range, not the 80s.
 
-The model must justify any score above 80 by citing at least 3 strong, role-relevant matches with no major unresolved must-have gaps.
-Any candidate with 2 or more material gaps in must-haves should not score above 70.
+Justify any score above 80 by citing at least 3 strong, role-relevant matches.
 
 SCORING DISCIPLINE CHECK
 
@@ -296,10 +314,10 @@ For each validation_point, suggest the best interview stage to verify (Phone Scr
 
 PER-SKILL ADJUDICATION (skill_evidence)
 
-The user message lists the job's SKILLS TO CHECK. Return exactly one skill_evidence entry per listed skill, in the same order, with the skill string copied verbatim from that list. Do not add skills the job did not list, do not drop one, do not merge two, do not rename or reword one.
+The user message lists the job's SKILLS TO CHECK, one per numbered line. Return exactly one skill_evidence entry per line, in the same order. In "skill" copy only the name between the quotation marks: no number, no priority, no brackets. Do not add skills the job did not list, do not drop one, do not merge two, do not split one written as alternatives ("A or B" is one entry, evidenced when either side is shown), do not rename or reword one.
 
 Rule for each skill:
-- evidenced: the candidate data directly supports it. Read everything supplied — listed skills, profile summary, work experience, résumé and scorecards — not just the skills array. Cross-language equivalents count ("Ventas" = "Sales"), as do close variants of the same thing ("Outbound Sales" evidences "Outbound", "B2B sales" evidences "B2B").
+- evidenced: the candidate data directly supports it. Read everything supplied — listed skills, profile summary, work experience, résumé, application answers and scorecards — not just the skills array. Cross-language equivalents count ("Ventas" = "Sales"), as do close variants of the same thing ("Outbound Sales" evidences "Outbound", "B2B sales" evidences "B2B").
 - partial: adjacent or general experience supports the area, but the named skill, tool, method or framework is not itself shown. Selling to enterprise accounts is partial evidence of "Enterprise"; running a full sales cycle is partial evidence of "E2E Sales".
 - not_evidenced: nothing in the supplied data supports it. Named methodologies and tools (MEDDICC, HubSpot, a specific CRM) are not_evidenced unless the candidate data actually names them or an unmistakable equivalent. Do not infer a tool from the fact that the role would normally use one.
 
@@ -352,7 +370,7 @@ serve(async (req) => {
     if (!access.ok) return accessDenied(access, headers);
 
     // Fetch all data in parallel
-    const [candidateRes, jobRes, workExpRes, educationRes, attachmentsRes, scorecardsRes, associationRes, suggestionRes] = await Promise.all([
+    const [candidateRes, jobRes, workExpRes, educationRes, attachmentsRes, scorecardsRes, associationRes, suggestionRes, answersRes] = await Promise.all([
       sb.from("candidates").select("*").eq("id", candidate_id).maybeSingle(),
       sb.from("jobs").select("*").eq("id", job_id).maybeSingle(),
       sb.from("candidate_work_experience").select("*").eq("candidate_id", candidate_id).order("start_date", { ascending: false }),
@@ -361,6 +379,7 @@ serve(async (req) => {
       sb.from("job_stage_scorecards").select("id, rating, general_overview, is_ai_draft, created_at, scorecard_question_responses(answer_text, answer_options, question:scorecard_interview_questions(question_text))").eq("job_id", job_id).eq("candidate_id", candidate_id),
       sb.from("job_candidate_associations").select("id, ai_fit_version, output_language, ai_fit_keep_proper_nouns, ai_fit_analysis, ai_fit_score, ai_fit_generated_at").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
       sb.from("job_suggested_candidates_cache").select("id, ai_fit_analysis, ai_fit_score, ai_fit_generated_at").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
+      sb.from("candidate_application_responses").select("field_name, field_label, field_value, field_type, created_at").eq("candidate_id", candidate_id).eq("job_id", job_id).order("created_at", { ascending: true }),
     ]);
 
     const candidate = candidateRes.data;
@@ -518,19 +537,31 @@ serve(async (req) => {
     const tenure = analyseTenure(workExp);
     candidateContext += `\n\nTENURE & PROGRESSION (computed from dated work history):\nFlag: ${tenure.flag}${tenure.band ? ` — score this dimension between ${tenure.band[0]} and ${tenure.band[1]}` : " — return null for this dimension"}\n${tenure.facts}`;
 
+    // What the profile says, before anything gathered during the process.
+    const profileText = candidateContext;
+
+    // Application answers for this job.
+    const answersBlock = applicationAnswersBlock(answersRes.data as any[]);
+    if (answersBlock) {
+      candidateContext += `\n\n${answersBlock}`;
+      dataSources.push("application_answers");
+    }
+
     // Scorecards (submitted only)
     const scorecards = (scorecardsRes.data || []).filter((sc: any) => !sc.is_ai_draft);
+    let scorecardBlock = "";
     if (scorecards.length > 0) {
-      candidateContext += "\n\nSCORECARD EVALUATIONS:";
+      scorecardBlock = "SCORECARD EVALUATIONS:";
       scorecards.forEach((sc: any, idx: number) => {
-        candidateContext += `\n- Scorecard ${idx + 1}: overall rating ${sc.rating ?? "n/a"}`;
-        if (sc.general_overview) candidateContext += `\n  Key takeaways: ${String(sc.general_overview).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 3000)}`;
+        scorecardBlock += `\n- Scorecard ${idx + 1}: overall rating ${sc.rating ?? "n/a"}`;
+        if (sc.general_overview) scorecardBlock += `\n  Key takeaways: ${String(sc.general_overview).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 3000)}`;
         (sc.scorecard_question_responses || []).forEach((r: any) => {
           const q = r.question?.question_text;
           const a = r.answer_text || (r.answer_options ? JSON.stringify(r.answer_options) : "");
-          if (q && a) candidateContext += `\n  Q: ${q} → ${String(a).slice(0, 500)}`;
+          if (q && a) scorecardBlock += `\n  Q: ${q} → ${String(a).slice(0, 500)}`;
         });
       });
+      candidateContext += `\n\n${scorecardBlock}`;
       dataSources.push("scorecards");
     }
 
@@ -545,17 +576,13 @@ serve(async (req) => {
       .map((skill: unknown) => String(skill || "").trim())
       .filter((skill: string) => skill.length > 0);
     const priorityMap: Record<string, string> = job.skill_priorities && typeof job.skill_priorities === "object" ? job.skill_priorities : {};
-    const priorityOf = (skill: string): "must" | "nice" | "bonus" => {
+    const priorityOf = (skill: string): SkillPriority => {
       const direct = priorityMap[skill];
       if (direct === "must" || direct === "nice" || direct === "bonus") return direct;
       const hit = Object.entries(priorityMap).find(([name]) => name.trim().toLowerCase() === skill.trim().toLowerCase());
       return hit && (hit[1] === "must" || hit[1] === "bonus") ? hit[1] : "nice";
     };
-    const PRIORITY_LABEL = { must: "must-have", nice: "nice-to-have", bonus: "extra" } as const;
-    if (requiredSkills.length) {
-      jobContext += `\nSKILLS TO CHECK (adjudicate each one, in this order, using this spelling): ${requiredSkills.map((skill, index) => `${index + 1}. ${skill} [${PRIORITY_LABEL[priorityOf(skill)]}]`).join(" | ")}`;
-      jobContext += `\nA [must-have] skill that is not evidenced is a missing must-have. A [nice-to-have] skill is part of the skills match. An [extra] skill lifts the score when evidenced and is never a gap.`;
-    }
+    if (requiredSkills.length) jobContext += `\n${skillListBlock(requiredSkills, priorityOf)}`;
     if (job.min_years_experience != null || job.max_years_experience != null) {
       jobContext += `\nYears of experience wanted: ${job.min_years_experience ?? "?"} to ${job.max_years_experience ?? "?"}`;
     }
@@ -590,6 +617,15 @@ serve(async (req) => {
     // therefore never moves the score. `force` (the Refresh button) overrides.
     const inputHash = await sha256(JSON.stringify({ v: PROMPT_VERSION, candidateContext, jobContext, outputLanguage, keepProperNouns }));
     const stored = (association?.ai_fit_analysis ?? suggestion?.ai_fit_analysis ?? null) as Record<string, any> | null;
+    // What this run read, in parts, so it can say what moved since the last one.
+    const [jobPrint, profilePrint, scorecardPrint, answersPrint] = await Promise.all(
+      [jobContext, profileText, scorecardBlock, answersBlock].map((part) => sha256(part).then((h) => h.slice(0, 16))),
+    );
+    const inputs = { job: jobPrint, profile: profilePrint, scorecards: scorecardPrint, answers: answersPrint };
+    const cause = causeOf(
+      stored ? { inputs: stored.scoring?.inputs ?? null, version: stored.scoring?.version ?? null } : null,
+      inputs, PROMPT_VERSION, force === true,
+    );
     if (!force && stored && stored.input_hash === inputHash) {
       const checked = { ...stored, inputs_checked_at: new Date().toISOString() };
       if (association) {
@@ -607,13 +643,17 @@ serve(async (req) => {
     let previousBlock = "";
     const previousScore = typeof (association?.ai_fit_score ?? suggestion?.ai_fit_score) === "number"
       ? Number(association?.ai_fit_score ?? suggestion?.ai_fit_score) : null;
-    if (stored && Array.isArray(stored.dimensions)) {
+    // A dossier from an older recipe is judged afresh: anchoring to it would
+    // carry the old recipe's score into the new one.
+    const sameRecipe = stored?.scoring?.version === PROMPT_VERSION;
+    if (stored && sameRecipe && Array.isArray(stored.dimensions)) {
       const when = association?.ai_fit_generated_at ?? suggestion?.ai_fit_generated_at ?? null;
       const dims = stored.dimensions.map((d: any) => `${d.name}: ${d.score ?? "null"}`).join("; ");
       const musts = Array.isArray(stored.must_haves) && stored.must_haves.length
         ? stored.must_haves.map((m: any) => `${m.requirement} (${m.status})`).join("; ")
         : "not recorded";
-      previousBlock = `\n\nPREVIOUS ASSESSMENT${when ? ` (${String(when).slice(0, 10)})` : ""}: overall ${previousScore ?? "?"}. Dimensions: ${dims}. Must-haves: ${musts}.`;
+      const before = typeof stored.scoring?.model_score === "number" ? stored.scoring.model_score : previousScore;
+      previousBlock = `\n\nPREVIOUS ASSESSMENT${when ? ` (${String(when).slice(0, 10)})` : ""}: your overall judgement was ${before ?? "?"} before the system's deductions. Dimensions: ${dims}. Must-haves: ${musts}.`;
     }
 
     // Call OpenAI
@@ -654,44 +694,15 @@ serve(async (req) => {
     const canonicalAnalysis = JSON.parse(toolCall.function.arguments);
     let analysis = canonicalAnalysis;
 
-    // Skill adjudication: keep the job's list authoritative. Every required
-    // skill gets exactly one entry, in the job's order and spelling. A model
-    // entry that is malformed, unmatched, or claims evidence without quoting
-    // any is dropped to not_evidenced rather than guessed at.
-    const VALID_SKILL_STATUS = new Set(["evidenced", "partial", "not_evidenced"]);
-    const returnedEvidence: any[] = Array.isArray(canonicalAnalysis.skill_evidence)
-      ? canonicalAnalysis.skill_evidence
-      : [];
-    const byNormalizedSkill = new Map<string, any>();
-    for (const entry of returnedEvidence) {
-      const skill = typeof entry?.skill === "string" ? entry.skill.trim() : "";
-      if (!skill) continue;
-      const key = skill.toLowerCase();
-      if (!byNormalizedSkill.has(key)) byNormalizedSkill.set(key, entry);
+    // Skill adjudication: the job's list is authoritative. Every required skill
+    // gets exactly one entry, in the job's order and spelling (skills.ts).
+    const skillResult = reconcileSkillEvidence(requiredSkills, canonicalAnalysis.skill_evidence, priorityOf);
+    canonicalAnalysis.skill_evidence = skillResult.entries;
+    if (skillResult.unmatched.length || skillResult.missing.length || skillResult.unquoted) {
+      // Skill names only: nothing about the candidate.
+      console.log(`[analyze-candidate-fit] skill_evidence reconciled: job requires ${requiredSkills.length}; unmatched from the model ${JSON.stringify(skillResult.unmatched.slice(0, 12))}; job skills with no verdict ${JSON.stringify(skillResult.missing.slice(0, 12))}; verdicts without a quote ${skillResult.unquoted}.`);
     }
-    canonicalAnalysis.skill_evidence = requiredSkills.map((skill) => {
-      const entry = byNormalizedSkill.get(skill.toLowerCase());
-      const status = VALID_SKILL_STATUS.has(entry?.status) ? entry.status : "not_evidenced";
-      const evidence = typeof entry?.evidence === "string" && entry.evidence.trim().length > 0
-        ? entry.evidence.trim()
-        : null;
-      const source = typeof entry?.source === "string" && entry.source.trim().length > 0
-        ? entry.source.trim()
-        : null;
-      const priority = priorityOf(skill);
-      if (status !== "not_evidenced" && !evidence) {
-        return { skill, status: "not_evidenced", evidence: null, source: null, priority };
-      }
-      if (status === "not_evidenced") {
-        return { skill, status, evidence: null, source: null, priority };
-      }
-      return { skill, status, evidence, source, priority };
-    });
-    const droppedEvidence = returnedEvidence.length - canonicalAnalysis.skill_evidence.length;
-    if (droppedEvidence !== 0) {
-      console.log(`[analyze-candidate-fit] skill_evidence reconciled: model returned ${returnedEvidence.length}, job requires ${requiredSkills.length}.`);
-    }
-    canonicalAnalysis.skill_evidence_version = 3;
+    canonicalAnalysis.skill_evidence_version = 4;
 
     // Override data_sources with our tracked ones
     canonicalAnalysis.data_sources_used = dataSources;
@@ -720,31 +731,9 @@ serve(async (req) => {
       }
     }
 
-    // Must-haves: keep only well-formed entries; `unknown` is the default.
-    const MUST_STATUS = new Set(["met", "partial", "not_met", "unknown"]);
-    canonicalAnalysis.must_haves = (Array.isArray(canonicalAnalysis.must_haves) ? canonicalAnalysis.must_haves : [])
-      .filter((m: any) => typeof m?.requirement === "string" && m.requirement.trim())
-      .slice(0, 8)
-      .map((m: any) => ({
-        requirement: m.requirement.trim(),
-        status: MUST_STATUS.has(m.status) ? m.status : "unknown",
-        evidence: typeof m.evidence === "string" && m.evidence.trim() ? m.evidence.trim() : null,
-      }));
-
-    // Skills the recruiter marked must-have join the must-haves list with the
-    // skill verdict as their status, unless the model already listed them.
-    const SKILL_TO_MUST = { evidenced: "met", partial: "partial", not_evidenced: "not_met" } as const;
-    for (const entry of canonicalAnalysis.skill_evidence) {
-      if (entry.priority !== "must") continue;
-      const needle = entry.skill.toLowerCase();
-      const covered = canonicalAnalysis.must_haves.some((m: any) => String(m.requirement).toLowerCase().includes(needle));
-      if (covered || canonicalAnalysis.must_haves.length >= 12) continue;
-      canonicalAnalysis.must_haves.push({
-        requirement: `Skill: ${entry.skill}`,
-        status: SKILL_TO_MUST[entry.status as keyof typeof SKILL_TO_MUST] ?? "unknown",
-        evidence: entry.evidence,
-      });
-    }
+    // Must-haves: what the description requires, then the job's must-have
+    // skills with their verdict (scoring.ts).
+    canonicalAnalysis.must_haves = buildMustHaves(canonicalAnalysis.must_haves, skillResult.entries);
 
     // Tenure: the band is computed, not judged. Clamp the model's score to it.
     const tenureDim = (canonicalAnalysis.dimensions || []).find((d: any) => /tenure/i.test(d.name || ""));
@@ -760,44 +749,31 @@ serve(async (req) => {
       tenureDim.verdict = tenureDim.verdict || tenure.label;
     }
 
-    // The overall score is the model's holistic judgement, bounded by the
-    // rules the prompt states. The old code replaced it with the weighted mean
-    // of the dimensions, which let a dealbreaker average away (2026-10-14).
-    const dims: any[] = canonicalAnalysis.dimensions || [];
-    let totalWeight = 0, weightedSum = 0;
-    for (const dim of dims) {
-      if (typeof dim.score === "number") { totalWeight += dim.weight || 0; weightedSum += dim.score * (dim.weight || 0); }
-    }
-    const weightedMean = totalWeight > 0 ? weightedSum / totalWeight : null;
-    const modelScore = Math.max(0, Math.min(100, Math.round(Number(canonicalAnalysis.overall_score) || 0)));
-    const rules: string[] = [];
-    let overall = modelScore;
-    const cap = (limit: number, why: string) => { if (overall > limit) { overall = limit; rules.push(why); } };
-    if (weightedMean != null) cap(Math.round(weightedMean + 10), `Held within 10 points of the dimension mean (${weightedMean.toFixed(0)}).`);
-    for (const dim of dims) {
-      if (/location|salary|language/i.test(dim.name || "") && typeof dim.score === "number" && dim.score <= 30) {
-        cap(55, `${dim.name} is a dealbreaker at ${dim.score}; capped at 55.`);
-      }
-    }
-    const notMet = canonicalAnalysis.must_haves.filter((m: any) => m.status === "not_met").length;
-    const met = canonicalAnalysis.must_haves.filter((m: any) => m.status === "met").length;
-    if (notMet >= 2) cap(70, `${notMet} must-haves not met; capped at 70.`);
-    else if (notMet === 1) cap(79, `One must-have not met; capped at 79.`);
-    const evidencedSkills = canonicalAnalysis.skill_evidence.filter((e: any) => e.status === "evidenced").length;
-    const strongMatches = met + evidencedSkills;
-    if (strongMatches < 3) cap(80, `Above 80 needs three strong matches: must-haves met plus skills evidenced (${strongMatches} found).`);
-    if (tenure.flag === "red") cap(69, `Job-hopping pattern; capped at 69.`);
-    canonicalAnalysis.overall_score = overall;
+    // The overall score is the model's holistic judgement, held under the
+    // ceilings the prompt states, less what the must-haves cost (scoring.ts).
+    const settled = settleScore({
+      modelScore: canonicalAnalysis.overall_score,
+      dimensions: canonicalAnalysis.dimensions || [],
+      mustHaves: canonicalAnalysis.must_haves,
+      skills: skillResult.entries,
+      tenureFlag: tenure.flag,
+    });
+    canonicalAnalysis.overall_score = settled.overall;
     canonicalAnalysis.scoring = {
       version: PROMPT_VERSION,
       trigger,
-      model_score: modelScore,
-      weighted_mean: weightedMean == null ? null : Math.round(weightedMean * 10) / 10,
-      rules_applied: rules,
+      cause,
+      inputs,
+      model_score: settled.modelScore,
+      weighted_mean: settled.weightedMean == null ? null : Math.round(settled.weightedMean * 10) / 10,
+      rules_applied: settled.rules,
+      deduction: settled.deduction,
+      must_haves_not_met: settled.notMet,
+      must_have_skills_not_shown: settled.notShown,
       previous_score: previousScore,
       tenure: { flag: tenure.flag, label: tenure.label, band: tenure.band, short_stints: tenure.shortStints, promotions: tenure.promotions, median_stint_months: tenure.medianStintMonths, median_role_months: tenure.medianRoleMonths },
     };
-    canonicalAnalysis.changes_since_last = stored ? (typeof canonicalAnalysis.changes_since_last === "string" && canonicalAnalysis.changes_since_last.trim() ? canonicalAnalysis.changes_since_last.trim() : null) : null;
+    canonicalAnalysis.changes_since_last = previousBlock ? (typeof canonicalAnalysis.changes_since_last === "string" && canonicalAnalysis.changes_since_last.trim() ? canonicalAnalysis.changes_since_last.trim() : null) : null;
     canonicalAnalysis.input_hash = inputHash;
     canonicalAnalysis.inputs_checked_at = new Date().toISOString();
 
