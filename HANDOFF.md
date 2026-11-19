@@ -112,6 +112,17 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-18 (ATS) — Offer forms: Department and Client fields, started from the job — on the branch, waiting for Apply!
+
+- Allan: offer forms have no department and no client, though jobs, job posts and the rest of the ATS do. He chose my recommendations: both fields on Virgilio's forms, and the composer filling Employment type and Work location from the job as well.
+- Field types: Department (the workspace's departments: active ones offered, an archived one already on an offer kept) and Client (the job wizard's list: Gio Sales' clients and Virgilio), in the form editor with Recruiter, Employment type and Work location. Stored by id like Recruiter; the offer's details card and agreements show the name, never the id.
+- Pre-fill: when a form is picked, the composer fills blank Department, Client, Employment type and Work location fields from the job (`offerPrefill`, `src/lib/offerPrefill.ts`); a value already there is never replaced, and the recruiter can change any of them.
+- Gio Sign: templates linked to an offer form can place both fields like any other; they sit with the job's details in the field list (`offerCategory`).
+- Database, two migrations, both NOT applied yet, in this order: `20261118210000_offer_department_client_types.sql` (the two field types; `sign_offer_display` prints the names; test `supabase/tests/90_offer_department_client.sql`, 11 checks passed in a rolled-back dry run, a 12th (the types exist) runs after apply) and `20261118220000_offer_forms_department_client.sql` (Client and Department, optional, right after the Employment type field in its section on Standard Offer Form - Sales, Internal Virgilio Member and Independent Contractor - Non-Sales; the fields after them move down two; test `supabase/tests/91_offer_forms_department_client.sql`, runs after apply: a new type can't be used in the transaction that adds it. The placement was dry-run with a stand-in type and lands as planned on all three). The fourth form, "Standard Full Time Employment Offer Letter w/ variable", belongs to another workspace and is left alone.
+- `src/integrations/supabase/types.ts` has the two field types added by hand.
+- Checked: 469 tests (7 new in `offerPrefill.test.ts`), typecheck, no new lint problems, and a browser pass with fake data on desktop and phone: the composer fills Client, Department, Employment type and Work location from the job, keeps values already there, offers active departments only and the client list, and the offer's details card shows names (an archived department's too), never ids. The form editor's type picker wasn't opened in the browser.
+- Not done: Job title isn't filled from the job either; a candidate for later if wanted.
+
 ## Done 2026-11-18 (ATS) — Settings › Templates: row menus (⋯), Duplicate, Preview — on main
 
 - Allan: the rows in Settings › Templates should end in a three-dot menu with a fuller set of options (edit, duplicate, delete and whatever else is needed). He said yes to both questions: Pipeline stages and Application form get the menu too (they share the row), and clicking a row's name opens Edit.
