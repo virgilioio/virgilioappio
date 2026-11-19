@@ -112,6 +112,14 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-19 (ATS) — Offers start with the job title and the candidate's details — on the branch, waiting for Apply!
+
+- Allan: fill Job title from the job, and the candidate's phone and email if possible. He said Go! to my recommendation to also fill the candidate's full legal name and where they live.
+- `offerPrefill` / `prefillValueFor` (`src/lib/offerPrefill.ts`), run by the composer once per form picked, blank fields only: Job Title ← the job's title; Candidate's Full Legal Name ← the profile's name (a starting point to check: a profile name isn't always the legal one); Personal Email ← the profile's email, only when it's verified or the candidate's own (Apollo's extrapolated guesses never go on an offer); Phone Number ← the profile's phone through `offerPhone` (with "+": kept, digits only; ten digits without one: the field's default code, +1 on all three forms; anything else, e.g. 12 digits with no "+", is left out rather than guessed); Candidate's Location ← the profile's city, state and country, only the parts the field asks for. Job location and Location of Origin are never filled from the candidate, and a field naming someone else (manager, recruiter, emergency contact, reference, work…) never is.
+- The composer reads the candidate once (`['offer-candidate-facts', id]`) and waits for it before filling, so one pass fills everything; a failed read still lets the job's values fill.
+- No database change; nothing to deploy. Apply! is the push to main.
+- Checked: 478 tests (9 new in `offerPrefill.test.ts`: the three forms' real fields, guessed emails, someone else's fields, phone formats), typecheck, no new lint problems, and a browser pass on desktop and phone with an awkward candidate (accented, hyphenated name with spaces around it, phone "+52 (33) 1234-5678", a long job title): every field filled as planned, the location picker showing Mexico · Jalisco · Tlaquepaque, values already there kept, no sideways scroll.
+
 ## Done 2026-11-18 (ATS) — Offer forms: Department and Client fields, started from the job — on main
 
 - Allan: offer forms have no department and no client, though jobs, job posts and the rest of the ATS do. He chose my recommendations: both fields on Virgilio's forms, and the composer filling Employment type and Work location from the job as well.
