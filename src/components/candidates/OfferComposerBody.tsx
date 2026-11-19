@@ -33,7 +33,7 @@ import { formSections, groupBySection, isWideField } from '@/lib/offerSections'
 import { PlaceFieldsByName } from '@/components/ui/place-picker'
 import { useDepartments } from '@/hooks/useDepartments'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
-import { offerPrefill, type OfferJobFacts } from '@/lib/offerPrefill'
+import { offerPrefill, type OfferCandidateFacts, type OfferJobFacts } from '@/lib/offerPrefill'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -113,8 +113,10 @@ export function OfferComposerBody({
   const { chain, isLoading: chainLoading } = useOfferApprovalChain(jobId)
   const [step, setStep] = useState(1)
 
-  // What the offer starts with from its job (2026-11-18): department, client,
-  // employment type and work location fill blank fields of those kinds.
+  // What the offer starts with (2026-11-18, 2026-11-19): from its job the
+  // department, client, employment type, work location and job title; from the
+  // candidate's profile their name, email, phone and where they live. Only
+  // blank fields are filled.
   const { data: jobFacts } = useQuery({
     queryKey: ['offer-job-facts', jobId],
     enabled: !!jobId,
@@ -122,11 +124,25 @@ export function OfferComposerBody({
     queryFn: async (): Promise<OfferJobFacts | null> => {
       const { data, error } = await supabase
         .from('jobs')
-        .select('department_id, organization_id, employment_type, work_mode')
+        .select('title, department_id, organization_id, employment_type, work_mode')
         .eq('id', jobId)
         .maybeSingle()
       if (error) throw error
       return data as OfferJobFacts | null
+    },
+  })
+  const { data: candidateFacts, isFetched: candidateFetched } = useQuery({
+    queryKey: ['offer-candidate-facts', candidateId],
+    enabled: !!candidateId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<OfferCandidateFacts | null> => {
+      const { data, error } = await supabase
+        .from('candidates')
+        .select('candidate_name, email, email_status, phone, location_city, location_state, location_country')
+        .eq('id', candidateId)
+        .maybeSingle()
+      if (error) throw error
+      return data as OfferCandidateFacts | null
     },
   })
   const { departments } = useDepartments({ includeArchived: true })
@@ -144,13 +160,14 @@ export function OfferComposerBody({
   latestValues.current = fieldValues
   const prefilledFields = useRef<OfferFormField[] | null>(null)
   useEffect(() => {
-    if (!jobFacts || fieldsLoading || fields.length === 0 || prefilledFields.current === fields) return
+    // Waits for both, so one pass fills everything (a failed candidate read still lets the job fill).
+    if (!jobFacts || (!candidateFetched && !!candidateId) || fieldsLoading || fields.length === 0 || prefilledFields.current === fields) return
     // The fields of the form now picked, not the one before it.
     if (fields.some((field) => field.form_id !== selectedFormId)) return
     prefilledFields.current = fields
-    const patch = offerPrefill(fields, latestValues.current, jobFacts)
+    const patch = offerPrefill(fields, latestValues.current, jobFacts, candidateFacts)
     if (Object.keys(patch).length) onFieldValuesChange({ ...latestValues.current, ...patch })
-  }, [jobFacts, fields, fieldsLoading, selectedFormId, onFieldValuesChange])
+  }, [jobFacts, candidateFacts, candidateFetched, candidateId, fields, fieldsLoading, selectedFormId, onFieldValuesChange])
 
   // Find the current offer being edited to check its status
   const currentOffer = editingOfferId ? offerLetters.find(ol => ol.id === editingOfferId) : null
