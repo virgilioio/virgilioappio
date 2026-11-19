@@ -347,6 +347,10 @@ verify_jwt = false
 [functions.sign-gateway]
 verify_jwt = false
 
+[functions.slack-gateway]
+# Gio Sales sends its Slack automations through Gio ATS's connection; signed with GIO_LINK_SECRET, checked in the function.
+verify_jwt = false
+
 [functions.offer-approval-notify]
 verify_jwt = false
 
