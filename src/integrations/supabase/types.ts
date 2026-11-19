@@ -6992,6 +6992,57 @@ export type Database = {
           },
         ]
       }
+      os_person_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          kind: string
+          mime_type: string | null
+          name: string
+          removed_at: string | null
+          removed_by: string | null
+          signed_on: string | null
+          size_bytes: number | null
+          storage_path: string
+          tenant_id: string
+          uploaded_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          kind?: string
+          mime_type?: string | null
+          name: string
+          removed_at?: string | null
+          removed_by?: string | null
+          signed_on?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          tenant_id: string
+          uploaded_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          kind?: string
+          mime_type?: string | null
+          name?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          signed_on?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          tenant_id?: string
+          uploaded_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       os_person_details: {
         Row: {
           birth_date: string | null

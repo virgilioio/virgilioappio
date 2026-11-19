@@ -592,6 +592,14 @@ export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => 
         ? `${who} updated their bank details${list}`
         : `${who}'s bank details were changed${list}`
     }
+    case 'person.document_added':
+      return `${typeof d.name === 'string' ? d.name : 'A file'} was added to ${who}'s profile`
+    case 'person.document_updated':
+      return `${typeof d.name === 'string' ? d.name : 'A file'} on ${who}'s profile was edited`
+    case 'person.document_removed':
+      return `${typeof d.name === 'string' ? d.name : 'A file'} was removed from ${who}'s profile`
+    case 'person.document_restored':
+      return `${typeof d.name === 'string' ? d.name : 'A file'} was put back on ${who}'s profile`
     case 'person.bank_revealed':
       return `${who}'s ${typeof d.field === 'string' ? d.field : 'account number'} was shown in full`
     case 'person.tax_id_updated':

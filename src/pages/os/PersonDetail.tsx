@@ -64,6 +64,7 @@ import { ProfileNav, TAB_META, type ProfileTab } from '@/components/os/ProfileNa
 import { COUNTRIES } from '@/constants/countries'
 import { loadLevel, segmentLabel, takesSegments, useWorkProfile } from '@/lib/os/workProfile'
 import { AgreementsCard } from '@/components/sign/AgreementsCard'
+import { PersonDocumentsCard } from '@/components/os/PersonDocumentsCard'
 
 const NO_ACCESS = '__none__'
 const TABS: readonly ProfileTab[] = ['overview', 'work', 'earnings', 'agreements', 'access', 'history']
@@ -348,7 +349,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
   )
   const renderAccess = () => <AccessSummaryCard person={person} onManage={self ? undefined : () => setTab('access')} />
   const renderGeneral = () => <GeneralCard person={person} />
-  const renderAgreements = () => <LatestAgreementsCard person={person} self={self} onSeeAll={() => setTab('agreements')} />
+  const renderAgreements = () => <LatestAgreementsCard person={person} tenantId={tenant?.id} self={self} onSeeAll={() => setTab('agreements')} />
 
   return (
     <ListPage
@@ -497,16 +498,27 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
         </TabsContent>
 
         <TabsContent value="agreements" className="mt-4 lg:mt-0">
-          <div className="max-w-[960px]">
+          <div className="max-w-[960px] space-y-4">
             {joined ? (
-              <AgreementsCard
-                className="rounded-[12px]"
-                source={{ type: 'member', id: person.member_id }}
-                recordLabel={personName(person)}
-                readOnly={self}
-              />
+              <>
+                <AgreementsCard
+                  className="rounded-[12px]"
+                  source={{ type: 'member', id: person.member_id }}
+                  recordLabel={personName(person)}
+                  readOnly={self}
+                />
+                {/* Agreements signed outside Gio Sign (2026-11-19): admins upload, the person opens them. */}
+                <PersonDocumentsCard
+                  tenantId={tenant?.id}
+                  userId={person.user_id}
+                  firstName={person.first_name?.trim() || personName(person)}
+                  canManage={!self}
+                  self={self}
+                  nameOf={nameOf}
+                />
+              </>
             ) : (
-              <p className="font-inter text-[12.5px] text-[#6B7080]">Agreements can be sent once they accept their invitation.</p>
+              <p className="font-inter text-[12.5px] text-[#6B7080]">Agreements can be sent and files added once they accept their invitation.</p>
             )}
           </div>
         </TabsContent>

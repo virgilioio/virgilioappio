@@ -14,6 +14,7 @@ import { CopyValue, EditToggle, InfoRow, InfoRows, ProfileCard, ValueChips } fro
 import { Badge } from '@/components/ui/badge'
 import { AgreementLine } from '@/components/sign/AgreementsCard'
 import { SIGN_SENDING_LIVE, useRecordEnvelopes } from '@/lib/sign/send'
+import { documentDay, documentMeta, usePersonDocuments, type PersonDocument } from '@/lib/os/personDocuments'
 import { COUNTRIES } from '@/constants/countries'
 import { APPS, JOB_SEAT_LABEL, effectiveGrants, roleLabel, usePersonDetails, type Person, type PersonJob } from '@/lib/os/peopleAccess'
 import {
@@ -332,9 +333,17 @@ export function RatingCard({
 }
 
 /** Latest agreements: the newest few sent to them, with status; See all opens the Agreements section. */
-export function LatestAgreementsCard({ person, onSeeAll, self }: { person: Person; onSeeAll: () => void; self: boolean }) {
+export function LatestAgreementsCard({ person, tenantId, onSeeAll, self }: { person: Person; tenantId?: string; onSeeAll: () => void; self: boolean }) {
   const q = useRecordEnvelopes(SIGN_SENDING_LIVE && person.user_id ? { type: 'member', id: person.member_id } : null)
-  const rows = (q.data ?? []).filter((e) => e.status !== 'draft')
+  // Files uploaded to the profile (2026-11-19) sit beside Gio Sign's, newest first.
+  const files = usePersonDocuments(tenantId, person.user_id)
+  const envelopes = (q.data ?? []).filter((e) => e.status !== 'draft')
+  const rows: ({ kind: 'envelope'; at: string; e: (typeof envelopes)[number] } | { kind: 'file'; at: string; d: PersonDocument })[] = [
+    ...envelopes.map((e) => ({ kind: 'envelope' as const, at: e.completed_at ?? e.sent_at ?? e.updated_at, e })),
+    ...(files.data ?? []).map((d) => ({ kind: 'file' as const, at: documentDay(d), d })),
+  ].sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0))
+  const loading = q.isLoading || files.isLoading
+  const failed = q.isError || files.isError
   return (
     <ProfileCard
       id="card-agreements"
@@ -351,19 +360,38 @@ export function LatestAgreementsCard({ person, onSeeAll, self }: { person: Perso
     >
       {!person.user_id ? (
         <p className="font-inter text-[12.5px] text-[#6B7080]">Agreements can be sent once they accept their invitation.</p>
-      ) : q.isLoading ? (
+      ) : loading ? (
         <RowsSkeleton rows={3} />
-      ) : q.isError ? (
-        <LoadError what={self ? 'your agreements' : 'their agreements'} compact onRetry={() => void q.refetch()} />
+      ) : failed ? (
+        <LoadError
+          what={self ? 'your agreements' : 'their agreements'}
+          compact
+          onRetry={() => {
+            void q.refetch()
+            void files.refetch()
+          }}
+        />
       ) : rows.length === 0 ? (
         <p className="font-inter text-[12.5px] text-[#6B7080]">
-          {self ? 'Nothing yet. Agreements Virgilio sends you to sign show up here.' : 'Nothing sent yet. Send one from Agreements.'}
+          {self ? 'Nothing yet. Agreements Virgilio sends you to sign or keeps for you show up here.' : 'Nothing yet. Send one or upload a signed file from Agreements.'}
         </p>
       ) : (
         <ul className="flex flex-col gap-1.5">
-          {rows.slice(0, 4).map((e) => (
-            <li key={e.id} className="rounded-[10px] bg-[#F7F6F2] px-3.5 [&>div]:py-2.5">
-              <AgreementLine e={e} />
+          {rows.slice(0, 4).map((r) => (
+            <li key={r.kind === 'envelope' ? r.e.id : r.d.id} className="rounded-[10px] bg-[#F7F6F2] px-3.5 [&>div]:py-2.5">
+              {r.kind === 'envelope' ? (
+                <AgreementLine e={r.e} />
+              ) : (
+                <button type="button" onClick={onSeeAll} className="flex w-full items-start gap-3 py-2.5 text-left">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-inter text-[12.5px] font-medium text-[#1F2230]">{r.d.name}</span>
+                    <span className="mt-0.5 block truncate font-inter text-[11.5px] tabular-nums text-[#6B7080]">{documentMeta(r.d)}</span>
+                  </span>
+                  <Badge tone="neutral" size="xs">
+                    File
+                  </Badge>
+                </button>
+              )}
             </li>
           ))}
         </ul>
