@@ -121,6 +121,8 @@ export interface SendTemplate {
   data_keys: string[]
   /** Offer form fields the template leaves out on purpose ("not needed"). */
   not_needed: string[]
+  /** Envelopes from it ask for a 6-digit email code by default (2026-11-17). */
+  require_code: boolean
 }
 
 /** How a template relates to the offer being sent (the sheet groups by this). */
@@ -148,7 +150,7 @@ export function useSendTemplates(source: SendSource | null) {
       let q = supabase
         .from('sign_templates')
         .select(`
-          id, name, description, kind, ordered, subject, body, offer_form_id, offer_fields_not_needed,
+          id, name, description, kind, ordered, subject, body, offer_form_id, offer_fields_not_needed, require_code,
           docs:sign_documents!sign_documents_template_id_fkey(page_count, position, removed_at),
           written:sign_written_docs!sign_written_docs_template_id_fkey(content, removed_at),
           roles:sign_recipients!sign_recipients_template_id_fkey(label, role, position, removed_at),
@@ -161,6 +163,7 @@ export function useSendTemplates(source: SendSource | null) {
       const { data, error } = await q.order('name')
       if (error) throw error
       type Raw = Pick<SendTemplate, 'id' | 'name' | 'description' | 'kind' | 'ordered' | 'subject' | 'body' | 'offer_form_id'> & {
+        require_code: boolean | null
         offer_fields_not_needed: string[] | null
         docs: { page_count: number; position: number; removed_at: string | null }[]
         written: { content: LexicalJson; removed_at: string | null }[] | null
@@ -198,6 +201,7 @@ export function useSendTemplates(source: SendSource | null) {
           signing: roles.filter((r) => r.role !== 'cc').map((r) => r.label ?? ''),
           data_keys: [...keys],
           not_needed: t.offer_fields_not_needed ?? [],
+          require_code: !!t.require_code,
         }
       })
     },
@@ -252,6 +256,16 @@ export async function sendEnvelope(args: {
   })
   if (error) throw error
   return data as string
+}
+
+/**
+ * Turn the email code on or off for an envelope that hasn't finished (2026-11-17):
+ * the sender or an admin, written to the envelope's history by the database.
+ */
+export async function setEnvelopeRequireCode(envelopeId: string, on: boolean) {
+  const rpc = supabase.rpc.bind(supabase) as unknown as (fn: string, args: object) => Promise<{ data: unknown; error: unknown }>
+  const { error } = await rpc('sign_set_require_code', { _envelope_id: envelopeId, _on: on })
+  if (error) throw error
 }
 
 /**

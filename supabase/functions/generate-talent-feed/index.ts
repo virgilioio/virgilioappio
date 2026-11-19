@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { jujuJobType, talentJobType } from '../_shared/employmentTypes.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +14,6 @@ interface JobPosting {
   details: any
   created_at: string
   location: string
-  job_type: string
   jobs: {
     id: string
   }
@@ -116,7 +116,6 @@ Deno.serve(async (req) => {
         details,
         created_at,
         location,
-        job_type,
         jobs!inner (id, status)
       `)
       .eq('tenant_id', tenant.id)
@@ -170,7 +169,7 @@ Deno.serve(async (req) => {
     <pubdate><![CDATA[${formatDateDMY(posting.created_at)}]]></pubdate>
     <company><![CDATA[${tenant.name}]]></company>
     ${salaryStr ? `<salary><![CDATA[${salaryStr}]]></salary>` : ''}
-    ${posting.job_type ? `<jobtype><![CDATA[${mapJobType(posting.job_type)}]]></jobtype>` : ''}
+    ${talentJobType(posting.details?.employment_type) ? `<jobtype><![CDATA[${talentJobType(posting.details?.employment_type)}]]></jobtype>` : ''}
     ${isRemote ? `<joblocationtype><![CDATA[telecommute]]></joblocationtype>` : ''}
   </job>`
       }).join('\n')
@@ -193,7 +192,7 @@ Deno.serve(async (req) => {
       <state><![CDATA[${state}]]></state>
       <nation><![CDATA[${country}]]></nation>
     </location>
-    <type>${mapJujuType(posting.job_type)}</type>
+    <type>${jujuJobType(posting.details?.employment_type)}</type>
   </job>`
       }).join('\n')
 
@@ -218,7 +217,7 @@ Deno.serve(async (req) => {
     <dateposted>${posting.created_at}</dateposted>
     <url><![CDATA[${jobUrl}]]></url>
     <description><![CDATA[${posting.description || ''}]]></description>
-    ${posting.job_type ? `<jobtype><![CDATA[${mapJobType(posting.job_type)}]]></jobtype>` : ''}
+    ${talentJobType(posting.details?.employment_type) ? `<jobtype><![CDATA[${talentJobType(posting.details?.employment_type)}]]></jobtype>` : ''}
     ${details.location_type ? `<isremote>${details.location_type === 'remote' ? 'yes' : 'no'}</isremote>` : ''}
     ${details.show_salary && details.salary_amount ? `
     <salary>
@@ -261,28 +260,6 @@ function parseLocation(location: string): [string, string, string] {
   if (parts.length === 2) return [parts[0], '', parts[1]]
   if (parts.length === 1) return ['', '', parts[0]]
   return ['', '', '']
-}
-
-function mapJobType(jobType: string): string {
-  const typeMap: Record<string, string> = {
-    'full_time': 'Full time',
-    'part_time': 'Part time',
-    'contract': 'Contract',
-    'temporary': 'Temporary',
-    'internship': 'Internship'
-  }
-  return typeMap[jobType] || 'Full time'
-}
-
-function mapJujuType(jobType: string): string {
-  const typeMap: Record<string, string> = {
-    'full_time': 'fulltime',
-    'part_time': 'parttime',
-    'contract': 'contract',
-    'temporary': 'contract',
-    'internship': 'parttime'
-  }
-  return typeMap[jobType] || 'fulltime'
 }
 
 function formatDateDMY(iso: string): string {

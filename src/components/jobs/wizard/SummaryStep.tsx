@@ -1,3 +1,4 @@
+import { employmentTypeLabel } from '@/lib/employmentTypes'
 import React, { useEffect, useState } from 'react'
 import { useJobSettings } from '@/hooks/useJobSettings'
 import { InlineEmpty } from '@/components/ui/empty-state'
@@ -256,7 +257,7 @@ export function SummaryStep({
   const teamCount = assignments.length
   const stageCount = stages.length
   const dept = selectedDepartment?.name || jobData.department || 'General'
-  const employmentLabel = (jobData.employment_type || '').replace('_', ' ')
+  const employmentLabel = employmentTypeLabel(jobData.employment_type) || ''
   const workModeLabel = (jobData.work_mode || '').replace('_', ' ')
 
   return (
@@ -277,7 +278,7 @@ export function SummaryStep({
                 {employmentLabel && (
                   <>
                     <span className="text-white/30">·</span>
-                    <span className="text-white/70 capitalize">{employmentLabel}</span>
+                    <span className="text-white/70">{employmentLabel}</span>
                   </>
                 )}
                 {workModeLabel && (
@@ -341,7 +342,7 @@ export function SummaryStep({
                   .join(', ') || '—'
               }
             />
-            <FieldRow icon={ClipboardList} label="Type" value={<span className="capitalize">{employmentLabel || '—'}</span>} />
+            <FieldRow icon={ClipboardList} label="Type" value={employmentLabel || '—'} />
             <FieldRow icon={DollarSign} label="Salary" value={formatSalary()} />
             <FieldRow
               icon={Hash}

@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { cn } from '@/lib/utils'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Briefcase, Check, CheckCheck, ChevronDown, Inbox as InboxIcon, Mail, MailOpen, PenSquare, Plug } from 'lucide-react'
@@ -202,7 +203,7 @@ export default function InboxPage() {
       return
     }
     const fromYou = m.direction === 'sent' || mine.map(bareAddress).includes(bareAddress(m.from_address))
-    const to = fromYou ? m.to_addresses[0] : m.from_address
+    const to = bareAddress(fromYou ? m.to_addresses[0] : m.from_address)
     const cc = mode === 'reply_all' ? replyAllRecipients(m, mine).cc : []
     setComposer({
       ...base,
@@ -361,6 +362,7 @@ export default function InboxPage() {
           onOlder: at < rows.length - 1 ? () => openThread(rows[at + 1]) : undefined,
         }
       : undefined
+  const phoneReading = !!threadId && width < 640
   const rowActions: RowActions = {
     inDone: listFolder === 'done',
     onDone: (t) => act([t.thread_id], listFolder === 'done' ? 'inbox' : 'done'),
@@ -368,7 +370,16 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-13rem-var(--gio-strip))] gap-5 px-3 sm:h-[calc(100dvh-4rem-var(--gio-strip))] sm:px-0 sm:pb-3 sm:pt-1">
+    <div
+      className={cn(
+        'flex gap-5 px-3 sm:h-[calc(100dvh-4rem-var(--gio-strip))] sm:px-0 sm:pb-3 sm:pt-1',
+        // Phones: an open conversation runs to the bottom of the screen, under the
+        // floating reply row and bottom bar, as in Gmail (2026-11-17).
+        phoneReading
+          ? 'h-[calc(100dvh-var(--gio-sat)-var(--gio-strip)-72px)] -mb-28 sm:mb-0'
+          : 'h-[calc(100dvh-13rem-var(--gio-strip))]',
+      )}
+    >
       {split && (
         <div className="shrink-0 pt-1">
           <InboxFolders
@@ -383,7 +394,12 @@ export default function InboxPage() {
         </div>
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#E7E8EE] bg-white">
+      <div
+        className={cn(
+          'flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#E7E8EE] bg-white',
+          phoneReading && 'rounded-b-none border-b-0',
+        )}
+      >
         {noMailbox && (
           <div className="flex shrink-0 items-center gap-3 border-b border-[#F1F0EC] bg-[#FAFAF7] px-4 py-2.5 text-[12.5px] text-[#1F2230]">
             <Plug aria-hidden className="h-4 w-4 shrink-0 text-[#6B7080]" />

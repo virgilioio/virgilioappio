@@ -268,8 +268,22 @@ function stemWords(s: string): string[] {
  * every significant word must appear, and words of 5+ letters match on their
  * first 5 ("onboarding" ~ "onboarded", "analytics" ~ "analytical").
  */
+/** A skill's alternatives: "Canvas or Moodle" → ["Canvas", "Moodle"]. */
+export function skillAlternatives(skill: string): string[] {
+  return skill.split(/\s+or\s+|\s*\/\s*|,\s*/i).map((a) => a.trim()).filter(Boolean)
+}
+
+/**
+ * The must-haves Apollo can require. Its keywords need every word, so a skill
+ * with alternatives ("Customer Success or Project Management") would ask for
+ * both sides; those are left out and checked once people are added (2026-11-12).
+ */
+export function apolloMustKeywords(t: SkillTiers): string[] {
+  return t.must.filter((s) => skillAlternatives(s).length === 1)
+}
+
 export function skillInText(skill: string, haystackWords: Set<string>, haystackPrefixes: Set<string>): boolean {
-  const alternatives = skill.split(/\s+or\s+|\s*\/\s*|,\s*/i).map((a) => a.trim()).filter(Boolean)
+  const alternatives = skillAlternatives(skill)
   return alternatives.some((alt) => {
     const words = stemWords(alt)
     if (!words.length) return false

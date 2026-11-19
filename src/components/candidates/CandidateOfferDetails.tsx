@@ -1,5 +1,8 @@
 import { formatOfferValue } from '@/lib/offerValues'
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabaseClient'
+import { useDepartments } from '@/hooks/useDepartments'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
@@ -9,7 +12,7 @@ import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
-import { Send, Pencil, Undo2, Check, X, FileText, DollarSign, MapPin, Calendar, Briefcase, User, BadgeCheck, Building2 } from 'lucide-react'
+import { Send, Pencil, Undo2, Check, X, FileText, DollarSign, MapPin, Calendar, Briefcase, User, BadgeCheck, Building, Building2, Folder } from 'lucide-react'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -74,6 +77,22 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, job,
   const offerLetter = offerLetters.find(ol => ol.job_id === jobId)
   const offerOpening = openings.find((opening) => opening.id === offerLetter?.opening_id)
   const { fields } = useOfferFormFields(offerLetter?.form_id || undefined)
+  // Department and Client fields hold ids (2026-11-18): their names for the rows.
+  const { departments } = useDepartments({ includeArchived: true })
+  const clientIds = fields
+    .filter((f) => f.field_type === 'client')
+    .map((f) => offerLetter?.field_values?.[f.field_name])
+    .filter((v): v is string => typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v))
+  const { data: clientNames = {} } = useQuery({
+    queryKey: ['offer-client-names', [...clientIds].sort().join(',')],
+    enabled: clientIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Record<string, string>> => {
+      const { data, error } = await supabase.from('organizations').select('id, name').in('id', clientIds)
+      if (error) throw error
+      return Object.fromEntries((data ?? []).map((o) => [o.id, o.name]))
+    },
+  })
   const { approvalRequest, isActiveRequest, chainEnabled, chainHasSteps, requestApproval, isRequesting, recallApproval, isRecalling, isCurrentUserRequester, isCurrentUserActiveApprover, activeStep, approveStep, declineStep, isApproving, isDeclining } = useOfferApprovalRequest(offerLetter?.id, jobId)
 
   const [approveComment, setApproveComment] = useState('')
@@ -292,6 +311,8 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, job,
             : t === 'date' ? Calendar
             : t === 'employment_type' ? Briefcase
             : t === 'recruiter' ? User
+            : t === 'department' ? Folder
+            : t === 'client' ? Building
             : t === 'checkbox' ? BadgeCheck
             : FileText
 
@@ -300,6 +321,8 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, job,
               config: field.field_config,
               withPeriod: true,
               recruiterName: (id) => recruiterOptions.find(r => r.value === id)?.label,
+              departmentName: (id) => departments.find(d => d.id === id)?.name,
+              clientName: (id) => clientNames[id],
             }) ?? '—'
 
           // The form's own Job title field replaces the fixed tile, so it isn't shown twice.

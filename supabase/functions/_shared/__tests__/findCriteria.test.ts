@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { companyKey, matchContext, parseLocations, previewChecks, sameCompany, searchMatch, skillTiers } from '../findCriteria'
+import { apolloMustKeywords, companyKey, matchContext, parseLocations, previewChecks, sameCompany, searchMatch, skillTiers } from '../findCriteria'
 
 const criteria = {
   title_keywords: ['Customer Success Manager'],
@@ -92,5 +92,30 @@ describe('companies and places', () => {
     expect(parseLocations(['México']).countries).toEqual(['Mexico'])
     expect(parseLocations(['LATAM']).countries).toContain('Colombia')
     expect(parseLocations(['Remote'])).toEqual({ countries: [], cities: [] })
+  })
+})
+
+describe('apolloMustKeywords', () => {
+  it('sends single must-haves and keeps alternatives for the check after adding', () => {
+    const t = skillTiers({
+      skills: ['Salesforce', 'Customer Success or Project Management', 'Canvas/Moodle', 'Renewals', 'SQL'],
+      skill_priorities: { Salesforce: 'must', 'Customer Success or Project Management': 'must', 'Canvas/Moodle': 'must', Renewals: 'must', SQL: 'nice' },
+    })
+    expect(apolloMustKeywords(t)).toEqual(['Salesforce', 'Renewals'])
+  })
+  it('a word that only contains "or" is not an alternative', () => {
+    const t = skillTiers({ skills: ['Order Management', 'Workforce Planning'], skill_priorities: { 'Order Management': 'must', 'Workforce Planning': 'must' } })
+    expect(apolloMustKeywords(t)).toEqual(['Order Management', 'Workforce Planning'])
+  })
+})
+
+describe('skills with alternatives in the search match', () => {
+  it('either side counts', () => {
+    const criteria = { skills: ['Customer Success or Project Management'], skill_priorities: { 'Customer Success or Project Management': 'must' } }
+    const ctx = matchContext(criteria)
+    const a = searchMatch({ title: 'Project Manager', text: 'Ran project management for software rollouts' }, criteria, ctx)
+    expect(a.missing_must).toEqual([])
+    const b = searchMatch({ title: 'Account Executive', text: 'Closed new business' }, criteria, ctx)
+    expect(b.missing_must).toEqual(['Customer Success or Project Management'])
   })
 })

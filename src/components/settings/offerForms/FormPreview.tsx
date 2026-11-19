@@ -71,6 +71,10 @@ function Control({ field }: { field: OfferFormField }) {
       return <Box select>Full-time</Box>
     case 'work_location':
       return <Box select>Remote, hybrid or on-site</Box>
+    case 'department':
+      return <Box select>The job’s department</Box>
+    case 'client':
+      return <Box select>The job’s client</Box>
     default:
       return <Box>{ph}</Box>
   }

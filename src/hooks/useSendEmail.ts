@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { refreshQueue } from '@/lib/queueRefresh';
 import { toast } from 'sonner';
 
 export interface SendEmailRequest {
@@ -39,6 +40,7 @@ export function afterEmailSent(
     }
   }
   queryClient.invalidateQueries({ queryKey: ['email-logs'] });
+  refreshQueue(queryClient);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('gio:email-sent', { detail: request }));
 }
 

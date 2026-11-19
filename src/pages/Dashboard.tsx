@@ -6,14 +6,10 @@ import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   Inbox,
-  ClipboardCheck,
-  GitBranch,
-  Mail,
-  FileText,
+  Check,
   Calendar as CalendarIcon,
   Briefcase,
   Video,
-  Check,
   ArrowRight,
 } from 'lucide-react'
 import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
@@ -32,6 +28,24 @@ import { useJobs } from '@/hooks/useJobs'
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics'
 import { useNewApplicationsQueue } from '@/hooks/useNewApplicationsQueue'
 import { useQueueDismissals } from '@/hooks/useQueueDismissals'
+import { useQueueDoneToday } from '@/hooks/useQueueDoneToday'
+import { QueueRow } from '@/components/dashboard/QueueRow'
+import { useQueueRowActions } from '@/components/dashboard/useQueueRowActions'
+import { profileHref } from '@/lib/queueActions'
+import {
+  arrangeQueue,
+  buildQueue,
+  snoozedRows,
+  snoozeLabel,
+  snoozeTimes,
+  orderedQueue,
+  queueCounts,
+  visibleApplications,
+  withoutHidden,
+  type QueueItem,
+  type QueueType,
+  type Urgency,
+} from '@/lib/queue'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
 import { useQueryClient } from '@tanstack/react-query'
@@ -61,29 +75,6 @@ const C = {
   redBg: '#FEE2E2',
 } as const
 
-// ─── Types ──────────────────────────────────────────────────────────
-type QueueType = 'scorecard' | 'decision' | 'reply' | 'application'
-type Urgency = 'overdue' | 'today' | 'normal'
-
-interface QueueItem {
-  id: string
-  /**
-   * Stable, semantic dismissal key (independent of volatile row ids) used to
-   * persist "done" state server-side.
-   */
-  dismissKey: string
-  type: QueueType
-  label: string
-  candidateName: string
-  candidateId: string
-  context: string // job — extra
-  href: string
-  urgency: Urgency
-  urgencyLabel: string
-  sortRank: number // lower = more urgent
-  emailId?: string
-}
-
 // ─── Helpers ────────────────────────────────────────────────────────
 function initials(name: string) {
   return name
@@ -97,11 +88,6 @@ function initials(name: string) {
 function daysSince(iso?: string | null): number {
   if (!iso) return 0
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000))
-}
-
-function hoursSince(iso?: string | null): number {
-  if (!iso) return 0
-  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000))
 }
 
 function greetingFor(d: Date) {
@@ -122,122 +108,6 @@ function isMeetingUrl(s: string | null | undefined): boolean {
   return /^https?:\/\//i.test(s) || /(zoom|meet|teams|whereby)/i.test(s)
 }
 
-// ─── Build queue items from raw data ─────────────────────────────────
-function buildQueue(
-  activities: PendingActivity[] | undefined,
-  apps: ReturnType<typeof useNewApplicationsQueue>['data'],
-): QueueItem[] {
-  const out: QueueItem[] = []
-
-  const cleanJob = (t?: string | null) => (t && t !== 'Unknown Job' ? t : 'No job')
-
-  for (const a of activities ?? []) {
-    const jobTitle = cleanJob(a.jobTitle)
-    if (a.type === 'scorecard') {
-      const d = daysSince(a.timestamp)
-      const urgency: Urgency = d >= 1 ? 'overdue' : 'today'
-      out.push({
-        id: `s-${a.id}`,
-        dismissKey: `scorecard:${a.associationId ?? a.candidateId}:${a.stageInstanceId ?? ''}:${a.interviewerId ?? ''}`,
-        type: 'scorecard',
-        label: 'Scorecard due',
-        candidateName: a.candidateName,
-        candidateId: a.candidateId,
-        context: `${jobTitle} — interviewed ${d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`}`,
-        href: `/jobs/${a.jobId}?candidate=${a.candidateId}&open=scorecard&stage=${a.stageInstanceId ?? ''}`,
-        urgency,
-        urgencyLabel: urgency === 'overdue' ? `${d}d overdue` : 'due today',
-        sortRank: urgency === 'overdue' ? 0 - d * 0.01 : 1,
-      })
-    } else if (a.type === 'decision') {
-      const d = daysSince(a.timestamp)
-      const urgency: Urgency = d >= 14 ? 'overdue' : d >= 1 ? 'today' : 'normal'
-      out.push({
-        id: `d-${a.id}`,
-        dismissKey: `decision:${a.associationId ?? a.candidateId}:${a.stageInstanceId ?? ''}`,
-        type: 'decision',
-        label: 'Stage decision',
-        candidateName: a.candidateName,
-        candidateId: a.candidateId,
-        context: `${jobTitle} — ${d > 0 ? `${d} days` : 'today'} in ${a.stageName ?? 'Stage'}`,
-        href: `/jobs/${a.jobId}?candidate=${a.candidateId}`,
-        urgency,
-        urgencyLabel: d >= 7 ? `stuck ${d}d` : d > 0 ? `waiting ${d}d` : 'today',
-        sortRank: urgency === 'overdue' ? -0.5 - d * 0.01 : urgency === 'today' ? 1.5 : 2.5,
-      })
-    } else if (a.type === 'offer_approval') {
-      // An offer waiting on this person's approval (2026-10-17): nothing goes
-      // to the candidate until they decide, so a day's wait is overdue.
-      const h = hoursSince(a.timestamp)
-      const d = Math.floor(h / 24)
-      const urgency: Urgency = d >= 1 ? 'overdue' : 'today'
-      out.push({
-        id: `o-${a.id}`,
-        dismissKey: `offer_approval:${a.id}`,
-        type: 'decision',
-        label: 'Approve offer',
-        candidateName: a.candidateName,
-        candidateId: a.candidateId,
-        context: `${jobTitle} — sent for approval ${d === 0 ? (h === 0 ? 'just now' : `${h}h ago`) : d === 1 ? 'yesterday' : `${d} days ago`}`,
-        href: `/jobs/${a.jobId}?candidate=${a.candidateId}&tab=offer`,
-        urgency,
-        urgencyLabel: d >= 1 ? `waiting ${d}d` : 'today',
-        sortRank: urgency === 'overdue' ? -0.6 - d * 0.01 : 0.9,
-      })
-    } else if (a.type === 'email') {
-      const h = hoursSince(a.timestamp)
-      const d = Math.floor(h / 24)
-      const urgency: Urgency = d >= 2 ? 'overdue' : d >= 1 ? 'today' : 'normal'
-      const waitLabel = d >= 1 ? `waiting ${d}d` : `waiting ${Math.max(1, h)}h`
-      const replyHref = a.jobId
-        ? `/jobs/${a.jobId}/candidates/${a.candidateId}?tab=activity`
-        : `/candidates/${a.candidateId}?tab=activity`
-      out.push({
-        id: `e-${a.id}`,
-        dismissKey: `reply:${a.messageId ?? a.emailId ?? a.id}`,
-        type: 'reply',
-        label: 'Reply needed',
-        candidateName: a.candidateName,
-        candidateId: a.candidateId,
-        context: `${jobTitle}${a.emailSubject ? ` — ${a.emailSubject}` : ''}`,
-        href: replyHref,
-        urgency,
-        urgencyLabel: waitLabel,
-        sortRank: urgency === 'overdue' ? -0.4 - d * 0.01 : urgency === 'today' ? 1.4 : 2.4,
-        emailId: a.emailId,
-      })
-    }
-  }
-
-  for (const app of apps ?? []) {
-    const d = daysSince(app.enteredAt)
-    const urgency: Urgency = d >= 5 ? 'overdue' : d >= 2 ? 'today' : 'normal'
-    const appJobTitle = cleanJob(app.jobTitle)
-    // Applications share sort bands with scorecards/decisions/replies so a
-    // same-day applicant is visible on the "Everything" tab instead of being
-    // pushed past the 10-row cap by other work.
-    const sortRank =
-      urgency === 'overdue' ? -0.3 - d * 0.01
-      : urgency === 'today' ? 1.3
-      : 1.7
-    out.push({
-      id: `a-${app.associationId}`,
-      dismissKey: `application:${app.associationId}`,
-      type: 'application',
-      label: 'New application',
-      candidateName: app.candidateName,
-      candidateId: app.candidateId,
-      context: `${appJobTitle} — applied${app.source ? ` via ${app.source}` : ''}`,
-      href: `/jobs/${app.jobId}?candidate=${app.candidateId}`,
-      urgency,
-      urgencyLabel: d === 0 ? 'just now' : `${d}d in queue`,
-      sortRank,
-    })
-  }
-
-  return out.sort((a, b) => a.sortRank - b.sortRank)
-}
-
 // ─── Page ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { profile, isLoading: profileLoading } = useUserProfile()
@@ -248,7 +118,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const isPhone = useIsMobile()
 
-  const { data: pending, isLoading: pendingLoading, markEmailAsRead } = usePendingActivities()
+  const { data: pending, isLoading: pendingLoading } = usePendingActivities()
   const { data: stale } = useStaleCandidates()
   const { data: newApps, isLoading: appsLoading } = useNewApplicationsQueue()
   const { bookings: todayBookings, isLoading: bookingsLoading, error: bookingsError, refetch: refetchBookings } =
@@ -257,27 +127,48 @@ export default function Dashboard() {
   const openJobs = useMemo(() => (jobs ?? []).filter(j => j.status === 'open'), [jobs])
   const { data: jobMetrics } = usePipelineJobMetrics(openJobs.map(j => j.id))
 
-  const rawQueue = useMemo(() => buildQueue(pending, newApps), [pending, newApps])
   const [filter, setFilter] = useState<'all' | QueueType>('all')
 
-  // Dismissed ("done") queue items are persisted server-side per user, keyed by
-  // a stable semantic key, so they survive reloads, other browsers and devices,
-  // and can't resurface when the underlying row id changes.
-  const { dismissed: doneIds, toggle: toggleDismissed } = useQueueDismissals()
+  // Hidden queue rows are kept server-side per person, by a stable key, so they
+  // survive reloads, other browsers and devices (useQueueDismissals).
+  const {
+    dismissed: doneIds,
+    hiddenForGood,
+    snoozed,
+    hide: hideKeys,
+    show: showKeys,
+    snooze: snoozeKeys,
+  } = useQueueDismissals()
+  // Snoozes end at 9:00 AM in your own time zone (your profile's, else Mexico City).
+  const timeZone = profile?.timezone || 'America/Mexico_City'
+  const rowActions = useQueueRowActions({ hide: hideKeys, show: showKeys, snooze: snoozeKeys, timeZone })
+  const doneToday = useQueueDoneToday()
 
-  // Hide dismissed rows entirely so counts + list stay consistent after reload.
-  // `q.id` is also checked so legacy localStorage keys migrated from the old
-  // implementation keep hiding their rows.
+  // Your queue (2026-11-14): rows from src/lib/queue.ts; a job's applications are one
+  // row, and an applicant hidden on their own stays out of it. `q.id` is also checked
+  // so keys migrated from the old localStorage version keep hiding their rows.
   const queue = useMemo(
-    () => rawQueue.filter(q => !doneIds.has(q.dismissKey) && !doneIds.has(q.id)),
-    [rawQueue, doneIds],
+    () =>
+      withoutHidden(buildQueue(pending, visibleApplications(newApps, doneIds)), doneIds).filter(
+        q => !rowActions.gone.has(q.id),
+      ),
+    [pending, newApps, doneIds, rowActions.gone],
   )
 
-  const counts = useMemo(() => {
-    const c = { all: queue.length, scorecard: 0, decision: 0, reply: 0, application: 0 }
-    for (const q of queue) c[q.type] += 1
-    return c
-  }, [queue])
+  const counts = useMemo(() => queueCounts(queue), [queue])
+
+  // Snoozed rows wait in their own group at the bottom until their time comes.
+  const snoozedItems = useMemo(
+    () => snoozedRows(pending, newApps, snoozed, hiddenForGood),
+    [pending, newApps, snoozed, hiddenForGood],
+  )
+  const snoozeHints = useMemo(() => {
+    const t = snoozeTimes(new Date(), timeZone)
+    return {
+      tomorrow: new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit' }).format(t.tomorrow),
+      monday: new Intl.DateTimeFormat('en-US', { timeZone, month: 'short', day: 'numeric' }).format(t.monday),
+    }
+  }, [timeZone])
 
   const filtered = filter === 'all' ? queue : queue.filter(q => q.type === filter)
 
@@ -337,25 +228,6 @@ export default function Dashboard() {
   }, {})
   const topStuckJob = Object.entries(stuckByJob).sort((a, b) => b[1] - a[1])[0]
 
-  // ─── Toggle done ────────────────────────────────────────────
-  const toggleDone = (item: QueueItem) => {
-    const wasDone = doneIds.has(item.dismissKey) || doneIds.has(item.id)
-    if (wasDone) {
-      // Clear both the semantic key and any legacy row-id key.
-      if (doneIds.has(item.dismissKey)) toggleDismissed(item.dismissKey)
-      if (doneIds.has(item.id)) toggleDismissed(item.id)
-    } else {
-      toggleDismissed(item.dismissKey)
-    }
-    // Mark email as read for reply rows (only when marking done, not undoing).
-    // The mutation updates all email_logs rows sharing the same
-    // rfc822_message_id, so Gmail-sync + inbound-webhook duplicates can't
-    // resurface the row on the next refetch.
-    if (item.type === 'reply' && item.emailId && !wasDone) {
-      markEmailAsRead.mutate(item.emailId)
-    }
-  }
-
   const firstName = profile?.first_name ?? 'there'
   const today = new Date()
   const dateLine = format(today, 'EEEE, MMMM d')
@@ -373,7 +245,7 @@ export default function Dashboard() {
         digestLoading={queueLoading || bookingsLoading}
         bookings={todayBookings ?? []}
         bookingsLoading={bookingsLoading}
-        queue={queue}
+        queue={orderedQueue(queue)}
         queueLoading={queueLoading}
         openJobs={openJobs}
         jobCounts={new Map((jobMetrics ?? []).map(m => [m.job_id, m.active_candidates]))}
@@ -445,11 +317,31 @@ export default function Dashboard() {
           onFilter={setFilter}
           items={filtered}
           loading={queueLoading}
-          doneIds={doneIds}
-          onToggleDone={toggleDone}
-          onRowClick={(href) => navigate(href)}
-          onSeeMore={() => navigate('/jobs')}
+          doneToday={doneToday}
+          snoozedItems={snoozedItems}
+          renderRow={(item, isLast) => {
+            const snoozedUntil = (item as QueueItem & { snoozedUntil?: string }).snoozedUntil
+            return (
+              <QueueRow
+                key={item.id}
+                item={item}
+                isLast={isLast}
+                busy={rowActions.busyFor(item)}
+                onOpen={() => navigate(item.href)}
+                onAction={(id) => void rowActions.run(item, id)}
+                onOpenProfile={() =>
+                  navigate(item.candidateId ? profileHref(item.jobId, item.candidateId) : `/jobs/${item.jobId}`)
+                }
+                onHide={() => void rowActions.hideRow(item)}
+                onSnooze={(when) => void rowActions.snoozeRow(item, when)}
+                snoozeHints={snoozeHints}
+                snoozedLabel={snoozedUntil ? snoozeLabel(new Date(snoozedUntil), timeZone) : undefined}
+                onUnsnooze={snoozedUntil ? () => void rowActions.unsnooze(item) : undefined}
+              />
+            )
+          }}
         />
+        {rowActions.dialogs}
 
         {/* RIGHT rail */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -490,13 +382,15 @@ interface QueueCardProps {
   onFilter: (f: 'all' | QueueType) => void
   items: QueueItem[]
   loading: boolean
-  doneIds: Set<string>
-  onToggleDone: (item: QueueItem) => void
-  onRowClick: (href: string) => void
-  onSeeMore?: () => void
+  renderRow: (item: QueueItem, isLast: boolean) => ReactNode
+  /** What you finished today; null while it's being counted. */
+  doneToday: number | null
+  snoozedItems: QueueItem[]
 }
 
-function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggleDone, onRowClick, onSeeMore }: QueueCardProps) {
+function QueueCard({ counts, filter, onFilter, items, loading, renderRow, doneToday, snoozedItems }: QueueCardProps) {
+  const [expanded, setExpanded] = useState(false)
+  const [showSnoozed, setShowSnoozed] = useState(false)
   const chips: { id: 'all' | QueueType; label: string; count: number }[] = [
     { id: 'all', label: 'Everything', count: counts.all },
     { id: 'scorecard', label: 'Scorecards', count: counts.scorecard },
@@ -529,6 +423,23 @@ function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggle
         >
           {counts.all}
         </span>
+        {doneToday !== null && doneToday > 0 ? (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              marginLeft: 4,
+              font: '500 11.5px/1 Inter',
+              color: '#0B7A52',
+              fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Check size={12} strokeWidth={2.4} aria-hidden="true" />
+            {doneToday} done today
+          </span>
+        ) : null}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {chips.map(c => {
             const active = filter === c.id
@@ -565,196 +476,113 @@ function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggle
       ) : items.length === 0 ? (
         <EmptyQueue filter={filter} totalAll={counts.all} onClear={() => onFilter('all')} />
       ) : (
-        <div>
-          {(() => {
-            const MAX = 10
-            let visible = items.slice(0, MAX)
-            // Guarantee at least one "New application" row shows on the
-            // "Everything" tab when applications exist — swap the last slot
-            // for the top-ranked application if none made the cut.
-            if (
-              filter === 'all' &&
-              items.length > 0 &&
-              !visible.some(v => v.type === 'application')
-            ) {
-              const firstApp = items.find(v => v.type === 'application')
-              if (firstApp) {
-                if (visible.length < MAX) visible = [...visible, firstApp]
-                else visible = [...visible.slice(0, MAX - 1), firstApp]
-              }
-            }
-            return visible.map((item, idx) => (
-              <QueueRow
-                key={item.id}
-                item={item}
-                isDone={doneIds.has(item.dismissKey) || doneIds.has(item.id)}
-                isLast={idx === visible.length - 1}
-                onToggleDone={() => onToggleDone(item)}
-                onClick={() => onRowClick(item.href)}
-              />
-            ))
-          })()}
-        </div>
+        <QueueGroups items={items} expanded={expanded} renderRow={renderRow} />
       )}
 
-      {/* Footer */}
-      <div style={{ padding: '12px 16px', textAlign: 'center', borderTop: `1px solid ${C.hairline}` }}>
-        {items.length > 10 ? (
-          <a
-            href="#"
-            onClick={(e) => { e.preventDefault(); onSeeMore?.() }}
+      {/* Snoozed rows (2026-11-14): their own group, opened from the footer. */}
+      {!loading && showSnoozed && snoozedItems.length > 0 ? (
+        <section aria-label="Snoozed">
+          <div
             style={{
-              font: '500 11.5px/1 Inter',
-              color: C.purple,
-              textDecoration: 'none',
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
-              gap: 4,
+              justifyContent: 'space-between',
+              padding: '8px 16px 6px',
+              borderTop: `1px solid ${C.hairline}`,
             }}
           >
-            See {items.length - 10} more <ArrowRight size={11} strokeWidth={2} />
-          </a>
-        ) : filter !== 'all' ? (
-          <a
-            href="#"
-            onClick={(e) => { e.preventDefault(); onFilter('all') }}
-            style={{
-              font: '500 11.5px/1 Inter',
-              color: C.purple,
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            Open all tasks <ArrowRight size={11} strokeWidth={2} />
-          </a>
-        ) : null}
-      </div>
+            <span style={{ font: '600 12px/16px Inter', color: C.muted }}>Snoozed</span>
+            <span style={{ font: '400 11.5px/16px Inter', color: '#6B7080' }}>Soonest first</span>
+          </div>
+          {snoozedItems.map((item, i) => renderRow(item, i === snoozedItems.length - 1))}
+        </section>
+      ) : null}
+
+      {/* Footer: the rest opens in the card (2026-11-14), never another page. */}
+      {!loading && (items.length > QUEUE_MAX || snoozedItems.length > 0) ? (
+        <div
+          style={{
+            padding: '10px 16px',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 16,
+            borderTop: `1px solid ${C.hairline}`,
+          }}
+        >
+          {items.length > QUEUE_MAX ? (
+            <button type="button" onClick={() => setExpanded(v => !v)} style={footerLink}>
+              {expanded ? 'Show less' : `Show ${items.length - QUEUE_MAX} more`}
+            </button>
+          ) : null}
+          {snoozedItems.length > 0 ? (
+            <button type="button" onClick={() => setShowSnoozed(v => !v)} style={{ ...footerLink, color: C.muted }}>
+              {showSnoozed ? 'Hide snoozed' : `${snoozedItems.length} snoozed · Show`}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
 
-function QueueRow({
-  item,
-  isDone,
-  isLast,
-  onToggleDone,
-  onClick,
-}: {
-  item: QueueItem
-  isDone: boolean
-  isLast: boolean
-  onToggleDone: () => void
-  onClick: () => void
-}) {
-  const TypeIcon = (
-    item.type === 'scorecard' ? ClipboardCheck :
-    item.type === 'decision' ? GitBranch :
-    item.type === 'reply' ? Mail : FileText
-  )
-  const urgencyColors = urgencyChipColors(item.urgency)
+const footerLink: React.CSSProperties = {
+  font: '500 12px/1 Inter',
+  color: C.purple,
+  background: 'none',
+  border: 0,
+  padding: '6px 8px',
+  cursor: 'pointer',
+  fontVariantNumeric: 'tabular-nums',
+}
 
-  return (
+const QUEUE_MAX = 10
+
+/**
+ * Overdue first (oldest first), then New (newest first), each under a small header;
+ * the first ten rows show until the card is expanded.
+ */
+function QueueGroups({
+  items,
+  expanded,
+  renderRow,
+}: {
+  items: QueueItem[]
+  expanded: boolean
+  renderRow: (item: QueueItem, isLast: boolean) => ReactNode
+}) {
+  const { overdue, fresh } = arrangeQueue(items)
+  const limit = expanded ? Infinity : QUEUE_MAX
+  const shownOverdue = overdue.slice(0, limit)
+  const shownFresh = fresh.slice(0, Math.max(0, limit - shownOverdue.length))
+  const header = (label: string, hint: string, tone: 'red' | 'muted') => (
     <div
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest('[data-checkbox]')) return
-        onClick()
-      }}
       style={{
         display: 'flex',
-        gap: 12,
         alignItems: 'center',
-        padding: '11px 16px',
-        borderBottom: isLast ? 'none' : `1px solid ${C.hairline}`,
-        opacity: isDone ? 0.45 : 1,
-        transition: 'opacity 250ms ease',
-        cursor: 'pointer',
+        justifyContent: 'space-between',
+        padding: '8px 16px 6px',
+        borderTop: `1px solid ${C.hairline}`,
+        background: tone === 'red' ? '#FFFBFA' : undefined,
       }}
     >
-      {/* Checkbox */}
-      <button
-        data-checkbox
-        onClick={onToggleDone}
-        aria-label={isDone ? 'Mark not done' : 'Mark done'}
-        style={{
-          width: 18,
-          height: 18,
-          borderRadius: 6,
-          border: `1.5px solid ${isDone ? C.green : '#D2D4DC'}`,
-          background: isDone ? C.green : '#fff',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 0,
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
-      >
-        {isDone ? <Check size={11} strokeWidth={3} color="#fff" /> : null}
-      </button>
-
-      {/* Type icon chip */}
-      <div
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: 8,
-          background: C.pageBg,
-          color: C.muted,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
-        <TypeIcon size={13} strokeWidth={2} />
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            font: '600 12.5px/1.35 Inter',
-            color: C.ink2,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            textDecoration: isDone ? 'line-through' : 'none',
-          }}
-        >
-          {item.label}
-          <span style={{ color: C.muted, fontWeight: 400 }}> · {item.candidateName}</span>
-        </div>
-        <div
-          style={{
-            font: '400 11px/1.4 Inter',
-            color: C.tertiary,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            marginTop: 2,
-          }}
-        >
-          {item.context}
-        </div>
-      </div>
-
-      {/* Urgency */}
-      <span
-        style={{
-          font: '600 10.5px/1 Inter',
-          padding: '2px 8px',
-          borderRadius: 999,
-          color: urgencyColors.color,
-          background: urgencyColors.bg,
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-        }}
-      >
-        {item.urgencyLabel}
-      </span>
-
+      <span style={{ font: '600 12px/16px Inter', color: tone === 'red' ? '#B91C1C' : C.muted }}>{label}</span>
+      <span style={{ font: '400 11.5px/16px Inter', color: '#6B7080' }}>{hint}</span>
+    </div>
+  )
+  return (
+    <div>
+      {shownOverdue.length > 0 && (
+        <section aria-label="Overdue">
+          {header('Overdue', 'Oldest first', 'red')}
+          {shownOverdue.map((item, i) => renderRow(item, i === shownOverdue.length - 1))}
+        </section>
+      )}
+      {shownFresh.length > 0 && (
+        <section aria-label="New">
+          {header('New', 'Newest first', 'muted')}
+          {shownFresh.map((item, i) => renderRow(item, i === shownFresh.length - 1))}
+        </section>
+      )}
     </div>
   )
 }
@@ -796,17 +624,20 @@ function QueueSkeleton() {
             display: 'flex',
             gap: 12,
             alignItems: 'center',
-            padding: '11px 16px',
+            padding: '11px 12px 11px 16px',
+            minHeight: 60,
+            boxSizing: 'border-box',
             borderBottom: i === 3 ? 'none' : `1px solid ${C.hairline}`,
           }}
         >
-          <div className="gio-shimmer" style={{ width: 18, height: 18, borderRadius: 6 }} />
-          <div className="gio-shimmer" style={{ width: 26, height: 26, borderRadius: 8 }} />
+          <div className="gio-shimmer" style={{ width: 28, height: 28, borderRadius: 8 }} />
           <div style={{ flex: 1 }}>
             <div className="gio-shimmer" style={{ width: '50%', height: 11, borderRadius: 4 }} />
             <div className="gio-shimmer" style={{ width: '35%', height: 9, borderRadius: 4, marginTop: 6 }} />
           </div>
           <div className="gio-shimmer" style={{ width: 60, height: 16, borderRadius: 999 }} />
+          <div className="gio-shimmer" style={{ width: 92, height: 28, borderRadius: 8 }} />
+          <div style={{ width: 28 }} />
         </div>
       ))}
     </div>

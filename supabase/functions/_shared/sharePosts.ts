@@ -8,6 +8,8 @@
  * puts that channel's tagged link there. Pay is mentioned only when the job post shows it.
  */
 
+import { employmentTypeLabel } from './employmentTypes.ts'
+
 export type ShareVoice = 'team' | 'client'
 
 export interface ShareJobFacts {
@@ -170,7 +172,7 @@ export function postingFacts(
   return {
     location: places.length ? places.join(' · ') : null,
     workMode: tidyLabel(d.location_type || j.work_mode),
-    employmentType: tidyLabel(d.employment_type),
+    employmentType: employmentTypeLabel(d.employment_type),
     pay,
   }
 }

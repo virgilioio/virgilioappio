@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
+import { hiddenState, type HiddenEntry } from '@/lib/queue'
 
 /**
  * Server-side persistence for dashboard "Your queue" dismissals.
@@ -18,10 +19,21 @@ import { useAuth } from '@/contexts/AuthContext'
  * with useMemo below.
  */
 
-/** Coerce any legacy/stale persisted value (Set, plain object, etc.) to an array. */
-function toKeyArray(value: unknown): string[] {
-  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string')
-  return []
+/**
+ * Coerce any legacy/stale persisted value to entries. Older caches hold plain key strings
+ * (hidden for good); a Set round-trips as `{}` and reads as nothing.
+ */
+function toEntries(value: unknown): HiddenEntry[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((v): HiddenEntry | null =>
+      typeof v === 'string'
+        ? { key: v, until: null }
+        : v && typeof v === 'object' && typeof (v as HiddenEntry).key === 'string'
+          ? { key: (v as HiddenEntry).key, until: (v as HiddenEntry).until ?? null }
+          : null,
+    )
+    .filter((e): e is HiddenEntry => !!e)
 }
 
 export function useQueueDismissals() {
@@ -30,68 +42,80 @@ export function useQueueDismissals() {
   const userId = user?.id ?? null
   const queryKey = ['queue-dismissals', userId]
   const migratedRef = useRef<string | null>(null)
+  // Re-renders when the next snooze runs out, so its row comes back by itself.
+  const [, setTick] = useState(0)
 
-  const { data: dismissedKeys, isLoading } = useQuery({
+  const { data: rawEntries, isLoading } = useQuery({
     queryKey,
     enabled: !!userId,
     staleTime: 60_000,
-    queryFn: async () => {
+    queryFn: async (): Promise<HiddenEntry[]> => {
       const { data, error } = await supabase
         .from('dashboard_queue_dismissals')
-        .select('item_key')
+        .select('item_key, snoozed_until')
         .eq('user_id', userId!)
       if (error) throw error
-      return (data ?? []).map(r => r.item_key)
+      return ((data ?? []) as unknown as { item_key: string; snoozed_until: string | null }[]).map(r => ({
+        key: r.item_key,
+        until: r.snoozed_until,
+      }))
     },
   })
 
-  const dismissed = useMemo(() => new Set<string>(toKeyArray(dismissedKeys)), [dismissedKeys])
+  const entries = useMemo(() => toEntries(rawEntries), [rawEntries])
+  const state = hiddenState(entries)
+  const { hidden: dismissed, snoozed, nextWake } = state
+  const hiddenForGood = useMemo(() => new Set(entries.filter(e => !e.until).map(e => e.key)), [entries])
 
-  const setLocal = (mutate: (prev: string[]) => string[]) => {
-    queryClient.setQueryData<string[]>(queryKey, prev => mutate(toKeyArray(prev)))
+  useEffect(() => {
+    if (nextWake === null) return
+    const wait = Math.min(Math.max(nextWake - Date.now() + 500, 1000), 2 ** 31 - 1)
+    const t = window.setTimeout(() => setTick(n => n + 1), wait)
+    return () => window.clearTimeout(t)
+  }, [nextWake])
+
+  const setLocal = (mutate: (prev: HiddenEntry[]) => HiddenEntry[]) => {
+    queryClient.setQueryData<HiddenEntry[]>(queryKey, prev => mutate(toEntries(prev)))
   }
+  const withKeys = (prev: HiddenEntry[], keys: string[], until: string | null) => [
+    ...prev.filter(e => !keys.includes(e.key)),
+    ...keys.map(key => ({ key, until })),
+  ]
 
-  const dismiss = useMutation({
-    mutationFn: async (itemKey: string) => {
-      if (!userId) return
+  /**
+   * Hide (until null) or snooze (until a time) several rows at once (a job's applications
+   * are one row holding a key per applicant), or show them again. Optimistic; a failed
+   * save puts the entries back as they were.
+   */
+  const write = useMutation({
+    mutationFn: async ({ keys, until, show }: { keys: string[]; until: string | null; show?: boolean }) => {
+      if (!userId || keys.length === 0) return
+      if (show) {
+        const { error } = await supabase
+          .from('dashboard_queue_dismissals')
+          .delete()
+          .eq('user_id', userId)
+          .in('item_key', keys)
+        if (error) throw error
+        return
+      }
       const { error } = await supabase
         .from('dashboard_queue_dismissals')
         .upsert(
-          { user_id: userId, item_key: itemKey },
+          keys.map(item_key => ({ user_id: userId, item_key, snoozed_until: until })) as never,
           { onConflict: 'user_id,item_key' },
         )
       if (error) throw error
     },
-    onMutate: (itemKey: string) => {
-      setLocal(prev => (prev.includes(itemKey) ? prev : [...prev, itemKey]))
+    onMutate: ({ keys, until, show }) => {
+      const before = toEntries(queryClient.getQueryData(queryKey))
+      setLocal(prev => (show ? prev.filter(e => !keys.includes(e.key)) : withKeys(prev, keys, until)))
+      return { before }
     },
-    onError: (_e, itemKey) => {
-      setLocal(prev => prev.filter(k => k !== itemKey))
-    },
-  })
-
-  const undo = useMutation({
-    mutationFn: async (itemKey: string) => {
-      if (!userId) return
-      const { error } = await supabase
-        .from('dashboard_queue_dismissals')
-        .delete()
-        .eq('user_id', userId)
-        .eq('item_key', itemKey)
-      if (error) throw error
-    },
-    onMutate: (itemKey: string) => {
-      setLocal(prev => prev.filter(k => k !== itemKey))
-    },
-    onError: (_e, itemKey) => {
-      setLocal(prev => (prev.includes(itemKey) ? prev : [...prev, itemKey]))
+    onError: (_e, _vars, ctx) => {
+      if (ctx?.before) queryClient.setQueryData(queryKey, ctx.before)
     },
   })
-
-  const toggle = (itemKey: string) => {
-    if (dismissed.has(itemKey)) undo.mutate(itemKey)
-    else dismiss.mutate(itemKey)
-  }
 
   // One-time best-effort migration of legacy localStorage dismissals.
   useEffect(() => {
@@ -136,5 +160,15 @@ export function useQueueDismissals() {
       })
   }, [userId, queryClient])
 
-  return { dismissed, isLoading, toggle }
+  return {
+    /** Every key hidden right now: for good, or snoozed until a time still ahead. */
+    dismissed,
+    hiddenForGood,
+    /** Snoozed keys and when each comes back. */
+    snoozed,
+    isLoading,
+    hide: (keys: string[]) => write.mutateAsync({ keys, until: null }),
+    snooze: (keys: string[], until: Date) => write.mutateAsync({ keys, until: until.toISOString() }),
+    show: (keys: string[]) => write.mutateAsync({ keys, until: null, show: true }),
+  }
 }

@@ -22,6 +22,7 @@ import {
   offerSendRefusal,
   sendEnvelope,
   sendErrorMessage,
+  setEnvelopeRequireCode,
   templateFit,
   undoSend,
   useOfferGate,
@@ -32,6 +33,7 @@ import {
   type TemplateFit,
 } from '@/lib/sign/send'
 import { TemplateSelect } from './TemplateSelect'
+import { Switch } from '@/components/ui/switch'
 import { FromOffer } from './send/FromOffer'
 import { useTemplateFit } from './send/fit'
 import { CoverageRing } from './send/parts'
@@ -54,8 +56,10 @@ export interface SendDraft {
   body: string | null
   when: 'now' | 'schedule'
   at: Date
+  /** The email code for this envelope; null follows the template's default (2026-11-17). */
+  requireCode?: boolean | null
 }
-const blank = (): SendDraft => ({ templateId: null, people: {}, subject: null, body: null, when: 'now', at: tomorrowAt9() })
+const blank = (): SendDraft => ({ templateId: null, people: {}, subject: null, body: null, when: 'now', at: tomorrowAt9(), requireCode: null })
 
 /**
  * Send for signature from a record (a candidate on a job, or a member). The
@@ -212,6 +216,18 @@ export function SendSheet({
         subject: d.subject !== null && d.subject.trim() !== tpl?.subject ? d.subject.trim() : null,
         body: d.body !== null && d.body !== tpl?.body ? d.body : null,
       })
+      // The envelope starts from the template's email code setting; a change on
+      // this sheet is saved on it before the email goes out.
+      const wantCode = d.requireCode ?? tpl?.require_code ?? false
+      if (wantCode !== (tpl?.require_code ?? false)) {
+        try {
+          await setEnvelopeRequireCode(id, wantCode)
+        } catch {
+          toast.error(wantCode ? 'Couldn’t turn on the email code' : 'Couldn’t turn off the email code', {
+            description: 'Change it on the envelope in Sign › Envelopes.',
+          })
+        }
+      }
       onSent?.(id)
       await qc.invalidateQueries({ queryKey: ['sign'] })
       setDirty(false)
@@ -359,7 +375,7 @@ export function SendSheet({
             mode={isOffer ? 'offer' : 'other'}
             kind={kind}
             value={d.templateId}
-            onChange={(id) => id !== d.templateId && set((x) => ({ ...x, templateId: id, subject: null, body: null }))}
+            onChange={(id) => id !== d.templateId && set((x) => ({ ...x, templateId: id, subject: null, body: null, requireCode: null }))}
           />
         )}
       </FormSection>
@@ -481,6 +497,23 @@ export function SendSheet({
                         ? 'Sends at that time, your time.'
                         : 'Sends right away, with 5 seconds to undo.'}
                     </p>
+                    {/* The email code (2026-11-17): from the template, changeable here. */}
+                    <label className="flex items-start justify-between gap-4 border-t border-[#F0EFEA] pt-3">
+                      <span className="min-w-0">
+                        <span className="block font-inter text-[13px] font-medium text-text-primary">Ask for an email code</span>
+                        <span className="mt-0.5 block font-inter text-[11.5px] leading-normal text-text-tertiary">
+                          {(d.requireCode ?? tpl.require_code)
+                            ? 'Signers type a 6-digit code from a second email before the document opens.'
+                            : 'The emailed link is enough to open the document.'}
+                        </span>
+                      </span>
+                      <Switch
+                        checked={d.requireCode ?? tpl.require_code}
+                        onCheckedChange={(v) => set((x) => ({ ...x, requireCode: v }))}
+                        aria-label="Ask for an email code"
+                        className="mt-0.5 shrink-0"
+                      />
+                    </label>
                   </div>
                 </FormSection>
               )}

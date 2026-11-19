@@ -120,6 +120,8 @@ export interface EnvelopeDetail {
   expires_at: string | null
   void_reason: string | null
   data_snapshot: Record<string, string> | null
+  /** Signers enter a 6-digit email code before the document opens (2026-11-17). */
+  require_code: boolean
   recipients: (EnvelopeRecipient & { decline_reason: string | null; signed_at: string | null })[]
   documents: { id: string; name: string; page_count: number; position: number; removed_at: string | null }[]
   events: EnvelopeEvent[]
@@ -134,7 +136,7 @@ export function useEnvelopeDetail(id: string | null) {
       const { data, error } = await supabase
         .from('sign_envelopes')
         .select(`
-          id, subject, body, reminder_days, expiry_days, expires_at, void_reason, data_snapshot,
+          id, subject, body, reminder_days, expiry_days, expires_at, void_reason, data_snapshot, require_code,
           recipients:sign_recipients!sign_recipients_envelope_id_fkey(id, position, role, name, email, color, status, user_id, removed_at, decline_reason, signed_at),
           documents:sign_documents!sign_documents_envelope_id_fkey(id, name, page_count, position, removed_at),
           events:sign_events(id, kind, label, key, actor_name, ip, created_at, detail)

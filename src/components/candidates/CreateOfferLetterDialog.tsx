@@ -1,3 +1,4 @@
+import { EMPLOYMENT_TYPES, employmentTypeKey } from '@/lib/employmentTypes'
 import { useState, useEffect } from 'react'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
@@ -212,13 +213,12 @@ export function CreateOfferLetterSheet({
         )
       case 'employment_type':
         return (
-          <Select value={value || ''} onValueChange={(v) => handleFieldChange(field.field_name, v)}>
+          <Select value={employmentTypeKey(value) || ''} onValueChange={(v) => handleFieldChange(field.field_name, v)}>
             <SelectTrigger><SelectValue placeholder="Select employment type" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="full_time">Full-time</SelectItem>
-              <SelectItem value="part_time">Part-time</SelectItem>
-              <SelectItem value="temporary">Temporary</SelectItem>
-              <SelectItem value="internship">Internship</SelectItem>
+              {EMPLOYMENT_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         )

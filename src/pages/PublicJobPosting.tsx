@@ -1,4 +1,5 @@
 
+import { EMPLOYMENT_TYPES, employmentTypeLabel } from '@/lib/employmentTypes'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { buildJobPostingJsonLd } from '@/lib/jobPostingJsonLd'
@@ -794,7 +795,7 @@ export default function PublicJobPosting() {
       label: [[details.location, ...details.additionalLocations].filter(Boolean).join(' · '), formatLabel(details.locationType)].filter(Boolean).join(' · '),
     })
   }
-  if (details.employmentType) metaChips.push({ icon: Briefcase, label: formatLabel(details.employmentType)! })
+  if (details.employmentType) metaChips.push({ icon: Briefcase, label: employmentTypeLabel(details.employmentType)! })
   if (compensationLabel) metaChips.push({ icon: DollarSign, label: compensationLabel + ' base' })
   if (equityNote) metaChips.push({ icon: Sparkles, label: equityNote })
   if (teamSize) metaChips.push({ icon: Users, label: `Team of ${teamSize}` })
@@ -837,7 +838,7 @@ export default function PublicJobPosting() {
       value: details.additionalLocations.length > 0 ? details.additionalLocations : null,
     },
     { label: 'Work model', value: formatLabel(details.locationType) || null },
-    { label: 'Type', value: formatLabel(details.employmentType) || null },
+    { label: 'Type', value: employmentTypeLabel(details.employmentType) },
     { label: 'Compensation', value: compensationLabel },
     { label: 'Variable comp', value: variableCompLabel },
     { label: 'Reports to', value: reportsTo },
@@ -1386,10 +1387,9 @@ export default function PublicJobPosting() {
                                     >
                                       <SelectTrigger><SelectValue placeholder="Select employment type" /></SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="full_time">Full-time</SelectItem>
-                                        <SelectItem value="part_time">Part-time</SelectItem>
-                                        <SelectItem value="temporary">Temporary</SelectItem>
-                                        <SelectItem value="internship">Internship</SelectItem>
+                                        {EMPLOYMENT_TYPES.map((t) => (
+                                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                        ))}
                                       </SelectContent>
                                     </Select>
                                   )}

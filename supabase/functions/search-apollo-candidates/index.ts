@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
-import { regionFor, skillTiers } from "../_shared/findCriteria.ts";
+import { apolloMustKeywords, regionFor, skillTiers } from "../_shared/findCriteria.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 // CORRECT Apollo endpoint for searching (api_search, not search)
@@ -195,9 +195,10 @@ function buildApolloSearchUrl(
 
   // Skills are checked by us after people are added, except the must-haves when
   // the search asks Apollo to require them (Find, 2026-10-22). q_keywords is
-  // free text with AND semantics, so it narrows results sharply.
+  // free text with AND semantics, so it narrows results sharply. Must-haves with
+  // alternatives ("A or B") can't be said that way and are checked after adding.
   if (criteria.require_must_on_apollo) {
-    const must = skillTiers(criteria).must;
+    const must = apolloMustKeywords(skillTiers(criteria));
     if (must.length) {
       params.append('q_keywords', must.join(' '));
       console.log(`Apollo must-have keywords: ${must.join(', ')}`);

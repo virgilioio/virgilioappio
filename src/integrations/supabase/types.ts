@@ -2271,6 +2271,7 @@ export type Database = {
           dismissed_at: string
           id: string
           item_key: string
+          snoozed_until: string | null
           tenant_id: string | null
           user_id: string
         }
@@ -2278,6 +2279,7 @@ export type Database = {
           dismissed_at?: string
           id?: string
           item_key: string
+          snoozed_until?: string | null
           tenant_id?: string | null
           user_id: string
         }
@@ -2285,6 +2287,7 @@ export type Database = {
           dismissed_at?: string
           id?: string
           item_key?: string
+          snoozed_until?: string | null
           tenant_id?: string | null
           user_id?: string
         }
@@ -8954,6 +8957,7 @@ export type Database = {
           out_of_date: boolean
           public_id: string
           reminder_days: number
+          require_code: boolean
           sales_company_id: string | null
           sales_org_id: string | null
           scheduled_at: string | null
@@ -9007,6 +9011,7 @@ export type Database = {
           out_of_date?: boolean
           public_id?: string
           reminder_days?: number
+          require_code?: boolean
           sales_company_id?: string | null
           sales_org_id?: string | null
           scheduled_at?: string | null
@@ -9060,6 +9065,7 @@ export type Database = {
           out_of_date?: boolean
           public_id?: string
           reminder_days?: number
+          require_code?: boolean
           sales_company_id?: string | null
           sales_org_id?: string | null
           scheduled_at?: string | null
@@ -9417,6 +9423,7 @@ export type Database = {
           updated_at: string
           user_id: string | null
           verified_at: string | null
+          verified_by: string | null
           viewed_at: string | null
         }
         Insert: {
@@ -9446,6 +9453,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           verified_at?: string | null
+          verified_by?: string | null
           viewed_at?: string | null
         }
         Update: {
@@ -9475,6 +9483,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           verified_at?: string | null
+          verified_by?: string | null
           viewed_at?: string | null
         }
         Relationships: [
@@ -9575,6 +9584,7 @@ export type Database = {
           offer_form_id: string | null
           ordered: boolean
           reminder_days: number
+          require_code: boolean
           single_use: boolean
           subject: string
           tenant_id: string
@@ -9597,6 +9607,7 @@ export type Database = {
           offer_form_id?: string | null
           ordered?: boolean
           reminder_days?: number
+          require_code?: boolean
           single_use?: boolean
           subject?: string
           tenant_id: string
@@ -9619,6 +9630,7 @@ export type Database = {
           offer_form_id?: string | null
           ordered?: boolean
           reminder_days?: number
+          require_code?: boolean
           single_use?: boolean
           subject?: string
           tenant_id?: string
@@ -11994,6 +12006,10 @@ export type Database = {
           size: number
         }[]
       }
+      email_is_automatic: {
+        Args: { _from: string; _headers: Json; _subject: string }
+        Returns: boolean
+      }
       emit_notification: {
         Args: {
           _action_url: string
@@ -12063,6 +12079,16 @@ export type Database = {
       fit_queue_job_rescore_pending: {
         Args: { p_job_id: string }
         Returns: number
+      }
+      fit_job_movements: {
+        Args: { p_job_id: string }
+        Returns: {
+          association_id: string
+          cause: string
+          moved_at: string
+          previous_score: number
+          score: number
+        }[]
       }
       fit_queue_job_status: {
         Args: { p_job_id: string }
@@ -12644,6 +12670,10 @@ export type Database = {
       offer_base_salary: { Args: { _fv: Json }; Returns: Json }
       offer_can_send: { Args: { _offer_id: string }; Returns: Json }
       offer_chain_is_approver: { Args: { _chain_id: string }; Returns: boolean }
+      offer_form_duplicate: {
+        Args: { p_form_id: string; p_name?: string }
+        Returns: string
+      }
       offer_form_last_section: { Args: { _form_id: string }; Returns: string }
       offer_letter_is_approver: {
         Args: { _offer_id: string }
@@ -13021,6 +13051,25 @@ export type Database = {
         Returns: number
       }
       provenance_source_for: { Args: { p_source: string }; Returns: string }
+      queue_done_today: { Args: never; Returns: number }
+      queue_replies: {
+        Args: { _days?: number }
+        Returns: {
+          candidate_id: string
+          candidate_name: string
+          email_id: string
+          job_id: string
+          job_title: string
+          message_id: string
+          received_at: string
+          subject: string
+          thread_id: string
+        }[]
+      }
+      queue_reply_mark: {
+        Args: { _done: boolean; _thread_ids: string[] }
+        Returns: number
+      }
       reassign_candidates_for_stage: {
         Args: { stage_id_param: string }
         Returns: undefined
@@ -13455,6 +13504,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      sign_set_require_code: {
+        Args: { _envelope_id: string; _on: boolean }
+        Returns: boolean
+      }
       sign_signer_submit: {
         Args: {
           _ip: unknown
@@ -13472,6 +13525,10 @@ export type Database = {
           key: string
           needed: boolean
         }[]
+      }
+      sign_template_set_require_code: {
+        Args: { _on: boolean; _template_id: string }
+        Returns: boolean
       }
       sign_template_set_single_use: {
         Args: { _template_id: string }
@@ -13857,6 +13914,8 @@ export type Database = {
         | "score"
         | "audio"
         | "video"
+        | "department"
+        | "client"
       interview_answer_type:
         | "text"
         | "yes_no"
@@ -13875,6 +13934,7 @@ export type Database = {
         | "contract"
         | "internship"
         | "temporary"
+        | "vendor"
       job_priority: "critical" | "high" | "standard" | "low"
       job_status: "draft" | "open" | "closed" | "archived"
       job_work_mode: "remote" | "hybrid" | "onsite"
@@ -14290,6 +14350,8 @@ export const Constants = {
         "score",
         "audio",
         "video",
+        "department",
+        "client",
       ],
       interview_answer_type: [
         "text",
@@ -14311,6 +14373,7 @@ export const Constants = {
         "contract",
         "internship",
         "temporary",
+        "vendor",
       ],
       job_priority: ["critical", "high", "standard", "low"],
       job_status: ["draft", "open", "closed", "archived"],

@@ -17,7 +17,7 @@ export function offerCategory(t: Pick<OfferFormTag, 'key' | 'label' | 'type'>): 
   const s = `${t.key} ${t.label}`.toLowerCase()
   if (t.type === 'salary' || /salar|compens|bonus|equity|commission|\bpay\b|wage|\bote\b|earning|stipend|allowance|(^|[^a-z])rate([^a-z]|$)/.test(s)) return 'Compensation'
   if (t.type === 'date' || /(^|[^a-z])date|(^|[^a-z])day([^a-z]|$)/.test(s)) return 'Dates'
-  if (['recruiter', 'employment_type', 'work_location'].includes(t.type)) return 'Job'
+  if (['recruiter', 'employment_type', 'work_location', 'department', 'client'].includes(t.type)) return 'Job'
   if (['email', 'phone', 'linkedin', 'location'].includes(t.type) || /candidate|full.?name|legal.?name|\bname\b|address|personal/.test(s)) return 'Candidate'
   if (/job|title|role|department|team|manager|report|description|position|schedule|hours|location|office|remote/.test(s)) return 'Job'
   return 'Terms'

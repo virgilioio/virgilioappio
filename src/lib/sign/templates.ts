@@ -94,6 +94,12 @@ export interface TplDraft {
    */
   use_written: boolean
   use_uploads: boolean
+  /**
+   * Envelopes from this template ask signers for a 6-digit code from their email
+   * before the document opens (2026-11-17). Off: the emailed link is enough, as in
+   * DocuSign. Saved with sign_template_set_require_code after the template.
+   */
+  require_code: boolean
 }
 
 export interface TemplateRow extends TplDraft {
@@ -487,6 +493,7 @@ export function newDraft(kind: SignKind = 'candidate'): TplDraft {
     ...DEFAULT_MESSAGE[kind],
     reminder_days: 2,
     expiry_days: kind === 'candidate' ? 14 : 30,
+    require_code: false,
     docs: [],
     written: [],
     roles: [{ id: uid(), label: FIRST_ROLE[kind], role: 'signer', fixed: false, fill_from: kind === 'customer' ? null : kind === 'standalone' ? 'typed' : 'record', name: '', email: '', color: ROLE_COLORS[0] }],
@@ -708,7 +715,7 @@ export function stepIssue(step: number, d: TplDraft): string | null {
 /* ------------------------------------------------------------------------- */
 
 const TEMPLATE_SELECT = `
-  id, name, description, kind, app, ordered, subject, body, reminder_days, expiry_days, uses, offer_form_id, offer_fields_not_needed,
+  id, name, description, kind, app, ordered, subject, body, reminder_days, expiry_days, require_code, uses, offer_form_id, offer_fields_not_needed,
   created_at, updated_at, archived_at,
   docs:sign_documents!sign_documents_template_id_fkey(id, name, storage_path, page_count, page_sizes, size_bytes, sha256, position, removed_at),
   roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, fill_from, name, email, color, position, removed_at),
@@ -729,6 +736,7 @@ function fromRaw(t: Raw): TemplateRow {
   return {
     ...t,
     description: t.description ?? '',
+    require_code: !!t.require_code,
     not_needed: t.offer_fields_not_needed ?? [],
     use_written: (t.written ?? []).some((x) => !x.removed_at),
     use_uploads: (t.docs ?? []).some((x) => !x.removed_at),
@@ -843,6 +851,10 @@ export async function saveTemplate(draft: TplDraft, tenantId: string) {
   }
   const { error } = await supabase.rpc('sign_save_template', { _t: payload as never })
   if (error) throw error
+  // The email code default is saved beside the template (sign_save_template predates it).
+  const rpc = supabase.rpc.bind(supabase) as unknown as (fn: string, args: object) => Promise<{ error: unknown }>
+  const { error: codeError } = await rpc('sign_template_set_require_code', { _template_id: d.id, _on: !!d.require_code })
+  if (codeError) throw codeError
 }
 
 /** Archive hides a template from senders; Undo (or Restore) brings it back. */

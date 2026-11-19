@@ -2,9 +2,11 @@ import {
   AlignLeft,
   Banknote,
   Briefcase,
+  Building,
   Building2,
   CalendarDays,
   CircleCheck,
+  Folder,
   Hash,
   Link2,
   Mail,
@@ -37,6 +39,8 @@ export const OFFER_FIELD_TYPES: { value: OfferFieldType; label: string; icon: Lu
   { value: 'recruiter', label: 'Recruiter', icon: UserRound, smart: true },
   { value: 'employment_type', label: 'Employment type', icon: Briefcase, smart: true },
   { value: 'work_location', label: 'Work location', icon: Building2, smart: true },
+  { value: 'department', label: 'Department', icon: Folder, smart: true },
+  { value: 'client', label: 'Client', icon: Building, smart: true },
 ]
 
 const LEGACY: Partial<Record<OfferFieldType, string>> = { select: 'Dropdown', file: 'File' }
@@ -53,6 +57,8 @@ export const SMART_DEFAULT_LABEL: Partial<Record<OfferFieldType, string>> = {
   recruiter: 'Recruiter',
   employment_type: 'Employment type',
   work_location: 'Work location',
+  department: 'Department',
+  client: 'Client',
 }
 
 export const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'CHF', 'JPY', 'INR', 'BRL', 'MXN', 'SGD', 'HKD', 'NZD', 'ZAR', 'AED', 'SAR']

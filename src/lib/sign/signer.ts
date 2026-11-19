@@ -14,6 +14,8 @@ export interface SignerOpen {
   documents: { name: string; pages: number }[]
   recipient: { name: string; first_name: string; email_masked: string; role: string }
   consented: boolean
+  /** The envelope asks for a 6-digit email code (2026-11-17); off: the link is enough. Older servers leave it out, meaning yes. */
+  code_required?: boolean
   code_sent_at: string | null
   expires_at: string | null
   declined_by: string | null
@@ -83,6 +85,8 @@ export const signer = {
   sendCode: (token: string) =>
     call<{ ok: true; email_masked: string; wait: number }>('sign-session', { action: 'send_code', token, consent: true }),
   verify: (token: string, code: string) => call<{ session: string; expires_at: string }>('sign-session', { action: 'verify', token, code }),
+  /** No code needed: consent opens the session from the emailed link alone. */
+  enter: (token: string) => call<{ session: string; expires_at: string }>('sign-session', { action: 'enter', token, consent: true }),
   load: (token: string, session: string) => call<SignerDocument>('sign-session', { action: 'load', token, session }),
   submit: (token: string, session: string, values: Record<string, string | boolean>, signature: AdoptedSignature | null) =>
     call<{ status: 'sent' | 'completed'; next: string[]; signed_at: string }>('sign-submit', {

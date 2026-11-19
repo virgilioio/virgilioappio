@@ -6,14 +6,9 @@
  * rules in sign_offer_display() for agreements.
  */
 
-export const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
-  full_time: 'Full-time',
-  part_time: 'Part-time',
-  contract: 'Contract',
-  temporary: 'Temporary',
-  internship: 'Internship',
-  freelance: 'Freelance',
-}
+import { employmentTypeLabel } from '@/lib/employmentTypes'
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export const WORK_LOCATION_LABELS: Record<string, string> = {
   remote: 'Remote',
@@ -70,6 +65,10 @@ export interface OfferValueContext {
   config?: Record<string, unknown> | null
   /** Recruiter user id → name. */
   recruiterName?: (id: string) => string | null | undefined
+  /** Department id → name. */
+  departmentName?: (id: string) => string | null | undefined
+  /** Client (organization) id → name. */
+  clientName?: (id: string) => string | null | undefined
   /** Select / checkbox-group option value → label. */
   optionLabel?: (value: string) => string | null | undefined
   /** Add "per month" etc. to salaries when the field has a period. */
@@ -105,11 +104,16 @@ export function formatOfferValue(raw: unknown, type?: string | null, ctx: OfferV
     case 'checkbox':
       return value === true || value === 'true' ? 'Yes' : 'No'
     case 'employment_type':
-      return EMPLOYMENT_TYPE_LABELS[String(value)] ?? String(value)
+      return employmentTypeLabel(String(value)) ?? String(value)
     case 'work_location':
       return WORK_LOCATION_LABELS[String(value)] ?? String(value)
     case 'recruiter':
       return ctx.recruiterName?.(String(value)) || String(value)
+    // Stored by id (2026-11-18): the name, never the id; typed text stays as typed.
+    case 'department':
+      return ctx.departmentName?.(String(value)) || (UUID.test(String(value)) ? null : String(value))
+    case 'client':
+      return ctx.clientName?.(String(value)) || (UUID.test(String(value)) ? null : String(value))
     case 'select':
       return ctx.optionLabel?.(String(value)) || String(value)
     case 'checkbox_group': {

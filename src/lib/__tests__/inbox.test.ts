@@ -14,13 +14,13 @@ describe('inbox helpers', () => {
     expect(bareAddress('Ana <ANA@X.com>')).toBe('ana@x.com')
   })
 
-  it('reply all leaves you out and puts the writer in To', () => {
+  it('reply all leaves you out, puts the writer in To, and gives bare addresses (the composer splits on spaces)', () => {
     const r = replyAllRecipients(
       msg({ to_addresses: ['allan@virgilio.tech', 'maya@virgilio.tech'], cc_addresses: ['Leo <leo@virgilio.tech>', 'ANA@x.com'] }),
       ['Allan@virgilio.tech'],
     )
-    expect(r.to).toBe('Ana <ana@x.com>')
-    expect(r.cc).toEqual(['maya@virgilio.tech', 'Leo <leo@virgilio.tech>'])
+    expect(r.to).toBe('ana@x.com')
+    expect(r.cc).toEqual(['maya@virgilio.tech', 'leo@virgilio.tech'])
   })
 
   it('reply all on your own message goes back to its recipients', () => {

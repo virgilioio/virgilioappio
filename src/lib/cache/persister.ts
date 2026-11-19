@@ -75,6 +75,8 @@ const NEVER_PERSIST_PREFIXES = [
   // Whole candidate lists: too big for the browser's 5 MB storage, and
   // personal data that shouldn't sit on the device (2026-10-17).
   'independent-candidates', 'candidate-associations-map',
+  // Your queue: a saved copy showed finished work after a reload (2026-11-16).
+  'pending-activities', 'new-applications-queue', 'queue-done-today', 'queue-dismissals',
 ]
 
 /**

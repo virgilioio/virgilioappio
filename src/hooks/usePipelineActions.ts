@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { resolveCandidateHeadline } from '@/lib/candidateHeadline'
 import { fetchAll, inChunks } from '@/lib/fetchAllRows'
+import { refreshQueue } from '@/lib/queueRefresh'
 
 
 export interface PipelineAssociation {
@@ -237,6 +238,7 @@ export function usePipelineActions() {
       throw new Error('No rows updated when moving candidate')
     }
 
+    refreshQueue()
     if (!options?.silent) {
       toast({
         title: 'Candidate moved',
@@ -333,6 +335,7 @@ export function usePipelineActions() {
       throw new Error('No rows updated when changing status')
     }
 
+    refreshQueue()
     // A caller with its own, more specific message says it instead.
     if (!opts?.quiet) toast({ title: 'Status updated', description: `Candidate marked as ${status}.` })
   }, [])

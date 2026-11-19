@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import {
   ArrowLeft, Briefcase, CheckCheck, ChevronLeft, ChevronRight, Forward, Inbox as InboxIcon, Mail, MailOpen, MoreHorizontal, Paperclip, Reply, ReplyAll, User,
@@ -16,6 +17,7 @@ import { PersonAvatar } from '@/components/candidates/comments/PersonAvatar'
 import { EmailAttachmentsList } from '@/components/candidates/EmailAttachmentsList'
 import { LoadError } from '@/components/empty/LoadError'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import {
   bareAddress, displayName, inboxFullTime, inboxTime, type InboxConversation, type InboxMessage,
@@ -34,7 +36,9 @@ export interface ReaderPosition {
 /**
  * One conversation, oldest first. Earlier messages fold to one line each and
  * open on a click; the latest is open. Reply, Reply all and Forward hand the
- * message to the Gio composer.
+ * message to the Gio composer: from the ↩ on an open message, the ⋯ menu, the
+ * buttons under the conversation, and on phones a row that stays at the bottom
+ * of the card (2026-11-17, after Gmail's phone app).
  */
 export function InboxReader({
   conversation,
@@ -87,7 +91,13 @@ export function InboxReader({
   }
 
   return (
-    <Loadable loading={loading || !conversation} skeleton={<ReaderSkeleton />} className="h-full">
+    // The grid row takes the card's height (not the email's), so the messages scroll
+    // inside the card and the phone's reply row stays at its bottom (2026-11-17).
+    <Loadable
+      loading={loading || !conversation}
+      skeleton={<ReaderSkeleton />}
+      className="h-full [grid-template-rows:minmax(0,1fr)] [&>*]:min-h-0"
+    >
       {conversation ? (
         <Conversation
           conversation={conversation}
@@ -122,6 +132,7 @@ function Conversation({
 }) {
   const { thread, messages } = conversation
   const last = messages[messages.length - 1]
+  const phone = useIsMobile()
   // The latest message is open; earlier ones fold. A new message opens itself.
   const [open, setOpen] = React.useState<Set<string>>(() => new Set(last ? [last.id] : []))
   React.useEffect(() => {
@@ -184,6 +195,20 @@ function Conversation({
                 </DropdownMenuItem>
               )}
               {last && (
+                <DropdownMenuItem onSelect={() => onReply(last, 'reply')}>
+                  <Reply aria-hidden />
+                  <span className="truncate">Reply</span>
+                  <DropdownMenuShortcut>R</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              )}
+              {last && others.size > 1 && (
+                <DropdownMenuItem onSelect={() => onReply(last, 'reply_all')}>
+                  <ReplyAll aria-hidden />
+                  <span className="truncate">Reply all</span>
+                  <DropdownMenuShortcut>A</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              )}
+              {last && (
                 <DropdownMenuItem onSelect={() => onReply(last, 'forward')}>
                   <Forward aria-hidden />
                   <span className="truncate">Forward</span>
@@ -233,7 +258,7 @@ function Conversation({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+      <div className={cn('min-h-0 flex-1 overflow-y-auto px-5 py-4', phone && 'pb-[calc(env(safe-area-inset-bottom,0px)+150px)]')}>
         <ol className="space-y-2.5">
           {messages.map(m => (
             <li key={m.id}>
@@ -250,12 +275,13 @@ function Conversation({
                 }
                 candidateName={thread.candidate_name}
                 me={me}
+                onReply={() => onReply(m, 'reply')}
               />
             </li>
           ))}
         </ol>
 
-        {last && (
+        {last && !phone && (
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button variant="secondary" size="md" icon={Reply} onClick={() => onReply(last, 'reply')}>
               Reply
@@ -271,6 +297,37 @@ function Conversation({
           </div>
         )}
       </div>
+
+      {last && phone &&
+        createPortal(
+          // Phones: the replies float at the bottom of the screen, just above the
+          // app's bottom bar, while the email scrolls under them (Gmail's layout,
+          // 2026-11-17). Portalled so no ancestor's transform moves it.
+          <div
+            data-inbox-reply-bar
+            className="fixed inset-x-0 z-40 flex items-center gap-2 px-4 sm:hidden"
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 82px)' }}
+          >
+            <Button
+              variant="primary"
+              size="lg"
+              iconOnly
+              icon={Reply}
+              aria-label="Reply"
+              className="h-12 w-12 shrink-0 rounded-full shadow-pop"
+              onClick={() => onReply(last, 'reply')}
+            />
+            {others.size > 1 && (
+              <Button variant="secondary" size="lg" icon={ReplyAll} className="h-12 min-w-0 flex-1 rounded-full bg-white shadow-pop" onClick={() => onReply(last, 'reply_all')}>
+                Reply all
+              </Button>
+            )}
+            <Button variant="secondary" size="lg" icon={Forward} className="h-12 min-w-0 flex-1 rounded-full bg-white shadow-pop" onClick={() => onReply(last, 'forward')}>
+              Forward
+            </Button>
+          </div>,
+          document.body,
+        )}
     </article>
   )
 }
@@ -281,13 +338,18 @@ function Message({
   onToggle,
   candidateName,
   me,
+  onReply,
 }: {
   m: InboxMessage
   open: boolean
   onToggle: () => void
   candidateName: string
   me: Set<string>
+  /** Reply to this message (the ↩ beside its time while it's open). */
+  onReply: () => void
 }) {
+  // Phones read email at 16px, the composer's size (2026-11-17).
+  const phone = useIsMobile()
   const fromYou = m.direction === 'sent' || me.has(bareAddress(m.from_address))
   const sender = fromYou ? 'You' : displayName(m.from_address)
   const recipients = m.to_addresses.map(a => (me.has(bareAddress(a)) ? 'you' : displayName(a))).join(', ')
@@ -296,11 +358,12 @@ function Message({
 
   return (
     <div className={cn('rounded-xl border bg-white', open ? 'border-[#E7E8EE]' : 'border-[#F1F0EC]')}>
+      <div className="flex items-start">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-start gap-3 px-4 py-3 text-left"
+        className={cn('flex min-w-0 flex-1 items-start gap-3 py-3 pl-4 text-left', open ? 'pr-1' : 'pr-4')}
       >
         <PersonAvatar
           name={fromYou ? displayName(m.from_address) : displayName(m.from_address) || candidateName}
@@ -309,39 +372,48 @@ function Message({
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#0d0d09]">
+            <span className={cn('min-w-0 flex-1 truncate font-semibold text-[#0d0d09]', phone ? 'text-[15px]' : 'text-[13px]')}>
               {sender}
               {!fromYou && (
                 <span className="ml-1.5 font-normal text-[#6B7080]">{bareAddress(m.from_address)}</span>
               )}
             </span>
-            <time dateTime={m.at} title={inboxFullTime(m.at)} className="shrink-0 tabular-nums text-[11.5px] text-[#6B7080]">
+            <time dateTime={m.at} title={inboxFullTime(m.at)} className={cn('shrink-0 tabular-nums text-[#6B7080]', phone ? 'text-[13px]' : 'text-[11.5px]')}>
               {inboxTime(m.at)}
             </time>
           </div>
           {open ? (
-            <div className="mt-0.5 truncate text-[12px] text-[#6B7080]">
+            <div className={cn('mt-0.5 truncate text-[#6B7080]', phone ? 'text-[13.5px]' : 'text-[12px]')}>
               to {recipients || '—'}
               {m.cc_addresses && m.cc_addresses.length > 0 && <> · cc {m.cc_addresses.map(displayName).join(', ')}</>}
             </div>
           ) : (
-            <div className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-[#5A6072]">
+            <div className={cn('mt-0.5 flex items-center gap-1.5 text-[#5A6072]', phone ? 'text-[14.5px]' : 'text-[12.5px]')}>
               <span className="truncate">{m.snippet?.trim() || m.body_text?.trim().slice(0, 160) || ''}</span>
               {m.attachments.length > 0 && <Paperclip aria-label="Has attachments" className="h-3.5 w-3.5 shrink-0" />}
             </div>
           )}
         </div>
       </button>
+      {open && (
+        <IconTip label="Reply">
+          <Button variant="ghost" size="sm" iconOnly icon={Reply} aria-label="Reply to this message" className="mr-2 mt-2 shrink-0" onClick={onReply} />
+        </IconTip>
+      )}
+      </div>
 
       {open && (
-        <div className="px-4 pb-4 pl-[60px]">
+        <div className={cn('px-4 pb-4', phone ? 'pl-4' : 'pl-[60px]')}>
           {m.body_html ? (
             <SafeHtml
               content={m.body_html}
-              className="gio-mail-body max-w-none overflow-x-auto text-[13.5px] leading-[1.6] text-[#1F2230] [&_a]:text-[#6F3FF5] [&_a]:underline [&_img]:max-w-full [&_img]:h-auto [&_table]:max-w-full"
+              className={cn(
+                'gio-mail-body max-w-none overflow-x-auto text-[#1F2230] [&_a]:text-[#6F3FF5] [&_a]:underline [&_img]:max-w-full [&_img]:h-auto [&_table]:max-w-full',
+                phone ? 'text-[16px] leading-[1.55]' : 'text-[13.5px] leading-[1.6]',
+              )}
             />
           ) : (
-            <div className="whitespace-pre-wrap break-words text-[13.5px] leading-[1.6] text-[#1F2230]">
+            <div className={cn('whitespace-pre-wrap break-words text-[#1F2230]', phone ? 'text-[16px] leading-[1.55]' : 'text-[13.5px] leading-[1.6]')}>
               {m.body_text?.trim() || m.snippet || ''}
             </div>
           )}

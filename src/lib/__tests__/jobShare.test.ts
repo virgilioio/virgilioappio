@@ -78,7 +78,7 @@ describe('Gio\'s posts', () => {
     expect(postingFacts({ location: 'Mexico City', location_type: 'hybrid', employment_type: 'full_time', salary_min: 40000, salary_max: 60000, salary_currency: 'MXN', salary_period: 'monthly', show_salary_public: true }, null)).toEqual({
       location: 'Mexico City',
       workMode: 'Hybrid',
-      employmentType: 'Full Time',
+      employmentType: 'Full-time',
       pay: 'MXN 40,000 – 60,000 per month',
     })
     expect(postingFacts({ salary_max: 5000 }, { location: 'Remote', show_salary_public: false })).toEqual({ location: 'Remote', workMode: null, employmentType: null, pay: null })

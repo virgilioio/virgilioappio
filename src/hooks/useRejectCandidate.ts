@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { refreshQueue } from '@/lib/queueRefresh';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSendEmail, SendEmailRequest } from '@/hooks/useSendEmail';
@@ -155,6 +156,7 @@ export function useRejectCandidate() {
 
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['job-candidates'] });
+      refreshQueue(queryClient);
       queryClient.invalidateQueries({ queryKey: ['pipeline'] });
       queryClient.invalidateQueries({ queryKey: ['candidates'] });
     },

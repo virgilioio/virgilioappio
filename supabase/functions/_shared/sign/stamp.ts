@@ -36,6 +36,8 @@ export interface StampPerson {
   status: string;
   consent_at: string | null;
   verified_at: string | null;
+  /** How they got in: the emailed link alone, or the link and a 6-digit code (2026-11-17). */
+  verified_by?: string | null;
   viewed_at: string | null;
   signed_at: string | null;
   approved_at: string | null;
@@ -318,7 +320,8 @@ async function drawCertificate(
       };
       line(p.role === "approver" ? "Approved" : "Signed", when(done));
       line("Consented", when(p.consent_at));
-      line("Code verified", when(p.verified_at));
+      line("Signed in with", p.verified_by === "link" ? "Emailed link" : p.verified_at ? "Emailed link and 6-digit code" : "");
+      line(p.verified_by === "link" ? "Opened" : "Code verified", when(p.verified_at));
       line("First opened", when(p.viewed_at));
       line("IP address", p.signed_ip ?? "");
       line("Browser", (p.signed_user_agent ?? "").slice(0, 120));

@@ -20,7 +20,8 @@ export interface PhoneQueueItem {
   type: 'scorecard' | 'decision' | 'reply' | 'application'
   label: string
   candidateName: string
-  candidateId: string
+  /** Null for a job's applications (one row per job). */
+  candidateId: string | null
   context: string
   urgency: 'overdue' | 'today' | 'normal'
   urgencyLabel: string
@@ -89,7 +90,7 @@ export function PhoneToday(p: Props) {
             return (
               <PhoneRow
                 key={q.id}
-                to={q.candidateId ? phoneQueueHref(q.href, q.candidateId) : undefined}
+                to={q.candidateId ? phoneQueueHref(q.href, q.candidateId) : q.href}
                 leading={
                   <span className="relative inline-flex">
                     <Initials name={q.candidateName} />

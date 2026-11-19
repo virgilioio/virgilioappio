@@ -1,5 +1,7 @@
+import { EMPLOYMENT_TYPES, employmentTypeKey } from '@/lib/employmentTypes'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
@@ -29,6 +31,9 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { formSections, groupBySection, isWideField } from '@/lib/offerSections'
 import { PlaceFieldsByName } from '@/components/ui/place-picker'
+import { useDepartments } from '@/hooks/useDepartments'
+import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
+import { offerPrefill, type OfferCandidateFacts, type OfferJobFacts } from '@/lib/offerPrefill'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -107,6 +112,62 @@ export function OfferComposerBody({
   const { openings, isLoading: openingsLoading } = useJobOpenings(jobId)
   const { chain, isLoading: chainLoading } = useOfferApprovalChain(jobId)
   const [step, setStep] = useState(1)
+
+  // What the offer starts with (2026-11-18, 2026-11-19): from its job the
+  // department, client, employment type, work location and job title; from the
+  // candidate's profile their name, email, phone and where they live. Only
+  // blank fields are filled.
+  const { data: jobFacts } = useQuery({
+    queryKey: ['offer-job-facts', jobId],
+    enabled: !!jobId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<OfferJobFacts | null> => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('title, department_id, organization_id, employment_type, work_mode')
+        .eq('id', jobId)
+        .maybeSingle()
+      if (error) throw error
+      return data as OfferJobFacts | null
+    },
+  })
+  const { data: candidateFacts, isFetched: candidateFetched } = useQuery({
+    queryKey: ['offer-candidate-facts', candidateId],
+    enabled: !!candidateId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<OfferCandidateFacts | null> => {
+      const { data, error } = await supabase
+        .from('candidates')
+        .select('candidate_name, email, email_status, phone, location_city, location_state, location_country')
+        .eq('id', candidateId)
+        .maybeSingle()
+      if (error) throw error
+      return data as OfferCandidateFacts | null
+    },
+  })
+  const { departments } = useDepartments({ includeArchived: true })
+  // The client already on the offer stays in the list even if it's no longer active.
+  const clientField = fields.find((field) => field.field_type === 'client')
+  const pickedClient = clientField ? fieldValues[clientField.field_name] : null
+  const { data: clientOptions = [] } = useChildOrganizationsForJobCreation(
+    typeof pickedClient === 'string' && pickedClient ? pickedClient : jobFacts?.organization_id ?? null,
+  )
+  const departmentOptions = useMemo(
+    () => departments.map((d) => ({ value: d.id, label: d.name, archived: d.is_archived })),
+    [departments],
+  )
+  const latestValues = useRef(fieldValues)
+  latestValues.current = fieldValues
+  const prefilledFields = useRef<OfferFormField[] | null>(null)
+  useEffect(() => {
+    // Waits for both, so one pass fills everything (a failed candidate read still lets the job fill).
+    if (!jobFacts || (!candidateFetched && !!candidateId) || fieldsLoading || fields.length === 0 || prefilledFields.current === fields) return
+    // The fields of the form now picked, not the one before it.
+    if (fields.some((field) => field.form_id !== selectedFormId)) return
+    prefilledFields.current = fields
+    const patch = offerPrefill(fields, latestValues.current, jobFacts, candidateFacts)
+    if (Object.keys(patch).length) onFieldValuesChange({ ...latestValues.current, ...patch })
+  }, [jobFacts, candidateFacts, candidateFetched, candidateId, fields, fieldsLoading, selectedFormId, onFieldValuesChange])
 
   // Find the current offer being edited to check its status
   const currentOffer = editingOfferId ? offerLetters.find(ol => ol.id === editingOfferId) : null
@@ -444,15 +505,38 @@ export function OfferComposerBody({
             placeholder="Search for a recruiter..."
           />
         )
+      case 'department':
+        return (
+          <SearchableSelect
+            options={departmentOptions
+              .filter((d) => !d.archived || d.value === value)
+              .map((d) => ({ value: d.value, label: d.label }))}
+            value={value || ''}
+            onValueChange={(val) => handleFieldChange(field.field_name, val)}
+            placeholder="Choose a department…"
+            searchPlaceholder="Search departments…"
+            emptyMessage="No departments found."
+          />
+        )
+      case 'client':
+        return (
+          <SearchableSelect
+            options={clientOptions.map((c) => ({ value: c.id, label: c.name }))}
+            value={value || ''}
+            onValueChange={(val) => handleFieldChange(field.field_name, val)}
+            placeholder="Choose a client…"
+            searchPlaceholder="Search clients…"
+            emptyMessage="No clients found."
+          />
+        )
       case 'employment_type':
         return (
-          <Select value={value || ''} onValueChange={(v) => handleFieldChange(field.field_name, v)}>
+          <Select value={employmentTypeKey(value) || ''} onValueChange={(v) => handleFieldChange(field.field_name, v)}>
             <SelectTrigger><SelectValue placeholder="Select employment type" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="full_time">Full-time</SelectItem>
-              <SelectItem value="part_time">Part-time</SelectItem>
-              <SelectItem value="temporary">Temporary</SelectItem>
-              <SelectItem value="internship">Internship</SelectItem>
+              {EMPLOYMENT_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         )

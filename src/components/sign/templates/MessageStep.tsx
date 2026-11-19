@@ -3,6 +3,7 @@ import { useMemo, useRef } from 'react'
 import { FormSection } from '@/components/references/FormSection'
 import { SubjectTemplateEditor, type SubjectTemplateEditorHandle } from '@/components/editors/SubjectTemplateEditor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { emailTagsFor, tagLabel, type TplDraft } from '@/lib/sign/templates'
 import { Field, TagText } from './parts'
 
@@ -103,6 +104,23 @@ export function MessageStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) =
               </Select>
             </Field>
           </div>
+          {/* The email code (2026-11-17): off by default, as in DocuSign. */}
+          <label className="mt-4 flex items-start justify-between gap-4 border-t border-[#F0EFEA] pt-3.5">
+            <span className="min-w-0">
+              <span className="block font-inter text-[13px] font-medium text-text-primary">Ask for an email code</span>
+              <span className="mt-0.5 block font-inter text-[12px] leading-normal text-text-tertiary">
+                {d.require_code
+                  ? 'Signers type a 6-digit code from a second email before the document opens.'
+                  : 'The emailed link is enough to open the document, as in DocuSign. Turn this on for sensitive agreements.'}
+              </span>
+            </span>
+            <Switch
+              checked={d.require_code}
+              onCheckedChange={(v) => set((x) => ({ ...x, require_code: v }))}
+              aria-label="Ask for an email code"
+              className="mt-0.5 shrink-0"
+            />
+          </label>
         </FormSection>
       </div>
 
@@ -123,7 +141,7 @@ export function MessageStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) =
             </div>
             <span className="mt-4 inline-flex h-9 items-center rounded-lg bg-[#0d0d09] px-4 font-poppins text-[13px] font-medium text-[#fffcf9]">Review and sign</span>
             <p className="mt-3 text-[11.5px] text-text-tertiary">
-              {d.docs.length + d.written.length} document{d.docs.length + d.written.length === 1 ? '' : 's'} · the link expires in {d.expiry_days} days · they confirm with a code sent to their email
+              {d.docs.length + d.written.length} document{d.docs.length + d.written.length === 1 ? '' : 's'} · the link expires in {d.expiry_days} days{d.require_code ? ' · they confirm with a code sent to their email' : ''}
             </p>
           </div>
         </FormSection>

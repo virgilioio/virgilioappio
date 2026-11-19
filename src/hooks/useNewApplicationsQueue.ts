@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useJobs } from '@/hooks/useJobs'
+import { QUEUE_QUERY_OPTIONS } from '@/lib/queueRefresh'
 
 export interface NewApplicationItem {
   associationId: string
@@ -23,8 +24,7 @@ export function useNewApplicationsQueue() {
   return useQuery({
     queryKey: ['new-applications-queue', jobIds],
     enabled: !jobsLoading && jobIds.length > 0,
-    staleTime: 15_000,
-    refetchOnWindowFocus: true,
+    ...QUEUE_QUERY_OPTIONS,
     queryFn: async (): Promise<NewApplicationItem[]> => {
       const chunkSize = 40
       const hiringStages: { id: string; job_id: string }[] = []

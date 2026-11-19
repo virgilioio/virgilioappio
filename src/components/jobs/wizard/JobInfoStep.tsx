@@ -1,3 +1,4 @@
+import { EMPLOYMENT_TYPES } from '@/lib/employmentTypes'
 import React from 'react'
 import { Seg } from '@/components/sign/templates/parts'
 import { Building2, Globe, Briefcase, MapPin, TrendingUp, Sparkles, Calendar, Hash } from 'lucide-react'
@@ -113,14 +114,6 @@ const WORK_MODE_OPTIONS: { value: JobWorkMode; label: string; icon: React.Compon
   { value: 'remote', label: 'Remote', icon: Globe },
   { value: 'hybrid', label: 'Hybrid', icon: Building2 },
   { value: 'onsite', label: 'On-site', icon: MapPin },
-]
-
-const EMPLOYMENT_TYPE_OPTIONS: { value: JobEmploymentType; label: string }[] = [
-  { value: 'full_time', label: 'Full-time' },
-  { value: 'part_time', label: 'Part-time' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'internship', label: 'Internship' },
-  { value: 'temporary', label: 'Temporary' },
 ]
 
 const JOB_LEVEL_OPTIONS: SearchableSelectOption[] = [
@@ -472,7 +465,7 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId, sections, clie
                 <SelectValue placeholder="Select employment type…" />
               </SelectTrigger>
               <SelectContent>
-                {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
+                {EMPLOYMENT_TYPES.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     <span className="inline-flex items-center gap-2">
                       <Briefcase className="h-3.5 w-3.5 text-text-tertiary" />

@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { Copy, Eye } from 'lucide-react'
 import { useEmailTemplates } from '@/hooks/useEmailTemplates'
 import { EmailTemplateSheet } from './templates/EmailTemplateSheet'
+import { TemplatePreviewDialog } from './templates/TemplatePreviewDialog'
 import { RejectionReasonsManager } from './RejectionReasonsManager'
 import { RejectionEmailTemplatesManager } from './RejectionEmailTemplatesManager'
 import { OfferFormsManager } from './OfferFormsManager'
@@ -11,6 +13,7 @@ import { toast } from '@/hooks/use-toast'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { collapseRows, rowsById } from '@/lib/motion'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { copyName } from '@/lib/copyName'
 
 /** How many rows point at a template (null if the check failed). */
 async function countUses(table: 'stage_automation_emails', column: string, id: string) {
@@ -61,8 +64,27 @@ export function OfferTemplatesManager() {
 
 // ─── Email Templates ───
 function EmailTemplatesSection() {
-  const { templates, isLoading, loadError, deleteTemplate, refetchTemplates } = useEmailTemplates('organization')
+  const { templates, isLoading, loadError, createTemplate, deleteTemplate, refetchTemplates } = useEmailTemplates('organization')
   const [sheet, setSheet] = useState<{ open: boolean; id?: string }>({ open: false })
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  const previewing = templates.find((t) => t.id === previewId) ?? null
+  const copying = useRef(false)
+
+  // The copy is saved at once and opens in the editor, ready to change.
+  const handleDuplicate = async (t: { name: string; subject: string; body: string }) => {
+    if (copying.current) return
+    copying.current = true
+    const name = copyName(t.name, templates.map((x) => x.name))
+    try {
+      const { id } = await createTemplate({ name, subject: t.subject, body: t.body }, { quiet: true })
+      toast({ title: `${name} created` })
+      setSheet({ open: true, id })
+    } catch {
+      toast({ title: `Couldn\u2019t duplicate ${t.name}`, description: 'Nothing was added; try again.', variant: 'destructive' })
+    } finally {
+      copying.current = false
+    }
+  }
 
   // S12 (Block B §16): stage automations hold the template (the database
   // refuses the delete), so a template in use is blocked.
@@ -111,8 +133,22 @@ function EmailTemplatesSection() {
           name: t.name,
           meta: t.subject,
           onEdit: () => setSheet({ open: true, id: t.id }),
+          actions: [
+            { label: 'Preview', icon: Eye, onSelect: () => setPreviewId(t.id) },
+            { label: 'Duplicate', icon: Copy, onSelect: () => void handleDuplicate(t) },
+          ],
           onDelete: () => void handleDelete({ id: t.id, name: t.name }),
         }))}
+      />
+
+      <TemplatePreviewDialog
+        template={previewing}
+        onClose={() => setPreviewId(null)}
+        onEdit={() => {
+          const id = previewId
+          setPreviewId(null)
+          if (id) setSheet({ open: true, id })
+        }}
       />
 
       <EmailTemplateSheet
@@ -122,6 +158,7 @@ function EmailTemplatesSection() {
           if (!o) void refetchTemplates()
         }}
         templateId={sheet.id}
+        template={templates.find((t) => t.id === sheet.id)}
         context="organization"
       />
     </>

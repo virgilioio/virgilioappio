@@ -1,3 +1,4 @@
+import { employmentTypeLabel } from '@/lib/employmentTypes'
 import { useMemo } from 'react'
 import { SkillPill, SkillPriorityLegend } from '@/components/jobs/SkillPill'
 import { priorityOf, readSkillPriorities, sortByPriority } from '@/lib/skillPriority'
@@ -60,13 +61,6 @@ const WORK_MODE_LABEL: Record<string, string> = {
   remote: 'Remote',
   hybrid: 'Hybrid',
   onsite: 'On-site',
-}
-const EMPLOYMENT_LABEL: Record<string, string> = {
-  full_time: 'Full-time',
-  part_time: 'Part-time',
-  contract: 'Contract',
-  internship: 'Internship',
-  temporary: 'Temporary',
 }
 
 interface JobOverviewTabProps {
@@ -372,7 +366,7 @@ export function JobOverviewTab({ jobId, job, onEdit, onNavigate }: JobOverviewTa
               <DetailRow label="Job level" value={job?.job_level || '—'} />
               <DetailRow
                 label="Employment type"
-                value={EMPLOYMENT_LABEL[job?.employment_type] || '—'}
+                value={employmentTypeLabel(job?.employment_type) || '—'}
               />
               <DetailRow
                 label="Work mode"

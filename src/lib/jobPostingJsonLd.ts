@@ -5,6 +5,8 @@
  * Spec: https://developers.google.com/search/docs/appearance/structured-data/job-posting
  */
 
+import { googleEmploymentType } from '@/lib/employmentTypes'
+
 export interface JobPostingJsonLdInput {
   posting: {
     id: string
@@ -26,28 +28,6 @@ export interface JobPostingJsonLdInput {
     websiteUrl?: string | null
   }
   url: string
-}
-
-const EMPLOYMENT_TYPE_MAP: Record<string, string> = {
-  full_time: 'FULL_TIME',
-  'full-time': 'FULL_TIME',
-  fulltime: 'FULL_TIME',
-  part_time: 'PART_TIME',
-  'part-time': 'PART_TIME',
-  contract: 'CONTRACTOR',
-  contractor: 'CONTRACTOR',
-  freelance: 'CONTRACTOR',
-  internship: 'INTERN',
-  intern: 'INTERN',
-  temporary: 'TEMPORARY',
-  temp: 'TEMPORARY',
-  volunteer: 'VOLUNTEER',
-  other: 'OTHER',
-}
-
-function mapEmploymentType(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined
-  return EMPLOYMENT_TYPE_MAP[value.toLowerCase().trim()]
 }
 
 function plainText(html: string | null | undefined): string {
@@ -94,7 +74,7 @@ export function buildJobPostingJsonLd(input: JobPostingJsonLdInput): Record<stri
     directApply: true,
   }
 
-  const employmentType = mapEmploymentType(d.employmentType ?? d.employment_type)
+  const employmentType = googleEmploymentType(d.employmentType ?? d.employment_type)
   if (employmentType) obj.employmentType = employmentType
 
   if (isRemote) {
