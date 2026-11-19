@@ -13914,6 +13914,8 @@ export type Database = {
         | "score"
         | "audio"
         | "video"
+        | "department"
+        | "client"
       interview_answer_type:
         | "text"
         | "yes_no"
@@ -14348,6 +14350,8 @@ export const Constants = {
         "score",
         "audio",
         "video",
+        "department",
+        "client",
       ],
       interview_answer_type: [
         "text",
