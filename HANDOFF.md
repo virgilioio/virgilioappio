@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-23 (ATS) — Scheduled emails weren't being sent — on the branch, waiting for Apply!
+
+- Allan: candidates were writing in days after being rejected. Every scheduled rejection email since January had failed (86 failed, 8 sent in one batch in March); "Now" rejections weren't affected.
+- Cause: `send-scheduled-emails` passed the row's empty `jhs_id` (null) to `send-user-email`, whose schema took the field as "a value or left out", so every one was refused (400, ZodError on `jhs_id`). 31 of the failed emails were also set to go out from someone no longer active in the workspace.
+- Fix: `supabase/functions/_shared/scheduledSend.ts` (`scheduledSendBody` leaves out empty fields, `sendFailureReason` keeps the real reason), `send-scheduled-emails` uses them and falls back to `job_rejection_sender(job)` when the scheduled sender can't send, `send-user-email`'s ids are `nullish()`. Tests: `src/lib/__tests__/scheduledSend.test.ts` (8). Both live functions matched git before the change (send-scheduled-emails v416, send-user-email v642). No database change.
+- On Apply: deploy both, watch one real send, then put back to pending only the failed rejection emails due in the last 14 days whose candidate is still rejected (27 on 2026-11-23); the older ones stay failed (Allan's choice: a months-late rejection confuses more than it helps).
+
 ## Done 2026-11-19 (ATS) — Files on a profile: signed agreements uploaded to internal members' profiles — on main
 
 - Allan: a place on My profile where admins upload a member's agreements, so the person can open them at any time and the company keeps them for compliance; nothing yet links the offer or Gio Sign flow to the profile. He said Go! to my recommendations: admins upload (the person only views and downloads), and the person's bell rings when a file is added.
