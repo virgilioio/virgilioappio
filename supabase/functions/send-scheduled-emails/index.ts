@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { scheduledSendBody, sendFailureReason } from "../_shared/scheduledSend.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,6 +69,35 @@ serve(async (req) => {
     let successCount = 0;
     let failCount = 0;
 
+    // A sender works while their mailbox is connected and they're an active member.
+    const senderWorks = async (address: string): Promise<boolean> => {
+      const { data: ids } = await supabase
+        .from('user_mail_identities')
+        .select('user_id')
+        .eq('email_address', address)
+        .eq('is_active', true)
+        .limit(1);
+      const userId = ids?.[0]?.user_id;
+      if (!userId) return false;
+      const { data: m } = await supabase
+        .from('members')
+        .select('user_id')
+        .eq('user_id', userId)
+        .eq('user_status', 'active')
+        .limit(1);
+      return !!m?.length;
+    };
+    const senderFor = async (email: { from_email: string; job_id?: string | null }): Promise<string> => {
+      if (await senderWorks(email.from_email)) return email.from_email;
+      if (!email.job_id) return email.from_email;
+      const { data: other } = await supabase.rpc('job_rejection_sender', { _job_id: email.job_id });
+      if (typeof other === 'string' && other) {
+        console.log(`[send-scheduled-emails] Scheduled sender can't send any more; using the job's sender`);
+        return other;
+      }
+      return email.from_email;
+    };
+
     for (const email of emails) {
       try {
         // A rejection email whose candidate is back in consideration never goes out
@@ -89,11 +119,16 @@ serve(async (req) => {
           }
         }
 
+        // Who it goes out from: the person it was scheduled from while their Gmail
+        // is connected and they're still active; else the job's sender now (its
+        // Recruiter, the job's creator, a hiring manager: job_rejection_sender).
+        const fromEmail = await senderFor(email);
+
         // Claim it before sending: an email cancelled a moment ago is no longer pending
         // and is skipped, and two runs never send the same one.
         const { data: claimed, error: claimError } = await supabase
           .from('scheduled_emails')
-          .update({ status: 'sent', sent_at: new Date().toISOString() })
+          .update({ status: 'sent', sent_at: new Date().toISOString(), from_email: fromEmail })
           .eq('id', email.id)
           .eq('status', 'pending')
           .select('id');
@@ -105,19 +140,10 @@ serve(async (req) => {
 
         console.log(`[send-scheduled-emails] Processing email ${email.id} to ${email.to_emails.join(', ')}`);
 
-        // Call the send-user-email function with contextual booking link data
+        // Only fields with a value: send-user-email refuses an empty one (a null
+        // jhs_id refused every scheduled rejection until 2026-11-23).
         const { error: sendError } = await supabase.functions.invoke('send-user-email', {
-          body: {
-            from_email: email.from_email,
-            to: email.to_emails,
-            subject: email.subject,
-            body_html: email.body_html,
-            body_text: email.body_html.replace(/<[^>]*>/g, ''),
-            candidate_id: email.candidate_id,
-            job_id: email.job_id,
-            jhs_id: email.jhs_id,
-            association_id: email.association_id,
-          },
+          body: scheduledSendBody(email, fromEmail),
         });
 
         if (sendError) {
@@ -148,7 +174,7 @@ serve(async (req) => {
           .update({
             status: 'failed',
             sent_at: null,
-            error_message: error instanceof Error ? error.message : 'Unknown error',
+            error_message: await sendFailureReason(error),
           })
           .eq('id', email.id);
 
