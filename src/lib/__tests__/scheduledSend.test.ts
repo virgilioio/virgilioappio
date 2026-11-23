@@ -13,13 +13,7 @@ const row = {
   association_id: '33333333-3333-4333-8333-333333333333',
 };
 
-// The ids part of send-user-email's own schema, after the fix and before it.
-const ids = {
-  candidate_id: z.string().uuid().nullish(),
-  job_id: z.string().uuid().nullish(),
-  jhs_id: z.string().uuid().nullish(),
-  association_id: z.string().uuid().nullish(),
-};
+// send-user-email's own rule for these ids: a value or left out (never null).
 const before = z.object({
   candidate_id: z.string().uuid().optional(),
   job_id: z.string().uuid().optional(),
@@ -33,11 +27,9 @@ describe('scheduledSendBody', () => {
     expect('jhs_id' in body).toBe(false);
     expect(body.candidate_id).toBe(row.candidate_id);
     expect(body.association_id).toBe(row.association_id);
-    // The old schema accepts what we send now; the old body was refused.
+    // send-user-email accepts what we send now; the old body was refused.
     expect(before.safeParse(body).success).toBe(true);
     expect(before.safeParse({ ...body, jhs_id: null }).success).toBe(false);
-    // The new schema takes either.
-    expect(z.object(ids).safeParse({ ...body, jhs_id: null }).success).toBe(true);
   });
 
   it('keeps an interview stage that is there', () => {

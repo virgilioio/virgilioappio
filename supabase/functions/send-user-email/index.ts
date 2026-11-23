@@ -21,12 +21,12 @@ const SendEmailSchema = z.object({
     content: z.string(), // base64
     content_type: z.string(),
   })).optional(),
-  candidate_id: z.string().uuid().nullish(),
-  job_id: z.string().uuid().nullish(),
-  in_reply_to_message_id: z.string().nullish(), // For threading replies
+  candidate_id: z.string().uuid().optional(),
+  job_id: z.string().uuid().optional(),
+  in_reply_to_message_id: z.string().optional(), // For threading replies
   // Contextual booking link context
-  jhs_id: z.string().uuid().nullish(), // job_hiring_stage_id for contextual booking links (null = none, 2026-11-23)
-  association_id: z.string().uuid().nullish(), // job_candidate_association_id
+  jhs_id: z.string().uuid().optional(), // job_hiring_stage_id for contextual booking links
+  association_id: z.string().uuid().optional(), // job_candidate_association_id
 });
 
 type SendEmailRequest = z.infer<typeof SendEmailSchema>;
