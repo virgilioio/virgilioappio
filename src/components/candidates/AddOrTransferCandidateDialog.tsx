@@ -18,6 +18,7 @@ import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { useJobs } from '@/hooks/useJobs'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useCandidateTransfer } from '@/hooks/useCandidateTransfer'
+import { withJobCode } from '@/lib/jobCode'
 import type { JobStage } from '@/hooks/useJobStages'
 
 type HiringPlanStageOption = {
@@ -127,7 +128,7 @@ export function AddOrTransferCandidateDialog({
     const q = query.trim().toLowerCase()
     if (!q) return availableJobs
     return availableJobs.filter((j) => {
-      const hay = `${j.title || ''} ${j.department || ''} ${j.location || ''}`.toLowerCase()
+      const hay = withJobCode(`${j.title || ''} ${j.department || ''} ${j.location || ''}`, j.job_code).toLowerCase()
       return hay.includes(q)
     })
   }, [availableJobs, query])
@@ -447,7 +448,7 @@ export function AddOrTransferCandidateDialog({
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search open jobs…"
+                  placeholder="Search open jobs or a Job ID…"
                   className="font-inter flex-1 bg-transparent outline-none"
                   style={{ fontSize: 13, color: '#1F2230' }}
                 />
@@ -501,7 +502,7 @@ export function AddOrTransferCandidateDialog({
                 ) : (
                   filteredJobs.map((job) => {
                     const isSel = job.id === selectedJobId
-                    const metaParts = [job.department, job.location].filter(Boolean) as string[]
+                    const metaParts = [job.job_code, job.department, job.location].filter(Boolean) as string[]
                     return (
                       <button
                         key={job.id}

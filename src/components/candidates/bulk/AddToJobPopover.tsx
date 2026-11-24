@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useJobs, type Job } from '@/hooks/useJobs'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
+import { withJobCode } from '@/lib/jobCode'
 
 const RECENT_KEY = 'recent-add-to-job-jobs'
 const RECENT_MAX = 3
@@ -89,8 +90,7 @@ export function AddToJobPopover({ candidateIds, candidateNames, trigger, onCompl
     const base = openJobs
     if (!q) return base
     return base.filter(j =>
-      j.title?.toLowerCase().includes(q) ||
-      (j as any).organization_name?.toLowerCase().includes(q)
+      withJobCode(`${j.title || ''} ${(j as any).organization_name || ''}`, j.job_code).toLowerCase().includes(q)
     )
   }, [openJobs, search])
 
@@ -240,7 +240,7 @@ export function AddToJobPopover({ candidateIds, candidateNames, trigger, onCompl
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search open jobs…"
+                  placeholder="Search open jobs or a Job ID…"
                   className="h-8 pl-7 text-[12.5px]"
                   autoFocus
                 />
@@ -416,7 +416,11 @@ function JobRow({ job, onClick }: { job: Job; onClick: () => void }) {
       </span>
       <span className="flex-1 min-w-0">
         <span className="block text-[13px] font-poppins font-medium truncate">{job.title}</span>
-        {org && <span className="block text-[11px] text-muted-foreground truncate">{org}</span>}
+        {(job.job_code || org) && (
+          <span className="block text-[11px] text-muted-foreground truncate tabular-nums">
+            {[job.job_code, org].filter(Boolean).join(' · ')}
+          </span>
+        )}
       </span>
       <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100" />
     </button>

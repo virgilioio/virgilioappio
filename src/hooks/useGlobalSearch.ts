@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { Briefcase, Users, Target, LucideIcon } from 'lucide-react'
+import { jobCodeCore, looksLikeJobCode } from '@/lib/jobCode'
 
 export interface SearchResult {
   id: string
@@ -181,19 +182,29 @@ export function useGlobalSearch(
 
 async function searchJobs(query: string, limit: number, tenantId: string) {
   const searchPattern = `%${query}%`
+  // A Job ID matches however it's typed (VG-7K3P, vg7k3p, 7K3P).
+  const codeCore = jobCodeCore(query)
+  const jobFilter = [
+    `title.ilike.${searchPattern}`,
+    `department.ilike.${searchPattern}`,
+    `location.ilike.${searchPattern}`,
+    `standardized_title.ilike.${searchPattern}`,
+    `job_code.ilike.${searchPattern}`,
+    ...(looksLikeJobCode(query) && codeCore ? [`job_code.ilike.VG-${codeCore}%`] : []),
+  ].join(',')
   
   const { count } = await supabase
     .from('jobs')
     .select('id', { count: 'exact', head: true })
     .eq('tenant_id', tenantId)
-    .or(`title.ilike.${searchPattern},department.ilike.${searchPattern},location.ilike.${searchPattern},standardized_title.ilike.${searchPattern}`)
+    .or(jobFilter)
     .is('deleted_at', null)
 
   const { data, error } = await supabase
     .from('jobs')
-    .select('id, title, department, location, status, organization_id, organizations(name)')
+    .select('id, title, job_code, department, location, status, organization_id, organizations(name)')
     .eq('tenant_id', tenantId)
-    .or(`title.ilike.${searchPattern},department.ilike.${searchPattern},location.ilike.${searchPattern},standardized_title.ilike.${searchPattern}`)
+    .or(jobFilter)
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
     .limit(limit)
@@ -204,7 +215,7 @@ async function searchJobs(query: string, limit: number, tenantId: string) {
     id: job.id,
     type: 'job' as const,
     title: job.title,
-    subtitle: (job.organizations as any)?.name || job.department || 'No department',
+    subtitle: [job.job_code, (job.organizations as any)?.name || job.department || 'No department'].filter(Boolean).join(' · '),
     metadata: job.location || 'No location',
     route: `/jobs/${job.id}`,
     icon: Briefcase
