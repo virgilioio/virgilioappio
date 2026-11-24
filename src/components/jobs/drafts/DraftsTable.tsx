@@ -16,6 +16,7 @@ import { DraftPill } from './DraftPill'
 import { useJobDraftMeta, SETUP_SEGMENTS } from '@/hooks/useJobDraftMeta'
 import type { Job } from '@/hooks/useJobs'
 import { cn } from '@/lib/utils'
+import { JobCode } from '@/components/jobs/JobCode'
 
 const STEP_NAMES = ['Job information', 'Hiring plan', 'Hiring team', 'Job posting', 'Summary']
 const COLS = 9
@@ -99,6 +100,7 @@ export function DraftsTable({ jobs, isLoading, memberById, onOpen, onSetup, onRe
                     <TableCell className="max-w-[320px]">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="truncate font-inter text-[13px] font-medium text-text-primary">{job.title}</span>
+                        <JobCode code={job.job_code} size="xs" />
                         {sales && (
                           <span className="inline-flex h-[18px] shrink-0 items-center gap-1 rounded-full bg-[#F1F0EC] px-1.5 font-inter text-[10.5px] font-semibold text-[#1F2230]">
                             <Handshake className="h-3 w-3" /> From Gio Sales
@@ -221,7 +223,10 @@ export function DraftsTable({ jobs, isLoading, memberById, onOpen, onSetup, onRe
           <div key={job.id} className="rounded-xl border border-virgilio-border bg-white p-4" onClick={() => onOpen(job)}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate font-poppins text-[14px] font-semibold text-text-primary">{job.title}</div>
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="truncate font-poppins text-[14px] font-semibold text-text-primary">{job.title}</div>
+                  <JobCode code={job.job_code} size="xs" />
+                </div>
                 {isSalesDraft(job) && <div className="mt-0.5 text-[11px] text-[#8B8F9E]">From Gio Sales</div>}
               </div>
               <DraftPill />

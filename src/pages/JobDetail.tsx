@@ -1222,6 +1222,7 @@ export default function JobDetail() {
               <div className="mb-3 bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5 shrink-0">
                 <JobHero
                   title={job.title}
+                  jobCode={(job as any).job_code ?? null}
                   status={job.status}
                   priority={(job as any).priority}
                   department={(job as any).organization_name || (job as any).organization?.name || (job as any).department || null}

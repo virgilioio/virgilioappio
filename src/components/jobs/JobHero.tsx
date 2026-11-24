@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import { JobShareMenu } from './JobShareMenu'
 import type { ShareKitPost } from './share/JobShareKit'
 import { DraftPill } from './drafts/DraftPill'
+import { JobCode } from './JobCode'
 
 type HiringTeamMember = {
   user_id?: string
@@ -47,6 +48,8 @@ interface JobHeroProps {
   /** The live job post for the share kit (job exposure, 2026-11-12). */
   sharePost?: ShareKitPost | null
   title: string
+  /** The job's ID (VG-XXXX), first in the row under the title. */
+  jobCode?: string | null
   status?: string | null
   priority?: string | null
   department?: string | null
@@ -113,6 +116,7 @@ export function JobHero({
   onManageAccess,
   sharePost = null,
   title,
+  jobCode = null,
   status,
   priority,
   department,
@@ -165,6 +169,7 @@ export function JobHero({
 
         {/* Meta row */}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-body-sm text-text-secondary">
+          <JobCode code={jobCode} copyable />
           {!isDraft && <Badge tone={statusInfo.tone as any} dot size="sm">{statusInfo.label}</Badge>}
           <JobPriorityBadge value={priority} />
           {location && (

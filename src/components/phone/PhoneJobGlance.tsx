@@ -8,6 +8,7 @@ import { useScheduledBookings } from '@/hooks/useScheduledBookings'
 import { pipelineSectionOf, saveCandidateNavOrder } from '@/lib/candidateNavOrder'
 import { AgendaRow } from './PhoneAgenda'
 import { Initials, PhoneCard, PhoneEmpty, PhonePage, PhoneRow, PhoneSection, PhoneSkeletonRows, Pill } from './PhoneUI'
+import { JobCode } from '@/components/jobs/JobCode'
 
 /**
  * A job at a glance on a phone (2026-10-12): the job, how many people sit
@@ -39,11 +40,11 @@ export default function PhoneJobGlance() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('jobs')
-        .select('id, title, status, location, organization:organizations(name)')
+        .select('id, title, job_code, status, location, organization:organizations(name)')
         .eq('id', jobId)
         .maybeSingle()
       if (error) throw error
-      return data as unknown as { id: string; title: string; status: string; location: string | null; organization: { name: string } | null } | null
+      return data as unknown as { id: string; title: string; job_code: string | null; status: string; location: string | null; organization: { name: string } | null } | null
     },
   })
   const stages = useQuery({
@@ -119,6 +120,7 @@ export default function PhoneJobGlance() {
         ) : (
           <>
             <div className="mb-1 flex items-center gap-2">
+              <JobCode code={job.data?.job_code} copyable />
               <Pill tone={job.data?.status === 'open' ? 'green' : 'neutral'}>{job.data?.status === 'open' ? 'Open' : job.data?.status === 'draft' ? 'Draft' : 'Closed'}</Pill>
               <span className="font-inter text-[12.5px] tabular-nums text-[#5A6072]">{total} active</span>
             </div>

@@ -28,6 +28,8 @@ export type JobEmploymentType = EmploymentType
 export interface Job {
   id: string
   title: string
+  /** The job's ID (VG-XXXX), assigned and locked by the database. */
+  job_code?: string | null
   description: string | null
   location: string | null
   department: string | null

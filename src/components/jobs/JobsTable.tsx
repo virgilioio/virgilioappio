@@ -38,6 +38,8 @@ import { FilePenLine } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { DraftsTable } from '@/components/jobs/drafts/DraftsTable'
 import { DraftPill } from '@/components/jobs/drafts/DraftPill'
+import { JobCode } from '@/components/jobs/JobCode'
+import { withJobCode } from '@/lib/jobCode'
 
 export type StatusSegment = 'active' | 'drafts' | 'all' | 'closed' | 'archived'
 
@@ -203,7 +205,7 @@ export function JobsTable({
 
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase()
-        const haystack = `${job.title} ${job.organization_name ?? ''} ${(job.hiring_team_names || []).join(' ')}`.toLowerCase()
+        const haystack = withJobCode(`${job.title} ${job.organization_name ?? ''} ${(job.hiring_team_names || []).join(' ')}`, job.job_code).toLowerCase()
         if (!haystack.includes(q)) return false
       }
 
@@ -337,7 +339,7 @@ export function JobsTable({
             <Input
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Search by title, owner, or company…"
+              placeholder="Search by title, Job ID, owner or company…"
               className="h-10 pl-10 pr-3 bg-[#FAFAF7] border-transparent rounded-xl text-[13.5px] focus-visible:bg-white"
             />
           </div>
@@ -513,6 +515,7 @@ export function JobsTable({
                         name={
                           <span className="inline-flex items-center gap-2 min-w-0 max-w-[min(520px,42vw)]">
                             <span className="truncate">{job.title}</span>
+                            <JobCode code={job.job_code} size="xs" />
                             {trending && (
                               <Badge tone="purple" size="xs">Trending</Badge>
                             )}
@@ -627,7 +630,10 @@ export function JobsTable({
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-poppins font-semibold text-[14px] text-text-primary truncate">{job.title}</h4>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <h4 className="font-poppins font-semibold text-[14px] text-text-primary truncate">{job.title}</h4>
+                        <JobCode code={job.job_code} size="xs" />
+                      </div>
                       <div className="text-[12px] text-text-tertiary mt-0.5 truncate">
                         {(job.organization_name || 'Full-time')} · {count} candidate{count === 1 ? '' : 's'}
                       </div>
