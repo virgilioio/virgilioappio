@@ -20,6 +20,12 @@ interface FrankfurterResponse {
   rates: Record<string, number>
 }
 
+// The currencies Frankfurter (the European Central Bank's reference rates) publishes.
+const FRANKFURTER = new Set([
+  'AUD', 'BGN', 'BRL', 'CAD', 'CHF', 'CNY', 'CZK', 'DKK', 'EUR', 'GBP', 'HKD', 'HUF', 'IDR', 'ILS', 'INR',
+  'ISK', 'JPY', 'KRW', 'MXN', 'MYR', 'NOK', 'NZD', 'PHP', 'PLN', 'RON', 'SEK', 'SGD', 'THB', 'TRY', 'USD', 'ZAR',
+])
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -45,17 +51,26 @@ Deno.serve(async (req) => {
     for (const t of tenants ?? []) {
       const base: string = (t.settings as any)?.base_currency || 'USD'
 
-      // Collect distinct currencies used by this tenant
-      const [{ data: dealRows }, { data: payRows }] = await Promise.all([
+      // Collect distinct currencies used by this tenant: deals and payments, and
+      // the jobs' salary ranges and candidates' expectations, which Gio Fit
+      // compares (2026-11-24: no CAD rate left a CAD job's salary unscored).
+      const [{ data: dealRows }, { data: payRows }, { data: jobRows }, { data: candRows }] = await Promise.all([
         supabase.from('deals').select('currency').eq('tenant_id', t.id),
         supabase.from('deal_payments').select('currency').eq('tenant_id', t.id),
+        supabase.from('jobs').select('currency, budget_currency').eq('tenant_id', t.id).limit(5000),
+        supabase.from('candidates').select('salary_currency').eq('tenant_id', t.id).gt('salary_amount', 0).limit(10000),
       ])
       const used = new Set<string>()
-      ;(dealRows ?? []).forEach((r: any) => r.currency && used.add(String(r.currency).toUpperCase()))
-      ;(payRows ?? []).forEach((r: any) => r.currency && used.add(String(r.currency).toUpperCase()))
+      const add = (c: unknown) => { if (c) used.add(String(c).trim().toUpperCase()) }
+      ;(dealRows ?? []).forEach((r: any) => add(r.currency))
+      ;(payRows ?? []).forEach((r: any) => add(r.currency))
+      ;(jobRows ?? []).forEach((r: any) => { add(r.currency); add(r.budget_currency) })
+      ;(candRows ?? []).forEach((r: any) => add(r.salary_currency))
       // Always include common ones so the Settings UI has something to show
-      ;['USD', 'EUR', 'MXN', 'GBP'].forEach((c) => used.add(c))
+      ;['USD', 'EUR', 'MXN', 'GBP', 'CAD'].forEach((c) => used.add(c))
       used.delete(base.toUpperCase())
+      // Only what Frankfurter publishes: one unknown symbol fails the whole request.
+      for (const c of [...used]) if (!FRANKFURTER.has(c)) used.delete(c)
 
       if (used.size === 0) {
         tenantSummaries.push({ tenant_id: t.id, base, quotes: [], inserted: 0 })
