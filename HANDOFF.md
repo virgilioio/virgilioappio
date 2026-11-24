@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Doing 2026-11-24 (ATS) — Salary left out of dossiers, and the composer losing drafts — on the branch, waiting for Apply!
+
+- Allan: dossiers left salary out though the candidate had one. Cause: Gio Fit read every posted range as yearly; most Mexican jobs post monthly ranges with no period, so a monthly expectation looked 12x off and was marked not comparable (11 of 21 assessments in November, and every re-score on those jobs from now on); also no CAD exchange rate, so the CAD job's range couldn't be compared with USD figures. Interview notes had the same yearly assumption.
+- Fix: `bandPeriodOf` (Gio Fit, interview notes; recipe v6; test `salaryBand.test.ts`), migration `supabase/migrations/20261124190000_job_salary_period.sql` (rename to its applied version; test `supabase/tests/96_job_salary_period.sql`): `job_band_period_guess`, `fit_queue_on_job_change` now watches the period, the 112 jobs filled with their triggers off (dry run: 90 MXN and 3 USD monthly, 21 yearly, none left), and the 14 dossiers of candidates still in process that left salary out queued for a re-score (the other 29 are rejected or withdrawn). Job form defaults and Edit job saving the period; `refresh-fx-rates` currencies.
+- Order on Apply!: check the live copies of `analyze-candidate-fit`, `generate-scorecard-from-transcript`, `polish-scorecard-notes` and `refresh-fx-rates` match main, deploy them from the branch, then apply the migration (it queues the re-scores), run test 96, run refresh-fx-rates once, check one re-scored dossier has a salary score.
+- Composer (Allan: minimizing, or closing Rewrite, erased the draft): minimizing unmounted the editor. Now the panel only hides; a page that goes away hands its open draft to `EmailOutboxHost`, minimized; the computer's × asks "Discard this email?" when something was written. Closing the Rewrite panel kept the text in every test (page, side sheet, phone), so that case wasn't reproduced. Checked in the browser with intercepted data; `emailOutbox.test.ts`.
+
 ## Doing 2026-11-24 (ATS + Sales) — Why a job closed — on the branches, waiting for Apply!
 
 - Allan: closing a job asks no reason; when a hire fills the last Req ID a dialog should offer to close the job and ask why; Gio Sales should hear when a job closes for a reason other than Filled, with each affected Req ID marked with the reason (Filled included). He agreed to mark older closed jobs "Not recorded" and cancel their unfilled openings not linked to a deal.
