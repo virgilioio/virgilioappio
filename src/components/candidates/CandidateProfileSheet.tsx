@@ -61,6 +61,7 @@ import { uploadLimit } from '@/lib/candidateFiles'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
+import { useJobManage } from '@/hooks/useJobManage'
 import { useCanViewOffers } from '@/hooks/useCanViewOffers'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
@@ -215,7 +216,10 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const navigate = useNavigate()
   
   const { organizationId, user } = useAuth()
-  const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(jobId)
+  const { isHiringManagerOnJob, isInterviewerOnJob, jobRole } = useJobRole(jobId)
+  const { canManageJob } = useJobManage(jobId)
+  // Who may close the job: the jobs update rule (admins, its Recruiter or Sourcer).
+  const canCloseJob = canManageJob || jobRole === 'sourcer'
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !isAdmin && !isWorkspaceOwner && !isPlatformAdmin
   // Phones (below the shell's 640px line) get their own header, stage dropdown and tab order.
   const isPhone = useIsMobile()
@@ -2577,9 +2581,23 @@ const stageHasAutomation = useMemo(() => {
           candidateId={candidateId}
           candidateName={candidate.candidate_name || 'Candidate'}
           jobId={jobId}
-          onSuccess={async () => {
+          canCloseJob={canCloseJob}
+          onSuccess={async ({ openingsRemaining }) => {
             await refetchAssociationStatus()
             onStageChanged?.()
+            // The hire filled the last opening: offer to close the job, Filled
+            // chosen (Allan, 2026-11-24), once the hire dialog has gone.
+            if (openingsRemaining === 0 && canCloseJob && jobId && job?.status === 'open') {
+              window.setTimeout(() => void closeJob(
+                { id: jobId, title: job?.title, status: job?.status, organization_id: job?.organization_id },
+                {
+                  queryClient: summaryQueryClient,
+                  preset: 'filled',
+                  afterHire: true,
+                  onDone: () => { setJob((j: any) => (j ? { ...j, status: 'closed' } : j)); onStageChanged?.() },
+                },
+              ), 700)
+            }
           }}
         />
       )}

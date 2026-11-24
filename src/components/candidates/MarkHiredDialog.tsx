@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
@@ -33,7 +32,10 @@ interface MarkHiredDialogProps {
   candidateId: string
   candidateName: string
   jobId: string
-  onSuccess: (result: { reqId: string; startDate: string }) => void
+  /** `openingsRemaining`: openings left unfilled on the job (0: the caller offers to close it). */
+  onSuccess: (result: { reqId: string; startDate: string; openingsRemaining: number | null }) => void
+  /** Whether you may close the job; if not, the hire toast says who can once every opening is filled. */
+  canCloseJob?: boolean
 }
 
 interface DealDisplay {
@@ -103,6 +105,7 @@ export function MarkHiredDialog({
   candidateName,
   jobId,
   onSuccess,
+  canCloseJob = true,
 }: MarkHiredDialogProps) {
   const { openings, isLoading, refetch } = useJobOpenings(jobId)
   const { offerLetters } = useOfferLetters(candidateId)
@@ -111,7 +114,6 @@ export function MarkHiredDialog({
   const { fields } = useOfferFormFields(offer?.form_id || undefined)
   const [openingId, setOpeningId] = useState('')
   const [startDate, setStartDate] = useState('')
-  const [closeJob, setCloseJob] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deal, setDeal] = useState<DealDisplay>({ title: null, linked: false })
   const { assignments } = useJobAssignments(open ? jobId : undefined)
@@ -165,14 +167,12 @@ export function MarkHiredDialog({
       ? offer.field_values[startField.field_name]
       : offerStartDate(offer?.field_values)
     setStartDate(confirmedStart || preferred.target_start_date || '')
-    setCloseJob(eligible.length === 1)
   }, [open, openings, offer?.opening_id, fields])
 
   const chooseOpening = (id: string) => {
     const next = openings.find((opening) => opening.id === id)
     setOpeningId(id)
     if (next?.target_start_date) setStartDate(next.target_start_date)
-    setCloseJob(eligible.length === 1)
   }
 
   const [hired, setHired] = useState(false)
@@ -188,7 +188,9 @@ export function MarkHiredDialog({
       p_application_id: applicationId,
       p_opening_id: openingId,
       p_start_date: startDate,
-      p_close_job: closeJob,
+      // The job is never closed from here: after the hire the Close job dialog
+      // asks, with Filled chosen (Allan, 2026-11-24).
+      p_close_job: false,
       p_sourcer_id: sourcerId,
       p_recruiter_id: recruiterId,
     })
@@ -208,7 +210,8 @@ export function MarkHiredDialog({
 
     const result = Array.isArray(data) ? data[0] : data
     const reqId = result?.req_id || selected?.req_id || ''
-    onSuccess({ reqId, startDate })
+    const left = typeof result?.openings_remaining === 'number' ? result.openings_remaining : null
+    onSuccess({ reqId, startDate, openingsRemaining: left })
     // §15 Opening filled: the label morphs to "Hired", 10 dots burst from the button,
     // and once the dialog has closed the candidate's card gets a fading green tint.
     // Once per opening per session; reduced motion just closes.
@@ -227,10 +230,13 @@ export function MarkHiredDialog({
       () => (
         <div className="flex items-center gap-2 rounded-[10px] bg-hire-ink px-3.5 py-2.5 font-inter text-[12.5px] text-hire-cream shadow-hire-toast">
           <CheckCircle2 className="size-[15px] shrink-0 text-hire-success-check" aria-hidden />
-          <span>{firstName} marked hired · {reqId} filled</span>
+          <span>
+            {firstName} marked hired · {reqId} filled
+            {left === 0 && !canCloseJob ? '. All openings are filled; an admin or the job\u2019s Recruiter can close the job.' : ''}
+          </span>
         </div>
       ),
-      { duration: 3000 },
+      { duration: left === 0 && !canCloseJob ? 6000 : 3000 },
     )
   }
 
@@ -367,15 +373,7 @@ export function MarkHiredDialog({
           {selected && (
             <section className="mx-[22px] mt-3 rounded-[10px] border border-hire-hairline bg-hire-soft px-3 py-2.5 text-[12px] leading-[1.5] text-hire-secondary">
               {isLastOpening ? (
-                <div className="flex items-center gap-3">
-                  <p className="min-w-0 flex-1">This fills the <strong className="font-semibold text-hire-ink">last opening</strong>. Close the job when {firstName} is marked hired.</p>
-                  <Switch
-                    aria-label="Close the job after this hire"
-                    checked={closeJob}
-                    onCheckedChange={setCloseJob}
-                    className="h-[18px] w-8 border-0 bg-hire-toggle-off p-0 shadow-none data-[state=checked]:bg-hire-ink focus-visible:ring-[3px] focus-visible:ring-hire-ink/[0.06] focus-visible:ring-offset-0 [&>span]:size-3.5 [&>span]:bg-card [&>span]:shadow-sm data-[state=checked]:[&>span]:translate-x-[14px]"
-                  />
-                </div>
+                <p>This fills the <strong className="font-semibold text-hire-ink">last opening</strong>. Once {firstName} is marked hired you can close the job.</p>
               ) : (
                 <p>
                   <strong className="font-semibold text-hire-ink">{selected.req_id}</strong> will be filled. {remaining.length} {remaining.length === 1 ? 'opening stays' : 'openings stay'} open on this job ({remaining.map((opening) => opening.req_id).join(', ')}).
