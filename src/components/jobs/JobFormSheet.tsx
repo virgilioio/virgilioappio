@@ -68,6 +68,7 @@ export function JobFormSheet({
         location: job.location || '',
         salary_min: job.salary_min ?? undefined,
         salary_max: job.salary_max ?? undefined,
+        salary_period: (job as { salary_period?: 'monthly' | 'annual' | null }).salary_period ?? null,
         currency: job.currency || 'USD',
         status: job.status,
         organization_id: job.organization_id,
@@ -124,6 +125,8 @@ export function JobFormSheet({
       currency: src.currency || 'USD',
       salary_min: numOrNull(src.salary_min),
       salary_max: numOrNull(src.salary_max),
+      // Edit job shows the Pay period control: save what it holds (2026-11-24).
+      salary_period: src.salary_period ?? null,
       min_years_experience: numOrNull(src.min_years_experience),
       max_years_experience: numOrNull(src.max_years_experience),
       show_salary_public: src.show_salary_public ?? true,

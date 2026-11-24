@@ -127,6 +127,11 @@ const JOB_LEVEL_OPTIONS: SearchableSelectOption[] = [
   { value: 'L8 — Executive', label: 'L8 — Executive' },
 ]
 
+/** The pay period a new salary range starts with: monthly for MXN, else yearly. */
+export function defaultPayPeriod(currency: string | null | undefined): 'monthly' | 'annual' {
+  return String(currency || 'USD').toUpperCase() === 'MXN' ? 'monthly' : 'annual'
+}
+
 export function JobInfoStep({ jobData, onUpdate, openings, jobId, sections, clientLocked, hideStatus }: JobInfoStepProps) {
   const show = (k: JobInfoSection) => !sections || sections.includes(k)
   const [isDeptFormOpen, setIsDeptFormOpen] = React.useState(false)
@@ -178,8 +183,15 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId, sections, clie
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const set = <K extends keyof CreateJobData>(field: K, value: CreateJobData[K]) =>
-    onUpdate({ [field]: value } as Partial<CreateJobData>)
+  const set = <K extends keyof CreateJobData>(field: K, value: CreateJobData[K]) => {
+    const patch = { [field]: value } as Partial<CreateJobData>
+    // A salary range always has a pay period (2026-11-24): the first figure typed
+    // picks one by currency (Mexican ranges are monthly), which stays changeable.
+    if ((field === 'salary_min' || field === 'salary_max') && value != null && !jobData.salary_period) {
+      patch.salary_period = defaultPayPeriod(jobData.currency)
+    }
+    onUpdate(patch)
+  }
 
   const handleCreateDepartment = async (data: { name: string; description?: string | null }) => {
     try {
@@ -562,7 +574,7 @@ export function JobInfoStep({ jobData, onUpdate, openings, jobId, sections, clie
               ]}
             />
           </div>
-          <FieldHint>What the range above is per. The salary screening rule needs it.</FieldHint>
+          <FieldHint>What the range above is per. Gio Fit and the salary screening rule read the range this way.</FieldHint>
         </div>
       </SectionCard>
       )}

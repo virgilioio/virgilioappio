@@ -18,7 +18,7 @@ import { noticeJobRescore } from '@/lib/fitRescore'
 /** What Gio Fit reads on a job; a change re-scores its candidates (jobs_z_fit_rescore). */
 const FIT_FIELDS = new Set([
   'description', 'skills', 'skill_priorities', 'min_years_experience', 'max_years_experience',
-  'salary_min', 'salary_max', 'currency', 'budget_salary_min', 'budget_salary_max', 'budget_period',
+  'salary_min', 'salary_max', 'salary_period', 'currency', 'budget_salary_min', 'budget_salary_max', 'budget_period',
   'budget_currency', 'location', 'additional_locations',
 ])
 
