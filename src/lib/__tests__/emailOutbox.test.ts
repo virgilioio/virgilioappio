@@ -19,6 +19,8 @@ import {
   pendingEmails,
   getRestored,
   clearRestored,
+  getRestoredAll,
+  reopenDraft,
   sentMessage,
   type EmailDraft,
 } from '@/lib/emailOutbox'
@@ -138,3 +140,17 @@ describe('emailOutbox', () => {
     expect(sentMessage({ to: ['a@x.com', 'b@x.com', 'c@x.com'], candidateName: 'Priya' })).toBe('Email sent to 3 people')
   })
 })
+describe('drafts that outlive their page', () => {
+  it('keeps several at once, each closed on its own', () => {
+    const a = draft()
+    const b = draft()
+    reopenDraft(a, { minimized: true })
+    reopenDraft(b)
+    const all = getRestoredAll()
+    expect(all.map((r) => [r.draft, !!r.minimized])).toEqual([[a, true], [b, false]])
+    clearRestored(all[0].key)
+    expect(getRestoredAll().map((r) => r.draft)).toEqual([b])
+    expect(getRestored()?.draft).toBe(b)
+  })
+})
+

@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { X, Minus, Maximize2, Mail, Sparkles } from 'lucide-react';
 import { EmailComposer } from '@/components/candidates/EmailComposer';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import type { EmailDraft } from '@/lib/emailOutbox';
+import { reopenDraft, type EmailDraft } from '@/lib/emailOutbox';
 
 interface MinimizableEmailComposerProps {
   isOpen: boolean;
@@ -26,7 +26,32 @@ interface MinimizableEmailComposerProps {
   bulkJobTitle?: string;
   /** Undo Send: the draft to reopen (EmailOutboxHost). */
   initialDraft?: EmailDraft;
+  /** Opens as the minimized strip (a draft whose page went away, EmailOutboxHost). */
+  startMinimized?: boolean;
+  /** When the page holding an open composer goes away, its draft moves to
+   *  EmailOutboxHost, minimized (default). EmailOutboxHost's own composers don't. */
+  keepOnUnmount?: boolean;
 }
+
+// Minimized strips sit side by side from the right; an open panel keeps its corner.
+const strips: string[] = [];
+const open = new Set<string>();
+const dockListeners = new Set<() => void>();
+let dockVersion = 0;
+const dockEmit = () => { dockVersion++; dockListeners.forEach((l) => l()); };
+const dockSubscribe = (fn: () => void) => { dockListeners.add(fn); return () => { dockListeners.delete(fn); }; };
+const dockSnapshot = () => dockVersion;
+function setDocked(id: string, state: 'strip' | 'open' | null) {
+  const i = strips.indexOf(id);
+  if (i >= 0) strips.splice(i, 1);
+  open.delete(id);
+  if (state === 'strip') strips.push(id);
+  if (state === 'open') open.add(id);
+  dockEmit();
+}
+const STRIP_W = 360;
+const PANEL_W = 680;
+const GAP = 12;
 
 export function MinimizableEmailComposer({
   isOpen,
@@ -46,16 +71,59 @@ export function MinimizableEmailComposer({
   bulk,
   bulkJobTitle,
   initialDraft,
+  startMinimized = false,
+  keepOnUnmount = true,
 }: MinimizableEmailComposerProps) {
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(startMinimized);
   const [templateApplied, setTemplateApplied] = useState(false);
   const isPhone = useIsMobile();
+  const dockId = useId();
+  useSyncExternalStore(dockSubscribe, dockSnapshot, dockSnapshot);
+
+  // The draft as it stands (EmailComposer fills it in), and whether it was closed on
+  // purpose: an open composer whose page goes away keeps its draft (2026-11-24).
+  const draftRef = useRef<(() => { draft: EmailDraft; changed: boolean }) | null>(null);
+  const requestCloseRef = useRef<(() => void) | null>(null);
+  const closedRef = useRef(false);
+  const openRef = useRef(isOpen);
+  openRef.current = isOpen;
+  useEffect(() => {
+    if (isOpen) closedRef.current = false;
+  }, [isOpen]);
+  useEffect(() => {
+    return () => {
+      if (!keepOnUnmount || !openRef.current || closedRef.current) return;
+      const now = draftRef.current?.();
+      if (now?.changed) reopenDraft(now.draft, { minimized: true });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const docked: 'strip' | 'open' | null = !isOpen || isPhone ? null : isMinimized ? 'strip' : 'open';
+  useEffect(() => {
+    setDocked(dockId, docked);
+    return () => setDocked(dockId, null);
+  }, [dockId, docked]);
 
   if (!isOpen) return null;
+
+  const close = () => {
+    closedRef.current = true;
+    onOpenChange(false);
+  };
+  // The ×: a written email asks in the composer's footer first (shown, if minimized).
+  const askClose = () => {
+    if (!requestCloseRef.current) return close();
+    setIsMinimized(false);
+    requestCloseRef.current();
+  };
+  const stripIndex = Math.max(0, strips.indexOf(dockId));
+  const stripRight = 16 + (open.size > 0 ? PANEL_W + GAP : 0) + stripIndex * (STRIP_W + GAP);
 
   const draftContext = { candidateName, mode, bulkJobTitle };
 
   const handleSuccess = () => {
+    closedRef.current = true;
     onSuccess?.();
     onOpenChange(false);
   };
@@ -88,7 +156,7 @@ export function MinimizableEmailComposer({
           embedded
           docked
           phone
-          onClose={() => onOpenChange(false)}
+          onClose={close}
           jhsId={jhsId}
           associationId={associationId}
           inReplyToMessageId={inReplyToMessageId}
@@ -99,24 +167,27 @@ export function MinimizableEmailComposer({
           bulk={bulk}
           initialDraft={initialDraft}
           draftContext={draftContext}
+          draftRef={draftRef}
         />
       </div>
     );
   }
 
-  // --- Minimized state: compact dark strip ---
-  if (isMinimized) {
-    return (
-      <>
-        {/* Non-blocking soft scrim */}
+  // --- Open state: full docked panel ---
+  return (
+    <>
+      {!isMinimized && (
         <div
           className="fixed inset-0 z-[59] pointer-events-none"
           style={{ background: 'rgba(13,13,9,0.04)' }}
           aria-hidden
         />
+      )}
+      {isMinimized && (
         <div
-          className="fixed bottom-4 right-4 z-[60] w-[360px] rounded-[10px] overflow-hidden pointer-events-auto"
+          className="fixed bottom-4 z-[60] w-[360px] rounded-[10px] overflow-hidden pointer-events-auto"
           style={{
+            right: stripRight,
             boxShadow:
               '0 12px 32px -8px rgba(13,13,9,0.18), 0 0 0 1px rgba(13,13,9,0.04)',
           }}
@@ -170,7 +241,7 @@ export function MinimizableEmailComposer({
               aria-label="Close"
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenChange(false);
+                askClose();
               }}
               className="flex h-[26px] w-[26px] items-center justify-center rounded-md hover:bg-white/10 transition-colors"
               style={{ color: 'rgba(255,252,249,0.7)' }}
@@ -179,23 +250,15 @@ export function MinimizableEmailComposer({
             </button>
           </div>
         </div>
-      </>
-    );
-  }
-
-  // --- Open state: full docked panel ---
-  return (
-    <>
-      <div
-        className="fixed inset-0 z-[59] pointer-events-none"
-        style={{ background: 'rgba(13,13,9,0.04)' }}
-        aria-hidden
-      />
+      )}
+      {/* Minimized, the panel is only hidden: the editor stays mounted, so nothing typed is lost. */}
       <div
         className={cn(
           'fixed bottom-4 right-4 z-[60] flex flex-col overflow-hidden pointer-events-auto',
-          'bg-white'
+          'bg-white',
+          isMinimized && 'hidden'
         )}
+        aria-hidden={isMinimized || undefined}
         style={{
           width: 680,
           maxWidth: 'min(95vw, 680px)',
@@ -251,7 +314,7 @@ export function MinimizableEmailComposer({
           <button
             type="button"
             aria-label="Close"
-            onClick={() => onOpenChange(false)}
+            onClick={askClose}
             className="flex h-[26px] w-[26px] items-center justify-center rounded-md hover:bg-white/10 transition-colors"
             style={{ color: 'rgba(255,252,249,0.7)' }}
           >
@@ -278,6 +341,9 @@ export function MinimizableEmailComposer({
             bulk={bulk}
             initialDraft={initialDraft}
             draftContext={draftContext}
+            draftRef={draftRef}
+            requestCloseRef={requestCloseRef}
+            onClose={close}
           />
         </div>
       </div>

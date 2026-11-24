@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo, useLayoutEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, useLayoutEffect, type MutableRefObject } from 'react';
 import { useChipMotion } from '@/lib/chipMotion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@/lib/zodResolver';
@@ -98,6 +98,12 @@ interface EmailComposerProps {
   initialDraft?: EmailDraft;
   /** Who and what it's about, for the "Email sent to …" toast and a reopened draft. */
   draftContext?: { candidateName?: string; mode?: 'compose' | 'reply' | 'forward'; bulkJobTitle?: string };
+  /** Reads the draft as it stands now, and whether anything was written (2026-11-24: a
+   *  draft outlives the page that opened it, MinimizableEmailComposer). */
+  draftRef?: MutableRefObject<(() => { draft: EmailDraft; changed: boolean }) | null>;
+  /** The docked panel's × asks through this: a written email asks "Discard this email?"
+   *  in the footer first (§13), as on a phone. */
+  requestCloseRef?: MutableRefObject<(() => void) | null>;
 }
 
 type Attachment = OutboxAttachment;
@@ -127,6 +133,8 @@ export function EmailComposer({
   onClose,
   initialDraft,
   draftContext,
+  draftRef,
+  requestCloseRef,
 }: EmailComposerProps) {
   const isBulk = !!bulk;
   const { identities, isLoading: loadingIdentities } = useMailIdentities();
@@ -236,6 +244,41 @@ export function EmailComposer({
       body_html: defaultBody || '',
     },
   });
+
+  // The draft as it stands, for a composer whose page goes away (MinimizableEmailComposer).
+  if (draftRef) {
+    draftRef.current = () => {
+      const plain = (h: string) => h.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+      const changed =
+        plain(bodyHtml) !== plain(defaultBody || '') ||
+        plain(subjectHtml) !== plain(defaultSubject || '') ||
+        attachments.length > 0 ||
+        !!initialDraft;
+      return {
+        changed,
+        draft: {
+          candidateId,
+          jobId,
+          jhsId,
+          associationId,
+          inReplyToMessageId,
+          candidateName: draftContext?.candidateName,
+          mode: draftContext?.mode,
+          bulk,
+          bulkJobTitle: draftContext?.bulkJobTitle,
+          fromEmail: watch('from_email') || '',
+          to: isBulk ? [] : toChips,
+          cc: ccChips,
+          bcc: bccChips,
+          subjectHtml,
+          bodyHtml,
+          attachments,
+          templateId: selectedTemplateId,
+          scheduledAt: isBulk ? scheduledAt : null,
+        },
+      };
+    };
+  }
 
   const fromEmail = watch('from_email');
   // Mailboxes that arrive after the form was made still fill From.
@@ -939,6 +982,17 @@ export function EmailComposer({
   }
 
   if (docked) {
+    // Closing a written email asks first, in the footer (§13); Discard and the
+    // panel's × both come here (2026-11-24).
+    const plainText = (h: string) => h.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    const written =
+      plainText(bodyHtml) !== plainText(defaultBody || '') ||
+      plainText(subjectHtml) !== plainText(defaultSubject || '') ||
+      attachments.length > 0 ||
+      !!initialDraft;
+    const leave = () => (onClose ? onClose() : handleDiscard());
+    const requestLeave = () => (written ? setConfirmClose(true) : leave());
+    if (requestCloseRef) requestCloseRef.current = requestLeave;
     return (
       <form
         ref={formRef}
@@ -1419,7 +1473,7 @@ export function EmailComposer({
             type="button"
             variant="secondary"
             size="sm"
-            onClick={handleDiscard}
+            onClick={requestLeave}
             disabled={sendEmail.isPending || bulkSend.isPending}
           >
             Discard
@@ -1470,6 +1524,16 @@ export function EmailComposer({
               )}
             </Button>
           )}
+          <UnsavedGuard
+            open={confirmClose}
+            title="Discard this email?"
+            onKeep={() => setConfirmClose(false)}
+            onDiscard={() => {
+              setConfirmClose(false);
+              leave();
+            }}
+            className="px-4"
+          />
         </div>
       </form>
     );

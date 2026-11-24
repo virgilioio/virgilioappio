@@ -76,8 +76,15 @@ interface Item {
 const items = new Map<string, Item>()
 let seq = 0
 
-// ── The reopened draft (read by EmailOutboxHost) ─────────────────────────
-let restored: { key: string; draft: EmailDraft } | null = null
+// ── The reopened drafts (read by EmailOutboxHost) ────────────────────────
+// Undo and "Open draft" bring a draft back open; a draft whose page went away
+// while it was open comes back minimized (2026-11-24). Several can wait at once.
+export interface RestoredDraft {
+  key: string
+  draft: EmailDraft
+  minimized?: boolean
+}
+let restored: RestoredDraft[] = []
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
 
@@ -87,13 +94,17 @@ export function subscribeRestored(fn: () => void) {
     listeners.delete(fn)
   }
 }
-export const getRestored = () => restored
-export function clearRestored() {
-  restored = null
+/** Every draft waiting in EmailOutboxHost, oldest first. */
+export const getRestoredAll = () => restored
+/** The latest one. */
+export const getRestored = (): RestoredDraft | null => restored[restored.length - 1] ?? null
+/** Closes one draft (by key), or all of them. */
+export function clearRestored(key?: string) {
+  restored = key ? restored.filter((r) => r.key !== key) : []
   emit()
 }
-export function reopenDraft(draft: EmailDraft) {
-  restored = { key: `draft-${++seq}`, draft }
+export function reopenDraft(draft: EmailDraft, opts: { minimized?: boolean } = {}) {
+  restored = [...restored, { key: `draft-${++seq}`, draft, minimized: opts.minimized }]
   emit()
 }
 
