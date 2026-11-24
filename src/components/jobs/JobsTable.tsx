@@ -40,6 +40,7 @@ import { DraftsTable } from '@/components/jobs/drafts/DraftsTable'
 import { DraftPill } from '@/components/jobs/drafts/DraftPill'
 import { JobCode } from '@/components/jobs/JobCode'
 import { withJobCode } from '@/lib/jobCode'
+import { jobCloseReasonText } from '@/lib/jobCloseReasons'
 
 export type StatusSegment = 'active' | 'drafts' | 'all' | 'closed' | 'archived'
 
@@ -71,6 +72,12 @@ interface JobsTableProps {
 }
 
 type StatusTone = 'green' | 'yellow' | 'neutral' | 'ink'
+
+/** A closed or archived job's line under its title: why it closed (Allan, 2026-11-24). */
+function closedLine(job: Job): string | null {
+  if (job.status !== 'closed' && job.status !== 'archived') return null
+  return jobCloseReasonText(job.close_reason, job.close_note)
+}
 
 function statusBadge(status: Job['status']) {
   const map: Record<Job['status'], { tone: StatusTone; label: string }> = {
@@ -521,7 +528,7 @@ export function JobsTable({
                             )}
                           </span>
                         }
-                        sub={`Full-time · ${totalCount} candidate${totalCount === 1 ? '' : 's'}`}
+                        sub={closedLine(job) ?? `Full-time · ${totalCount} candidate${totalCount === 1 ? '' : 's'}`}
                         fallback={job.title}
                       />
                     </TableCell>
@@ -635,7 +642,7 @@ export function JobsTable({
                         <JobCode code={job.job_code} size="xs" />
                       </div>
                       <div className="text-[12px] text-text-tertiary mt-0.5 truncate">
-                        {(job.organization_name || 'Full-time')} · {count} candidate{count === 1 ? '' : 's'}
+                        {closedLine(job) ?? `${job.organization_name || 'Full-time'} · ${count} candidate${count === 1 ? '' : 's'}`}
                       </div>
                     </div>
                     <Badge tone={status.tone} dot size="sm">{status.label}</Badge>

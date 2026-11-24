@@ -26,7 +26,8 @@ import {
   Archive as ArchiveIcon,
   Trash2,
 } from 'lucide-react'
-import { formatDistanceToNowStrict } from 'date-fns'
+import { format, formatDistanceToNowStrict } from 'date-fns'
+import { jobCloseReasonText } from '@/lib/jobCloseReasons'
 import { cn } from '@/lib/utils'
 import { JobShareMenu } from './JobShareMenu'
 import type { ShareKitPost } from './share/JobShareKit'
@@ -51,6 +52,10 @@ interface JobHeroProps {
   /** The job's ID (VG-XXXX), first in the row under the title. */
   jobCode?: string | null
   status?: string | null
+  /** Why a closed or archived job closed (jobs.close_reason / close_note / closed_at). */
+  closeReason?: string | null
+  closeNote?: string | null
+  closedAt?: string | null
   priority?: string | null
   department?: string | null
   location?: string | null
@@ -118,6 +123,9 @@ export function JobHero({
   title,
   jobCode = null,
   status,
+  closeReason = null,
+  closeNote = null,
+  closedAt = null,
   priority,
   department,
   location,
@@ -171,6 +179,12 @@ export function JobHero({
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-body-sm text-text-secondary">
           <JobCode code={jobCode} copyable />
           {!isDraft && <Badge tone={statusInfo.tone as any} dot size="sm">{statusInfo.label}</Badge>}
+          {isClosed && jobCloseReasonText(closeReason, closeNote) && (
+            <span className="max-w-[420px] truncate">
+              {jobCloseReasonText(closeReason, closeNote)}
+              {closedAt ? ` \u00b7 ${format(new Date(closedAt), 'MMM d, yyyy')}` : ''}
+            </span>
+          )}
           <JobPriorityBadge value={priority} />
           {location && (
             <span className="inline-flex items-center gap-1.5">

@@ -1224,6 +1224,9 @@ export default function JobDetail() {
                   title={job.title}
                   jobCode={(job as any).job_code ?? null}
                   status={job.status}
+                  closeReason={job.close_reason ?? null}
+                  closeNote={job.close_note ?? null}
+                  closedAt={job.closed_at ?? null}
                   priority={(job as any).priority}
                   department={(job as any).organization_name || (job as any).organization?.name || (job as any).department || null}
                   location={job.location}
