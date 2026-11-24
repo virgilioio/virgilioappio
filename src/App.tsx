@@ -6,6 +6,7 @@ import { CandidateLinkGuard } from '@/components/candidates/CandidateLinkGuard'
 import { ConfirmDialogHost } from '@/components/ui/confirm-dialog'
 import { EmailOutboxHost } from '@/components/candidates/EmailOutboxHost'
 import { CloseJobRejectHost } from '@/components/jobs/CloseJobRejectHost'
+import { CloseJobReasonHost } from '@/components/jobs/CloseJobDialog'
 import {
   BrowserRouter as Router,
   Routes,
@@ -273,6 +274,7 @@ function AppContent() {
       <ConfirmDialogHost />
       <EmailOutboxHost />
       <CloseJobRejectHost />
+      <CloseJobReasonHost />
       <OfflineBanner />
       <AppUpdateNotification />
     </div>

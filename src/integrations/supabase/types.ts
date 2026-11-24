@@ -3969,6 +3969,7 @@ export type Database = {
         Row: {
           cancel_reason: string | null
           cancelled_at: string | null
+          closed_with_job: boolean
           created_at: string
           fee_pct: number | null
           filled_at: string | null
@@ -3990,6 +3991,7 @@ export type Database = {
         Insert: {
           cancel_reason?: string | null
           cancelled_at?: string | null
+          closed_with_job?: boolean
           created_at?: string
           fee_pct?: number | null
           filled_at?: string | null
@@ -4011,6 +4013,7 @@ export type Database = {
         Update: {
           cancel_reason?: string | null
           cancelled_at?: string | null
+          closed_with_job?: boolean
           created_at?: string
           fee_pct?: number | null
           filled_at?: string | null
@@ -4642,6 +4645,10 @@ export type Database = {
           budget_period: string
           budget_salary_max: number | null
           budget_salary_min: number | null
+          close_note: string | null
+          close_reason: string | null
+          closed_at: string | null
+          closed_by: string | null
           coordinator_user_id: string | null
           created_at: string | null
           created_by: string | null
@@ -4704,6 +4711,10 @@ export type Database = {
           budget_period?: string
           budget_salary_max?: number | null
           budget_salary_min?: number | null
+          close_note?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           coordinator_user_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -4766,6 +4777,10 @@ export type Database = {
           budget_period?: string
           budget_salary_max?: number | null
           budget_salary_min?: number | null
+          close_note?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           coordinator_user_id?: string | null
           created_at?: string | null
           created_by?: string | null

@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { SectionCard, ToggleRow } from './wizard/_parts'
 import { cn } from '@/lib/utils'
 import { rejectRemainingBeforeStatus } from './jobStatusActions'
+import { requestCloseReason } from './CloseJobDialog'
 
 interface JobFormSheetProps {
   isOpen: boolean
@@ -136,7 +137,15 @@ export function JobFormSheet({
 
     // J9: picking Closed or Archived here goes through the same rule as the
     // Close and Archive buttons: anyone still in the pipeline is rejected first.
+    // It asks why first (Close job dialog), unless a closed job is being archived:
+    // that keeps the reason it closed with.
     if (job?.id && (payload.status === 'closed' || payload.status === 'archived') && payload.status !== job.status) {
+      if (job.status !== 'closed' && job.status !== 'archived') {
+        const why = await requestCloseReason({ jobId: job.id, jobTitle: job.title, to: payload.status })
+        if (!why) return
+        payload.close_reason = why.reason
+        payload.close_note = why.note
+      }
       const ok = await rejectRemainingBeforeStatus(
         { id: job.id, title: job.title, status: job.status, organization_id: (job as any).organization_id },
         payload.status,

@@ -30,6 +30,10 @@ export interface Job {
   title: string
   /** The job's ID (VG-XXXX), assigned and locked by the database. */
   job_code?: string | null
+  /** Why a closed or archived job closed (cleared when it reopens). */
+  close_reason?: string | null
+  close_note?: string | null
+  closed_at?: string | null
   description: string | null
   location: string | null
   department: string | null
