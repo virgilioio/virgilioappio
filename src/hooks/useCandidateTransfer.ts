@@ -11,6 +11,8 @@ interface TransferOptions {
   targetJobId: string
   targetJobTitle: string
   targetStageId?: string
+  /** Bulk transfers: no toast and no busy state per candidate (the caller shows one summary). */
+  quiet?: boolean
 }
 
 interface AddOptions {
@@ -61,8 +63,11 @@ export function useCandidateTransfer() {
   }
 
   const transferCandidate = async (options: TransferOptions) => {
-    setIsTransferring(true)
-    setError(null)
+    const quiet = !!options.quiet
+    if (!quiet) {
+      setIsTransferring(true)
+      setError(null)
+    }
     
     try {
       const { data, error: transferError } = await supabase.functions.invoke(
@@ -80,7 +85,7 @@ export function useCandidateTransfer() {
       if (transferError) throw transferError
       if (!data?.success) throw new Error(data?.error || 'Transfer failed')
 
-      toast({
+      if (!quiet) toast({
         title: "Candidate Transferred",
         description: `${options.candidateName} has been transferred from ${options.sourceJobTitle} to ${options.targetJobTitle}. All comments, emails, and scorecards have been moved.`,
       })
@@ -88,6 +93,7 @@ export function useCandidateTransfer() {
       return { success: true, data }
     } catch (err) {
       const error = err as Error
+      if (quiet) return { success: false, error }
       setError(error)
       toast({
         title: `Couldn\u2019t transfer ${options.candidateName || 'the candidate'}`,
@@ -96,7 +102,7 @@ export function useCandidateTransfer() {
       })
       return { success: false, error }
     } finally {
-      setIsTransferring(false)
+      if (!quiet) setIsTransferring(false)
     }
   }
 

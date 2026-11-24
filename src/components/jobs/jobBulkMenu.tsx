@@ -1,8 +1,9 @@
-import { ArrowRight, Briefcase, Copy, Download, Mail, RefreshCw, Tag, UserX } from 'lucide-react'
+import { ArrowRight, ArrowRightLeft, Briefcase, Copy, Download, Mail, RefreshCw, Tag, UserX } from 'lucide-react'
 import { downloadCsv } from '@/lib/csv'
 import type { SelectionAction } from '@/components/shared/SelectionBar'
 import { AddToJobPopover } from '@/components/candidates/bulk/AddToJobPopover'
 import { AddTagPopover } from '@/components/candidates/tags/AddTagPopover'
+import { AddOrTransferCandidateDialog, type BulkTransferResult } from '@/components/candidates/AddOrTransferCandidateDialog'
 import { supabase } from '@/integrations/supabase/client'
 import { inChunks } from '@/lib/fetchAllRows'
 import { copyToClipboardSilent } from '@/utils/clipboard'
@@ -27,15 +28,21 @@ export interface JobBulkMenuOptions {
   /** Present: the menu offers "Move to stage". */
   onMoveToStage?: (stageJhsId: string) => void
   onReject?: () => void
+  /**
+   * Present: the menu offers "Transfer to another job…" (Application review and
+   * Recruiting process only; Allan, 2026-11-24). Called after the transfer with who
+   * moved, so the caller can drop them from the selection.
+   */
+  onTransferred?: (result: BulkTransferResult) => void
   /** After a change made from a panel (added to a job, tagged). */
   onChanged?: () => void
 }
 
 /**
  * The ⋯ rows of a job's selection bar, shared by the Recruiting board and the
- * flat sections: Email, Move to stage ›, Add to another job, Add tag, Re-score
- * Gio Fit, Copy email addresses, Export as CSV, then Reject last (§19). Rows are offered only when the
- * caller passes their handler.
+ * flat sections: Email, Move to stage ›, Add to another job, Transfer to another
+ * job, Add tag, Re-score Gio Fit, Copy email addresses, Export as CSV, then Reject
+ * last (§19). Rows are offered only when the caller passes their handler.
  */
 export function jobBulkMenu(o: JobBulkMenuOptions): SelectionAction[] {
   const rows: SelectionAction[] = []
@@ -86,6 +93,30 @@ export function jobBulkMenu(o: JobBulkMenuOptions): SelectionAction[] {
       />
     ),
   })
+  if (o.onTransferred) {
+    const people = selected.map((a) => ({ id: a.candidate_id, name: a.candidate_name || '' }))
+    rows.push({
+      id: 'transfer-to-job',
+      label: 'Transfer to another job…',
+      icon: ArrowRightLeft,
+      slot: 'overflow',
+      panel: ({ open, onOpenChange }) => (
+        <AddOrTransferCandidateDialog
+          candidateId={people[0]?.id || ''}
+          candidateName={people[0]?.name || ''}
+          candidates={people}
+          currentJobId={o.jobId}
+          currentJobTitle={o.jobTitle || 'this job'}
+          open={open}
+          onOpenChange={onOpenChange}
+          onBulkDone={(r) => {
+            o.onTransferred?.(r)
+            o.onChanged?.()
+          }}
+        />
+      ),
+    })
+  }
   rows.push({
     id: 'add-tag',
     label: 'Add tag…',

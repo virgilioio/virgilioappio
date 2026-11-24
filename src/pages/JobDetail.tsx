@@ -1439,6 +1439,8 @@ export default function JobDetail() {
                             onEmail: () => setShowBulkEmailDialog(true),
                             onMoveToStage: (stageId) => pipelineBulkRef.current?.moveSelected(stageId),
                             onReject: () => setShowBulkRejectionDialog(true),
+                            onTransferred: ({ transferred }) =>
+                              setSelectedCandidateIds((ids) => ids.filter((x) => !transferred.includes(x))),
                             onChanged: () => setPipelineRefresh((v) => v + 1),
                           }),
                         ]}
@@ -1493,6 +1495,10 @@ export default function JobDetail() {
                         // Offers and hires keep their own flows; rejected candidates come back through Restore.
                         onMoveToStage: pipelineSectionTab === 'application' ? (stageId) => void moveSelectedToStage(stageId) : undefined,
                         onReject: pipelineSectionTab === 'application' ? () => setShowBulkRejectionDialog(true) : undefined,
+                        // Transfer only from Application review (and the Recruiting board above), never Offers, Hired or Rejected.
+                        onTransferred: pipelineSectionTab === 'application'
+                          ? ({ transferred }) => setSelectedCandidateIds((ids) => ids.filter((x) => !transferred.includes(x)))
+                          : undefined,
                         onChanged: () => setPipelineRefresh((v) => v + 1),
                       }),
                     }}

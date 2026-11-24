@@ -18,6 +18,8 @@ import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { useJobs } from '@/hooks/useJobs'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useCandidateTransfer } from '@/hooks/useCandidateTransfer'
+import { toast } from '@/hooks/use-toast'
+import { mapLimit } from '@/lib/parallel'
 import { withJobCode } from '@/lib/jobCode'
 import type { JobStage } from '@/hooks/useJobStages'
 
@@ -28,9 +30,23 @@ type HiringPlanStageOption = {
   customStageName?: string | null
 }
 
+export interface BulkTransferResult {
+  transferred: string[]
+  failed: string[]
+  jobId: string
+  jobTitle: string
+}
+
 interface AddOrTransferCandidateDialogProps {
   candidateId: string
   candidateName: string
+  /**
+   * Bulk transfer (the selection bar's "Transfer to another job…"): every
+   * candidate here moves to the job picked. The dialog stays on Transfer.
+   */
+  candidates?: { id: string; name: string }[]
+  /** After a bulk transfer, with who moved and who didn't. */
+  onBulkDone?: (result: BulkTransferResult) => void
   currentJobId: string
   currentJobTitle: string
   trigger?: React.ReactNode
@@ -46,6 +62,8 @@ type Mode = 'add' | 'transfer'
 export function AddOrTransferCandidateDialog({
   candidateId,
   candidateName,
+  candidates,
+  onBulkDone,
   currentJobId,
   currentJobTitle,
   trigger,
@@ -74,24 +92,38 @@ export function AddOrTransferCandidateDialog({
 
   const { jobs, isLoading: jobsLoading } = useJobs()
   const { loadHiringPlanInstances } = useJobHiringPlan()
-  const { addToJob, transferCandidate, isTransferring } = useCandidateTransfer()
+  const { addToJob, transferCandidate, isTransferring: oneTransferring } = useCandidateTransfer()
+  // Bulk: how many of the selection have been handled so far (null when idle).
+  const [bulkDone, setBulkDone] = useState<number | null>(null)
+  const isBulk = !!candidates && candidates.length > 0
+  const bulkCount = candidates?.length ?? 0
+  const isTransferring = oneTransferring || bulkDone !== null
 
   const cancelRef = useRef<HTMLButtonElement>(null)
-  const displayName = (candidateName || '').trim() || 'this candidate'
+  const displayName = isBulk
+    ? bulkCount === 1
+      ? (candidates![0].name || '').trim() || 'this candidate'
+      : `${bulkCount} candidates`
+    : (candidateName || '').trim() || 'this candidate'
   const firstName = useMemo(
     () => (candidateName || '').trim().split(/\s+/)[0] || candidateName || 'candidate',
     [candidateName]
   )
+  // Who the copy talks about: a first name for one candidate, "they" for several.
+  const who = isBulk && bulkCount > 1 ? 'they' : isBulk ? ((candidates![0].name || '').trim().split(/\s+/)[0] || 'they') : firstName
+  const whoCap = who === 'they' ? 'They' : who
+  const whom = who === 'they' ? 'them' : who
 
   useEffect(() => {
     if (open) {
-      setMode('add')
+      setMode(isBulk ? 'transfer' : 'add')
+      setBulkDone(null)
       setSelectedJobId('')
       setSelectedStageId('')
       setStageOptions([])
       setQuery('')
     }
-  }, [open])
+  }, [open, isBulk])
 
 
   // Load stages when job changes; always reset selection so user picks explicitly
@@ -142,6 +174,10 @@ export function AddOrTransferCandidateDialog({
 
   const handleConfirm = async () => {
     if (!canConfirm || !selectedJob) return
+    if (isBulk) {
+      await transferAll()
+      return
+    }
     if (mode === 'add') {
       const result = await addToJob({
         candidateId,
@@ -171,6 +207,60 @@ export function AddOrTransferCandidateDialog({
         else if (onClose) onClose()
       }
     }
+  }
+
+  // Bulk: the same transfer as one candidate's, three at a time, then one summary.
+  const transferAll = async () => {
+    if (!selectedJob || !candidates?.length) return
+    const jobTitle = selectedJob.title || 'the job'
+    const jobId = selectedJobId
+    let handled = 0
+    setBulkDone(0)
+    const results = await mapLimit(candidates, 3, async (c) => {
+      const r = await transferCandidate({
+        candidateId: c.id,
+        candidateName: c.name,
+        sourceJobId: currentJobId,
+        sourceJobTitle: currentJobTitle,
+        targetJobId: jobId,
+        targetJobTitle: jobTitle,
+        targetStageId: selectedStageId,
+        quiet: true,
+      })
+      handled += 1
+      setBulkDone(handled)
+      return { id: c.id, ok: r.success }
+    })
+    const transferred = results.filter((r) => r.ok).map((r) => r.id)
+    const failed = results.filter((r) => !r.ok).map((r) => r.id)
+    setBulkDone(null)
+    const openJob = (
+      <button type="button" onClick={() => window.open(`/jobs/${jobId}`, '_blank')}>
+        Open job
+      </button>
+    )
+    if (!failed.length) {
+      toast({
+        title: transferred.length === 1
+          ? `${candidates.find((c) => c.id === transferred[0])?.name?.trim() || '1 candidate'} transferred to ${jobTitle}`
+          : `${transferred.length} candidates transferred to ${jobTitle}`,
+        action: openJob,
+      })
+    } else if (!transferred.length) {
+      toast({
+        title: failed.length === 1 ? 'Couldn\u2019t transfer the candidate' : `Couldn\u2019t transfer the ${failed.length} candidates`,
+        description: `They\u2019re still in ${currentJobTitle || 'this job'} and still selected; try again.`,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: `${transferred.length} transferred \u00b7 ${failed.length} couldn\u2019t be transferred`,
+        description: `The ${failed.length === 1 ? 'one' : failed.length} that didn\u2019t move ${failed.length === 1 ? 'is' : 'are'} still selected; try again.`,
+        action: openJob,
+      })
+    }
+    onBulkDone?.({ transferred, failed, jobId, jobTitle })
+    if (transferred.length) setOpen(false)
   }
 
   const isTransfer = mode === 'transfer'
@@ -238,7 +328,7 @@ export function AddOrTransferCandidateDialog({
               <DialogPrimitive.Description className="mt-1 font-inter text-[13px] leading-[1.5] text-text-secondary [text-wrap:pretty]">
                 {isTransfer ? (
                   <>
-                    {firstName} leaves <span className="font-medium text-text-primary">{currentJobTitle}</span>. Their comments, emails, scorecards and activity move with them. This can’t be undone.
+                    {whoCap} {who === 'they' ? 'leave' : 'leaves'} <span className="font-medium text-text-primary">{currentJobTitle}</span>. Their comments, emails, scorecards and activity move with them. This can’t be undone.
                   </>
                 ) : (
                   <>
@@ -254,7 +344,8 @@ export function AddOrTransferCandidateDialog({
             className="flex-1 min-h-0 overflow-y-auto"
             style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}
           >
-            {/* 1 · Segmented control */}
+            {/* 1 · Segmented control (bulk picked Transfer from the menu: no switch) */}
+            {!isBulk && (
             <div
               ref={segRef}
               className="gio-seg flex"
@@ -300,6 +391,7 @@ export function AddOrTransferCandidateDialog({
               })}
               <SegmentLayer fill="#0d0d09" shadow="0 1px 2px rgba(13,13,9,0.14)" />
             </div>
+            )}
 
             {/* 2 · Outcome panel */}
             <div
@@ -360,7 +452,7 @@ export function AddOrTransferCandidateDialog({
                         Icon: LogOut,
                         node: (
                           <>
-                            Removes {firstName} from <strong>{currentJobTitle}</strong>. This
+                            Removes {whom} from <strong>{currentJobTitle}</strong>. This
                             can’t be undone.
                           </>
                         ),
@@ -670,7 +762,7 @@ export function AddOrTransferCandidateDialog({
                           className="font-inter"
                           style={{ fontSize: 11.5, color: '#8B8F9E' }}
                         >
-                          Pick the stage {firstName} will land in on this job.
+                          Pick the stage {who} will land in on this job.
                         </span>
                       </div>
                     )}
@@ -697,7 +789,9 @@ export function AddOrTransferCandidateDialog({
                 className="font-inter truncate"
                 style={{ fontSize: 11, color: '#8B8F9E' }}
               >
-                Logged in activity · visible to the hiring team
+                {bulkDone !== null
+                  ? `Transferring ${bulkDone} of ${bulkCount}…`
+                  : 'Logged in activity · visible to the hiring team'}
               </span>
             </div>
             <Button ref={cancelRef} variant="secondary" size="md" disabled={isTransferring} onClick={() => setOpen(false)}>
@@ -716,7 +810,11 @@ export function AddOrTransferCandidateDialog({
               }
               aria-disabled={!canConfirm}
             >
-              {isTransfer ? 'Transfer candidate' : 'Add to job'}
+              {isTransfer
+                ? isBulk && bulkCount > 1
+                  ? `Transfer ${bulkCount} candidates`
+                  : 'Transfer candidate'
+                : 'Add to job'}
             </Button>
           </footer>
         </DialogPrimitive.Content>
