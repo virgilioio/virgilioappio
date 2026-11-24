@@ -4657,6 +4657,7 @@ export type Database = {
             | null
           hiring_team: Json | null
           id: string
+          job_code: string
           include_equity: boolean
           include_signing_bonus: boolean
           internal_title: string | null
@@ -4718,6 +4719,7 @@ export type Database = {
             | null
           hiring_team?: Json | null
           id?: string
+          job_code?: string
           include_equity?: boolean
           include_signing_bonus?: boolean
           internal_title?: string | null
@@ -4779,6 +4781,7 @@ export type Database = {
             | null
           hiring_team?: Json | null
           id?: string
+          job_code?: string
           include_equity?: boolean
           include_signing_bonus?: boolean
           internal_title?: string | null
