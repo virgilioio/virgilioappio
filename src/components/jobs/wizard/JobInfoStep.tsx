@@ -1,4 +1,5 @@
 import { EMPLOYMENT_TYPES } from '@/lib/employmentTypes'
+import { defaultPayPeriod } from '@/lib/payPeriod'
 import React from 'react'
 import { Seg } from '@/components/sign/templates/parts'
 import { Building2, Globe, Briefcase, MapPin, TrendingUp, Sparkles, Calendar, Hash } from 'lucide-react'
@@ -126,11 +127,6 @@ const JOB_LEVEL_OPTIONS: SearchableSelectOption[] = [
   { value: 'L7 — VP', label: 'L7 — VP' },
   { value: 'L8 — Executive', label: 'L8 — Executive' },
 ]
-
-/** The pay period a new salary range starts with: monthly for MXN, else yearly. */
-export function defaultPayPeriod(currency: string | null | undefined): 'monthly' | 'annual' {
-  return String(currency || 'USD').toUpperCase() === 'MXN' ? 'monthly' : 'annual'
-}
 
 export function JobInfoStep({ jobData, onUpdate, openings, jobId, sections, clientLocked, hideStatus }: JobInfoStepProps) {
   const show = (k: JobInfoSection) => !sections || sections.includes(k)
