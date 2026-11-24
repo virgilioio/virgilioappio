@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   const { data: orgs } = await db.from('organizations').select('id').eq('tenant_id', tenantId()).eq('sales_company_id', companyId)
   const orgIds = (orgs || []).map((o) => o.id)
   if (!orgIds.length) return json([])
-  const { data: jobs, error } = await db.from('jobs').select('id, title, status')
+  const { data: jobs, error } = await db.from('jobs').select('id, job_code, title, status')
     .in('organization_id', orgIds).neq('status', 'archived').is('deleted_at', null).order('created_at', { ascending: false })
   if (error) return json({ error: error.message }, 500)
   const ids = (jobs || []).map((j) => j.id)
