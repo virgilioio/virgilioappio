@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Done 2026-11-24 (ATS + Sales) — Job IDs, and bulk Transfer to another job — on main
+
+- Allan: jobs need a visible ID, VG-XXXX, first under the job's title, beside each title in the Jobs list, searchable in universal search and the add/transfer pickers, on every job including closed ones, and linked to the deal in Gio Sales; and the selection bar's ⋯ should offer Transfer to another job (Application review and Recruiting process only). He said "Apply and go!" to the plan.
+- Gio ATS database: `20261124023328_job_codes` (column, `job_code_new()`, `a0_jobs_job_code`, all 133 jobs backfilled with the table's triggers off so nothing counted as an edit) and `20261124030213_job_codes_to_sales` (patches `sales_deal_won` and `enqueue_opening_event` in place to send `job_code`, queues one `job.identified` per deal line). Both byte-identical to the files; test `supabase/tests/93_job_codes.sql` passes against the live database.
+- Gio Sales database: `20261124025655_ats_job_codes` (`deal_ats_links.job_code`, format checked). Functions deployed from git: Sales `ats-opening-event` v24 (takes `job_code` from any message, `job.identified`), `ats-link` v25 (keeps it from the won-deal reply); ATS `sales-company-jobs` v58 (sends it to the existing-job picker). All 12 deal links got their IDs, matching Gio ATS exactly.
+- Screens: `JobCode`, `src/lib/jobCode.ts` (tests `jobCode.test.ts`), the bulk transfer in `AddOrTransferCandidateDialog` / `jobBulkMenu`, checked in the browser with intercepted data (copy chip, menu order, Job ID search in the dialog, three transfers with one failing, the failure left selected). Gio Sales' card and picker are type-checked, not browser-checked.
+
 ## Done 2026-11-23 (ATS) — Scheduled emails weren't being sent — on main
 
 - Allan: candidates were writing in days after being rejected. Every scheduled rejection email since January had failed (86 failed, 8 sent in one batch in March); "Now" rejections weren't affected.
