@@ -112,6 +112,13 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## Doing 2026-11-24 (ATS + Sales) — Why a job closed — on the branches, waiting for Apply!
+
+- Allan: closing a job asks no reason; when a hire fills the last Req ID a dialog should offer to close the job and ask why; Gio Sales should hear when a job closes for a reason other than Filled, with each affected Req ID marked with the reason (Filled included). He agreed to mark older closed jobs "Not recorded" and cancel their unfilled openings not linked to a deal.
+- Gio ATS database: `supabase/migrations/20261124170000_job_close_reasons.sql` (rename to its applied version), test `supabase/tests/95_job_close_reasons.sql`. Dry run against the live database (migration and test in one rolled-back transaction): every check true; 105 closed or archived jobs get "Not recorded", 84 unfilled openings (none linked to a deal) are cancelled. No delete/drop/truncate: it can be applied from a cloud chat.
+- Gio Sales: `supabase/migrations/20261124170000_ats_job_close_reasons.sql` (`deal_ats_links.close_reason`, `close_reason_label`, `close_note`, `closed_at`; dry-run passed), `ats-opening-event` (job.closed / job.reopened: the link, a deal history line, a bell to the deal owner for any reason but Filled; opening.reopened), the deal card and the bell glyph. Order on Apply!: Sales migration, regenerate Sales types, deploy Sales `ats-opening-event` (after checking the live copy matches git), then the ATS migration (its triggers start sending the new messages), the test live, push both to main.
+- Screens (ATS): `CloseJobDialog`, `jobStatusActions`, Edit job › Status, Mark hired (switch gone, the dialog after the last opening), the reason on the job page and Jobs list. Checked in the browser with intercepted data (no reason, Other without a note, a reason and note saved, after-hire Filled with Keep it open, archiving a closed job sends no reason). Unit test `jobCloseReasons.test.ts`.
+
 ## Done 2026-11-24 (ATS) — Deleting a job with Slack automations — database applied, dialog on the branch waiting for Apply!
 
 - Allan: deleting a job said "Couldn't delete … Nothing was removed". The database refused it: the job's own Slack automations (made by the wizard's "Tell the hiring team in Slack") point at it through `slack_automations_job_id_fkey`, which had no ON DELETE; 2 jobs had them on 2026-11-24.
