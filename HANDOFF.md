@@ -112,10 +112,10 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
-## Done 2026-11-24 (ATS) — Deleting a job with Slack automations — on the branch, waiting for Apply! (the migration needs a desktop chat)
+## Done 2026-11-24 (ATS) — Deleting a job with Slack automations — database applied, dialog on the branch waiting for Apply!
 
 - Allan: deleting a job said "Couldn't delete … Nothing was removed". The database refused it: the job's own Slack automations (made by the wizard's "Tell the hiring team in Slack") point at it through `slack_automations_job_id_fkey`, which had no ON DELETE; 2 jobs had them on 2026-11-24.
-- Fix: `supabase/migrations/20261124150000_slack_follows_job.sql` replaces that constraint and `slack_deliveries_automation_id_fkey` with ON DELETE CASCADE, so a job's automations and their message log go with it (never SET NULL: a job-less automation is workspace-wide). It removes and re-adds constraints, so it's applied from a desktop chat; rename the file to the version it's applied with. Test `supabase/tests/94_slack_follows_job.sql` (catalogue only): before the change only the two Slack links fail, as expected.
+- Fix: `supabase/migrations/20261124043852_slack_follows_job.sql` replaces that constraint and `slack_deliveries_automation_id_fkey` with ON DELETE CASCADE, so a job's automations and their message log go with it (never SET NULL: a job-less automation is workspace-wide). It removes and re-adds constraints, so it was applied from a desktop chat (2026-11-24, byte-identical to the file). Test `supabase/tests/94_slack_follows_job.sql` (catalogue only): every check true live; only booked interviews and Gio Sign agreements still block a delete.
 - `DeleteJobDialog`: Gio Sign agreements sent for the job (`sign_envelopes.ats_job_id`, which still blocks on purpose) now get the blocked dialog with Archive job, like booked interviews; the delete text names the Slack automations. Checked in the browser with fake counts (agreements, both, neither).
 
 ## Done 2026-11-24 (ATS + Sales) — Job IDs, and bulk Transfer to another job — on main
