@@ -16,7 +16,7 @@ import { analyseTenure } from './tenure.ts';
 import { reconcileSkillEvidence, skillListBlock, type SkillPriority } from './skills.ts';
 import { buildMustHaves, causeOf, settleScore, NOT_MET_POINTS, NOT_MET_MAX, NOT_SHOWN_POINTS, NOT_SHOWN_MAX } from './scoring.ts';
 import { applicationAnswersBlock } from './evidence.ts';
-import { formatMoney, loadCurrencyRates, normaliseSalary } from '../_shared/salary.ts';
+import { bandPeriodOf, formatMoney, loadCurrencyRates, normaliseSalary } from '../_shared/salary.ts';
 
 // Bump when the prompt, the dimensions or the scoring rules change, so a
 // stored dossier from an older recipe is re-scored even if its inputs match.
@@ -33,7 +33,9 @@ import { formatMoney, loadCurrencyRates, normaliseSalary } from '../_shared/sala
 // must-have is a deduction instead of a ceiling; a must-have skill nothing
 // mentions is "not shown yet", not a miss; the application form's answers are
 // read; each assessment records what caused it (scoring.cause).
-const PROMPT_VERSION = 5;
+// v6 (2026-11-24): the salary range is read in the job's own pay period (or
+// its size when none is set), never assumed yearly.
+const PROMPT_VERSION = 6;
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -449,19 +451,25 @@ serve(async (req) => {
       dataSources.push("location");
     }
     // --- Salary: reconcile currency and period before any comparison --------
-    // The posted band (salary_min/max, in jobs.currency) is entered as a yearly
-    // figure; the budget fields carry their own explicit period.
+    // The posted band (salary_min/max, in jobs.currency) is per the job's own
+    // salary_period; a job saved without one is read from the range's size
+    // (bandPeriodOf: a monthly MXN range was being read as yearly, so every
+    // monthly expectation looked 12x off and salary was left out; 2026-11-24).
+    // The budget fields carry their own explicit period.
     const bandMin = job.salary_min ?? job.budget_salary_min ?? null;
     const bandMax = job.salary_max ?? job.budget_salary_max ?? null;
     const usesPostedBand = job.salary_min != null || job.salary_max != null;
     const bandCurrency = String(
       (usesPostedBand ? job.currency : job.budget_currency) || job.currency || "USD",
     ).toUpperCase();
-    const bandPeriod = usesPostedBand ? "annually" : String(job.budget_period || "monthly");
+    const needsRates = !!candidate.salary_amount || (usesPostedBand && !job.salary_period);
+    const rates = needsRates ? await loadCurrencyRates(sb, job.tenant_id ?? candidate.tenant_id ?? null) : new Map();
+    const bandPeriod = usesPostedBand
+      ? bandPeriodOf(job, rates).period
+      : String(job.budget_period || "monthly");
 
     if (candidate.salary_amount) {
       const rawSalary = `${candidate.salary_currency || "USD"} ${Number(candidate.salary_amount).toLocaleString("en-US")} ${candidate.salary_period || "annually"}`;
-      const rates = await loadCurrencyRates(sb, job.tenant_id ?? candidate.tenant_id ?? null);
       const normalised = normaliseSalary(
         candidate.salary_amount,
         candidate.salary_currency,

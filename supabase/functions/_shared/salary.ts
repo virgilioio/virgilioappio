@@ -133,6 +133,46 @@ export function normaliseSalary(
   };
 }
 
+/**
+ * A yearly band below about USD 15,000 isn't a yearly salary: it's a monthly one
+ * entered without its period (Allan, 2026-11-24: Mexican jobs post monthly
+ * ranges, MXN 25,000-40,000, and most were saved with no period).
+ */
+export const YEARLY_FLOOR_USD = 15000;
+
+// Rough USD value of one unit, only for when today's rate isn't on file.
+const ROUGH_USD: Record<string, number> = {
+  USD: 1, EUR: 1.08, GBP: 1.27, CAD: 0.73, AUD: 0.66, CHF: 1.13,
+  MXN: 0.055, COP: 0.00025, BRL: 0.18, CLP: 0.0011, PEN: 0.27, ARS: 0.001,
+  INR: 0.012, PHP: 0.017,
+};
+
+export type BandPeriodSource = "job" | "size" | "default";
+
+/**
+ * The pay period of a job's posted salary range: the job's own (salary_period)
+ * when it's set, else read from the range's size (under YEARLY_FLOOR_USD at
+ * today's rate means monthly). Kept in step with the migration that filled in
+ * the period on older jobs (20261124 job_salary_period).
+ */
+export function bandPeriodOf(
+  job: { salary_min?: number | null; salary_max?: number | null; salary_period?: string | null; currency?: string | null },
+  rates?: RateMap,
+): { period: string; source: BandPeriodSource } {
+  const set = normalisePeriod(job.salary_period);
+  if (set && PERIODS_PER_MONTH[set]) {
+    const yearly = PERIODS_PER_MONTH[set] === 1 / 12;
+    return { period: yearly ? "annually" : set === "month" || set === "per_month" ? "monthly" : set, source: "job" };
+  }
+  const top = Number(job.salary_max ?? job.salary_min);
+  if (!Number.isFinite(top) || top <= 0) return { period: "annually", source: "default" };
+  const currency = normaliseCurrency(job.currency) || "USD";
+  const usd = rates ? convertCurrency(top, currency, "USD", rates) : null;
+  const value = usd ?? (ROUGH_USD[currency] != null ? top * ROUGH_USD[currency] : null);
+  if (value == null) return { period: "annually", source: "default" };
+  return { period: value < YEARLY_FLOOR_USD ? "monthly" : "annually", source: "size" };
+}
+
 export function formatMoney(amount: number, currency: string): string {
   return `${currency} ${Math.round(amount).toLocaleString("en-US")}`;
 }

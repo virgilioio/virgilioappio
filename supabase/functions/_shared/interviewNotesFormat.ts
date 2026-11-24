@@ -10,6 +10,7 @@
 // Plain ASCII only (the function deploy tool rewrites escape sequences).
 
 import { SUGGESTED_RATINGS, toSuggestedRating, type SuggestedRating } from './interviewNotes.ts'
+import { bandPeriodOf, type RateMap } from './salary.ts'
 import { clock } from './fireflies.ts'
 
 // -- The job's requirements ----------------------------------------------------------
@@ -55,13 +56,15 @@ export function priorityOf(job: JobForNotes, skill: string): 'must' | 'nice' | '
 }
 
 /** The pay range the notes measure against: the posted band, else the budget. */
-export function payBand(job: JobForNotes): { min: number | null; max: number | null; currency: string; period: string } | null {
+export function payBand(job: JobForNotes, rates?: RateMap): { min: number | null; max: number | null; currency: string; period: string } | null {
   const posted = job.salary_min != null || job.salary_max != null
   const min = posted ? job.salary_min ?? null : job.budget_salary_min ?? null
   const max = posted ? job.salary_max ?? null : job.budget_salary_max ?? null
   if (min == null && max == null) return null
   const currency = String((posted ? job.currency : job.budget_currency) || job.currency || 'USD').toUpperCase()
-  const period = posted ? String(job.salary_period || 'annually') : String(job.budget_period || 'monthly')
+  // The posted range is per the job's own period, else read from its size
+  // (bandPeriodOf, Gio Fit's rule), never assumed yearly.
+  const period = posted ? bandPeriodOf(job, rates).period : String(job.budget_period || 'monthly')
   return { min, max, currency, period }
 }
 
@@ -75,7 +78,7 @@ const money = (n: number) => Math.round(n).toLocaleString('en-US')
 const MAX_NICE = 6
 
 /** What the recommendation is measured against, each with a stable id (c1, c2, ...). */
-export function jobCriteria(job: JobForNotes): Criterion[] {
+export function jobCriteria(job: JobForNotes, rates?: RateMap): Criterion[] {
   const out: Omit<Criterion, 'id'>[] = []
   const skills = (Array.isArray(job.skills) ? job.skills : []).map((s) => String(s || '').trim()).filter(Boolean)
   for (const s of skills) if (priorityOf(job, s) === 'must') out.push({ kind: 'must', label: s })
@@ -93,7 +96,7 @@ export function jobCriteria(job: JobForNotes): Criterion[] {
     const mode = job.work_mode ? ` (${String(job.work_mode).replace(/_/g, ' ')})` : ''
     out.push({ kind: 'location', label: `Based in ${uniquePlaces.join(' or ')}${mode}` })
   }
-  const band = payBand(job)
+  const band = payBand(job, rates)
   if (band) {
     const range = band.min != null && band.max != null
       ? `${band.currency} ${money(band.min)}-${money(band.max)}`

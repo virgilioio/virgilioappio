@@ -285,8 +285,9 @@ async function draft(supabaseUrl: string, supabaseServiceKey: string, booking_id
 
     // What the recommendation is measured against: the job's own requirements.
     const job = booking.job || {};
-    const criteria = jobCriteria(job);
-    const band = payBand(job);
+    const rates = await loadCurrencyRates(supabase as any, booking.tenant_id ?? job.tenant_id ?? null);
+    const criteria = jobCriteria(job, rates);
+    const band = payBand(job, rates);
 
     const sourceNote = source.full
       ? `SOURCE: The full transcript of the call. Each line is one turn: "[m:ss] Speaker name: what they said", the time counted from the start of the call. ${interviewerName ? `${interviewerName} is the interviewer` : 'The interviewer works for the hiring team'}${candidateName ? `; ${candidateName} is the candidate` : ''}. The note-taker names speakers from the calendar, so someone may appear under another name or as "Speaker"; work out who is who from what they say. Quote exactly, one short sentence each (about 25 words at most), and give the time of every quote (the "at" fields, m:ss).`
@@ -361,7 +362,6 @@ If the source has no real interview in it (greetings, silence, people joining), 
     }
 
     // Pay is the server's to judge: the stated figure on the band's own basis.
-    const rates = await loadCurrencyRates(supabase as any, booking.tenant_id ?? job.tenant_id ?? null);
     const convert = (amount: number, fromC: string, fromP: string, toC: string, toP: string) =>
       normaliseSalary(amount, fromC, fromP, toC, toP, rates)?.amount ?? null;
     const stated = notes.stated_salary ?? null;
