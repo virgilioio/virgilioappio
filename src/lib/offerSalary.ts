@@ -7,7 +7,7 @@
  *
  * The rules here mirror the database (`offer_form_base_field`,
  * `offer_letter_base_salary`, `hire_offer_for` in
- * 20261125180000_hired_salary); keep them in step.
+ * 20261125053051_hired_salary); keep them in step.
  */
 
 export type SalaryPeriod = 'monthly' | 'annually' | 'hourly'
