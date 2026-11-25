@@ -4,7 +4,7 @@ import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter
 import type { DimensionId } from '../model/types'
 import { useMarketBundle } from './MarketDataContext'
 import { valuesOf } from './marketData'
-import { ADDED_PERIODS, CAME_IN_ORDER, JOB_STATE_ORDER, JOB_STATUS_ORDER } from './jobLinks'
+import { ADDED_PERIODS, CAME_IN_ORDER, HIRED_PERIODS, JOB_STATE_ORDER, JOB_STATUS_ORDER } from './jobLinks'
 
 /**
  * Intelligence by job and client (2026-11-05): the filter bar over every widget.
@@ -18,6 +18,8 @@ const FILTERS: { dim: DimensionId; label: string; searchable?: boolean }[] = [
   { dim: 'mkt_job_state', label: 'In the job as' },
   { dim: 'mkt_came_in', label: 'Came in' },
   { dim: 'mkt_added', label: 'Added to the job' },
+  // By the day the opening was filled, never when they were added (2026-11-25).
+  { dim: 'mkt_hired_in', label: 'Hired in' },
 ]
 
 export function IntelligenceFilterBar() {
@@ -56,6 +58,7 @@ export function IntelligenceFilterBar() {
       case 'mkt_job_state': return present(JOB_STATE_ORDER)
       case 'mkt_came_in': return present(CAME_IN_ORDER)
       case 'mkt_added': return ADDED_PERIODS.map(opt)
+      case 'mkt_hired_in': return HIRED_PERIODS.map(opt)
       default: return []
     }
   }

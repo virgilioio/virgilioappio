@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildJobIndex, linkValues, periodStart, type JobLink } from '../jobLinks'
+import { buildJobIndex, hiredPeriods, linkValues, periodStart, withHires, type HireRow, type JobLink } from '../jobLinks'
 import { applySelections, contextFor, emptyValueContext, valuesOf, type MarketRow, type MarketSelection, type ValueContext } from '../marketData'
 
 const now = new Date(2026, 10, 5, 12) // 5 Nov 2026
@@ -68,5 +68,34 @@ describe('Intelligence by job and client', () => {
     expect(linkValues(links[0], 'mkt_added', ctx.jobs, now)).toEqual(['This month', 'This quarter', 'This year', 'Last 12 months'])
     expect(linkValues(links[1], 'mkt_added', ctx.jobs, now)).toEqual([])
     expect(ids([{ dimension: 'mkt_added', value: 'This month' }])).toEqual(['ana', 'ben'])
+  })
+
+  // Hires (2026-11-25): the day the opening was filled and the salary on the offer.
+  it('a hire carries its day and salary on its own job link', () => {
+    const hire: HireRow = {
+      candidate_id: 'ana', job_id: 'j-globex', opening_id: 'o1', req_id: 'REQ-1', hired_on: '2026-10-20',
+      salary_amount: 40000, salary_currency: 'MXN', salary_period: 'monthly', salary_month_base: 40000,
+    }
+    const merged = withHires(links, [hire])
+    expect(merged.find(l => l.job_id === 'j-globex')).toMatchObject({ hired_on: '2026-10-20', hired_salary_month_base: 40000 })
+    expect(merged.find(l => l.candidate_id === 'ana' && l.job_id === 'j-acme')?.hired_on).toBeUndefined()
+    expect(withHires(links, [{ ...hire, salary_month_base: null }]).find(l => l.job_id === 'j-globex')?.hired_salary_month_base).toBeNull()
+
+    const c: ValueContext = { ...emptyValueContext(), jobs: buildJobIndex(merged), now }
+    const hired = merged.find(l => l.job_id === 'j-globex')!
+    // Added in March 2025, hired in October 2026: "Hired in" reads the hire day.
+    expect(linkValues(hired, 'mkt_added', c.jobs, now)).toEqual([])
+    expect(linkValues(hired, 'mkt_hired_in', c.jobs, now)).toEqual(['This quarter', 'This year', 'Last 12 months'])
+    expect(linkValues(hired, 'mkt_hire_month', c.jobs, now)).toEqual(['Oct 2026'])
+    expect(applySelections(rows, [{ dimension: 'mkt_hired_in', value: 'This year' }], c).map(r => r.id)).toEqual(['ana'])
+    // Someone never hired has no hire period.
+    expect(linkValues(merged[0], 'mkt_hired_in', c.jobs, now)).toEqual([])
+  })
+
+  it('hire periods follow the calendar', () => {
+    expect(hiredPeriods('2025-06-30', now)).toEqual(['Last year'])
+    expect(hiredPeriods('2025-12-15', now)).toEqual(['Last 12 months', 'Last year'])
+    expect(hiredPeriods('2026-11-01', now)).toEqual(['This month', 'This quarter', 'This year', 'Last 12 months'])
+    expect(hiredPeriods(null, now)).toEqual([])
   })
 })

@@ -22,6 +22,7 @@ export type MetricId =
   // Market (Intelligence): the whole talent database
   | 'mkt_people'
   | 'mkt_salary'
+  | 'mkt_hired_salary'
   | 'mkt_experience'
 
 export type MetricGroup = 'recruiting' | 'hygiene' | 'market'
@@ -60,6 +61,8 @@ export type DimensionId =
   | 'mkt_rejection'
   | 'mkt_added'
   | 'mkt_job_month'
+  | 'mkt_hired_in'
+  | 'mkt_hire_month'
 
 export type VizId = 'kpi' | 'line' | 'bars' | 'columns' | 'donut' | 'funnel' | 'table' | 'aging' | 'list' | 'salary_range' | 'map'
 
@@ -84,13 +87,17 @@ export interface WidgetConfig {
   salaryCurrency?: string
 }
 
-/** A salary spread for one group (Intelligence). Groups under 5 salaries are never shown. */
+/** A salary spread for one group (Intelligence). Salary expectations need 5 salaries a group; hired salaries show from one hire. */
 export interface SalaryRange {
   label: string
   p25: number
   median: number
   p75: number
   n: number
+  /** The average, shown beside the median (hired salaries). */
+  mean?: number
+  /** What `n` counts: salaries (the default) or hires. */
+  unit?: 'salaries' | 'hires'
 }
 
 export interface SeriesPoint {

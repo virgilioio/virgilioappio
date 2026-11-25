@@ -5,7 +5,7 @@ import { fmt } from '../model/format'
 import type { NormalizedData, SalaryRange, SeriesPoint, WidgetConfig } from '../model/types'
 import { useMarketBundle } from './MarketDataContext'
 import { MIN_SALARIES, median, orderFor, percentile, valuesOf, type MarketRow } from './marketData'
-import { singleJob } from './jobLinks'
+import { isJobDimension, linkValues, linksInScope, singleJob, type JobLink } from './jobLinks'
 
 /**
  * One Intelligence widget's numbers (Find Phase 4, 2026-10-12): people,
@@ -15,6 +15,10 @@ import { singleJob } from './jobLinks'
  * salaries; groups below that are left out and counted in a note.
  * By job and client (2026-11-05): job values follow the page's job filters, and a
  * Job or Client chart counts someone once per job (the note says so when it happens).
+ * Hired salary (2026-11-25): the base salary on each hire's offer, one value per hire,
+ * with the median and the average. Every hire counts, so it shows from a single hire
+ * (Allan: "All hires count, even if it's only one"); "Salary expectation" is what
+ * candidates ask for and keeps its five-salary floor.
  */
 
 export interface SalaryUnit {
@@ -54,7 +58,7 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
   const rows = useMemo(() => m.rowsFor(dim === 'none' ? undefined : dim), [m, dim])
   const ctx = useMemo(() => m.ctxFor(dim === 'none' ? undefined : dim), [m, dim])
   // "Added to Gio over time" and "Added to a job over time" are both the last 12 months.
-  const isTime = dim === 'time' || dim === 'mkt_job_month'
+  const isTime = dim === 'time' || dim === 'mkt_job_month' || dim === 'mkt_hire_month'
 
   return useMemo<NormalizedData>(() => {
     const unit = salaryUnit(cfg, m.baseCurrency, m.rates)
@@ -62,6 +66,15 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
     const perWord = unit.per === 'year' ? 'a year' : 'a month'
     const salaryOf = (r: MarketRow) => (typeof r.salary_month_base === 'number' && r.salary_month_base > 0 ? r.salary_month_base * unit.factor : null)
     const salaries = (rs: MarketRow[]) => rs.map(salaryOf).filter((v): v is number => v !== null)
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
+    // These people's hires that meet the job filters, and what each was hired at (null: no salary on the offer yet).
+    const isHired = cfg.metric === 'mkt_hired_salary'
+    const hiresOf = (r: MarketRow): JobLink[] =>
+      linksInScope(r.id, ctx.jobScope, ctx.jobs, ctx.now).filter(l => l.status === 'hired' || !!l.hired_on)
+    const hiredPay = (l: JobLink) =>
+      typeof l.hired_salary_month_base === 'number' && l.hired_salary_month_base > 0 ? l.hired_salary_month_base * unit.factor : null
+    const noSalaryNote = (missing: number) =>
+      missing > 0 ? `${plural(missing, 'hire')} here ${missing === 1 ? 'has' : 'have'} no salary on the offer yet.` : undefined
     const yearsOf = (rs: MarketRow[]) => rs.map(r => r.years_experience).filter((v): v is number => typeof v === 'number' && v >= 0 && v < 60)
     const filtered = m.selections.length > 0
     const scopeWord = filtered ? 'the people you picked' : 'Gio'
@@ -103,18 +116,31 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
         const s = salaries(rows)
         if (s.length >= MIN_SALARIES) {
           base.value = median(s)
-          base.caption = `${money(percentile(s, 25))}–${money(percentile(s, 75))} middle half · ${perWord} · from ${plural(s.length, 'salary', 'salaries')}`
+          base.caption = `average ${money(mean(s))} · ${money(percentile(s, 25))}–${money(percentile(s, 75))} middle half · ${perWord} · from ${plural(s.length, 'salary', 'salaries')}`
         } else {
           base.value = null
           base.caption = s.length ? `Only ${plural(s.length, 'salary', 'salaries')} here; 5 are needed to show one` : 'No salaries on file here yet'
+        }
+      } else if (isHired) {
+        const hires = rows.flatMap(hiresOf)
+        const s = hires.map(hiredPay).filter((v): v is number => v !== null)
+        if (s.length) {
+          base.value = median(s)
+          base.caption = `average ${money(mean(s))} · ${perWord} · from ${plural(s.length, 'hire')}`
+          base.note = noSalaryNote(hires.length - s.length)
+        } else {
+          base.value = null
+          base.caption = hires.length
+            ? `${plural(hires.length, 'hire')} here, none with a salary on the offer yet`
+            : 'No hires here yet'
         }
       } else {
         const y = yearsOf(rows)
         base.value = y.length ? y.reduce((a, b) => a + b, 0) / y.length : null
         base.caption = y.length ? `from ${plural(y.length, 'person', 'people')} with experience on file` : 'No experience on file here yet'
       }
-      base.empty = base.value === null && cfg.metric !== 'mkt_salary'
-      base.note = budgetNote
+      base.empty = base.value === null && cfg.metric !== 'mkt_salary' && !isHired
+      base.note = base.note ?? budgetNote
       return base
     }
 
@@ -138,7 +164,37 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
     let hidden = 0
     let points: (SeriesPoint & { n: number })[] = []
     let ranges: SalaryRange[] | undefined
-    if (cfg.metric === 'mkt_people') {
+    // Hired salaries: one value per hire. A job split reads each hire's own job; any other split, the person's.
+    const hiredAll: number[] = []
+    let hiredMissing = 0
+    if (isHired) {
+      const pay = new Map<string, number[]>()
+      if (isTime) for (const label of lastTwelveMonths()) pay.set(label, [])
+      const byJob = isJobDimension(dim)
+      for (const r of rows) {
+        const hires = hiresOf(r)
+        if (hires.length === 0) continue
+        const personVals = byJob ? null : valuesOf(r, dim, ctx)
+        for (const l of hires) {
+          const v = hiredPay(l)
+          if (v === null) { hiredMissing++; continue }
+          hiredAll.push(v)
+          for (const label of personVals ?? linkValues(l, dim, ctx.jobs, ctx.now)) {
+            if (isTime && !pay.has(label)) continue
+            const list = pay.get(label) ?? []
+            list.push(v)
+            pay.set(label, list)
+          }
+        }
+      }
+      ranges = []
+      for (const [label, s] of pay) {
+        if (s.length === 0) continue
+        const r: SalaryRange = { label, p25: percentile(s, 25)!, median: median(s)!, p75: percentile(s, 75)!, n: s.length, mean: mean(s), unit: 'hires' }
+        ranges.push(r)
+        points.push({ label, value: r.median, n: r.n })
+      }
+    } else if (cfg.metric === 'mkt_people') {
       points = [...groups.entries()].map(([label, rs]) => ({ label, value: rs.length, n: rs.length }))
     } else if (cfg.metric === 'mkt_salary') {
       ranges = []
@@ -176,7 +232,9 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
     }
     base.ranges = ranges
     base.empty = points.length === 0
-    if (hidden > 0) {
+    if (isHired) {
+      base.note = noSalaryNote(hiredMissing)
+    } else if (hidden > 0) {
       base.note = `${plural(hidden, 'group')} left out: fewer than 5 salaries each.`
     } else if (countedTwice) {
       base.note = 'Someone in more than one job counts once for each.'
@@ -190,11 +248,25 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
     const covered = cfg.metric === 'mkt_people'
       ? new Set([...groups.values()].flat().map(r => r.id)).size
       : 0
-    if (points.length > 0) {
+    if (isHired) {
+      const overall = hiredAll.length
+        ? `${plural(hiredAll.length, 'hire')}: median ${money(median(hiredAll))}, average ${money(mean(hiredAll))} ${perWord}`
+        : null
+      if (!overall) {
+        base.insight = hiredMissing > 0 ? 'No hire here has a salary on the offer yet.' : 'No hires here yet.'
+      } else if (isTime || points.length < 2) {
+        base.insight = `${overall}.`
+      } else {
+        const top = [...points].sort((a, b) => b.value - a.value)[0]
+        base.insight = `${overall}. Highest: ${top.label}, ${money(top.value)} from ${plural(top.n, 'hire')}.`
+      }
+    } else if (points.length > 0) {
       if (isTime) {
         const recent = points.slice(-3).reduce((s, p) => s + p.value, 0)
         base.insight = cfg.metric !== 'mkt_people'
           ? undefined
+          : dim === 'mkt_hire_month'
+            ? `${plural(recent, 'person', 'people')} hired in the last three months.`
           : dim === 'mkt_job_month'
             ? `${plural(recent, 'person', 'people')} joined ${filtered ? 'these jobs' : 'a job'} in the last three months.`
             : `${plural(recent, 'person', 'people')} joined ${scopeWord} in the last three months.`

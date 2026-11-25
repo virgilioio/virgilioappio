@@ -52,7 +52,10 @@ export const METRICS: Record<MetricId, MetricDef> = {
 
   // Market (Intelligence): the whole talent database, not one period's pipeline
   mkt_people:           { id: 'mkt_people',           label: 'People',                tone: 'purple',  icon: Users,         format: 'count', deltaGood: 'up',   group: 'market' },
-  mkt_salary:           { id: 'mkt_salary',           label: 'Median salary',         tone: 'green',   icon: Banknote,      format: 'money', deltaGood: 'up',   group: 'market' },
+  // What candidates ask for (their profile's salary), never what anyone was hired at.
+  mkt_salary:           { id: 'mkt_salary',           label: 'Salary expectation',    tone: 'green',   icon: Banknote,      format: 'money', deltaGood: 'up',   group: 'market' },
+  // The base salary on the offer of each hire (2026-11-25): one value per hire, shown from one.
+  mkt_hired_salary:     { id: 'mkt_hired_salary',     label: 'Hired salary',          tone: 'purple',  icon: Trophy,        format: 'money', deltaGood: 'up',   group: 'market' },
   mkt_experience:       { id: 'mkt_experience',       label: 'Avg experience',        tone: 'blue',    icon: Briefcase,     format: 'years', deltaGood: 'up',   group: 'market' },
 }
 

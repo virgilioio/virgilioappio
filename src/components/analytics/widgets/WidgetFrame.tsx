@@ -283,7 +283,7 @@ function ConfigPopover({ cfg, catalog, onChange, onClose }: { cfg: WidgetConfig;
         </Section>
       )}
 
-      {cfg.metric === 'mkt_salary' && (
+      {(cfg.metric === 'mkt_salary' || cfg.metric === 'mkt_hired_salary') && (
         <Section label="Salary">
           <div className="flex gap-1.5">
             <Dropdown

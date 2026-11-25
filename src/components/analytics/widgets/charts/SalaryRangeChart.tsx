@@ -7,7 +7,8 @@ import { ChartMotion } from '@/components/ui/chart-motion'
 /**
  * Salary range per group (Intelligence, Find Phase 4): the middle half of
  * salaries (P25–P75) as a bar, the median as a mark, and how many salaries
- * it's built from. Groups with fewer than 5 salaries never reach this chart.
+ * it's built from. Salary expectations reach this chart from 5 salaries a group;
+ * hired salaries from one hire, with the average beside the median.
  */
 interface Props {
   widgetId: string
@@ -34,10 +35,11 @@ export function SalaryRangeChart({ widgetId, ranges, currency, selected = [], on
         const left = (r.p25 / max) * 100
         const width = Math.max(1.5, ((r.p75 - r.p25) / max) * 100)
         const mid = (r.median / max) * 100
+        const unit = r.unit === 'hires' ? (r.n === 1 ? 'hire' : 'hires') : r.n === 1 ? 'salary' : 'salaries'
         return (
           <Row
             key={r.label}
-            {...(onSelect ? { type: 'button' as const, onClick: () => onSelect(r.label), 'aria-pressed': on, 'aria-label': `${r.label}: median ${money(r.median)}, middle half ${money(r.p25)} to ${money(r.p75)}, from ${r.n} salaries` } : {})}
+            {...(onSelect ? { type: 'button' as const, onClick: () => onSelect(r.label), 'aria-pressed': on, 'aria-label': `${r.label}: median ${money(r.median)}, ${r.mean !== undefined ? `average ${money(r.mean)}, ` : ''}middle half ${money(r.p25)} to ${money(r.p75)}, from ${r.n} ${unit}` } : {})}
             className={`flex items-center gap-3 min-w-0 w-full text-left transition-opacity duration-150 ${selected.length > 0 && !on ? 'opacity-[0.45]' : ''}`}
           >
             <div
@@ -53,8 +55,9 @@ export function SalaryRangeChart({ widgetId, ranges, currency, selected = [], on
                 title: r.label,
                 rows: [
                   { color: BAR, label: 'Median', value: money(r.median) },
+                  ...(r.mean !== undefined ? [{ label: 'Average', value: money(r.mean) }] : []),
                   { color: BAR_TINT, label: 'Middle half', value: `${money(r.p25)}–${money(r.p75)}` },
-                  { label: 'Salaries', value: r.n.toLocaleString('en-US') },
+                  { label: r.unit === 'hires' ? 'Hires' : 'Salaries', value: r.n.toLocaleString('en-US') },
                 ],
               })}
               onMouseLeave={tip.hide}
@@ -71,7 +74,7 @@ export function SalaryRangeChart({ widgetId, ranges, currency, selected = [], on
             </div>
             <div className="flex-shrink-0 text-right" style={{ width: 'clamp(64px, 20%, 96px)' }}>
               <div className="font-poppins font-semibold text-[12.5px] tabular-nums text-[#0d0d09] truncate">{money(r.median)}</div>
-              <div className="text-[10.5px] font-inter tabular-nums text-[#6B7080]">{r.n} salaries</div>
+              <div className="text-[10.5px] font-inter tabular-nums text-[#6B7080]">{r.n} {unit}</div>
             </div>
           </Row>
         )

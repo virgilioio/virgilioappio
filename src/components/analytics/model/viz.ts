@@ -38,8 +38,8 @@ export const VIZ: Record<VizId, VizDef> = {
 /** Intelligence: which viz fit a market metric split by a dimension. */
 export function marketVizFor(metric: MetricId, group: DimensionId): VizId[] {
   if (group === 'none') return ['kpi']
-  if (group === 'time' || group === 'mkt_job_month') return metric === 'mkt_people' ? ['line', 'columns'] : ['line']
-  if (metric === 'mkt_salary') return ['salary_range', 'bars', 'table']
+  if (group === 'time' || group === 'mkt_job_month' || group === 'mkt_hire_month') return metric === 'mkt_people' ? ['line', 'columns'] : ['line']
+  if (metric === 'mkt_salary' || metric === 'mkt_hired_salary') return ['salary_range', 'bars', 'table']
   if (group === 'mkt_job_state' || group === 'mkt_came_in' || group === 'mkt_job_status') return ['donut', 'bars', 'columns', 'table']
   if (group === 'mkt_stage') return ['columns', 'bars', 'table']
   if (group === 'mkt_country') return ['map', 'bars', 'donut', 'table']

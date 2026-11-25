@@ -45,6 +45,8 @@ export const DIMENSIONS: Record<DimensionId, DimensionDef> = {
   mkt_rejection:      { id: 'mkt_rejection',      label: 'Rejection reason',   kind: 'categorical', group: 'market', multi: true },
   mkt_added:          { id: 'mkt_added',          label: 'Added to the job',   kind: 'categorical', group: 'market', multi: true },
   mkt_job_month:      { id: 'mkt_job_month',      label: 'Added to a job over time', kind: 'time', group: 'market', multi: true },
+  mkt_hired_in:       { id: 'mkt_hired_in',       label: 'Hired in',           kind: 'categorical', group: 'market', multi: true },
+  mkt_hire_month:     { id: 'mkt_hire_month',     label: 'Hired over time',    kind: 'time', group: 'market', multi: true },
 }
 
 // Dimensions a user can choose in the config popover (NOT 'none', that is the default no-split).
@@ -64,6 +66,7 @@ export const SPLITTABLE_DIMENSIONS: DimensionDef[] = [
 export const MARKET_DIMENSIONS: DimensionDef[] = [
   { ...DIMENSIONS.time, label: 'Added to Gio over time' },
   DIMENSIONS.mkt_job_month,
+  DIMENSIONS.mkt_hire_month,
   DIMENSIONS.mkt_client,
   DIMENSIONS.mkt_job,
   DIMENSIONS.mkt_stage,

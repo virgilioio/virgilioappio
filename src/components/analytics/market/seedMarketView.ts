@@ -51,3 +51,27 @@ export function seedSearchWidgets(): WidgetConfig[] {
     w({ metric: 'mkt_people', groupBy: 'mkt_job_month', viz: 'line', span: 6 }),
   ]
 }
+
+/**
+ * The seeded "Hires" view (2026-11-25): who was hired and at what salary. Hired salary
+ * is the base salary on each hire's offer; the view opens on "In the job as: Hired", and
+ * "Hired in" narrows it to a period by the day each opening was filled.
+ */
+export function seedHiresWidgets(): WidgetConfig[] {
+  return [
+    w({ metric: 'mkt_people', groupBy: 'none', viz: 'kpi', span: 4, title: 'People hired' }),
+    w({ metric: 'mkt_hired_salary', groupBy: 'none', viz: 'kpi', span: 4, salaryPeriod: 'month' }),
+    w({ metric: 'mkt_salary', groupBy: 'none', viz: 'kpi', span: 4, salaryPeriod: 'month', title: 'What they asked for' }),
+    w({ metric: 'mkt_hired_salary', groupBy: 'mkt_client', viz: 'salary_range', span: 6, salaryPeriod: 'month' }),
+    w({ metric: 'mkt_hired_salary', groupBy: 'mkt_job', viz: 'salary_range', span: 6, salaryPeriod: 'month' }),
+    w({ metric: 'mkt_hired_salary', groupBy: 'mkt_seniority', viz: 'salary_range', span: 6, salaryPeriod: 'month' }),
+    w({ metric: 'mkt_hired_salary', groupBy: 'mkt_title', viz: 'salary_range', span: 6, salaryPeriod: 'month' }),
+    w({ metric: 'mkt_people', groupBy: 'mkt_hire_month', viz: 'columns', span: 6, title: 'Hires over time' }),
+    w({ metric: 'mkt_hired_salary', groupBy: 'mkt_hire_month', viz: 'line', span: 6, salaryPeriod: 'month' }),
+    w({ metric: 'mkt_people', groupBy: 'mkt_client', viz: 'bars', span: 6, title: 'Hires by client' }),
+    w({ metric: 'mkt_people', groupBy: 'mkt_came_in', viz: 'donut', span: 6, title: 'How hires came in' }),
+  ]
+}
+
+/** The filter the Hires view is seeded with. */
+export const HIRES_SELECTIONS = [{ dimension: 'mkt_job_state' as const, value: 'Hired' }]

@@ -8,7 +8,7 @@ import {
   applySelections, companyLabel, contextFor, salaryBands,
   type MarketRow, type MarketSelection, type SalaryBands, type ValueContext,
 } from './marketData'
-import { buildJobIndex, type JobIndex, type JobLink } from './jobLinks'
+import { buildJobIndex, withHires, type HireRow, type JobIndex, type JobLink } from './jobLinks'
 import { pages } from './pages'
 
 /**
@@ -20,6 +20,7 @@ import { pages } from './pages'
  * keeps all its bars and highlights the one you picked.
  * By job and client (2026-11-05): also where each person stands in the jobs you can
  * see (market_job_links), for the filter bar and the job dimensions.
+ * Hires (2026-11-25): market_hires adds each hire's day and hired salary to its link.
  */
 export interface MarketBundle {
   loading: boolean
@@ -80,8 +81,22 @@ export function MarketDataProvider({
       supabase.rpc('market_job_links', { p_tenant: tenantId! }).range(from, to) as unknown as PromiseLike<{ data: JobLink[] | null; error: unknown }>),
   })
 
+  // Hires (2026-11-25): the day each opening was filled and the base salary on its offer.
+  // A failed read leaves the page as it was, without hire dates and hired salaries.
+  const hiresQuery = useQuery({
+    queryKey: ['market-hires', tenantId],
+    enabled: !!tenantId,
+    staleTime: 5 * 60_000,
+    retry: 1,
+    queryFn: () => pages<HireRow>((from, to) =>
+      supabase.rpc('market_hires', { p_tenant: tenantId! }).range(from, to) as unknown as PromiseLike<{ data: HireRow[] | null; error: unknown }>),
+  })
+
   const rows = useMemo(() => rowsQuery.data ?? [], [rowsQuery.data])
-  const jobs = useMemo(() => buildJobIndex(linksQuery.data ?? []), [linksQuery.data])
+  const jobs = useMemo(
+    () => buildJobIndex(withHires(linksQuery.data ?? [], hiresQuery.data ?? [])),
+    [linksQuery.data, hiresQuery.data],
+  )
   const base = rows[0]?.base_currency || baseCurrency
 
   const ctx = useMemo<ValueContext>(() => {
@@ -131,10 +146,10 @@ export function MarketDataProvider({
   )
 
   const value = useMemo<MarketBundle>(() => ({
-    loading: rowsQuery.isLoading || pastQuery.isLoading || linksQuery.isLoading || !tenantId,
+    loading: rowsQuery.isLoading || pastQuery.isLoading || linksQuery.isLoading || hiresQuery.isLoading || !tenantId,
     jobsLoading: linksQuery.isLoading || !tenantId,
     error: rowsQuery.error ?? pastQuery.error ?? linksQuery.error ?? null,
-    refetch: () => { void rowsQuery.refetch(); void pastQuery.refetch(); void linksQuery.refetch() },
+    refetch: () => { void rowsQuery.refetch(); void pastQuery.refetch(); void linksQuery.refetch(); void hiresQuery.refetch() },
     rows,
     ctx,
     baseCurrency: base,
@@ -145,7 +160,7 @@ export function MarketDataProvider({
     rowsFor,
     ctxFor,
     jobs,
-  }), [rowsQuery, pastQuery, linksQuery, tenantId, rows, ctx, base, rates, selections, toggle, setDimension, rowsFor, ctxFor, jobs])
+  }), [rowsQuery, pastQuery, linksQuery, hiresQuery, tenantId, rows, ctx, base, rates, selections, toggle, setDimension, rowsFor, ctxFor, jobs])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

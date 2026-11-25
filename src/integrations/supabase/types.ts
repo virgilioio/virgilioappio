@@ -3974,6 +3974,10 @@ export type Database = {
           fee_pct: number | null
           filled_at: string | null
           hired_association_id: string | null
+          hired_salary_amount: number | null
+          hired_salary_currency: string | null
+          hired_salary_offer_id: string | null
+          hired_salary_period: string | null
           id: string
           job_id: string
           opened_at: string | null
@@ -3996,6 +4000,10 @@ export type Database = {
           fee_pct?: number | null
           filled_at?: string | null
           hired_association_id?: string | null
+          hired_salary_amount?: number | null
+          hired_salary_currency?: string | null
+          hired_salary_offer_id?: string | null
+          hired_salary_period?: string | null
           id?: string
           job_id: string
           opened_at?: string | null
@@ -4018,6 +4026,10 @@ export type Database = {
           fee_pct?: number | null
           filled_at?: string | null
           hired_association_id?: string | null
+          hired_salary_amount?: number | null
+          hired_salary_currency?: string | null
+          hired_salary_offer_id?: string | null
+          hired_salary_period?: string | null
           id?: string
           job_id?: string
           opened_at?: string | null
@@ -12568,6 +12580,20 @@ export type Database = {
           job_closed: boolean
           openings_remaining: number
           req_id: string
+        }[]
+      }
+      market_hires: {
+        Args: { p_tenant: string }
+        Returns: {
+          candidate_id: string
+          hired_on: string
+          job_id: string
+          opening_id: string
+          req_id: string
+          salary_amount: number
+          salary_currency: string
+          salary_month_base: number
+          salary_period: string
         }[]
       }
       market_job_links: {

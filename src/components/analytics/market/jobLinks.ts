@@ -25,11 +25,43 @@ export interface JobLink {
   /** The job's pay range per month in the workspace's base currency (budget, else salary range). */
   budget_min_month_base?: number | null
   budget_max_month_base?: number | null
+  /** The day they were hired (the opening filled, a Mexico City day), from market_hires(). */
+  hired_on?: string | null
+  /** The hired salary: the base salary on their offer, per month in the base currency. */
+  hired_salary_month_base?: number | null
+}
+
+const num = (v: unknown): number | null => {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** One hire from market_hires(): a filled opening, with the salary on its offer when there is one. */
+export interface HireRow {
+  candidate_id: string
+  job_id: string
+  opening_id: string
+  req_id: string | null
+  hired_on: string | null
+  salary_amount: number | null
+  salary_currency: string | null
+  salary_period: string | null
+  salary_month_base: number | null
+}
+
+/** Job links with each hire's day and salary on the link it belongs to (one per person per job). */
+export function withHires(links: JobLink[], hires: HireRow[]): JobLink[] {
+  if (hires.length === 0) return links
+  const byKey = new Map(hires.map(h => [`${h.candidate_id}|${h.job_id}`, h]))
+  return links.map(l => {
+    const h = byKey.get(`${l.candidate_id}|${l.job_id}`)
+    return h ? { ...l, hired_on: h.hired_on, hired_salary_month_base: num(h.salary_month_base) } : l
+  })
 }
 
 export const JOB_DIMENSIONS: ReadonlySet<DimensionId> = new Set<DimensionId>([
   'mkt_client', 'mkt_job', 'mkt_job_status', 'mkt_job_state', 'mkt_stage',
-  'mkt_came_in', 'mkt_rejection', 'mkt_added', 'mkt_job_month',
+  'mkt_came_in', 'mkt_rejection', 'mkt_added', 'mkt_job_month', 'mkt_hired_in', 'mkt_hire_month',
 ])
 export const isJobDimension = (d: DimensionId) => JOB_DIMENSIONS.has(d)
 
@@ -64,6 +96,23 @@ const rankOf = (t: string | null) => {
   return i === -1 ? 5.5 : i
 }
 
+/** "Hired in": the Added periods plus last calendar year, by the day the opening was filled. */
+export const HIRED_PERIODS = [...ADDED_PERIODS, 'Last year'] as const
+
+/** A YYYY-MM-DD day as a local date (never shifted by the time zone). */
+export function dayOf(day: string | null | undefined): Date | null {
+  const m = day ? /^(\d{4})-(\d{2})-(\d{2})/.exec(day) : null
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null
+}
+
+export function hiredPeriods(day: string | null | undefined, now: Date): string[] {
+  const at = dayOf(day)
+  if (!at) return []
+  const out: string[] = ADDED_PERIODS.filter(p => { const s = periodStart(p, now); return !!s && at >= s && at <= now })
+  if (at.getFullYear() === now.getFullYear() - 1) out.push('Last year')
+  return out
+}
+
 function monthLabel(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }
@@ -89,11 +138,6 @@ export interface JobIndex {
 }
 
 export const EMPTY_JOB_INDEX: JobIndex = { byPerson: new Map(), jobs: [], jobLabel: new Map(), clients: [], stageOrder: [] }
-
-const num = (v: unknown): number | null => {
-  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN
-  return Number.isFinite(n) && n > 0 ? n : null
-}
 
 export const clientOf = (l: Pick<JobLink, 'client_name'>) => l.client_name?.trim() || NO_CLIENT
 
@@ -162,6 +206,11 @@ export function linkValues(l: JobLink, dim: DimensionId, idx: JobIndex, now: Dat
       return ADDED_PERIODS.filter(p => { const s = periodStart(p, now); return !!s && at >= s && at <= now })
     }
     case 'mkt_job_month': return [monthLabel(l.added_at)]
+    case 'mkt_hired_in': return hiredPeriods(l.hired_on, now)
+    case 'mkt_hire_month': {
+      const at = dayOf(l.hired_on)
+      return at ? [at.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })] : []
+    }
     default: return []
   }
 }
@@ -192,6 +241,7 @@ export function jobOrderFor(dim: DimensionId, idx: JobIndex): string[] | null {
     case 'mkt_job_state': return JOB_STATE_ORDER
     case 'mkt_came_in': return CAME_IN_ORDER
     case 'mkt_added': return [...ADDED_PERIODS]
+    case 'mkt_hired_in': return [...HIRED_PERIODS]
     case 'mkt_stage': return idx.stageOrder
     default: return null
   }

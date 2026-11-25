@@ -15,7 +15,7 @@ import { WidgetGrid } from '@/components/analytics/WidgetGrid'
 import { WidgetCatalogProvider } from '@/components/analytics/widgets/WidgetCatalog'
 import { MarketDataProvider, useMarketBundle } from '@/components/analytics/market/MarketDataContext'
 import { marketCatalog } from '@/components/analytics/market/marketCatalog'
-import { seedMarketWidgets, seedSearchWidgets } from '@/components/analytics/market/seedMarketView'
+import { HIRES_SELECTIONS, seedHiresWidgets, seedMarketWidgets, seedSearchWidgets } from '@/components/analytics/market/seedMarketView'
 import { applySelections, companyLabel, SENIORITY_LABEL, type MarketSelection } from '@/components/analytics/market/marketData'
 import { IntelligenceFilterBar } from '@/components/analytics/market/IntelligenceFilterBar'
 import { JOB_STATE_LABEL, linksInScope } from '@/components/analytics/market/jobLinks'
@@ -43,6 +43,7 @@ import { IconTip } from '@/components/ui/tooltip'
 
 const SEED_NAME = 'Market'
 const SEARCH_NAME = 'Search'
+const HIRES_NAME = 'Hires'
 
 interface ViewFilters { selections?: MarketSelection[] }
 interface ExtraState { widgets?: WidgetConfig[] }
@@ -113,7 +114,7 @@ function IntelligencePage() {
         .eq('tenant_id', tenant.id)
         .eq('page_context', 'talent-intelligence')
         .eq('visibility', 'shared')
-        .in('name', [SEED_NAME, SEARCH_NAME])
+        .in('name', [SEED_NAME, SEARCH_NAME, HIRES_NAME])
       const have = new Set((existing ?? []).map(v => v.name))
       if (!have.has(SEED_NAME)) {
         createView.mutate({
@@ -129,6 +130,16 @@ function IntelligencePage() {
           name: SEARCH_NAME,
           filters: { selections: [] },
           extra_state: { widgets: seedSearchWidgets() },
+          is_default: false,
+          visibility: 'shared',
+        })
+      }
+      // Hires (2026-11-25): who was hired and at what salary, opened on "In the job as: Hired".
+      if (!have.has(HIRES_NAME)) {
+        createView.mutate({
+          name: HIRES_NAME,
+          filters: { selections: HIRES_SELECTIONS },
+          extra_state: { widgets: seedHiresWidgets() },
           is_default: false,
           visibility: 'shared',
         })
@@ -267,7 +278,7 @@ function IntelligenceBody({
   const withSalary = useMemo(() => matching.filter(r => typeof r.salary_month_base === 'number').length, [matching])
 
   const exportCsv = () => {
-    const header = ['Country', 'State', 'City', 'Title', 'Role family', 'Seniority', 'Current company', 'Years of experience', `Salary per month (${m.baseCurrency})`, 'Source', 'Added', 'Jobs', 'In the job as']
+    const header = ['Country', 'State', 'City', 'Title', 'Role family', 'Seniority', 'Current company', 'Years of experience', `Salary expectation per month (${m.baseCurrency})`, 'Source', 'Added', 'Jobs', 'In the job as', 'Hired on', `Hired salary per month (${m.baseCurrency})`]
     // The jobs each person is in that meet the job filters (all their jobs you can see when there are none).
     const scope = m.ctxFor().jobScope
     const lines = matching.map(r => {
@@ -280,6 +291,8 @@ function IntelligenceBody({
       r.source, r.created_at.slice(0, 10),
       links.map(l => m.jobs.jobLabel.get(l.job_id) ?? l.job_title).join('; '),
       links.map(l => JOB_STATE_LABEL[l.status] ?? l.status).join('; '),
+      links.filter(l => l.hired_on).map(l => l.hired_on).join('; '),
+      links.filter(l => typeof l.hired_salary_month_base === 'number').map(l => Math.round(l.hired_salary_month_base!)).join('; '),
     ].map(csvCell).join(',')
     })
     const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' })
@@ -370,7 +383,7 @@ function IntelligenceBody({
                 </span>
               ))}
               <span className="text-[12px] font-inter text-[#5A6072] tabular-nums">
-                {matching.length.toLocaleString('en-US')} of {m.rows.length.toLocaleString('en-US')} people · {withSalary.toLocaleString('en-US')} with a salary
+                {matching.length.toLocaleString('en-US')} of {m.rows.length.toLocaleString('en-US')} people · {withSalary.toLocaleString('en-US')} with a salary expectation
               </span>
               <button
                 type="button"
