@@ -417,7 +417,7 @@ export function MarkHiredDialog({
             />
             {selected && (
               <p className="mt-1.5 text-[11px] leading-[1.45] text-hire-muted">
-                From {firstName}&apos;s accepted offer. Target start for {selected.req_id} is {format(new Date(`${selected.target_start_date}T00:00:00`), 'MMM d, yyyy')}.
+                {offer ? `From ${firstName}’s offer. ` : ''}Target start for {selected.req_id} is {format(new Date(`${selected.target_start_date}T00:00:00`), 'MMM d, yyyy')}.
               </p>
             )}
           </section>
