@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils'
 import type { OfferFormField } from '@/hooks/useOfferFormFields'
 import { groupBySection, newSectionId, type OfferSection } from '@/lib/offerSections'
 import { FieldEditor } from './FieldEditor'
+import { baseSalaryField } from '@/lib/offerSalary'
 import { OFFER_FIELD_TYPES, SMART_DEFAULT_LABEL, fieldTypeInfo, type OfferFieldType } from './fieldTypes'
 import type { FieldPatch, OfferFormEditor } from './useOfferFormEditor'
 
@@ -74,6 +75,9 @@ export function FormSections({ editor }: { editor: OfferFormEditor }) {
   const settled = useMemo(() => Object.fromEntries(groups.map((g) => [g.section?.id ?? NONE, g.fields.map((f) => f.id)])), [groups])
   const view = layout ?? settled
   const byId = useMemo(() => new Map(fields.map((f) => [f.id, f])), [fields])
+  // The form's base salary (the hired salary): shown on its row once there are two Salary fields.
+  const baseName = useMemo(() => baseSalaryField(fields)?.field_name ?? null, [fields])
+  const salaryCount = useMemo(() => fields.filter((f) => f.field_type === 'salary').length, [fields])
   const active = activeId ? byId.get(activeId) : undefined
 
   const sensors = useSensors(
@@ -246,6 +250,8 @@ export function FormSections({ editor }: { editor: OfferFormEditor }) {
                         sections={sections}
                         here={key}
                         onMoveTo={(to) => moveField(id, to)}
+                        isBase={baseName === f.field_name}
+                        salaryFields={salaryCount}
                       />
                     )
                   })}
@@ -421,7 +427,7 @@ function ReqIdRow() {
 }
 
 /** A field's one-line face: used by the row and by the lifted copy while dragging. */
-function RowFace({ field, handle, aside }: { field: OfferFormField; handle?: ReactNode; aside?: ReactNode }) {
+function RowFace({ field, handle, aside, base }: { field: OfferFormField; handle?: ReactNode; aside?: ReactNode; base?: boolean }) {
   const info = fieldTypeInfo(field.field_type)
   return (
     <div className="flex items-center gap-2 px-2 py-2 sm:gap-3">
@@ -435,7 +441,7 @@ function RowFace({ field, handle, aside }: { field: OfferFormField; handle?: Rea
         <p className="truncate font-inter text-[13px] font-medium text-text-primary">{field.field_label}</p>
         {field.help_text && <p className="truncate font-inter text-[11.5px] text-text-tertiary">{field.help_text}</p>}
       </div>
-      <span className="hidden shrink-0 font-inter text-[11.5px] text-text-tertiary sm:inline">{info.label}</span>
+      <span className="hidden shrink-0 font-inter text-[11.5px] text-text-tertiary sm:inline">{base ? 'Base salary' : info.label}</span>
       {field.is_required ? (
         <span className="shrink-0 rounded-full bg-[#F2EBFF] px-2 py-0.5 font-inter text-[11px] font-medium text-virgilio-purple">Required</span>
       ) : (
@@ -455,7 +461,11 @@ function FieldRow({
   sections,
   here,
   onMoveTo,
+  isBase,
+  salaryFields,
 }: {
+  isBase: boolean
+  salaryFields: number
   field: OfferFormField
   open: boolean
   onToggle: () => void
@@ -478,6 +488,7 @@ function FieldRow({
       <div>
         <RowFace
           field={field}
+          base={isBase && salaryFields > 1}
           handle={
             <IconTip label="Drag to move">
               <button
@@ -540,7 +551,7 @@ function FieldRow({
             </div>
           }
         />
-        {open && <FieldEditor field={field} onSave={onSave} onCancel={onToggle} />}
+        {open && <FieldEditor field={field} onSave={onSave} onCancel={onToggle} isBase={isBase} salaryFields={salaryFields} />}
       </div>
     </div>
   )

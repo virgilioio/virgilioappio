@@ -9,6 +9,8 @@ export type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'c
 export interface SalaryFieldConfig {
   currency: string
   period: 'hourly' | 'monthly' | 'annually'
+  /** Offer forms only: this Salary field is the form's base salary (the hired salary). */
+  base?: boolean
 }
 
 export interface LocationFieldConfig {

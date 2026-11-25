@@ -216,15 +216,31 @@ export function useOfferFormEditor(formId: string | undefined) {
     async (id: string, patch: FieldPatch): Promise<boolean> => {
       const d = docRef.current
       if (!d) return false
-      const prev = d.fields.find((f) => f.id === id)
-      setDoc({ ...d, fields: d.fields.map((f) => (f.id === id ? { ...f, ...patch } : f)) })
+      // One base salary per form: flagging a Salary field takes the flag off the others.
+      const isBase = (c: unknown) => (c as { base?: boolean } | null)?.base === true
+      const unflag = isBase(patch.field_config)
+        ? d.fields.filter((f) => f.id !== id && f.field_type === 'salary' && isBase(f.field_config))
+        : []
+      const plain = (f: OfferFormField) => {
+        const { base: _was, ...rest } = (f.field_config ?? {}) as Record<string, unknown>
+        return rest as OfferFormField['field_config']
+      }
+      setDoc({
+        ...d,
+        fields: d.fields.map((f) =>
+          f.id === id ? { ...f, ...patch } : unflag.includes(f) ? { ...f, field_config: plain(f) } : f,
+        ),
+      })
       let ok = false
       await run(async () => {
         // The stored name never changes: offers keep their values under it and templates place it by it.
         must(await supabase.from('offer_form_fields').update(patch as never).eq('id', id))
+        for (const f of unflag) {
+          must(await supabase.from('offer_form_fields').update({ field_config: plain(f) } as never).eq('id', f.id))
+        }
         ok = true
       })
-      if (!ok && prev) setDoc((x) => (x ? { ...x, fields: x.fields.map((f) => (f.id === id ? prev : f)) } : x))
+      if (!ok) setDoc((x) => (x ? { ...x, fields: d.fields } : x))
       return ok
     },
     [run],

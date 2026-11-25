@@ -16,6 +16,12 @@ const DEFAULT_CONFIG: Partial<Record<OfferFieldType, SalaryFieldConfig | Locatio
   phone: { defaultCountryCode: '+1' },
 }
 
+/** The Salary field's settings, with the base flag only when it's on. */
+function salaryConfig(config: SalaryFieldConfig, base: boolean): SalaryFieldConfig {
+  const { base: _was, ...rest } = config as SalaryFieldConfig & { base?: boolean }
+  return (base ? { ...rest, base: true } : rest) as SalaryFieldConfig
+}
+
 const LOCATION_PARTS = [
   ['city', 'City'],
   ['state', 'State / province'],
@@ -32,10 +38,16 @@ export function FieldEditor({
   field,
   onSave,
   onCancel,
+  isBase = false,
+  salaryFields = 1,
 }: {
   field: OfferFormField
   onSave: (patch: FieldPatch) => Promise<boolean>
   onCancel: () => void
+  /** This field is the form's base salary today (`baseSalaryField`). */
+  isBase?: boolean
+  /** How many Salary fields the form has: the choice shows from two. */
+  salaryFields?: number
 }) {
   const [label, setLabel] = useState(field.field_label)
   const [type, setType] = useState<OfferFieldType>(field.field_type)
@@ -46,6 +58,7 @@ export function FieldEditor({
   const [restarts, setRestarts] = useState(field.triggers_approval_restart)
   const [saving, setSaving] = useState(false)
   const [missing, setMissing] = useState(false)
+  const [base, setBase] = useState(isBase)
 
   const types = OFFER_FIELD_TYPES.some((t) => t.value === field.field_type)
     ? OFFER_FIELD_TYPES
@@ -69,7 +82,11 @@ export function FieldEditor({
       is_required: required,
       help_text: help.trim() || null,
       placeholder_text: typed ? placeholder.trim() || null : null,
-      field_config: DEFAULT_CONFIG[type] ? config ?? DEFAULT_CONFIG[type]! : null,
+      field_config: DEFAULT_CONFIG[type]
+        ? type === 'salary'
+          ? salaryConfig((config ?? DEFAULT_CONFIG.salary) as SalaryFieldConfig, base)
+          : config ?? DEFAULT_CONFIG[type]!
+        : null,
       triggers_approval_restart: restarts,
     } as FieldPatch)
     setSaving(false)
@@ -144,6 +161,7 @@ export function FieldEditor({
           </Field>
         )}
         {salary && (
+          <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Currency" htmlFor={`${id}-cur`}>
               <Select value={salary.currency} onValueChange={(v) => setConfig({ ...salary, currency: v })}>
@@ -171,6 +189,20 @@ export function FieldEditor({
                 </SelectContent>
               </Select>
             </Field>
+          </div>
+            <p className="font-inter text-[11.5px] leading-[1.45] text-text-tertiary">Where each offer starts. Whoever writes the offer can change the currency and per month or per year.</p>
+            {(salaryFields > 1 || isBase) && (
+              <label className="flex items-start gap-2.5 font-inter text-[13px] text-text-primary">
+                <Switch className="mt-0.5" checked={base} disabled={isBase} onCheckedChange={setBase} />
+                <span>
+                  Base salary
+                  <span className="block text-[11.5px] leading-[1.45] text-text-tertiary">
+                    The hired salary when the candidate is marked hired, and what the success fee is billed on. One per form
+                    {isBase ? ': to move it, turn this on for another Salary field.' : '.'}
+                  </span>
+                </span>
+              </label>
+            )}
           </div>
         )}
         {phone && (
