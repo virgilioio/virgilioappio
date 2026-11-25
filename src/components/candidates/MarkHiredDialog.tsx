@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
-import { CheckCircle2, Loader2, Receipt } from 'lucide-react'
+import { CheckCircle2, FileText, Loader2, Receipt } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
@@ -24,6 +24,8 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { burstFrom, claimOpeningFilled, tintHired } from '@/lib/delight'
 import { fromIsoDay, toIsoDay } from '@/lib/isoDay'
+import { offerBaseSalary, offerIsLive, salaryPerYear, salaryWords } from '@/lib/offerSalary'
+import { useCanViewOffers } from '@/hooks/useCanViewOffers'
 
 interface MarkHiredDialogProps {
   open: boolean
@@ -36,6 +38,9 @@ interface MarkHiredDialogProps {
   onSuccess: (result: { reqId: string; startDate: string; openingsRemaining: number | null }) => void
   /** Whether you may close the job; if not, the hire toast says who can once every opening is filled. */
   canCloseJob?: boolean
+  /** Opens the offer composer: a new offer, or the one whose base salary is missing. */
+  onCreateOffer?: () => void
+  onEditOffer?: (offer: { id: string; form_id: string; field_values: Record<string, unknown>; opening_id?: string | null }) => void
 }
 
 interface DealDisplay {
@@ -55,36 +60,8 @@ function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
 }
 
-function fieldKey(field: OfferFormField) {
-  return `${field.field_name} ${field.field_label}`.toLowerCase()
-}
-
-function offerBaseSalary(fields: OfferFormField[], values: Record<string, unknown> | undefined) {
-  if (!values) return null
-  const salaryField = fields.find((field) => /base salary|base compensation|annual salary/.test(fieldKey(field)))
-    || fields.find((field) => field.field_type === 'salary')
-  if (!salaryField) return null
-  const raw = values[salaryField.field_name]
-  let amount: number | null = null
-  let currency = 'USD'
-  if (typeof raw === 'number') amount = raw
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw)
-      amount = Number(parsed?.amount)
-      currency = parsed?.currency || currency
-    } catch {
-      amount = Number(raw.replace(/[^0-9.-]/g, ''))
-    }
-  }
-  if (raw && typeof raw === 'object') {
-    const salary = raw as { amount?: unknown; currency?: unknown }
-    amount = Number(salary.amount)
-    if (typeof salary.currency === 'string') currency = salary.currency
-  }
-  const currencyField = fields.find((field) => /currency/.test(fieldKey(field)))
-  if (currencyField && typeof values[currencyField.field_name] === 'string') currency = values[currencyField.field_name] as string
-  if (amount == null || !Number.isFinite(amount) || amount <= 0) return null
+/** "$135,000" / "MXN 40,000": the dialog's money. */
+function money(amount: number, currency: string) {
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -106,12 +83,32 @@ export function MarkHiredDialog({
   jobId,
   onSuccess,
   canCloseJob = true,
+  onCreateOffer,
+  onEditOffer,
 }: MarkHiredDialogProps) {
   const { openings, isLoading, refetch } = useJobOpenings(jobId)
-  const { offerLetters } = useOfferLetters(candidateId)
-  const jobOffers = offerLetters.filter((item) => item.job_id === jobId && item.status !== 'declined')
+  const { offerLetters, isLoading: offersLoading, refetchOfferLetters } = useOfferLetters(candidateId)
+  const { canViewOffers, isLoading: offerAccessLoading } = useCanViewOffers(jobId)
+  // A hire is made from the offer (Allan, 2026-11-25): its base salary becomes
+  // the hired salary. The database refuses without one (GHS01, GHS02), this
+  // dialog says so first.
+  const jobOffers = offerLetters.filter((item) => item.job_id === jobId && offerIsLive(item.status))
   const offer = jobOffers.find((item) => item.status === 'accepted') || jobOffers[0]
-  const { fields } = useOfferFormFields(offer?.form_id || undefined)
+  const { fields, isLoading: fieldsLoading } = useOfferFormFields(offer?.form_id || undefined)
+  // The offers were read when the profile opened: read them again each time this opens.
+  const [offersChecked, setOffersChecked] = useState(false)
+  useEffect(() => {
+    if (!open) {
+      setOffersChecked(false)
+      return
+    }
+    let live = true
+    void Promise.resolve(refetchOfferLetters()).finally(() => {
+      if (live) setOffersChecked(true)
+    })
+    return () => { live = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, candidateId])
   const [openingId, setOpeningId] = useState('')
   const [startDate, setStartDate] = useState('')
   const [saving, setSaving] = useState(false)
@@ -154,7 +151,14 @@ export function MarkHiredDialog({
   const selected = openings.find((opening) => opening.id === openingId)
   const remaining = eligible.filter((opening) => opening.id !== openingId)
   const isLastOpening = eligible.length === 1 && eligible[0]?.id === openingId
-  const salary = offerBaseSalary(fields, offer?.field_values)
+  const base = offerBaseSalary(fields, offer?.field_values)
+  const perYear = base ? salaryPerYear(base.amount, base.period) : null
+  // Only people who can read the job's offers are told what's missing; for
+  // anyone else the database decides.
+  const offersKnown = open && offersChecked && !offersLoading && !offerAccessLoading && canViewOffers
+  const needsOffer = offersKnown && jobOffers.length === 0
+  const needsSalary = offersKnown && !needsOffer && !!offer && !fieldsLoading && !base && jobOffers.length === 1
+  const blocked = needsOffer || needsSalary
 
   useEffect(() => {
     if (!open || openings.length === 0) return
@@ -198,10 +202,24 @@ export function MarkHiredDialog({
 
     if (error) {
       const race = /just filled|that opening/i.test(error.message || '')
+      const noOffer = error.code === 'GHS01'
+      const noSalary = error.code === 'GHS02'
       // §5: a plain, specific message — never the raw server error.
       legacyToast({
-        title: race ? 'Opening no longer available' : `Couldn't mark ${firstName} hired`,
-        description: race ? 'Someone just filled it. Pick another opening.' : 'Nothing was changed. Try again.',
+        title: race
+          ? 'Opening no longer available'
+          : noOffer
+            ? `Create ${firstName}’s offer first`
+            : noSalary
+              ? 'Add the base salary to the offer first'
+              : `Couldn't mark ${firstName} hired`,
+        description: race
+          ? 'Someone just filled it. Pick another opening.'
+          : noOffer
+            ? 'A candidate is marked hired from their offer. Nothing was changed.'
+            : noSalary
+              ? 'It becomes the hired salary. Nothing was changed.'
+              : 'Nothing was changed. Try again.',
         variant: 'destructive',
       })
       await refetch()
@@ -242,7 +260,7 @@ export function MarkHiredDialog({
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    if (!saving && openingId && startDate && sourcerId && recruiterId && eligible.length > 0) void confirmHire()
+    if (!saving && !blocked && openingId && startDate && sourcerId && recruiterId && eligible.length > 0) void confirmHire()
   }
 
   return (
@@ -261,6 +279,40 @@ export function MarkHiredDialog({
               Pick the opening this hire fills. It&apos;s attached to {firstName}&apos;s record and counted against the Req ID.
             </DialogDescription>
           </DialogHeader>
+
+          {blocked && (
+            <section
+              role="status"
+              className="mx-[22px] mt-3.5 flex items-start gap-[9px] rounded-[10px] border border-[#F3D9A4] bg-[#FEF7E6] px-3 py-2.5 text-[12px] leading-[1.5] text-hire-ink"
+            >
+              <FileText className="mt-0.5 size-3.5 shrink-0 text-[#B45309]" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p>
+                  <strong className="font-semibold">
+                    {needsOffer ? `Create ${firstName}’s offer first.` : 'Add the base salary to the offer first.'}
+                  </strong>{' '}
+                  {needsOffer
+                    ? 'A candidate is marked hired from their offer: its base salary becomes the hired salary.'
+                    : 'It becomes the hired salary, and the success fee is billed on it.'}
+                </p>
+                {(needsOffer ? onCreateOffer : onEditOffer) && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                      onOpenChange(false)
+                      if (needsOffer) onCreateOffer?.()
+                      else if (offer?.form_id) onEditOffer?.({ id: offer.id, form_id: offer.form_id, field_values: offer.field_values, opening_id: offer.opening_id })
+                    }}
+                  >
+                    {needsOffer ? 'Create offer' : 'Open the offer'}
+                  </Button>
+                )}
+              </div>
+            </section>
+          )}
 
           <section className="space-y-1.5 px-[22px] pb-1 pt-3.5" aria-label="Opening">
             {isLoading ? (
@@ -382,11 +434,19 @@ export function MarkHiredDialog({
             </section>
           )}
 
+          {selected && base && (
+            <section className="mx-[22px] mt-2 rounded-[10px] border border-hire-hairline bg-hire-soft px-3 py-2.5 text-[12px] leading-[1.5] text-hire-secondary">
+              <p>
+                Hired salary: <strong className="font-semibold tabular-nums text-hire-ink">{salaryWords(base)}</strong>, the base salary on {firstName}&apos;s offer.
+              </p>
+            </section>
+          )}
+
           {deal.linked && selected?.fee_pct != null && (
             <section className="mx-[22px] mt-2 flex items-start gap-[9px] rounded-[10px] border border-hire-success-border bg-hire-success-bg px-3 py-2.5 text-[12px] leading-[1.5] text-hire-ink">
               <Receipt className="mt-0.5 size-3.5 shrink-0 text-hire-success-icon" aria-hidden />
               <p>
-                Gio Sales flags the <strong className="font-semibold">{selected.fee_pct}% success fee</strong>{deal.title ? ` on ${deal.title}` : ''} as ready to request{salary ? ` — ${selected.fee_pct}% × ${salary} base from the offer.` : '.'}
+                Gio Sales flags the <strong className="font-semibold">{selected.fee_pct}% success fee</strong>{deal.title ? ` on ${deal.title}` : ''} as ready to request{base && perYear != null ? ` — ${selected.fee_pct}% × ${money(perYear, base.currency)} a year${base.period === 'annually' ? ', the base salary on the offer.' : ` (${salaryWords(base)} on the offer).`}` : '.'}
               </p>
             </section>
           )}
@@ -408,7 +468,7 @@ export function MarkHiredDialog({
               variant="primary"
               size="md"
               icon={CheckCircle2}
-              disabled={!openingId || !startDate || !sourcerId || !recruiterId || eligible.length === 0}
+              disabled={blocked || !openingId || !startDate || !sourcerId || !recruiterId || eligible.length === 0}
               loading={saving}
               className="bg-hire-title text-hire-cream hover:bg-hire-ink focus-visible:ring-hire-ink/10"
             >

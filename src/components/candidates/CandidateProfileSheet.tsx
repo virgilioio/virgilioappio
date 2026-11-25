@@ -2582,6 +2582,8 @@ const stageHasAutomation = useMemo(() => {
           candidateName={candidate.candidate_name || 'Candidate'}
           jobId={jobId}
           canCloseJob={canCloseJob}
+          onCreateOffer={() => { setEditingOffer(null); setOfferFormOpen(true) }}
+          onEditOffer={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }}
           onSuccess={async ({ openingsRemaining }) => {
             await refetchAssociationStatus()
             onStageChanged?.()
