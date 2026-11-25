@@ -34,6 +34,7 @@ import { PlaceFieldsByName } from '@/components/ui/place-picker'
 import { useDepartments } from '@/hooks/useDepartments'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { offerPrefill, type OfferCandidateFacts, type OfferJobFacts } from '@/lib/offerPrefill'
+import { SALARY_PERIODS, baseSalaryField, offerBaseSalary, readOfferSalary, salaryPerYear, writeOfferSalary } from '@/lib/offerSalary'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -203,14 +204,16 @@ export function OfferComposerBody({
   const selectedForm = forms.find((form) => form.id === selectedFormId)
   const groups = useMemo(() => groupBySection(formSections(selectedForm), fields), [selectedForm, fields])
   const comp = useMemo(() => {
-    const salary = sortedFields.find((field) => /base salary|base compensation|annual salary/.test(fieldKey(field))) || sortedFields.find((field) => field.field_type === 'salary')
+    const salary = baseSalaryField(sortedFields) || sortedFields.find((field) => /base salary|base compensation|annual salary/.test(fieldKey(field)))
     const equity = sortedFields.find((field) => /equity.*value|equity grant|stock/.test(fieldKey(field)))
     const bonus = sortedFields.find((field) => /sign.*bonus|signing bonus/.test(fieldKey(field)))
     const currencyField = sortedFields.find((field) => /currency/.test(fieldKey(field)))
     let currency = currencyField ? String(fieldValues[currencyField.field_name] || 'USD') : 'USD'
     const salaryRaw = salary ? fieldValues[salary.field_name] : null
     try { currency = JSON.parse(salaryRaw)?.currency || currency } catch { /* configured currency */ }
-    const base = salary ? numericValue(salaryRaw) : 0
+    // Year one: a salary written per month counts twelve times.
+    const baseSalary = salary?.field_type === 'salary' ? offerBaseSalary([salary], fieldValues) : null
+    const base = baseSalary ? salaryPerYear(baseSalary.amount, baseSalary.period) : salary ? numericValue(salaryRaw) : 0
     const equityValue = equity ? numericValue(fieldValues[equity.field_name]) : 0
     const bonusValue = bonus ? numericValue(fieldValues[bonus.field_name]) : 0
     return { field: salary ?? null, base, equity: equityValue, bonus: bonusValue, total: base + equityValue + bonusValue, currency }
@@ -399,31 +402,37 @@ export function OfferComposerBody({
           <Switch checked={!!value} onCheckedChange={(checked) => handleFieldChange(field.field_name, checked)} className="h-[18px] w-8 border-0 [&>span]:h-3.5 [&>span]:w-3.5 data-[state=checked]:[&>span]:translate-x-[14px]" />
         )
       case 'salary': {
+        // Amount, currency and how it's paid, chosen on each offer (2026-11-25);
+        // the form's setting is only where it starts.
         const salaryConfig = (field as any).field_config as SalaryFieldConfig | null
-        const period = salaryConfig?.period || 'annually'
-        const salaryValue = (() => {
-          try {
-            if (typeof value === 'object' && value) return value
-            if (typeof value === 'string' && value) return JSON.parse(value)
-            return { amount: '', currency: salaryConfig?.currency || 'USD' }
-          } catch { return { amount: '', currency: salaryConfig?.currency || 'USD' } }
-        })()
+        const salaryValue = readOfferSalary(value, salaryConfig)
+        const setSalary = (patch: Partial<typeof salaryValue>) =>
+          handleFieldChange(field.field_name, writeOfferSalary({ ...salaryValue, ...patch }))
+        const periods = SALARY_PERIODS.filter((p) => p.key !== 'hourly' || salaryValue.period === 'hourly' || salaryConfig?.period === 'hourly')
         return (
-          <div className="flex items-center gap-2">
-            <div className="w-[180px] shrink-0">
-              <CurrencySelect
-                value={salaryValue.currency}
-                onChange={(c) => handleFieldChange(field.field_name, JSON.stringify({ ...salaryValue, currency: c }))}
-              />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-[150px] shrink-0">
+              <CurrencySelect value={salaryValue.currency} onChange={(c) => setSalary({ currency: c })} />
             </div>
             <Input
               id={field.field_name}
               type="number"
+              inputMode="decimal"
+              className="min-w-[120px] flex-1 tabular-nums"
               value={salaryValue.amount}
-              onChange={(e) => handleFieldChange(field.field_name, JSON.stringify({ ...salaryValue, amount: e.target.value }))}
+              onChange={(e) => setSalary({ amount: e.target.value })}
               placeholder="Enter amount"
             />
-            <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
+            <Select value={salaryValue.period} onValueChange={(v) => setSalary({ period: v as typeof salaryValue.period })}>
+              <SelectTrigger aria-label={`${field.field_label}: how it's paid`} className="w-[128px] shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {periods.map((p) => (
+                  <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )
       }
