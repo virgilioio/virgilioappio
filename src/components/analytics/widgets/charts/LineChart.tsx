@@ -134,7 +134,7 @@ export function LineChart({ metricId, series, height = 220 }: Props) {
             <g key={t}>
               <line x1={padL} x2={padL + innerW} y1={y} y2={y} stroke={HAIRLINE_INNER} strokeWidth={1} />
               <text x={padL - 6} y={y + 3} textAnchor="end" fontSize="10" fill="#8B8F9E" fontFamily="Inter">
-                {v}
+                {v >= 10000 ? new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(v) : v}
               </text>
             </g>
           )
@@ -151,7 +151,8 @@ export function LineChart({ metricId, series, height = 220 }: Props) {
         {pts
           .filter((_, i) => i % stepLabel === 0)
           .map(pt => (
-            <text key={pt.i} x={pt.x} y={height - 6} textAnchor="middle" fontSize="10" fill="#8B8F9E" fontFamily="Inter">
+            // The first and last labels stay inside the chart.
+            <text key={pt.i} x={pt.x} y={height - 6} textAnchor={series.length > 1 && pt.i === series.length - 1 ? 'end' : series.length > 1 && pt.i === 0 ? 'start' : 'middle'} fontSize="10" fill="#8B8F9E" fontFamily="Inter">
               {pt.p.label}
             </text>
           ))}

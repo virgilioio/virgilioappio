@@ -66,7 +66,7 @@ export function seedHiresWidgets(): WidgetConfig[] {
     w({ metric: 'mkt_hired_salary', groupBy: 'mkt_job', viz: 'salary_range', span: 6, salaryPeriod: 'month' }),
     w({ metric: 'mkt_hired_salary', groupBy: 'mkt_seniority', viz: 'salary_range', span: 6, salaryPeriod: 'month' }),
     w({ metric: 'mkt_hired_salary', groupBy: 'mkt_title', viz: 'salary_range', span: 6, salaryPeriod: 'month' }),
-    w({ metric: 'mkt_people', groupBy: 'mkt_hire_month', viz: 'columns', span: 6, title: 'Hires over time' }),
+    w({ metric: 'mkt_people', groupBy: 'mkt_hire_month', viz: 'line', span: 6, title: 'Hires over time' }),
     w({ metric: 'mkt_hired_salary', groupBy: 'mkt_hire_month', viz: 'line', span: 6, salaryPeriod: 'month' }),
     w({ metric: 'mkt_people', groupBy: 'mkt_client', viz: 'bars', span: 6, title: 'Hires by client' }),
     w({ metric: 'mkt_people', groupBy: 'mkt_came_in', viz: 'donut', span: 6, title: 'How hires came in' }),

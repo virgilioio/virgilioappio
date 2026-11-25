@@ -16,7 +16,8 @@ interface Props {
 
 export function ColumnsChart({ widgetId, data, format, currency, height = 220, selected = [], onSelect }: Props) {
   const tip = useHoverTip()
-  const rows = data.slice(0, 10)
+  // Twelve months fit (a year over time keeps its latest months); longer lists show their first ten.
+  const rows = data.length <= 12 ? data : data.slice(0, 10)
   const max = Math.max(1, ...rows.map(r => r.value))
   return (
     <ChartMotion id={`analytics:${widgetId}`} axis="y" className="flex items-end gap-1 sm:gap-2 pt-2 w-full overflow-hidden" style={{ height }}>

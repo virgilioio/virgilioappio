@@ -126,8 +126,8 @@ export function useMarketWidgetData(cfg: WidgetConfig): NormalizedData {
         const s = hires.map(hiredPay).filter((v): v is number => v !== null)
         if (s.length) {
           base.value = median(s)
-          base.caption = `average ${money(mean(s))} · ${perWord} · from ${plural(s.length, 'hire')}`
-          base.note = noSalaryNote(hires.length - s.length)
+          const missing = hires.length - s.length
+          base.caption = `average ${money(mean(s))} · ${perWord} · from ${plural(s.length, 'hire')}${missing > 0 ? ` · ${count(missing)} more with no salary on the offer yet` : ''}`
         } else {
           base.value = null
           base.caption = hires.length
