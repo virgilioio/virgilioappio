@@ -1,22 +1,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { jujuJobType, talentJobType } from '../_shared/employmentTypes.ts'
+import { FEED_BOARDS, feedEntries, renderFeed, type FeedBoard, type FeedEntry, type FeedPosting } from '../_shared/jobFeed.ts'
+
+const VIRGILIO_INTERNAL_ORG_ID = '4b8e739f-2b15-487e-8d31-0a2ce765a8ef'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface JobPosting {
-  id: string
-  title: string
-  slug: string
-  description: string
-  details: any
-  created_at: string
-  location: string
-  jobs: {
-    id: string
-  }
 }
 
 Deno.serve(async (req) => {
@@ -28,10 +17,9 @@ Deno.serve(async (req) => {
     const url = new URL(req.url)
     const tenantId = url.searchParams.get('tenant_id')
     const companySlug = url.searchParams.get('company_slug')
-    const board = url.searchParams.get('board') || 'talent'
+    const board = (url.searchParams.get('board') || 'talent') as FeedBoard
 
-    const ALLOWED_BOARDS = ['talent', 'jooble', 'adzuna', 'careerjet', 'jobrapido', 'whatjobs', 'juju']
-    if (!ALLOWED_BOARDS.includes(board)) {
+    if (!(FEED_BOARDS as readonly string[]).includes(board)) {
       return new Response(JSON.stringify({ error: 'Unknown board' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -116,7 +104,7 @@ Deno.serve(async (req) => {
         details,
         created_at,
         location,
-        jobs!inner (id, status)
+        jobs!inner (id, status, organization_id)
       `)
       .eq('tenant_id', tenant.id)
       .eq('jobs.status', 'open') // drafts/closed jobs never reach job boards
@@ -132,111 +120,36 @@ Deno.serve(async (req) => {
       })
     }
 
-    const typedPostings = postings as unknown as JobPosting[]
-    console.log('[generate-talent-feed] Found postings:', typedPostings?.length || 0)
-
-    // Extract shared per-job data used by all formats
-    const jobData = typedPostings.map(posting => {
-      const details = posting.details || {}
-      const location = posting.location || ''
-      const [city, state, country] = parseLocation(location)
-      const jobUrl = `${resolvedCompanySlug ? `https://app.gogio.io/careers/${resolvedCompanySlug}/${posting.slug}` : `https://app.gogio.io/p/${posting.slug}`}?source=${board}`
-      const webhookUrl = encodeURIComponent(`${Deno.env.get('SUPABASE_URL')}/functions/v1/talent-apply-webhook?posting_id=${posting.id}`)
-      const questionsUrl = encodeURIComponent(`${Deno.env.get('SUPABASE_URL')}/functions/v1/talent-questions?posting_id=${posting.id}`)
-      const isRemote = details.location_type === 'remote'
-      const salaryPublic = !!(details.show_salary && details.salary_amount)
-      return { posting, details, city, state, country, jobUrl, webhookUrl, questionsUrl, isRemote, salaryPublic }
-    })
-
-    let xml: string
-
-    if (board === 'whatjobs') {
-      const xmlJobs = jobData.map(({ posting, details, city, state, country, jobUrl, isRemote, salaryPublic }) => {
-        const salaryStr = salaryPublic
-          ? `${details.salary_amount} ${details.salary_currency || 'USD'} / ${details.salary_period || 'year'}`
-          : ''
-        return `
-  <job id="${escapeXml(posting.id)}">
-    <id><![CDATA[${posting.id}]]></id>
-    <link><![CDATA[${jobUrl}]]></link>
-    <title><![CDATA[${posting.title}]]></title>
-    <city><![CDATA[${city}]]></city>
-    <region><![CDATA[${state}]]></region>
-    <state><![CDATA[${state}]]></state>
-    <country><![CDATA[${country}]]></country>
-    <language><![CDATA[en]]></language>
-    <description><![CDATA[${posting.description || ''}]]></description>
-    <pubdate><![CDATA[${formatDateDMY(posting.created_at)}]]></pubdate>
-    <company><![CDATA[${tenant.name}]]></company>
-    ${salaryStr ? `<salary><![CDATA[${salaryStr}]]></salary>` : ''}
-    ${talentJobType(posting.details?.employment_type) ? `<jobtype><![CDATA[${talentJobType(posting.details?.employment_type)}]]></jobtype>` : ''}
-    ${isRemote ? `<joblocationtype><![CDATA[telecommute]]></joblocationtype>` : ''}
-  </job>`
-      }).join('\n')
-
-      xml = `<?xml version="1.0" encoding="utf-8"?>
-<jobs>
-  ${xmlJobs}
-</jobs>`
-    } else if (board === 'juju') {
-      const xmlJobs = jobData.map(({ posting, city, state, country, jobUrl }) => {
-        return `
-  <job id="${escapeXml(posting.id)}">
-    <employer><![CDATA[${tenant.name}]]></employer>
-    <title><![CDATA[${posting.title}]]></title>
-    <description><![CDATA[${posting.description || ''}]]></description>
-    <postingdate>${formatDateYMD(posting.created_at)}</postingdate>
-    <joburl><![CDATA[${jobUrl}]]></joburl>
-    <location>
-      <city><![CDATA[${city}]]></city>
-      <state><![CDATA[${state}]]></state>
-      <nation><![CDATA[${country}]]></nation>
-    </location>
-    <type>${jujuJobType(posting.details?.employment_type)}</type>
-  </job>`
-      }).join('\n')
-
-      xml = `<?xml version="1.0" encoding="utf-8"?>
-<jobs>
-  <jobsource><![CDATA[Gio ATS]]></jobsource>
-  <sourceurl><![CDATA[https://app.gogio.io]]></sourceurl>
-  <feeddate>${new Date().toISOString()}</feeddate>
-  ${xmlJobs}
-</jobs>`
-    } else {
-      // Existing formats: talent, jooble, adzuna, careerjet, jobrapido
-      const xmlJobs = jobData.map(({ posting, details, city, state, country, jobUrl, webhookUrl, questionsUrl }) => {
-        return `
-  <job>
-    <referencenumber>${posting.id}</referencenumber>
-    <title><![CDATA[${escapeXml(posting.title)}]]></title>
-    <company><![CDATA[${escapeXml(tenant.name)}]]></company>
-    ${city ? `<city><![CDATA[${escapeXml(city)}]]></city>` : ''}
-    ${state ? `<state><![CDATA[${escapeXml(state)}]]></state>` : ''}
-    ${country ? `<country><![CDATA[${escapeXml(country)}]]></country>` : ''}
-    <dateposted>${posting.created_at}</dateposted>
-    <url><![CDATA[${jobUrl}]]></url>
-    <description><![CDATA[${posting.description || ''}]]></description>
-    ${talentJobType(posting.details?.employment_type) ? `<jobtype><![CDATA[${talentJobType(posting.details?.employment_type)}]]></jobtype>` : ''}
-    ${details.location_type ? `<isremote>${details.location_type === 'remote' ? 'yes' : 'no'}</isremote>` : ''}
-    ${details.show_salary && details.salary_amount ? `
-    <salary>
-      <currency>${details.salary_currency || 'USD'}</currency>
-      <period>${details.salary_period || 'year'}</period>
-      <min>${details.salary_amount}</min>
-    </salary>` : ''}
-    ${board === 'talent' ? `<talent-apply-data><![CDATA[talent-apply-posturl=${webhookUrl}&talent-apply-questions=${questionsUrl}]]></talent-apply-data>` : ''}
-  </job>`
-      }).join('\n')
-
-      xml = `<?xml version="1.0" encoding="UTF-8"?>
-<source>
-  <publisher>GoGio</publisher>
-  <publisherurl>https://app.gogio.io</publisherurl>
-  <lastbuilddate>${new Date().toISOString()}</lastbuilddate>
-  ${xmlJobs}
-</source>`
+    // One entry per place a board can list. A post with nothing to read, or that
+    // names no country, is held back (2026-11-26): boards can't place "Remote".
+    const now = new Date()
+    const entries: FeedEntry[] = []
+    const held: Record<string, number> = {}
+    for (const posting of (postings ?? []) as unknown as FeedPosting[]) {
+      // The address the sitemap lists and the page calls its own (generate-jobs-sitemap).
+      const orgId = (posting as unknown as { jobs?: { organization_id?: string | null } }).jobs?.organization_id
+      const jobUrl = orgId === VIRGILIO_INTERNAL_ORG_ID
+        ? `https://app.gogio.io/virgilio-careers/${posting.slug}`
+        : resolvedCompanySlug
+          ? `https://app.gogio.io/careers/${resolvedCompanySlug}/${posting.slug}`
+          : `https://app.gogio.io/p/${posting.slug}`
+      const out = feedEntries(posting, { board, jobUrl, now })
+      if (out.held) held[out.held] = (held[out.held] ?? 0) + 1
+      entries.push(...out.entries)
     }
+    console.log('[generate-talent-feed] feed built:', { board, posts: postings?.length ?? 0, entries: entries.length, held })
+
+    const functionsUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1`
+    const xml = renderFeed({
+      board,
+      company: tenant.name,
+      entries,
+      now,
+      talentApply: (postingId) => ({
+        postUrl: `${functionsUrl}/talent-apply-webhook?posting_id=${postingId}`,
+        questionsUrl: `${functionsUrl}/talent-questions?posting_id=${postingId}`,
+      }),
+    })
 
     return new Response(xml, {
       headers: {
@@ -253,32 +166,3 @@ Deno.serve(async (req) => {
     })
   }
 })
-
-function parseLocation(location: string): [string, string, string] {
-  const parts = location.split(',').map(p => p.trim())
-  if (parts.length === 3) return [parts[0], parts[1], parts[2]]
-  if (parts.length === 2) return [parts[0], '', parts[1]]
-  if (parts.length === 1) return ['', '', parts[0]]
-  return ['', '', '']
-}
-
-function formatDateDMY(iso: string): string {
-  const d = new Date(iso)
-  const dd = String(d.getUTCDate()).padStart(2, '0')
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-  const yyyy = d.getUTCFullYear()
-  return `${dd}.${mm}.${yyyy}`
-}
-
-function formatDateYMD(iso: string): string {
-  return new Date(iso).toISOString().slice(0, 10)
-}
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
-}
