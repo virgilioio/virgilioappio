@@ -38,6 +38,7 @@ import { PostingChannelsCard, type ChannelsValue } from '@/components/jobs/posti
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { FormattedTextBox } from '@/components/ui/formatted-text'
 import { markdownToHtml } from '@/utils/markdown'
+import { PostingReachLine } from '@/components/jobs/postings/PostingReachLine'
 import { PostingVideoField } from '@/components/jobs/postings/PostingVideoField'
 import { NO_VIDEO, brandingDetails, mediaFileProblem, uploadPostingMedia, type PostingVideo } from '@/lib/postingMedia'
 import { finishSlug, typedSlug } from '@/lib/postingUrl'
@@ -567,7 +568,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                   id="posting-primary-location"
                   value={primaryLocation}
                   onChange={(e) => setPrimaryLocation(e.target.value)}
-                  placeholder="e.g. New York, NY"
+                  placeholder="e.g. London, United Kingdom"
                   className="pl-9 h-11"
                 />
               </div>
@@ -586,6 +587,12 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
               <FieldHint>Press Enter or comma after each location.</FieldHint>
             </div>
           </div>
+          <PostingReachLine
+            className="mt-4"
+            location={primaryLocation}
+            additional={additionalLocations}
+            locationType={jobData.work_mode}
+          />
         </SectionCard>
 
         {/* ---------- COMPENSATION ---------- */}

@@ -52,6 +52,8 @@ import { brandingDetails, readBranding } from '@/lib/postingMedia'
 import { finishSlug, typedSlug } from '@/lib/postingUrl'
 import { shakeFirstInvalid } from '@/lib/motion'
 import { noticeJobRescore } from '@/lib/fitRescore'
+import { PostingReachLine } from './PostingReachLine'
+import { postingReach } from '@/lib/postingPlaces'
 
 interface PostingSheetProps {
   jobId: string
@@ -212,6 +214,12 @@ export function PostingSheet({
           }
           setEmploymentType(employmentTypeKey(d.employment_type) || employmentTypeKey(job?.employment_type) || 'full_time')
           setLocationType(d.location_type || job?.work_mode || 'onsite')
+          // A post boards can't place opens on what's missing instead of hiding it (2026-11-26).
+          setCompOpen(!postingReach({
+            location: d.location ?? job?.location ?? '',
+            additional: Array.isArray(d.additional_locations) ? d.additional_locations : (job?.additional_locations || []),
+            locationType: d.location_type || job?.work_mode || 'onsite',
+          }).ok)
 
           // Compensation — prefer posting.details override, fall back to job (wizard values).
           // Legacy postings may only have salary_amount → map to both min and max.
@@ -281,6 +289,11 @@ export function PostingSheet({
         setDepartmentId('')
         setEmploymentType(employmentTypeKey(job?.employment_type) || 'full_time')
         setLocationType(job?.work_mode || 'onsite')
+        setCompOpen(!postingReach({
+          location: job?.location || '',
+          additional: job?.additional_locations || [],
+          locationType: job?.work_mode || 'onsite',
+        }).ok)
         // Seed from parent job so a new posting inherits wizard compensation.
         setSalaryCurrency(job?.currency || 'USD')
         setSalaryPeriod('annually')
@@ -653,7 +666,7 @@ export function PostingSheet({
               <CollapsibleContent className="pt-3 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField label="Primary location">
-                    <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g., New York, NY" disabled={readOnly} />
+                    <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g., London, United Kingdom" disabled={readOnly} />
                   </FormField>
                   <FormField label="Additional locations" helpText="Press Enter or comma after each location.">
                     <ChipInput
@@ -685,6 +698,7 @@ export function PostingSheet({
                     </Select>
                   </FormField>
                 </div>
+                <PostingReachLine location={location} additional={additionalLocations} locationType={locationType} />
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <FormField label="Currency">
                     <CurrencySelect value={salaryCurrency} onChange={setSalaryCurrency} disabled={readOnly} />
