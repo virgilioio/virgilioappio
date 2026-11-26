@@ -6,6 +6,7 @@
  */
 
 import { googleEmploymentType } from '@/lib/employmentTypes'
+import { countryNameOf, postingReach } from '@/lib/postingPlaces'
 
 export interface JobPostingJsonLdInput {
   posting: {
@@ -40,14 +41,18 @@ export function buildJobPostingJsonLd(input: JobPostingJsonLdInput): Record<stri
   const d: any = posting.details || {}
 
   const datePosted = (posting.created_at || new Date().toISOString()).slice(0, 10)
-  const validThrough =
-    typeof d.valid_through === 'string'
-      ? d.valid_through
-      : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  // Google drops a job once validThrough has passed, and asks for the property to be
+  // left out when the job has no end date: only a deadline still ahead is sent.
+  const deadline = typeof d.deadline === 'string' ? new Date(d.deadline) : null
+  const validThrough = deadline && !Number.isNaN(deadline.getTime()) && deadline.getTime() > Date.now() ? deadline.toISOString() : null
 
-  const locationType: string | undefined = d.locationType || d.location_type
-  const isRemote = typeof locationType === 'string' && locationType.toLowerCase().includes('remote')
-  const locationString: string | undefined = d.location || undefined
+  // Where the job is, read as the job feeds read it (2026-11-26): a remote job names
+  // the countries candidates can be in and no place; any other names a real place.
+  const reach = postingReach({
+    location: d.location,
+    additional: d.additional_locations,
+    locationType: d.locationType || d.location_type,
+  })
 
   const hiringOrganization: Record<string, any> = {
     '@type': 'Organization',
@@ -62,7 +67,7 @@ export function buildJobPostingJsonLd(input: JobPostingJsonLdInput): Record<stri
     title: posting.title,
     description: posting.description || plainText(posting.title),
     datePosted,
-    validThrough,
+    ...(validThrough ? { validThrough } : {}),
     hiringOrganization,
     identifier: {
       '@type': 'PropertyValue',
@@ -77,40 +82,27 @@ export function buildJobPostingJsonLd(input: JobPostingJsonLdInput): Record<stri
   const employmentType = googleEmploymentType(d.employmentType ?? d.employment_type)
   if (employmentType) obj.employmentType = employmentType
 
-  if (isRemote) {
+  if (reach.ok && reach.remote) {
     obj.jobLocationType = 'TELECOMMUTE'
-    // Required for remote roles per Google spec.
-    const countries: string[] = Array.isArray(d.applicant_countries) && d.applicant_countries.length
-      ? d.applicant_countries
-      : ['Worldwide']
-    obj.applicantLocationRequirements = countries.map((c) => ({
-      '@type': 'Country',
-      name: c,
-    }))
-  }
-
-  if (locationString) {
-    // Best-effort address parsing from a free-text string like "Berlin, Germany".
-    const parts = locationString.split(',').map((s) => s.trim()).filter(Boolean)
-    const addressLocality = parts[0]
-    const addressCountry = parts.length > 1 ? parts[parts.length - 1] : undefined
-    const addressRegion = parts.length > 2 ? parts.slice(1, -1).join(', ') : undefined
-    obj.jobLocation = {
+    obj.applicantLocationRequirements = reach.countries.map((c) => ({ '@type': 'Country', name: countryNameOf(c) }))
+  } else if (reach.ok) {
+    const places = reach.places.map((p) => ({
       '@type': 'Place',
       address: {
         '@type': 'PostalAddress',
-        ...(addressLocality ? { addressLocality } : {}),
-        ...(addressRegion ? { addressRegion } : {}),
-        ...(addressCountry ? { addressCountry } : {}),
+        ...(p.city ? { addressLocality: p.city } : {}),
+        ...(p.region ? { addressRegion: p.region } : {}),
+        addressCountry: p.country,
       },
-    }
+    }))
+    obj.jobLocation = places.length === 1 ? places[0] : places
   }
 
-  const showSalary =
-    (job?.show_salary_public ?? d.showSalary ?? false) === true
+  const shown = job?.show_salary_public ?? d.show_salary_public ?? d.showSalary ?? false
+  const showSalary = shown === true || shown === 'true'
   const min = job?.salary_min ?? d.salary_min ?? null
   const max = job?.salary_max ?? d.salary_max ?? null
-  const currency = job?.currency ?? d.salaryCurrency ?? null
+  const currency = job?.currency ?? d.salary_currency ?? d.salaryCurrency ?? null
   // Postings store salary_period ('annually' | 'monthly' | 'hourly').
   const period = (d.salary_period || d.salaryPeriod || 'year').toString().toUpperCase()
   const unitText =
@@ -145,10 +137,9 @@ export function jobPostingJsonLdMissingFields(
 ): string[] {
   const missing: string[] = []
   const d: any = input.posting.details || {}
-  const locationType: string | undefined = d.locationType || d.location_type
-  const isRemote = typeof locationType === 'string' && locationType.toLowerCase().includes('remote')
   if (!d.employmentType && !d.employment_type) missing.push('Employment type')
-  if (!isRemote && !d.location) missing.push('Location or remote flag')
+  const reach = postingReach({ location: d.location, additional: d.additional_locations, locationType: d.locationType || d.location_type })
+  if (!reach.ok) missing.push(reach.remote ? 'The countries candidates can be in' : 'A location with its country')
   const showSalary = (input.job?.show_salary_public ?? d.showSalary ?? false) === true
   if (showSalary) {
     const currency = input.job?.currency ?? d.salaryCurrency
