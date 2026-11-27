@@ -1681,8 +1681,9 @@ const stageHasAutomation = useMemo(() => {
           {/* Job Navigation Sidebar removed — single-job profile only */}
 
           {/* Main Profile Content */}
-          {/* Phones: the whole profile scrolls as one page, header included. */}
-          <div className={cn("flex-1 flex flex-col min-w-0 min-h-0", asPage && "max-sm:overflow-y-auto")}>
+          {/* Phones, and windows too short to keep the header pinned (a laptop, a zoomed
+              browser: 2026-11-27), scroll the whole profile as one page, header included. */}
+          <div className={cn("flex-1 flex flex-col min-w-0 min-h-0 [@media(max-height:820px)]:overflow-y-auto", asPage && "max-sm:overflow-y-auto")}>
             {loading || !candidate ? (
               <div className={cn("flex-1 p-6", asPage ? "" : "overflow-y-auto")}>
                 <CandidateProfileSkeleton />
@@ -1961,7 +1962,7 @@ const stageHasAutomation = useMemo(() => {
               })()}
             </div>
 
-               <div className={cn("flex-1 min-h-0 overflow-y-auto", asPage && "max-sm:flex-none max-sm:overflow-visible")}>
+               <div className={cn("flex-1 min-h-0 overflow-y-auto [@media(max-height:820px)]:flex-none [@media(max-height:820px)]:overflow-visible", asPage && "max-sm:flex-none max-sm:overflow-visible")}>
                 <div className={cn("pb-10 mx-auto w-full", asPage ? "layout-container max-w-[1400px] max-sm:pb-[calc(env(safe-area-inset-bottom,0px)+96px)]" : "px-4 sm:px-6 pt-4 max-w-[1400px]")}>
                 {/* Mobile job selector removed — single-job profile only */}
 
