@@ -529,6 +529,10 @@ export function describeAudit(row: AuditRow, nameOf: (userId: string | null) => 
       return `${who}'s ${app} role changed from ${prev} to ${role}`
     case 'grant.resent':
       return `${who}'s ${app} invitation was sent again`
+    case 'grant.link_shared':
+      return `${who}'s ${app} invitation link was copied to send by hand`
+    case 'grant.extended':
+      return `${who}'s ${app} invitation was extended 7 days`
     case 'grant.active':
       return `${app} confirmed ${who}'s access`
     case 'grant.error':
