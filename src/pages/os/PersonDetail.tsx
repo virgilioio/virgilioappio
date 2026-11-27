@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Briefcase, History, KeyRound, Send, ShieldCheck } from 'lucide-react'
+import { AppInviteLine } from '@/components/os/AppInviteLine'
 import { toast } from 'sonner'
 import { undoToast } from '@/lib/undoToast'
 
@@ -575,10 +576,24 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                 {APPS.map((app) => {
                   const grant = grants.find((g) => g.app === app.key)
                   const value = grant?.role ?? NO_ACCESS
+                  // Delivered to the app: the invitation line asks the app where it stands (2026-11-27).
+                  const showInvite = editable && grant?.status === 'active' && SYNCED_APPS.has(app.key)
                   return (
                     <li key={app.key} className="flex flex-wrap items-center gap-3 py-2.5">
                       <div className="min-w-[140px] flex-1">
                         <p className="font-inter text-[13px] font-medium text-[#1F2230]">{app.name}</p>
+                        {showInvite ? (
+                          <AppInviteLine
+                            tenantId={tenant?.id}
+                            userId={person.user_id}
+                            app={app.key}
+                            appName={app.name}
+                            editable={editable}
+                            resending={resendingApp === app.key}
+                            busy={savingApp !== null || (resendingApp !== null && resendingApp !== app.key)}
+                            onResend={() => resendApp(app.key)}
+                          />
+                        ) : (
                         <p className="font-inter text-[11.5px] text-[#6B7080]">
                           {app.key === 'ats'
                             ? person.system_role === 'admin'
@@ -597,6 +612,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                                   ? 'Active.'
                                   : 'No access.'}
                         </p>
+                        )}
                         {grant?.status === 'error' && editable && (
                           <button
                             type="button"
@@ -607,7 +623,7 @@ export default function PersonDetailPage({ self = false }: { self?: boolean }) {
                             Retry
                           </button>
                         )}
-                        {grant && grant.status !== 'error' && SYNCED_APPS.has(app.key) && editable && (
+                        {grant && grant.status !== 'error' && !showInvite && SYNCED_APPS.has(app.key) && editable && (
                           <Button
                             variant="ghost"
                             size="xs"
