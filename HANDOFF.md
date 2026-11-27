@@ -112,6 +112,12 @@ Hard limits:
 - **Not checked live:** a real send from Gmail with an attachment, and opening an email's file (needs stored files). Mail synced before 2026-10-30 lists its file names; fetching their content is phase 3.
 - **On main 2026-10-30** in both apps.
 
+## 2026-11-27 (ATS) — An offer's approver couldn't reach the approval — on the branch, waiting for Apply!
+
+- Allan: an approver on a job's offer chain had "no scroll" on the candidate's page and couldn't see the approval. Found: the approver holds the job's Sourcer seat, outside the offer team (`can_view_job_offers`: admins, Recruiter, Hiring manager), so the profile sent the approval link (`?focus=approval`) back to Job overview, hid the Offer tab and said the offer was with the recruiter; Approve and Decline never rendered. The database already lets approvers read the request, steps, chain and offer.
+- Fix: `useIsOfferApprover` gives such an approver the Offer tab (offer read-only, their decision; no Edit, Request approval, Remind, Create offer, timeline or agreements). And below 820px tall the profile scrolls as one page instead of pinning its header, which on a short screen left a sliver to scroll.
+- Checked in the browser with fake data: the approver lands on the approvals with Approve and Decline (Approve calls `offer_approval_decide`), a Sourcer who doesn't approve still sees the banner, the Recruiter's view is unchanged; at 560, 700 and 900px tall Approve is on screen on arrival and the page scrolls to the bottom. 532 tests pass.
+
 ## Done 2026-11-26 (ATS) — Job boards, steps 1 to 3: places, the feed, Google — on main
 
 - Allan: sourcing is nearly all by hand (in nine months 122 people applied against 1,352 added by hand) and the job boards bring nobody (Talent.com's last candidate was 2026-03-07). He hires mostly in Colombia, the UK, the US and Canada; OCC is out. Plan approved 2026-11-26 ("Go!" for steps 1 to 3): real locations on posts, fix the feed, fix Google's markup. Steps 4 (Settings › Job boards shows each board's last fetch and applications) and 5 (register the feed with more boards; research boards per country) need their own plan and Go.
