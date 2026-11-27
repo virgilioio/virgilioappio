@@ -62,7 +62,7 @@ import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
 import { useJobManage } from '@/hooks/useJobManage'
-import { useCanViewOffers } from '@/hooks/useCanViewOffers'
+import { useCanViewOffers, useIsOfferApprover } from '@/hooks/useCanViewOffers'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 
@@ -271,6 +271,11 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   // Offers are for admins, the job's Recruiter and Hiring manager (and its
   // approvers); everyone else sees the stage, never the offer.
   const { canViewOffers, isLoading: canViewOffersLoading } = useCanViewOffers(jobId)
+  // An approver outside the offer team (2026-11-27) gets the Offer tab to read the
+  // offer and decide their step; creating, editing, sending and reminding stay
+  // with the team (canViewOffers).
+  const { isOfferApprover, isLoading: offerApproverLoading } = useIsOfferApprover(jobId, candidateId)
+  const seesOffer = canViewOffers || isOfferApprover
   const tabFromLink = useRef(false)
   const [hiredDetails, setHiredDetails] = useState<{
     hiredAt: string | null;
@@ -808,11 +813,11 @@ const stageHasAutomation = useMemo(() => {
   useEffect(() => {
     if (tabFromLink.current) return
     if (associationStatus === 'offer') {
-      if (canViewOffers) setActiveTab('offer')
+      if (seesOffer) setActiveTab('offer')
     }
     else if (associationStatus === 'hired') setActiveTab('onboarding')
     else if (associationStatus === 'rejected') setActiveTab('rejection-details')
-  }, [associationStatus, canViewOffers])
+  }, [associationStatus, seesOffer])
 
   // Onboarding and Rejection details only open for a candidate in that state.
   useEffect(() => {
@@ -821,10 +826,10 @@ const stageHasAutomation = useMemo(() => {
     if (activeTab === 'rejection-details' && associationStatus !== 'rejected') setActiveTab('job')
   }, [activeTab, associationStatus])
 
-  // Someone outside the offer team never lands on the Offer tab.
+  // Someone outside the offer team, and not one of the offer's approvers, never lands on the Offer tab.
   useEffect(() => {
-    if (activeTab === 'offer' && jobId && !canViewOffersLoading && !canViewOffers) setActiveTab('job')
-  }, [activeTab, jobId, canViewOffers, canViewOffersLoading])
+    if (activeTab === 'offer' && jobId && !canViewOffersLoading && !offerApproverLoading && !seesOffer) setActiveTab('job')
+  }, [activeTab, jobId, seesOffer, canViewOffersLoading, offerApproverLoading])
 
   useEffect(() => {
     if (!open || !jobId) return
@@ -1734,7 +1739,7 @@ const stageHasAutomation = useMemo(() => {
                           onTabChange={(v) => setActiveTab(v as typeof activeTab)}
                           phoneCompact
                           tabs={phoneTabOrder(isPhone, [
-                            ...(associationStatus === 'offer' && canViewOffers
+                            ...(associationStatus === 'offer' && seesOffer
                               ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
                               : []),
                             ...(associationStatus === 'rejected'
@@ -1743,7 +1748,7 @@ const stageHasAutomation = useMemo(() => {
                             ...(associationStatus === 'hired'
                               ? [
                                   { value: 'onboarding', label: 'Onboarding', Icon: CheckCircle2 },
-                                  ...(canViewOffers ? [{ value: 'offer', label: 'Offer', Icon: FileText }] : []),
+                                  ...(seesOffer ? [{ value: 'offer', label: 'Offer', Icon: FileText }] : []),
                                 ]
                               : []),
                             { value: 'job', label: 'Job overview', phoneLabel: 'Overview', Icon: ClipboardCheckIconAlias },
@@ -1886,7 +1891,9 @@ const stageHasAutomation = useMemo(() => {
                         eyebrow="Offer stage"
                         meta={offerDetails?.offeredAt ? `Moved here ${formatMovedHere(offerDetails.offeredAt)}` : undefined}
                         title={<><strong className="font-semibold">{candidate?.first_name || 'This candidate'}</strong> is at the offer stage</>}
-                        sub="The offer is with the job's recruiter and hiring manager."
+                        sub={isOfferApprover
+                          ? 'You approve this offer: it and your decision are in the Offer tab.'
+                          : "The offer is with the job's recruiter and hiring manager."}
                       />
                     ) : associationStatus === 'offer' && candidateId ? (
                       <OfferBannerSmart
@@ -2240,7 +2247,7 @@ const stageHasAutomation = useMemo(() => {
                     )}
 
                     {/* Offer Tab */}
-                    {activeTab === 'offer' && candidateId && canViewOffers && (
+                    {activeTab === 'offer' && candidateId && seesOffer && (
                       <Tabs defaultValue={approvalFocus ? 'offer-approvals' : 'offer-details'} className="w-full">
                         <TabsList
                           className="inline-flex w-auto p-1 rounded-[10px] h-auto bg-transparent gap-1"
@@ -2270,10 +2277,10 @@ const stageHasAutomation = useMemo(() => {
                           </TabsTrigger>
                         </TabsList>
                         <TabsContent value="offer-details" className="mt-4">
-                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }} />
+                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} manage={canViewOffers} onEdit={canViewOffers ? (offer) => { setEditingOffer(offer); setOfferFormOpen(true) } : undefined} />
                         </TabsContent>
                         <TabsContent value="offer-approvals" className="mt-4">
-                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidateFirstName={candidate?.candidate_name?.split(' ')[0]} jobTitle={(job as any)?.title || undefined} focus={approvalFocus} onFocused={() => setApprovalFocus(false)} />
+                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidateFirstName={candidate?.candidate_name?.split(' ')[0]} jobTitle={(job as any)?.title || undefined} focus={approvalFocus} onFocused={() => setApprovalFocus(false)} manage={canViewOffers} />
                         </TabsContent>
                       </Tabs>
                     )}

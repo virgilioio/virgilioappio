@@ -45,6 +45,8 @@ interface CandidateOfferDetailsProps {
   job?: any
   organization?: any
   onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any>; opening_id?: string | null }) => void
+  /** False for an approver outside the job's offer team: they read the offer and decide their step, nothing else. */
+  manage?: boolean
   associationStatus?: string | null
 }
 
@@ -68,7 +70,7 @@ function getStatusLabel(status: string) {
 }
 
 
-export function CandidateOfferDetails({ candidateId, jobId, organizationId, job, onEdit, associationStatus }: CandidateOfferDetailsProps) {
+export function CandidateOfferDetails({ candidateId, jobId, organizationId, job, onEdit, associationStatus, manage = true }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
   const { openings } = useJobOpenings(jobId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId || null)
@@ -184,7 +186,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, job,
                 </Button>
               </>
             )}
-            {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest && (
+            {manage && offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest && (
               <Button
                 variant="purple"
                 icon={Send}
