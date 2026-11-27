@@ -12949,6 +12949,10 @@ export type Database = {
         Returns: Json
       }
       os_holidays_sync: { Args: { _queue?: boolean }; Returns: Json }
+      os_invite_request: {
+        Args: { _action: string; _app: string; _tenant_id: string; _user_id: string }
+        Returns: Json
+      }
       os_is_external: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
