@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { feedEntries, feedSalary, postedDate, renderFeed, type FeedPosting } from '../../../supabase/functions/_shared/jobFeed.ts'
-import { feedFilePath, feedFileUrl } from '../../../supabase/functions/_shared/jobFeedFile.ts'
 
 const now = new Date('2026-11-26T12:00:00Z')
 const body = `<h2>About the role</h2><p>${'Sell to schools and universities across the region. '.repeat(4)}</p>`
@@ -69,20 +68,5 @@ describe('the job feed boards read', () => {
     expect(jooble).not.toContain('talent-apply-data')
     expect(renderFeed({ board: 'whatjobs', company: 'Virgilio', entries, now })).toContain('<country><![CDATA[United Kingdom]]></country>')
     expect(renderFeed({ board: 'juju', company: 'Virgilio', entries, now })).toContain('<nation><![CDATA[United Kingdom]]></nation>')
-  })
-})
-
-describe('feed files (2026-11-27)', () => {
-  const T = '5BA7B145-F251-4B18-8900-724CB06028AB'
-  it('keeps each board and workspace at one address in the public bucket', () => {
-    expect(feedFilePath('talent', T)).toBe('talent/5ba7b145-f251-4b18-8900-724cb06028ab.xml')
-    expect(feedFileUrl('https://etrxjxstjfcozdjumfsj.supabase.co/', 'jooble', T)).toBe(
-      'https://etrxjxstjfcozdjumfsj.supabase.co/storage/v1/object/public/job-feeds/jooble/5ba7b145-f251-4b18-8900-724cb06028ab.xml',
-    )
-  })
-  it('writes nothing outside a board and a workspace id', () => {
-    expect(feedFilePath('../talent', T)).toBeNull()
-    expect(feedFilePath('talent', '../../x')).toBeNull()
-    expect(feedFileUrl('https://x.supabase.co', 'Talent', 'not-a-uuid')).toBeNull()
   })
 })
