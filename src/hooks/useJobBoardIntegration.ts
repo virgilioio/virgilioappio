@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useTenant } from '@/hooks/useTenant'
 import { useToast } from '@/hooks/use-toast'
+import { feedFileUrl } from '@/lib/jobFeedFiles'
 
 interface JobBoardIntegration {
   id: string
@@ -56,7 +57,8 @@ export function useJobBoardIntegration(boardName: string) {
       if (!integration) {
         // Create new integration
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://etrxjxstjfcozdjumfsj.supabase.co'
-        const feedUrl = `${supabaseUrl}/functions/v1/generate-talent-feed?tenant_id=${tenant.id}`
+        // The feed's file on app.gogio.io (served as XML; the function's own address reads as text/plain).
+        const feedUrl = feedFileUrl(boardName, tenant.id)
         const webhookUrl = `${supabaseUrl}/functions/v1/talent-apply-webhook`
         const questionsUrl = `${supabaseUrl}/functions/v1/talent-questions`
 
