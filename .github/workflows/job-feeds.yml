@@ -1,0 +1,51 @@
+name: Job feeds
+
+# Hourly: copies each job-board feed from generate-talent-feed into
+# public/feeds/ (served by app.gogio.io as application/xml, which Talent.com
+# needs) and commits to main only when a feed really changed. See
+# src/lib/jobFeedFiles.ts and scripts/generate-job-feeds.ts.
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: job-feeds
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Copy the feeds
+        run: npx --yes tsx@4.19.2 scripts/generate-job-feeds.ts
+
+      - name: Commit changed feeds
+        run: |
+          git add public/feeds
+          if git diff --cached --quiet; then
+            echo "No feed changed."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898283+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Job feeds: refresh from the live jobs"
+          for i in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            git pull --rebase origin main
+          done
+          exit 1
