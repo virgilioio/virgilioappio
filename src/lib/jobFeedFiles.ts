@@ -25,6 +25,8 @@ export const STATIC_FEEDS: ReadonlyArray<{ tenantId: string; board: string }> = 
   { tenantId: '5ba7b145-f251-4b18-8900-724cb06028ab', board: 'careerjet' },
   { tenantId: '5ba7b145-f251-4b18-8900-724cb06028ab', board: 'whatjobs' },
   { tenantId: '5ba7b145-f251-4b18-8900-724cb06028ab', board: 'juju' },
+  { tenantId: '5ba7b145-f251-4b18-8900-724cb06028ab', board: 'adzuna' },
+  { tenantId: '5ba7b145-f251-4b18-8900-724cb06028ab', board: 'jobrapido' },
   // Motive
   { tenantId: '90e2f4fe-7c51-4eab-bb15-a883fdeb5b5a', board: 'talent' },
   // Allan Bravo - Headhunting
