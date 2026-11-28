@@ -698,7 +698,7 @@ export function PostingSheet({
                     </Select>
                   </FormField>
                 </div>
-                <PostingReachLine location={location} additional={additionalLocations} locationType={locationType} />
+                <PostingReachLine location={location} additional={additionalLocations} locationType={locationType} showsPay={showSalaryPublic && (salaryMin != null || salaryMax != null)} />
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <FormField label="Currency">
                     <CurrencySelect value={salaryCurrency} onChange={setSalaryCurrency} disabled={readOnly} />

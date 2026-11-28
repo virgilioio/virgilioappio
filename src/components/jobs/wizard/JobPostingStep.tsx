@@ -592,6 +592,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
             location={primaryLocation}
             additional={additionalLocations}
             locationType={jobData.work_mode}
+            showsPay={!!jobData.show_salary_public && (jobData.salary_min != null || jobData.salary_max != null)}
           />
         </SectionCard>
 
