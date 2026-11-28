@@ -34,8 +34,6 @@ interface CandidateOfferApprovalsProps {
   /** Opened from a link to the approval (?focus=approval): scroll to whose
    * turn it is and flash that row once the chain is drawn. */
   focus?: boolean
-  /** False for an approver outside the job's offer team: no Remind, only their own decision. */
-  manage?: boolean
   onFocused?: () => void
 }
 
@@ -157,7 +155,6 @@ export function CandidateOfferApprovals({
   jobTitle,
   focus,
   onFocused,
-  manage = true,
 }: CandidateOfferApprovalsProps) {
   const navigate = useNavigate()
   const listRef = useRef<HTMLDivElement>(null)
@@ -442,7 +439,7 @@ export function CandidateOfferApprovals({
                       {metaFor(s, prev?.name)}
                     </p>
                   </div>
-                  {manage && s.runStatus === 'awaiting' && !isMine && (
+                  {s.runStatus === 'awaiting' && !isMine && (
                     <Button
                       variant="secondary"
                       size="xs"

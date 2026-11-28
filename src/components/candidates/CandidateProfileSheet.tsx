@@ -62,7 +62,7 @@ import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
 import { useJobManage } from '@/hooks/useJobManage'
-import { useCanViewOffers, useIsOfferApprover } from '@/hooks/useCanViewOffers'
+import { useCanViewOffers } from '@/hooks/useCanViewOffers'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 
@@ -271,11 +271,6 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   // Offers are for admins, the job's Recruiter and Hiring manager (and its
   // approvers); everyone else sees the stage, never the offer.
   const { canViewOffers, isLoading: canViewOffersLoading } = useCanViewOffers(jobId)
-  // An approver outside the offer team (2026-11-27) gets the Offer tab to read the
-  // offer and decide their step; creating, editing, sending and reminding stay
-  // with the team (canViewOffers).
-  const { isOfferApprover, isLoading: offerApproverLoading } = useIsOfferApprover(jobId, candidateId)
-  const seesOffer = canViewOffers || isOfferApprover
   const tabFromLink = useRef(false)
   const [hiredDetails, setHiredDetails] = useState<{
     hiredAt: string | null;
@@ -813,11 +808,11 @@ const stageHasAutomation = useMemo(() => {
   useEffect(() => {
     if (tabFromLink.current) return
     if (associationStatus === 'offer') {
-      if (seesOffer) setActiveTab('offer')
+      if (canViewOffers) setActiveTab('offer')
     }
     else if (associationStatus === 'hired') setActiveTab('onboarding')
     else if (associationStatus === 'rejected') setActiveTab('rejection-details')
-  }, [associationStatus, seesOffer])
+  }, [associationStatus, canViewOffers])
 
   // Onboarding and Rejection details only open for a candidate in that state.
   useEffect(() => {
@@ -826,10 +821,10 @@ const stageHasAutomation = useMemo(() => {
     if (activeTab === 'rejection-details' && associationStatus !== 'rejected') setActiveTab('job')
   }, [activeTab, associationStatus])
 
-  // Someone outside the offer team, and not one of the offer's approvers, never lands on the Offer tab.
+  // Someone outside the offer team never lands on the Offer tab.
   useEffect(() => {
-    if (activeTab === 'offer' && jobId && !canViewOffersLoading && !offerApproverLoading && !seesOffer) setActiveTab('job')
-  }, [activeTab, jobId, seesOffer, canViewOffersLoading, offerApproverLoading])
+    if (activeTab === 'offer' && jobId && !canViewOffersLoading && !canViewOffers) setActiveTab('job')
+  }, [activeTab, jobId, canViewOffers, canViewOffersLoading])
 
   useEffect(() => {
     if (!open || !jobId) return
@@ -1681,9 +1676,8 @@ const stageHasAutomation = useMemo(() => {
           {/* Job Navigation Sidebar removed — single-job profile only */}
 
           {/* Main Profile Content */}
-          {/* Phones, and windows too short to keep the header pinned (a laptop, a zoomed
-              browser: 2026-11-27), scroll the whole profile as one page, header included. */}
-          <div className={cn("flex-1 flex flex-col min-w-0 min-h-0 [@media(max-height:820px)]:overflow-y-auto", asPage && "max-sm:overflow-y-auto")}>
+          {/* Phones: the whole profile scrolls as one page, header included. */}
+          <div className={cn("flex-1 flex flex-col min-w-0 min-h-0", asPage && "max-sm:overflow-y-auto")}>
             {loading || !candidate ? (
               <div className={cn("flex-1 p-6", asPage ? "" : "overflow-y-auto")}>
                 <CandidateProfileSkeleton />
@@ -1740,7 +1734,7 @@ const stageHasAutomation = useMemo(() => {
                           onTabChange={(v) => setActiveTab(v as typeof activeTab)}
                           phoneCompact
                           tabs={phoneTabOrder(isPhone, [
-                            ...(associationStatus === 'offer' && seesOffer
+                            ...(associationStatus === 'offer' && canViewOffers
                               ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
                               : []),
                             ...(associationStatus === 'rejected'
@@ -1749,7 +1743,7 @@ const stageHasAutomation = useMemo(() => {
                             ...(associationStatus === 'hired'
                               ? [
                                   { value: 'onboarding', label: 'Onboarding', Icon: CheckCircle2 },
-                                  ...(seesOffer ? [{ value: 'offer', label: 'Offer', Icon: FileText }] : []),
+                                  ...(canViewOffers ? [{ value: 'offer', label: 'Offer', Icon: FileText }] : []),
                                 ]
                               : []),
                             { value: 'job', label: 'Job overview', phoneLabel: 'Overview', Icon: ClipboardCheckIconAlias },
@@ -1892,9 +1886,7 @@ const stageHasAutomation = useMemo(() => {
                         eyebrow="Offer stage"
                         meta={offerDetails?.offeredAt ? `Moved here ${formatMovedHere(offerDetails.offeredAt)}` : undefined}
                         title={<><strong className="font-semibold">{candidate?.first_name || 'This candidate'}</strong> is at the offer stage</>}
-                        sub={isOfferApprover
-                          ? 'You approve this offer: it and your decision are in the Offer tab.'
-                          : "The offer is with the job's recruiter and hiring manager."}
+                        sub="The offer is with the job's recruiter and hiring manager."
                       />
                     ) : associationStatus === 'offer' && candidateId ? (
                       <OfferBannerSmart
@@ -1962,7 +1954,7 @@ const stageHasAutomation = useMemo(() => {
               })()}
             </div>
 
-               <div className={cn("flex-1 min-h-0 overflow-y-auto [@media(max-height:820px)]:flex-none [@media(max-height:820px)]:overflow-visible", asPage && "max-sm:flex-none max-sm:overflow-visible")}>
+               <div className={cn("flex-1 min-h-0 overflow-y-auto", asPage && "max-sm:flex-none max-sm:overflow-visible")}>
                 <div className={cn("pb-10 mx-auto w-full", asPage ? "layout-container max-w-[1400px] max-sm:pb-[calc(env(safe-area-inset-bottom,0px)+96px)]" : "px-4 sm:px-6 pt-4 max-w-[1400px]")}>
                 {/* Mobile job selector removed — single-job profile only */}
 
@@ -2248,7 +2240,7 @@ const stageHasAutomation = useMemo(() => {
                     )}
 
                     {/* Offer Tab */}
-                    {activeTab === 'offer' && candidateId && seesOffer && (
+                    {activeTab === 'offer' && candidateId && canViewOffers && (
                       <Tabs defaultValue={approvalFocus ? 'offer-approvals' : 'offer-details'} className="w-full">
                         <TabsList
                           className="inline-flex w-auto p-1 rounded-[10px] h-auto bg-transparent gap-1"
@@ -2278,10 +2270,10 @@ const stageHasAutomation = useMemo(() => {
                           </TabsTrigger>
                         </TabsList>
                         <TabsContent value="offer-details" className="mt-4">
-                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} manage={canViewOffers} onEdit={canViewOffers ? (offer) => { setEditingOffer(offer); setOfferFormOpen(true) } : undefined} />
+                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }} />
                         </TabsContent>
                         <TabsContent value="offer-approvals" className="mt-4">
-                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidateFirstName={candidate?.candidate_name?.split(' ')[0]} jobTitle={(job as any)?.title || undefined} focus={approvalFocus} onFocused={() => setApprovalFocus(false)} manage={canViewOffers} />
+                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidateFirstName={candidate?.candidate_name?.split(' ')[0]} jobTitle={(job as any)?.title || undefined} focus={approvalFocus} onFocused={() => setApprovalFocus(false)} />
                         </TabsContent>
                       </Tabs>
                     )}
